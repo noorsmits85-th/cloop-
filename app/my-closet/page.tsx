@@ -371,7 +371,7 @@ export default function MyClosetPage() {
             onClick={() => setActiveTab("RENTED")} 
             className={`pb-3 text-xs font-semibold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${activeTab === "RENTED" ? "border-transparent text-[#004a9c] border-b-2 !border-[#004a9c]" : "border-transparent text-stone-400 hover:text-stone-700"}`}
           >
-            <ShoppingBag size={14} /> Trang phục tớ đi thuê (Khách)
+            <ShoppingBag size={14} /> Trang phục đi thuê (Khách)
           </button>
         </div>
 
