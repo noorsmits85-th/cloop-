@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CLOOP - Circular Fashion Platform</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --matcha-900: #0E2E11; /* Tông Tối - Footer/Pre-Footer */
+            --matcha-700: #1B5E20; /* Primary */
+            --matcha-gradient: linear-gradient(to right, #1B5E20, #66BB6A); /* Text gradient */
+            --bg-gradient: radial-gradient(circle at 10% 20%, #E8F5E9 0%, #FFFFFF 100%);
+            --milk: #FCFAFA;
+            --text-main: #1A1A1A;
+            --text-muted: #555555;
+            --border: #EAEAEA;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', sans-serif; background-color: #FFFFFF; color: var(--text-dark); }
+
+        /* HEADER & UTILITY */
+        .top-utility-bar { background-color: var(--matcha-900); color: white; padding: 8px 5%; display: flex; justify-content: space-between; font-size: 11px; letter-spacing: 0.5px; }
+        header { padding: 20px 5%; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
+        .logo-box { text-align: center; cursor: pointer; }
+        .logo-img { height: 50px; animation: spin 12s linear infinite; }
+        @keyframes spin { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
+        .logo-slogan { font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: 2px; color: var(--matcha-700); font-weight: 700; margin-top: 5px; }
+
+        .search-complex { flex: 1; max-width: 450px; margin: 0 40px; position: relative; }
+        .search-complex input { width: 100%; padding: 12px 20px 12px 45px; border-radius: 30px; border: 1px solid #E0E0E0; font-family: 'Montserrat'; font-size: 13px; }
+        
+        .nav-actions { display: flex; align-items: center; gap: 20px; }
+        .btn-register { border: 1px solid var(--matcha-700); color: var(--matcha-700); padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 12px; }
+        .btn-consign { background: var(--matcha-700); color: white; padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 12px; }
+
+        /* NAV */
+        .category-nav { display: flex; justify-content: center; gap: 50px; padding: 15px 5%; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 500; }
+        .cat-item { color: var(--text-muted); cursor: pointer; transition: 0.3s; }
+        .cat-item.active { color: var(--matcha-700); font-weight: 700; border-bottom: 2px solid var(--matcha-700); padding-bottom: 13px; }
+
+        /* HERO BANNER */
+        .hero-refined { padding: 80px 5%; min-height: 500px; background: var(--bg-gradient); display: flex; justify-content: space-between; align-items: center; }
+        .hero-text h1 { font-family: 'Cinzel', serif; font-size: 3.5rem; color: var(--matcha-700); margin-bottom: 20px; }
+        .hero-text p { font-size: 1.1rem; color: var(--text-muted); margin-bottom: 30px; max-width: 500px; }
+        .hero-glass-box { width: 450px; height: 350px; border-radius: 20px; background: rgba(255,255,255,0.4); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.8); display: flex; justify-content: center; align-items: center; font-family: 'Cinzel'; }
+
+        /* FEED SECTION - SOCIAL COMMERCE */
+        .feed-area { padding: 80px 5%; background: var(--milk); position: relative; }
+        /* Watermark Vi Mạch */
+        .feed-area::before { content: ""; position: absolute; top:0; left:0; width:100%; height:100%; background: url('https://www.transparenttextures.com/patterns/circuit-board.png'); opacity: 0.03; pointer-events: none; }
+        
+        .masonry-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 30px; }
+        .product-card { background: white; border-radius: 16px; border: 1px solid var(--border); overflow: hidden; transition: 0.3s; }
+        .product-card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.05); }
+        .card-img { width: 100%; height: 350px; object-fit: cover; }
+        
+        /* FOOTER TÔNG TỐI */
+        .pre-footer { background: var(--matcha-900); color: white; padding: 100px 5%; text-align: center; }
+        .script-slogan { height: 60px; filter: invert(1); margin-bottom: 20px; }
+        footer { background: #0A240D; color: #E8F5E9; padding: 60px 5%; display: grid; grid-template-columns: repeat(4, 1fr); gap: 40px; }
+    </style>
+</head>
+<body>
+
+    <div class="top-utility-bar">
+        <span><i class="fa-solid fa-leaf"></i> CLOOP - Thời trang bền vững.</span>
+        <div class="auth-links">
+            <a href="#">Tạo tài khoản</a> | <a href="#">Đăng nhập</a>
+        </div>
+    </div>
+
+    <header>
+        <div class="logo-box">
+            <img src="Logo.png" alt="Logo" class="logo-img">
+            <div class="logo-slogan">FASHION IN A LOOP</div>
+        </div>
+        <div class="search-complex">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" placeholder="Tìm kiếm váy, áo, túi xách...">
+        </div>
+        <div class="nav-actions">
+            <i class="fa-regular fa-heart icon-action"></i>
+            <a href="#" class="btn-consign">Ký Gửi</a>
+        </div>
+    </header>
+
+    <nav class="category-nav">
+        <a href="#" class="active">Tất Cả</a>
+        <a href="#">Váy Dạ Hội</a>
+        <a href="#">Đồ Đi Biển</a>
+        <a href="#">Túi Xách</a>
+    </nav>
+
+    <section class="hero-refined">
+        <div class="hero-text">
+            <h1 class="headline-gradient">Chia sẻ tủ đồ,<br>Định hình phong cách.</h1>
+            <p>Khám phá mô hình C2C hiện đại: Thuê - Cho Thuê - Mua - Bán Lại. Giải pháp thời trang bền vững.</p>
+            <div style="display:flex; gap:15px;">
+                <button class="btn-main btn-primary">Mở Tủ Đồ Kiếm Tiền</button>
+                <button class="btn-main btn-secondary">Khám Phá</button>
+            </div>
+        </div>
+        <div class="hero-glass-box">Khu vực nhúng ảnh chiến dịch</div>
+    </section>
+
+    <section class="feed-area">
+        <h2 class="feed-title">Bảng Tin Xu Hướng</h2>
+        <div class="masonry-grid" id="feed-data">
+            <div class="upload-card">
+                <i class="fa-solid fa-circle-plus"></i>
+                <div style="font-weight: 700;">TẢI LÊN TREND MỚI</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="pre-footer">
+        <img src="slogan-script.png" class="script-slogan">
+        <h2 style="font-family: 'Cinzel', serif;">CLOOP.</h2>
+    </section>
+
+    <footer>
+        <div><h3>Về CLOOP</h3><a href="#">Câu chuyện</a></div>
+        <div><h3>Hỗ Trợ</h3><a href="#">Chính sách</a></div>
+        <div><h3>Cộng đồng</h3><a href="#">Kết nối</a></div>
+        <div><h3>Tải App</h3><p>Quản lý tủ đồ dễ dàng.</p></div>
+    </footer>
+
+    <script>
+        const items = [
+            { img: "1.2.(2).jpg", user: "Yến Phan", title: "Đầm đen dạo phố cổ", price: "90.000đ" },
+            { img: "1.1 (1).jpg", user: "Như Ý", title: "Đầm công chúa", price: "150.000đ" }
+        ];
+        const feed = document.getElementById('feed-data');
+        items.forEach(i => {
+            const div = document.createElement('div');
+            div.className = 'product-card';
+            div.innerHTML = `
+                <div class="card-img-wrap"><img src="${i.img}"></div>
+                <div class="card-info">
+                    <div style="font-size:12px; font-weight:600;">@${i.user}</div>
+                    <div style="font-size:14px;">${i.title}</div>
+                    <div style="font-weight:700; color:var(--matcha-700)">${i.price}</div>
+                </div>
+            `;
+            feed.appendChild(div);
+        });
+    </script>
+</body>
+</html>

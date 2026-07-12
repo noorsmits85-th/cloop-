@@ -1,0 +1,207 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
+import { createClient } from "@supabase/supabase-js";
+// 🟢 ĐÃ THÊM: Kết nối với Context chung để kiểm soát phản hồi ẩn/hiện Modal đồng bộ
+import { useAuthModal } from "../../app/AuthModalContext";
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "temporary-placeholder-key";
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+export default function Header() {
+  const router = useRouter();
+  const { handleFeatureRequirement } = useAuthModal(); // Gọi Hook điều phối Modal lõi
+  const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    // 📡 MẠCH THEO DÕI ĐỘNG: Quét và đối soát trạng thái căn cước số từ localStorage tự chế liên tục
+    const handleAuthCheck = async () => {
+      if (typeof window !== "undefined") {
+        const storedUserId = localStorage.getItem("cloop_user_id");
+        const storedUserRaw = localStorage.getItem("cloop_user");
+
+        if (storedUserId) {
+          setUser({ id: storedUserId });
+          
+          // Trích xuất thông tin profile từ cache localStorage hoặc bảng User tự chế
+          if (storedUserRaw) {
+            try {
+              const parsed = JSON.parse(storedUserRaw);
+              setProfile({
+                full_name: parsed.name || parsed.full_name || "Trang Hoàng",
+                username: parsed.username || "tranghoang",
+                avatar_url: parsed.avatar_url || parsed.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb"
+              });
+            } catch (e) {
+              setProfile({
+                full_name: storedUserRaw || "Trang Hoàng",
+                username: "tranghoang",
+                avatar_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb"
+              });
+            }
+          } else {
+            // Luồng dự phòng: Bốc trực tiếp dữ liệu thật từ bảng User tự chế lên Client
+            try {
+              const { data: uData } = await supabase
+                .from("User")
+                .select("*")
+                .eq("id", storedUserId)
+                .single();
+              if (uData) {
+                setProfile({
+                  full_name: uData.name || uData.full_name || "Trang Hoàng",
+                  username: uData.username || "tranghoang",
+                  avatar_url: uData.avatar_url || uData.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb"
+                });
+              }
+            } catch (err) {
+              setProfile({
+                full_name: "Trang Hoàng",
+                username: "tranghoang",
+                avatar_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb"
+              });
+            }
+          }
+        } else {
+          setUser(null);
+          setProfile(null);
+        }
+      }
+    };
+
+    handleAuthCheck();
+
+    // Kích hoạt chu kỳ quét ngắn (polling) để đồng bộ danh tính tức thì giữa các trang
+    const interval = setInterval(handleAuthCheck, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleSignOut = () => {
+    // Xóa sạch dấu vết ID cũ lưu trong localStorage của hệ thống tự chế khi đăng xuất
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("cloop_user_id");
+      localStorage.removeItem("cloop_user");
+    }
+
+    setUser(null);
+    setProfile(null);
+    setDropdownOpen(false);
+    router.push("/");
+    router.refresh();
+  };
+
+  return (
+    <header className="w-full bg-[#FAF9F5] border-b border-gray-200/60 px-8 py-4 flex items-center justify-between sticky top-0 z-50">
+      
+      {/* KHỐI TRÁI: LOGO CLOOP & THANH TÌM KIẾM AI STYLIST */}
+      <div className="flex items-center gap-6">
+        <Link href="/" className="flex items-center gap-2">
+          <span className="text-2xl font-bold tracking-wider text-[#1C3F30] font-serif">CLOOP</span>
+          <span className="text-[9px] text-[#1C3F30]/60 font-medium block leading-none tracking-widest uppercase">Fashion in a loop</span>
+        </Link>
+        
+        <div className="relative w-64 hidden lg:block">
+          <input 
+            type="text" 
+            placeholder="Search AI Stylist" 
+            className="w-full pl-10 pr-4 py-2 bg-white/80 border border-gray-200/80 rounded-full focus:outline-none focus:border-[#1C3F30] text-xs font-medium placeholder-gray-400"
+          />
+          <span className="absolute left-4 top-2.5 text-gray-400 text-xs">🔍</span>
+        </div>
+      </div>
+
+      {/* KHỐI GIỮA: THANH MENU ĐIỀU HƯỚNG CHÍNH */}
+      <nav className="hidden md:flex items-center gap-6 text-[11px] font-bold tracking-widest text-[#1C3F30]/80">
+        <Link href="/" className="hover:text-[#1C3F30] pb-1 transition">TRANG CHỦ</Link>
+        <Link href="/shop?type=rent" className="hover:text-[#1C3F30] pb-1 transition">THUÊ ĐỒ</Link>
+        <Link href="/my-closet/create" className="hover:text-[#1C3F30] pb-1 transition">CHO THUÊ ĐỒ</Link>
+        <Link href="/shop?type=sell" className="hover:text-[#1C3F30] pb-1 transition">MUA & BÁN</Link>
+        
+        {/* 🟢 ĐÃ NÂNG CẤP: Chuyển sang nút điều phối qua hàm lõi để nhận diện trạng thái đăng nhập thật */}
+        <button 
+          onClick={() => handleFeatureRequirement("TÁI CHẾ")} 
+          className="hover:text-[#1C3F30] pb-1 transition uppercase bg-transparent border-none outline-none font-bold tracking-widest text-[11px] text-[#1C3F30]/80 cursor-pointer select-none"
+        >
+          TÁI CHẾ
+        </button>
+        <button 
+          onClick={() => handleFeatureRequirement("BLOG")} 
+          className="hover:text-[#1C3F30] pb-1 transition uppercase bg-transparent border-none outline-none font-bold tracking-widest text-[11px] text-[#1C3F30]/80 cursor-pointer select-none"
+        >
+          BLOG
+        </button>
+      </nav>
+
+      {/* KHỐI PHẢI: UTILS CHỨC NĂNG & ĐẤU DÂY XÁC THỰC */}
+      <div className="flex items-center gap-4">
+        {/* Nút Darkmode */}
+        <button className="text-[#1C3F30] opacity-80 hover:opacity-100 text-sm p-1">🌙</button>
+
+        {user ? (
+          /* TRẠNG THÁI A: ĐÃ ĐĂNG NHẬP THEO LOCALSTORAGE ➡️ HIỆN AVATAR CHÍNH CHỦ */
+          <div className="relative">
+            <button 
+              onClick={() => setDropdownOpen(!dropdownOpen)}
+              className="w-10 h-10 rounded-full overflow-hidden border-2 border-[#1C3F30] focus:outline-none relative block shadow-sm hover:scale-105 transition cursor-pointer"
+            >
+              <Image
+                src={profile?.avatar_url || "https://images.unsplash.com/photo-1534528741775-53994a69daeb"} 
+                alt="Avatar"
+                fill
+                className="object-cover"
+              />
+            </button>
+
+            {/* Dropdown Menu điều hướng nhanh */}
+            {dropdownOpen && (
+              <div className="absolute right-0 mt-3 w-52 bg-white border border-gray-100 rounded-xl shadow-xl py-2 z-50">
+                <div className="px-4 py-2 border-b border-gray-50 text-left">
+                  <p className="text-xs font-bold text-gray-800 truncate">{profile?.full_name || "Trang Hoàng"}</p>
+                  <p className="text-[10px] text-gray-400 font-mono truncate">@{profile?.username || "tranghoang"}</p>
+                </div>
+                <Link 
+                  href="/my-closet" 
+                  className="block px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition text-left"
+                  onClick={() => setDropdownOpen(false)}
+                >
+                  👚 Tủ đồ của tôi
+                </Link>
+                <button
+                  onClick={handleSignOut}
+                  className="w-full text-left px-4 py-2.5 text-xs font-bold text-red-600 hover:bg-red-50 border-t border-gray-50 transition cursor-pointer"
+                >
+                  🚪 Đăng xuất
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* TRẠNG THÁI B: CHƯA ĐĂNG NHẬP ➡️ HIỆN HAI NÚT ĐĂNG NHẬP / ĐĂNG KÝ */
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => router.push("/login")}
+              className="text-[11px] font-bold text-[#1C3F30]/80 hover:text-[#1C3F30] tracking-widest transition px-3 py-2 cursor-pointer"
+            >
+              ĐĂNG NHẬP
+            </button>
+            <button 
+              onClick={() => router.push("/register")}
+              className="bg-[#1C3F30] text-white text-[11px] font-bold tracking-widest px-5 py-2 rounded-full hover:bg-opacity-90 transition shadow-sm cursor-pointer"
+            >
+              ĐĂNG KÝ
+            </button>
+          </div>
+        )}
+
+        {/* Giỏ hàng */}
+        <button className="text-[#1C3F30] opacity-80 hover:opacity-100 text-sm p-1">🛍️</button>
+      </div>
+    </header>
+  );
+}
