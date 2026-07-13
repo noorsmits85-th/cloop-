@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@supabase/supabase-js";
 
-// Khởi tạo Supabase đồng bộ chuẩn với dự án của cậu
+// Khởi tạo Supabase đồng bộ chuẩn với dự án của bạn
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "temporary-placeholder-key";
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
@@ -23,7 +23,7 @@ interface BlogWithProduct {
       basePrice: number;
       listingType: string;
     }>;
-  }> | any; // Chấp nhận kiểu mảng trả về từ Supabase để xóa hoàn toàn lỗi đỏ
+  }> | any;
 }
 
 export default function BlogJournalPage() {
@@ -33,7 +33,6 @@ export default function BlogJournalPage() {
   useEffect(() => {
     async function fetchJournalFeed() {
       try {
-        // Cú pháp gọi Query bốc toàn bộ bài Blog kèm thông tin Product và luồng giá tương ứng[cite: 1]
         const { data, error } = await supabase
           .from("BlogPost")
           .select(`
@@ -43,7 +42,8 @@ export default function BlogJournalPage() {
               Listing (basePrice, listingType)
             )
           `)
-          .order("createdAt", { ascending: false }); // Bài mới nhất phóng lên đầu[cite: 1]
+          .order("createdAt", { ascending: false })
+          .limit(20); // Giới hạn tối ưu hệ thống
 
         if (error) throw error;
         setPosts(data || []);
@@ -84,17 +84,14 @@ export default function BlogJournalPage() {
         {posts.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-2xl border border-stone-100 p-6">
             <p className="text-sm font-sans text-stone-400">Hiện chưa có câu chuyện outfit nào được chia sẻ.</p>
-            <p className="text-xs font-sans text-stone-400 mt-1">Hãy là người đầu tiên thổi hồn vào trang phục tại mục Đăng đồ nhen! ✨</p>
+            {/* ✨ ĐH ĐÃ SỬA: Đổi chữ "nhen" thành "nhé" chuẩn phom thẩm mỹ */}
+            <p className="text-xs font-sans text-stone-400 mt-1">Hãy là người đầu tiên thổi hồn vào trang phục tại mục Đăng đồ nhé! ✨</p>
           </div>
         ) : (
           posts.map((post, index) => {
-            // Mẹo: Cứ bài chỉ số chẵn làm khung OVAL nghệ thuật, bài lẻ làm khung CHỮ NHẬT bo góc[cite: 2]
             const isOvalLayout = index % 2 === 0;
-
-            // XỬ LÝ AN TOÀN: Vì Supabase trả về products dạng mảng, ta chủ động lấy phần tử đầu tiên [0]
             const productInfo = Array.isArray(post.products) ? post.products[0] : post.products;
             
-            // Tìm mức giá thuê trong mảng Listing của sản phẩm[cite: 1]
             const rentalListing = productInfo?.Listing?.find((l: any) => l.listingType === "RENT");
             const rentalPrice = rentalListing ? rentalListing.basePrice : null;
 
@@ -103,7 +100,7 @@ export default function BlogJournalPage() {
                 key={post.id} 
                 className="bg-white p-6 rounded-[2rem] border border-emerald-800/5 shadow-[0_4px_20px_-4px_rgba(28,63,48,0.03)] space-y-5 animate-fadeIn"
               >
-                {/* 📸 KHUNG ẢNH ĐA HÌNH KHỐI NGHỆ THUẬT[cite: 2] */}
+                {/* 📸 KHUNG ẢNH ĐA HÌNH KHỐI NGHỆ THUẬT */}
                 <div className="w-full flex justify-center overflow-hidden">
                   <div 
                     className={`relative w-full aspect-[3/4] overflow-hidden transition-all duration-500 border border-stone-100
@@ -132,7 +129,7 @@ export default function BlogJournalPage() {
                   </p>
                 </div>
 
-                {/* 🎯 NÚT THUÊ ĐỒ KHÉP KÍN KHÔNG ĐỂ LỘ TRAFFIC RA NGOÀI[cite: 1] */}
+                {/* 🎯 NÚT THUÊ ĐỒ KHÉP KÍN */}
                 {productInfo && (
                   <div className="pt-3.5 border-t border-dashed border-stone-100 flex items-center justify-between">
                     <div className="font-sans max-w-[60%]">
