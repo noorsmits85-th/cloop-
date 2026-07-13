@@ -4,8 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@supabase/supabase-js";
 import { motion, AnimatePresence } from "framer-motion";
-// Các icon Leaf, Droplet, Sparkles để phục vụ hiển thị chỉ số ESG
-import { ArrowLeft, Plus, ShieldCheck, CheckCircle2, AlertTriangle, PackageCheck, Shirt, History, Leaf, Droplet, Sparkles, X, Star, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Plus, ShieldCheck, CheckCircle2, AlertTriangle, PackageCheck, Shirt, History, Leaf, Droplet, Sparkles, X, Star, ShoppingBag, Eye, EyeOff } from "lucide-react";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "temporary-placeholder-key";
@@ -14,13 +13,13 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 const PLACEHOLDER_IMG = "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=120";
 
 export default function MyClosetPage() {
-  const [activeTab, setActiveTab] = useState<"ITEMS" | "ESCROW" | "RENTED">("ITEMS"); // Mở rộng định dạng Tab thứ 3
+  const [activeTab, setActiveTab] = useState<"ITEMS" | "ESCROW" | "RENTED">("ITEMS");
   const [closetItems, setClosetItems] = useState<any[]>([]);
   const [escrowOrders, setEscrowOrders] = useState<any[]>([]);
-  const [rentedOrders, setRentedOrders] = useState<any[]>([]); // State lưu trữ đơn hàng mình đi thuê
+  const [rentedOrders, setRentedOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // States quản lý Modal Đánh giá và nhập liệu sao tín nhiệm cho cả 2 luồng
+  // States quản lý Modal Đánh giá và nhập liệu sao tín nhiệm
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedOrderForReview, setSelectedOrderForReview] = useState<any>(null);
   const [rating, setRating] = useState(5);
@@ -32,12 +31,11 @@ export default function MyClosetPage() {
 
   const today = new Date().toISOString().slice(0, 10);
 
-  // 📡 QUÉT DỮ LIỆU ĐỒNG BỘ ĐỘNG TOÀN DIỆN: ĐẤU NỐI CẢ LUỒNG CHỦ ĐỒ VÀ KHÁCH THUÊ THẬT
+  // 📡 QUÉT DỮ LIỆU ĐỒNG BỘ ĐỘNG TOÀN DIỆN: ĐẤU NỐI ĐỐI SOÁT ĐỘC LẬP SHOP VÀ BLOG
   async function fetchRealClosetData() {
     try {
       setLoading(true);
 
-      // Xác định UID tài khoản để lọc đúng tủ đồ chính chủ
       let finalUserId = null;
       try {
         const { data: { user } } = await supabase.auth.getUser();
@@ -48,7 +46,6 @@ export default function MyClosetPage() {
         finalUserId = localStorage.getItem("cloop_user_id");
       }
 
-      // Nếu thực sự chưa đăng nhập, gom mảng rỗng để không bị sập giao diện
       if (!finalUserId) {
         setClosetItems([]);
         setEscrowOrders([]);
@@ -65,19 +62,19 @@ export default function MyClosetPage() {
 
       if (pError) throw pError;
 
-      // 2. Lấy toàn bộ Listing và Lịch sử thuê đồ từ cơ sở dữ liệu thật
+      // 2. Lấy toàn bộ dữ liệu Listing, Lịch sử thuê, Đánh giá và cả bảng BlogPost để bóc trạng thái lẻ
       const { data: listingsData } = await supabase.from("Listing").select("*");
       const { data: rentalHistoryData } = await supabase.from("rental_history").select("*").order("id", { ascending: false });
       const { data: reviewsData } = await supabase.from("Review").select("*");
+      const { data: blogPostsData } = await supabase.from("BlogPost").select("id, productId, status");
 
-      // 3. PHÂN HỆ LUỒNG A: Đơn hàng khách thuê đồ của mình (Mình đóng vai trò CHỦ ĐỒ)
+      // 3. PHÂN HỆ LUỒNG A: Đơn hàng khách thuê đồ của mình (Chủ đồ)
       const formattedEscrowOrders = (rentalHistoryData || [])
         .map((order: any) => {
           const matchedProduct = (productsData || []).find(
             (p: any) => String(p.id) === String(order.product_id)
           );
 
-          // Thuật toán đối soát tính sao trung bình của Renter
           const renterReviews = (reviewsData || []).filter(
             (r: any) => r.revieweeId === order.renterId && r.type === "OWNER_TO_RENTER"
           );
@@ -96,7 +93,7 @@ export default function MyClosetPage() {
       
       setEscrowOrders(formattedEscrowOrders);
 
-      // 4. PHÂN HỆ LUỒNG B: Đơn hàng mình đi thuê từ người khác (Mình đóng vai trò KHÁCH THUÊ)
+      // 4. PHÂN HỆ LUỒNG B: Đơn hàng mình đi thuê từ người khác (Khách thuê)
       const myRentedHistory = (rentalHistoryData || []).filter(
         (order: any) => String(order.renterId) === String(finalUserId)
       );
@@ -111,7 +108,6 @@ export default function MyClosetPage() {
       const formattedRentedOrders = myRentedHistory.map((order: any) => {
         const matchedProduct = rentedProductsData.find((p: any) => String(p.id) === String(order.product_id));
         
-        // Thuật toán bốc tách điểm sao uy tín của Owner để mình đối soát lúc xem lại đơn
         const ownerId = matchedProduct?.userId || "";
         const ownerReviews = (reviewsData || []).filter(
           (r: any) => r.revieweeId === ownerId && r.type === "RENTER_TO_OWNER"
@@ -131,7 +127,7 @@ export default function MyClosetPage() {
 
       setRentedOrders(formattedRentedOrders);
 
-      // 5. HIỂN THỊ ESG DASHBOARD
+      // 5. HIỂN THỊ ESG DASHBOARD & ĐỔI SOÁT TRẠNG THÁI LẺ TỪNG KÊNH
       if (!productsData || productsData.length === 0) {
         setClosetItems([]);
         setEcoStats({ co2Saved: 0, waterSaved: 0, greenPoints: 0 });
@@ -156,7 +152,14 @@ export default function MyClosetPage() {
         const sellPrice = saleListing ? Number(saleListing.basePrice) : item.sale_price || 0;
 
         const listingIds = [rentalListing?.id, saleListing?.id].filter(Boolean);
-        const isHidden = productListings.length > 0 && productListings.every((l: any) => l.status === "HIDDEN");
+        
+        // Trạng thái ẩn hiện riêng của cổng Shop
+        const isShopHidden = productListings.length > 0 && productListings.every((l: any) => l.status === "HIDDEN");
+
+        // Trạng thái ẩn hiện riêng của cổng Blog
+        const matchedBlog = (blogPostsData || []).find((b: any) => String(b.productId) === String(item.id));
+        const hasBlog = !!matchedBlog;
+        const isBlogHidden = matchedBlog ? matchedBlog.status === "HIDDEN" : false;
 
         const productRentals = (rentalHistoryData || []).filter(
           (r: any) => String(r.product_id) === String(item.id)
@@ -168,7 +171,6 @@ export default function MyClosetPage() {
           name: item.title || item.name || "Trang phục CLOOP",
           size: item.size || "M",
           image: currentImage,
-          status: "Đang hoạt động",
           isRentalActive: rentPrice > 0,
           rentalPrice: rentPrice,
           activeRentals,
@@ -176,7 +178,9 @@ export default function MyClosetPage() {
           isSaleActive: sellPrice > 0,
           salePrice: sellPrice,
           listingIds,
-          isHidden,
+          isShopHidden,
+          hasBlog,
+          isBlogHidden
         };
       });
 
@@ -207,7 +211,6 @@ export default function MyClosetPage() {
     }
   };
 
-  // 📡 TIẾN TRÌNH ĐẨY REVIEW ĐA PHƯƠNG THỨC LÊN DATABASE THẬT
   const handleSubmitReview = async () => {
     if (!selectedOrderForReview) return;
     setIsReviewSubmitting(true);
@@ -220,13 +223,11 @@ export default function MyClosetPage() {
 
       if (!currentUserId) { alert("Vui lòng đăng nhập để thực hiện."); return; }
 
-      // Nhận diện luồng: Mình đi thuê đồ hay người ta thuê đồ của mình
       const isRenterToOwnerLuong = String(selectedOrderForReview.renterId) === String(currentUserId);
       const finalRevieweeId = isRenterToOwnerLuong ? selectedOrderForReview.ownerId : selectedOrderForReview.renterId;
       const finalType = isRenterToOwnerLuong ? "RENTER_TO_OWNER" : "OWNER_TO_RENTER";
       const updateField = isRenterToOwnerLuong ? { renterRatedAt: new Date().toISOString() } : { ownerRatedAt: new Date().toISOString() };
 
-      // 1. Insert bản ghi review thật vào Supabase
       const { error: reviewError } = await supabase.from("Review").insert([{
         rentalHistoryId: selectedOrderForReview.id,
         reviewerId: currentUserId,
@@ -238,7 +239,6 @@ export default function MyClosetPage() {
 
       if (reviewError) throw reviewError;
 
-      // 2. Đánh dấu mốc thời gian chấm sao lên đơn hàng công khai
       const { error: historyError } = await supabase
         .from("rental_history")
         .update(updateField)
@@ -256,18 +256,34 @@ export default function MyClosetPage() {
     }
   };
 
-  const handleToggleVisibility = async (listingIds: string[], currentlyHidden: boolean) => {
+  // 🛍️ LUỒNG 1: Ẩn/Hiện độc lập dành riêng cho cổng Shop (Bảng Listing)
+  const handleToggleShopVisibility = async (listingIds: string[], currentlyHidden: boolean) => {
     if (listingIds.length === 0) {
-      alert("Sản phẩm này chưa thiết lập giá bán/thuê, không thể ẩn.");
+      alert("Sản phẩm này chưa cấu hình giá niêm yết trên Shop, không thể ẩn.");
       return;
     }
     const newStatus = currentlyHidden ? "AVAILABLE" : "HIDDEN";
-    const { error } = await supabase.from("Listing").update({ status: newStatus }).in("id", listingIds);
-    if (error) {
-      alert(`Lỗi cập nhật trạng thái: ${error.message}`);
-      return;
+    try {
+      const { error } = await supabase.from("Listing").update({ status: newStatus }).in("id", listingIds);
+      if (error) throw error;
+      alert(currentlyHidden ? "🎉 Đã hiện sản phẩm lại trên kệ Shop của bạn nhé!" : "🛑 Đã ẩn sản phẩm khỏi kệ Shop thành công nhé!");
+      await fetchRealClosetData();
+    } catch (err: any) {
+      alert(`Lỗi xử lý cổng Shop: ${err.message}`);
     }
-    await fetchRealClosetData();
+  };
+
+  // ✍️ LUỒNG 2: Ẩn/Hiện độc lập dành riêng cho câu chuyện truyền cảm hứng (Bảng BlogPost)
+  const handleToggleBlogVisibility = async (productId: string, currentlyHidden: boolean) => {
+    const newStatus = currentlyHidden ? "PUBLIC" : "HIDDEN";
+    try {
+      const { error } = await supabase.from("BlogPost").update({ status: newStatus }).eq("productId", productId);
+      if (error) throw error;
+      alert(currentlyHidden ? "🎉 Đã đẩy câu chuyện Lookbook hiển thị lại công khai trên Blog nhé!" : "🛑 Đã ẩn câu chuyện khỏi luồng bài viết công khai thành công nhé!");
+      await fetchRealClosetData();
+    } catch (err: any) {
+      alert(`Lỗi xử lý cổng Blog: ${err.message}`);
+    }
   };
 
   const pendingNotificationCount = escrowOrders.filter(o => o.status === "active" || o.status === "returning").length;
@@ -337,7 +353,7 @@ export default function MyClosetPage() {
         {pendingNotificationCount > 0 && (
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-amber-50/80 border border-amber-200/60 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-left">
             <div className="space-y-1">
-              <h4 className="text-xs font-bold text-amber-900 uppercase tracking-widest flex items-center gap-2">
+              <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wide flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" /> 🔔 THÔNG BÁO HỆ THỐNG CLOOP
               </h4>
               <p className="text-xs text-amber-800 font-medium leading-relaxed">
@@ -353,7 +369,7 @@ export default function MyClosetPage() {
           </motion.div>
         )}
 
-        {/* CẤU TRÚC 3 TAB QUẢN LÝ MASTER KHỚP TIÊU CHUẨN DEMO TECHFEST */}
+        {/* CẤU TRÚC 3 TAB QUẢN LÝ MASTER */}
         <div className="flex border-b border-stone-200 w-full gap-6 pt-2 overflow-x-auto no-scrollbar">
           <button 
             onClick={() => setActiveTab("ITEMS")} 
@@ -388,7 +404,7 @@ export default function MyClosetPage() {
                         <th className="pb-3 text-center">Kích Cỡ</th>
                         <th className="pb-3 text-center text-emerald-900 font-semibold px-3">Giá Thuê / Ngày</th>
                         <th className="pb-3 text-center text-blue-900 font-semibold px-3">Giá Chuyển Nhượng</th>
-                        <th className="pb-3 text-right pr-2">Tình Trạng</th>
+                        <th className="pb-3 text-right pr-2">Cấu Hình Ẩn / Hiện Riêng Lẻ</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-stone-100 font-medium text-stone-600">
@@ -397,7 +413,7 @@ export default function MyClosetPage() {
                           <td className="py-3">
                             <img src={item.image} alt={item.name} className="w-10 h-14 rounded-xl object-cover shadow-sm border border-stone-100" onError={(e) => { (e.target as HTMLImageElement).src = PLACEHOLDER_IMG; }} />
                           </td>
-                          <td className="py-3 pl-3 font-semibold text-stone-900 max-w-[200px] truncate">
+                          <td className="py-3 pl-3 font-semibold text-stone-900 max-w-[180px] truncate">
                             <Link href={`/product/${item.id}`} className="hover:text-emerald-800 transition-colors underline decoration-stone-200 hover:decoration-emerald-800">
                               {item.name}
                             </Link>
@@ -410,10 +426,11 @@ export default function MyClosetPage() {
                             {item.isSaleActive ? `${item.salePrice.toLocaleString()}đ` : "—"}
                           </td>
                           
+                          {/* 🛠️ NÂNG CẤP: KHỐI ĐIỀU KHIỂN TÁCH RỜI CHỢ SHOP VÀ LOOKBOOK BLOG */}
                           <td className="py-3 text-right pr-2">
-                            <div className="flex items-center justify-end gap-2">
+                            <div className="flex flex-col items-end gap-2 text-[11px]">
                               {item.isCurrentlyRenting ? (
-                                <div className="text-right space-y-1">
+                                <div className="text-right space-y-0.5">
                                   <span className="text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-2 py-0.5 rounded-md inline-block">
                                     Đang cho thuê 🔒
                                   </span>
@@ -421,23 +438,56 @@ export default function MyClosetPage() {
                                     Khách: {item.activeRentals[0]?.renter_name || "Thành viên CLOOP"}
                                   </p>
                                 </div>
-                              ) : item.isHidden ? (
-                                <span className="text-[10px] font-semibold bg-stone-100 text-stone-500 border border-stone-300 px-2 py-0.5 rounded-md">
-                                  Đã ẩn
-                                </span>
                               ) : (
-                                <span className="text-[10px] font-semibold bg-stone-50 text-stone-400 border border-stone-200/40 px-2 py-0.5 rounded-md">
-                                  Sẵn sàng
-                                </span>
-                              )}
-                              {!item.isCurrentlyRenting && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleToggleVisibility(item.listingIds, item.isHidden)}
-                                  className="text-[9px] font-bold uppercase px-2 py-1 rounded-md border border-stone-200 text-stone-500 hover:bg-stone-50 transition cursor-pointer select-none"
-                                >
-                                  {item.isHidden ? "Hiện lại" : "Ẩn bài"}
-                                </button>
+                                <div className="flex flex-col gap-2 w-full max-w-[190px] bg-stone-50/60 p-2 rounded-xl border border-stone-200/40">
+                                  
+                                  {/* Hàng 1: Quản lý Visibility của Chợ Shop */}
+                                  <div className="flex items-center justify-between gap-3">
+                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5 font-sans tracking-wide shrink-0
+                                      ${item.isShopHidden ? "bg-red-50 text-red-600" : "bg-stone-100 text-stone-600"}`}>
+                                      {item.isShopHidden ? <EyeOff size={10} /> : <Eye size={10} />}
+                                      <span>{item.isShopHidden ? "Shop: Ẩn" : "Shop: Hiện"}</span>
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleShopVisibility(item.listingIds, item.isShopHidden)}
+                                      className={`text-[9px] font-extrabold uppercase px-2 py-1 rounded-md border transition-all duration-150 cursor-pointer select-none
+                                        ${item.isShopHidden 
+                                          ? "bg-stone-900 text-white border-stone-900 hover:bg-stone-800" 
+                                          : "bg-white text-stone-600 border-stone-200 hover:bg-stone-100"
+                                        }`}
+                                    >
+                                      {item.isShopHidden ? "Mở kệ" : "Ẩn kệ"}
+                                    </button>
+                                  </div>
+
+                                  {/* Hàng 2: Quản lý Visibility của Lookbook Blog */}
+                                  {item.hasBlog ? (
+                                    <div className="flex items-center justify-between gap-3 border-t border-dashed border-stone-200/60 pt-1.5">
+                                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5 font-sans tracking-wide shrink-0
+                                        ${item.isBlogHidden ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-700"}`}>
+                                        {item.isBlogHidden ? <EyeOff size={10} /> : <Eye size={10} />}
+                                        <span>{item.isBlogHidden ? "Blog: Ẩn" : "Blog: Hiện"}</span>
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleToggleBlogVisibility(item.id, item.isBlogHidden)}
+                                        className={`text-[9px] font-extrabold uppercase px-2 py-1 rounded-md border transition-all duration-150 cursor-pointer select-none
+                                          ${item.isBlogHidden 
+                                            ? "bg-stone-900 text-white border-stone-900 hover:bg-stone-800" 
+                                            : "bg-white text-stone-600 border-stone-200 hover:bg-stone-100"
+                                          }`}
+                                      >
+                                        {item.isBlogHidden ? "Mở bài" : "Ẩn bài"}
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="text-[9px] text-stone-400 italic text-right pr-1 border-t border-dashed border-stone-200/60 pt-1.5 select-none">
+                                      Không kèm bài viết Blog
+                                    </div>
+                                  )}
+
+                                </div>
                               )}
                             </div>
                           </td>
@@ -515,7 +565,6 @@ export default function MyClosetPage() {
                             )}
                           </div>
                         ) : (
-                          /* 🟢 ĐÃ MỞ KHÓA CHO TECHFEST DEMO: Hiện nút Duyệt trả đồ bất kỳ lúc nào để kích nổ Modal đánh giá nhé! */
                           <div className="flex gap-2">
                             <button
                               onClick={() => handleUpdateEscrowStatus(order.id, "completed")}
@@ -539,7 +588,6 @@ export default function MyClosetPage() {
             </div>
           )}
 
-          {/* PHÂN HỆ UI HIỂN THỊ KHO ĐỒ MÌNH ĐI THUÊ (RENTED TAB) */}
           {activeTab === "RENTED" && (
             <div className="space-y-4">
               {rentedOrders.length === 0 ? (
