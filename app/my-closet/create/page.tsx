@@ -81,6 +81,11 @@ export default function CreateProductListingPage() {
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
 
+  // States nâng cấp cho phân hệ cấu trúc Blog/Journal (Mục 06)
+  const [hasStory, setHasStory] = useState(false);
+  const [storyText, setStoryText] = useState("");
+  const [storyWarning, setStoryWarning] = useState("");
+
   // Thay vì đẩy thẳng vào mảng hiển thị, ảnh được chuyển sang hàng đợi để xử lý tuần tự
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -133,10 +138,25 @@ export default function CreateProductListingPage() {
     });
   };
 
+  // Bộ lọc bảo mật 3 lớp nâng cấp: Khử khoảng trắng để bắt SĐT lách luật, lọc link ngoài, lọc nền tảng dắt khách
   const checkContactInfoLeak = (text: string): boolean => {
-    const phoneRegex = /(0[3|5|7|8|9])+([0-9]{8})\b/g;
-    const keywordRegex = /zalo|facebook|fb|sđt|sdt|liên hệ|liên lạc/i;
-    return phoneRegex.test(text) || keywordRegex.test(text);
+    if (!text) return false;
+    const normalized = text.replace(/[\s.\-]/g, "");
+    const digitSequenceRegex = /\d{9,11}/;
+    const urlRegex = /https?:\/\/[^\s]+|www\.[^\s]+|\.(com|vn|net|me)\b/i;
+    const platformRegex = /\bzalo\b|\bfacebook\b|\binstagram\b|\btelegram\b|\bshopee\b|\bfb\b|\big\b|zalo\.me|m\.me/i;
+    return digitSequenceRegex.test(normalized) || urlRegex.test(text) || platformRegex.test(text);
+  };
+
+  // Hàm xử lý thay đổi văn bản câu chuyện truyền cảm hứng (Cảnh báo mềm UX)
+  const handleStoryChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setStoryText(val);
+    if (checkContactInfoLeak(val)) {
+      setStoryWarning("⚠️ Câu chuyện có vẻ chứa số điện thoại, Zalo, FB, IG hoặc link — nội dung này sẽ không được đăng lên Blog để đảm bảo an toàn.");
+    } else {
+      setStoryWarning("");
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -266,6 +286,23 @@ export default function CreateProductListingPage() {
           if (listErr) {
             alert(`🚨 LỖI LƯU BẢNG GIÁ:\n${listErr.message}`);
             console.error("Lỗi Listing:", listErr);
+          }
+        }
+
+        // Tự động rẽ nhánh dữ liệu sang Blog tầng Insert (Chặn âm thầm, sản phẩm vẫn được đăng an toàn)[cite: 1]
+        if (hasStory && storyText.trim() !== "") {
+          const isSafe = !checkContactInfoLeak(storyText);
+          if (isSafe) {
+            const { error: blogError } = await supabase.from("BlogPost").insert([{
+              title: `Kỷ niệm cùng ${insertedProduct.title}`,
+              content: storyText.trim(), // Đoạn chữ truyền cảm hứng[cite: 1]
+              coverImage: uploadedImageUrls[0] || null, // Bế link ảnh đại diện từ mảng Cloudinary[cite: 1]
+              productId: insertedProduct.id, // Khóa ngoại kết nối chặt chẽ phục vụ nghiệp vụ click thuê khép kín[cite: 1]
+              userId: finalUserId,
+            }]);
+            if (blogError) console.error("Lỗi hệ thống tự động đồng bộ hóa lên Blog:", blogError.message);
+          } else {
+            console.warn("Nội dung câu chuyện dính dấu hiệu leak thông tin liên hệ, hủy đồng bộ lên trang Blog.");
           }
         }
       }
@@ -485,6 +522,48 @@ export default function CreateProductListingPage() {
                   </div>
                 )}
               </div>
+            </div>
+          </section>
+
+          {/* 🌿 NÂNG CẤP MỤC 06: PHÂN HỆ ĐỒNG BỘ CÂU CHUYỆN LÊN BLOG/JOURNAL (TÙY CHỌN) */}
+          <section className="space-y-4">
+            <div className="border-b-2 border-emerald-800/10 pb-2">
+              <h2 className="text-[12px] font-bold uppercase tracking-widest text-emerald-800">06 / Chia sẻ câu chuyện truyền cảm hứng (Tùy chọn)</h2>
+            </div>
+            <div className={`p-6 rounded-2xl border transition-all ${hasStory ? "bg-[#F4F9F6] border-emerald-600/30 shadow-sm" : "bg-white border-stone-200"}`}>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                  <input 
+                    type="checkbox" 
+                    id="hasStory" 
+                    className="w-4 h-4 text-emerald-700 border-stone-300 rounded focus:ring-emerald-600 cursor-pointer" 
+                    checked={hasStory} 
+                    onChange={(e) => setHasStory(e.target.checked)} 
+                  />
+                  <label htmlFor="hasStory" className="font-bold text-emerald-900 text-xs uppercase tracking-wider cursor-pointer select-none">
+                    Thổi hồn vào trang phục ✨ (Tự động phóng dữ liệu lên mục Blog)
+                  </label>
+                </div>
+              </div>
+
+              {hasStory && (
+                <div className="space-y-3 animate-fadeIn">
+                  <label className="block text-[10px] font-bold text-emerald-800 uppercase tracking-wider mb-1">
+                    Nhật ký / Kỷ niệm ngắn về bộ quần áo:
+                  </label>
+                  <textarea
+                    value={storyText}
+                    onChange={handleStoryChange}
+                    placeholder="Chiếc váy này đã cùng mình lưu giữ những khoảnh khắc tuyệt vời tại..."
+                    className="w-full px-4 py-3 rounded-xl border border-stone-200 text-xs focus:outline-none focus:border-emerald-600 bg-white text-stone-700 h-28 resize-none leading-relaxed"
+                  />
+                  {storyWarning && (
+                    <p className="text-xs text-red-500 bg-red-50 p-2.5 rounded-lg border border-red-100 leading-relaxed font-normal">
+                      {storyWarning}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </section>
 
