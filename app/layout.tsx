@@ -11,7 +11,7 @@ import {
 import { createClient } from "@supabase/supabase-js"; 
 import "./globals.css";
 import AiStylistChat from "./components/AiStylistChat"; 
-// 🟢 ĐẤU NỐI CONTEXT: Import Provider và Hook dùng chung vừa tạo ở Bước 1[cite: 2]
+// 🟢 ĐẤU NỐI CONTEXT: Import Provider và Hook dùng chung vừa tạo ở Bước 1
 import { AuthModalProvider, useAuthModal } from "./AuthModalContext";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
@@ -66,7 +66,8 @@ function HeaderNavbar({ darkMode, setDarkMode, handleFeatureRequirement, current
             <Link href="/shop?type=sell" className={getNavbarClass("/shop", "sell", null)}>Mua sắm</Link>
             <Link href="/my-closet/create?mode=consign" className={getNavbarClass("/my-closet/create", null, "consign")}>Chuyển nhượng & Ký gửi</Link>
             <button onClick={() => handleFeatureRequirement("Tái chế")} className="text-gray-400 hover:text-[#183A2D] transition-colors uppercase shrink-0 whitespace-nowrap bg-transparent border-none cursor-pointer font-bold">Tái chế</button>
-            <button onClick={() => handleFeatureRequirement("Blog")} className="text-gray-400 hover:text-[#183A2D] transition-colors uppercase shrink-0 whitespace-nowrap bg-transparent border-none cursor-pointer font-bold">Blog</button>
+            {/* 🚀 ĐÃ SỬA: Thay thế cơ chế chặn gating bằng thẻ Link điều hướng chuẩn công khai sang trang Blog */}
+            <Link href="/blog" className={getNavbarClass("/blog", null, null)}>Blog</Link>
           </nav>
         </div>
 
@@ -90,7 +91,7 @@ function HeaderNavbar({ darkMode, setDarkMode, handleFeatureRequirement, current
               </Link>
               <button 
                 onClick={() => { 
-                  // Khi thoát, xóa dọn sạch bộ nhớ của cả hai luồng đồng bộ danh tính[cite: 2]
+                  // Khi thoát, xóa dọn sạch bộ nhớ của cả hai luồng đồng bộ danh tính
                   if (typeof window !== "undefined") {
                     localStorage.removeItem("cloop_user"); 
                     localStorage.removeItem("cloop_user_id");
@@ -118,7 +119,7 @@ function HeaderNavbar({ darkMode, setDarkMode, handleFeatureRequirement, current
   );
 }
 
-// 🟢 TÁCH BIỆT PHÂN HỆ KHỐI GIAO DIỆN ĐỂ SỬ DỤNG ĐÚNG HOOK CONTEXT[cite: 2]
+// 🟢 TÁCH BIỆT PHÂN HỆ KHỐI GIAO DIỆN ĐỂ SỬ DỤNG ĐÚNG HOOK CONTEXT
 function LayoutContent({ children }: { children: React.ReactNode }) {
   const { showAuthModal, setShowAuthModal, activeFeatureName, handleFeatureRequirement, currentUser, setCurrentUser } = useAuthModal();
   const [darkMode, setDarkMode] = useState<boolean>(false);
@@ -252,7 +253,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                   if (!name.trim() || !email.trim() || !password.trim()) return;
 
                   try {
-                    // 🟢 MẠCH PHÂN LUỒNG DANH TÍNH: Đối soát email động trong database[cite: 2]
+                    // 🟢 MẠCH PHÂN LUỒNG DANH TÍNH: Đối soát email động trong database
                     const { data: existingUser, error: checkError } = await supabase
                       .from("User")
                       .select("id, password, name")
@@ -268,7 +269,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                     let finalName = name.trim();
 
                     if (existingUser) {
-                      // LUỒNG A: Email đã tồn tại -> Kiểm tra password hợp lệ[cite: 2]
+                      // LUỒNG A: Email đã tồn tại -> Kiểm tra password hợp lệ
                       if (existingUser.password !== password) {
                         alert("Mật khẩu không chính xác cho tài khoản Email này. Vui lòng kiểm tra lại nhé! 🔑");
                         return;
@@ -276,7 +277,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                       finalUserId = existingUser.id;
                       finalName = existingUser.name || name.trim();
                     } else {
-                      // LUỒNG B: Email hoàn toàn mới -> Tự động khởi tạo UUID đăng ký bản ghi User shadow[cite: 2]
+                      // LUỒNG B: Email hoàn toàn mới -> Tự động khởi tạo UUID đăng ký bản ghi User shadow
                       const newUserId = crypto.randomUUID();
                       const { error: userInsertError } = await supabase
                         .from("User")
@@ -294,7 +295,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                       finalUserId = newUserId;
                     }
 
-                    // Khóa mã định danh chuẩn và đồng bộ mượt mà state Context[cite: 2]
+                    // Khóa mã định danh chuẩn và đồng bộ mượt mà state Context
                     localStorage.setItem("cloop_user_id", finalUserId);
 
                     const userSession = { name: finalName, email: email.trim(), isLoggedIn: true };
@@ -343,7 +344,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cormorant+Garamond:ital,wght=0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght=300;400;500;600;700&display=swap" />
       </head>
-      {/* 🟢 BỌC TOÀN SITE BẰNG PROVIDER ĐỂ PHÂN PHỐI QUYỀN TRUY CẬP DANH TÍNH[cite: 2] */}
+      {/* 🟢 BỌC TOÀN SITE BẰNG PROVIDER ĐỂ PHÂN PHỐI QUYỀN TRUY CẬP DANH TÍNH */}
       <AuthModalProvider>
         <LayoutContent>{children}</LayoutContent>
       </AuthModalProvider>
