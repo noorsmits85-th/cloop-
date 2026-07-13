@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 import Cropper from "react-easy-crop";
+import { Heart } from "lucide-react"; // 🔐 ĐÃ THÊM: Import biểu tượng trái tim hoài niệm cao cấp
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "temporary-placeholder-key";
@@ -16,7 +17,7 @@ interface ProductSpecifications {
   condition: string; province: string; ward: string;
   originalPrice: number; 
   ownerPhone: string;
-  occasion: string; // Thêm cấu trúc thuộc tính dịp/phong cách
+  occasion: string; // Cấu trúc thuộc tính dịp/phong cách phù hợp
 }
 
 interface ListingConfig {
@@ -62,7 +63,7 @@ export default function CreateProductListingPage() {
     condition: "95%", province: "Nghệ An", ward: "Phường Bến Thủy",
     originalPrice: 500000, 
     ownerPhone: "",
-    occasion: "Dạo phố", // Khởi tạo giá trị mặc định cho ô dịp phối đồ
+    occasion: "Dạo phố",
   });
 
   const [listings, setListings] = useState<ListingConfig>({
@@ -86,7 +87,6 @@ export default function CreateProductListingPage() {
   const [storyText, setStoryText] = useState("");
   const [storyWarning, setStoryWarning] = useState("");
 
-  // Thay vì đẩy thẳng vào mảng hiển thị, ảnh được chuyển sang hàng đợi để xử lý tuần tự
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
@@ -95,7 +95,6 @@ export default function CreateProductListingPage() {
     }
   };
 
-  // Tự động giải phóng và mở trình chỉnh sửa cho ảnh kế tiếp trong hàng đợi
   useEffect(() => {
     if (!currentCropSrc && cropQueue.length > 0) {
       const nextFile = cropQueue[0];
@@ -106,7 +105,6 @@ export default function CreateProductListingPage() {
     }
   }, [cropQueue, currentCropSrc]);
 
-  // Xác nhận vùng cắt ảnh, tiến hành nén và đẩy vào mảng quản lý ảnh chính thức
   const handleCropConfirm = async () => {
     if (!currentCropSrc || !croppedAreaPixels) return;
     try {
@@ -123,7 +121,6 @@ export default function CreateProductListingPage() {
     }
   };
 
-  // Bỏ qua ảnh hiện tại và chuyển tiếp sang cấu phần ảnh tiếp theo trong hàng đợi
   const handleCropSkip = () => {
     if (currentCropSrc) URL.revokeObjectURL(currentCropSrc);
     setCurrentCropSrc(null);
@@ -138,7 +135,6 @@ export default function CreateProductListingPage() {
     });
   };
 
-  // Bộ lọc bảo mật 3 lớp nâng cấp: Khử khoảng trắng để bắt SĐT lách luật, lọc link ngoài, lọc nền tảng dắt khách
   const checkContactInfoLeak = (text: string): boolean => {
     if (!text) return false;
     const normalized = text.replace(/[\s.\-]/g, "");
@@ -148,7 +144,6 @@ export default function CreateProductListingPage() {
     return digitSequenceRegex.test(normalized) || urlRegex.test(text) || platformRegex.test(text);
   };
 
-  // Hàm xử lý thay đổi văn bản câu chuyện truyền cảm hứng (Cảnh báo mềm UX)
   const handleStoryChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
     setStoryText(val);
@@ -202,7 +197,6 @@ export default function CreateProductListingPage() {
       });
 
       const uploadedImageUrls = await Promise.all(uploadPromises);
-
       const formattedCondition = product.condition.includes("95") ? "GOOD" : "EXCELLENT";
 
       const { data: insertedProduct, error: productError } = await supabase
@@ -227,7 +221,7 @@ export default function CreateProductListingPage() {
           original_price: Number(product.originalPrice),
           userId: finalUserId, 
           owner_phone: product.ownerPhone,
-          occasion: product.occasion, // Đồng bộ trường dịp/phong cách lên Supabase
+          occasion: product.occasion,
         }])
         .select()
         .single();
@@ -285,19 +279,17 @@ export default function CreateProductListingPage() {
           const { error: listErr } = await supabase.from("Listing").insert(listingsToInsert);
           if (listErr) {
             alert(`🚨 LỖI LƯU BẢNG GIÁ:\n${listErr.message}`);
-            console.error("Lỗi Listing:", listErr);
           }
         }
 
-        // Tự động rẽ nhánh dữ liệu sang Blog tầng Insert (Chặn âm thầm, sản phẩm vẫn được đăng an toàn)[cite: 1]
         if (hasStory && storyText.trim() !== "") {
           const isSafe = !checkContactInfoLeak(storyText);
           if (isSafe) {
             const { error: blogError } = await supabase.from("BlogPost").insert([{
               title: `Kỷ niệm cùng ${insertedProduct.title}`,
-              content: storyText.trim(), // Đoạn chữ truyền cảm hứng[cite: 1]
-              coverImage: uploadedImageUrls[0] || null, // Bế link ảnh đại diện từ mảng Cloudinary[cite: 1]
-              productId: insertedProduct.id, // Khóa ngoại kết nối chặt chẽ phục vụ nghiệp vụ click thuê khép kín[cite: 1]
+              content: storyText.trim(),
+              coverImage: uploadedImageUrls[0] || null,
+              productId: insertedProduct.id,
               userId: finalUserId,
             }]);
             if (blogError) console.error("Lỗi hệ thống tự động đồng bộ hóa lên Blog:", blogError.message);
@@ -390,7 +382,6 @@ export default function CreateProductListingPage() {
                 <input type="text" required className="w-full px-4 py-3 rounded-xl border border-stone-200 text-xs focus:outline-none focus:border-emerald-600 bg-[#FCFCFB]" value={product.color} onChange={(e) => setProduct({...product, color: e.target.value})} />
               </div>
 
-              {/* Ô SELECT CHỌN DỊP / PHONG CÁCH BỔ SUNG CẠNH TRƯỜNG MÀU SẮC */}
               <div>
                 <label className="block text-[11px] font-bold text-emerald-800/80 uppercase tracking-wider mb-1.5">Dịp / Phong cách phù hợp</label>
                 <select className="w-full px-3 py-3 rounded-xl border border-stone-200 bg-[#FCFCFB] text-xs focus:outline-none focus:border-emerald-600 text-stone-800" value={product.occasion} onChange={(e) => setProduct({...product, occasion: e.target.value})}>
@@ -532,7 +523,7 @@ export default function CreateProductListingPage() {
             </div>
             <div className={`p-6 rounded-2xl border transition-all ${hasStory ? "bg-[#F4F9F6] border-emerald-600/30 shadow-sm" : "bg-white border-stone-200"}`}>
               <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-3 w-full">
                   <input 
                     type="checkbox" 
                     id="hasStory" 
@@ -540,8 +531,10 @@ export default function CreateProductListingPage() {
                     checked={hasStory} 
                     onChange={(e) => setHasStory(e.target.checked)} 
                   />
-                  <label htmlFor="hasStory" className="font-bold text-emerald-900 text-xs uppercase tracking-wider cursor-pointer select-none">
-                    Thổi hồn vào trang phục ✨ (Tự động phóng dữ liệu lên mục Blog)
+                  {/* ✨ ĐÃ SỬA: Thay thế icon lấp lánh và văn bản kỹ thuật cũ sang phom hoài niệm, đầy cảm xúc */}
+                  <label htmlFor="hasStory" className="font-bold text-emerald-900 text-xs uppercase tracking-wider cursor-pointer select-none flex items-center gap-2">
+                    <Heart size={13} strokeWidth={2.5} className="text-stone-600 fill-stone-100 shrink-0" />
+                    <span>Thổi hồn vào trang phục • Kể câu chuyện kỷ niệm gắn liền với bộ quần áo của bạn</span>
                   </label>
                 </div>
               </div>

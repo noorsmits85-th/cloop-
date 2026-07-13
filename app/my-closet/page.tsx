@@ -66,7 +66,8 @@ export default function MyClosetPage() {
       const { data: listingsData } = await supabase.from("Listing").select("*");
       const { data: rentalHistoryData } = await supabase.from("rental_history").select("*").order("id", { ascending: false });
       const { data: reviewsData } = await supabase.from("Review").select("*");
-      const { data: blogPostsData } = await supabase.from("BlogPost").select("id, productId, status");
+      // 🟢 TIẾN TRÌNH ĐỐI SOÁT: Kéo thêm trường title bài viết từ bảng BlogPost về phục vụ hiển thị
+      const { data: blogPostsData } = await supabase.from("BlogPost").select("id, productId, title, status");
 
       // 3. PHÂN HỆ LUỒNG A: Đơn hàng khách thuê đồ của mình (Chủ đồ)
       const formattedEscrowOrders = (rentalHistoryData || [])
@@ -127,7 +128,7 @@ export default function MyClosetPage() {
 
       setRentedOrders(formattedRentedOrders);
 
-      // 5. HIỂN THỊ ESG DASHBOARD & ĐỔI SOÁT TRẠNG THÁI LẺ TỪNG KÊNH
+      // 5. HIỂN THỊ ESG DASHBOARD & ĐỔI SOÁT TRẠNG THÁI LÈ TỪNG KÊNH
       if (!productsData || productsData.length === 0) {
         setClosetItems([]);
         setEcoStats({ co2Saved: 0, waterSaved: 0, greenPoints: 0 });
@@ -152,13 +153,12 @@ export default function MyClosetPage() {
         const sellPrice = saleListing ? Number(saleListing.basePrice) : item.sale_price || 0;
 
         const listingIds = [rentalListing?.id, saleListing?.id].filter(Boolean);
-        
-        // Trạng thái ẩn hiện riêng của cổng Shop
         const isShopHidden = productListings.length > 0 && productListings.every((l: any) => l.status === "HIDDEN");
 
-        // Trạng thái ẩn hiện riêng của cổng Blog
+        // Bốc tách thông tin tiêu đề lẻ phục vụ hiển thị trực tiếp lên dòng hàng quản trị
         const matchedBlog = (blogPostsData || []).find((b: any) => String(b.productId) === String(item.id));
         const hasBlog = !!matchedBlog;
+        const blogTitle = matchedBlog ? matchedBlog.title : "Chưa cấu hình câu chuyện";
         const isBlogHidden = matchedBlog ? matchedBlog.status === "HIDDEN" : false;
 
         const productRentals = (rentalHistoryData || []).filter(
@@ -180,6 +180,7 @@ export default function MyClosetPage() {
           listingIds,
           isShopHidden,
           hasBlog,
+          blogTitle,
           isBlogHidden
         };
       });
@@ -401,10 +402,12 @@ export default function MyClosetPage() {
                       <tr className="border-b border-stone-100 text-stone-400 font-semibold text-[11px]">
                         <th className="pb-3 w-16">Mẫu</th>
                         <th className="pb-3 pl-3">Tên Phục Trang</th>
+                        {/* 🟢 CỘT MỚI: Chủ đề bài viết Blog hiển thị tường minh ở bảng điều khiển chính */}
+                        <th className="pb-3 pl-3 text-emerald-900 font-bold">Chủ đề bài viết Blog</th>
                         <th className="pb-3 text-center">Kích Cỡ</th>
-                        <th className="pb-3 text-center text-emerald-900 font-semibold px-3">Giá Thuê / Ngày</th>
-                        <th className="pb-3 text-center text-blue-900 font-semibold px-3">Giá Chuyển Nhượng</th>
-                        <th className="pb-3 text-right pr-2">Cấu Hình Ẩn / Hiện Riêng Lẻ</th>
+                        <th className="pb-3 text-center text-emerald-900 font-semibold px-2">Giá Thuê</th>
+                        <th className="pb-3 text-center text-blue-900 font-semibold px-2">Giá Bán</th>
+                        <th className="pb-3 text-right pr-2">Cấu Ẩn / Hiện lẻ</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-stone-100 font-medium text-stone-600">
@@ -413,11 +416,21 @@ export default function MyClosetPage() {
                           <td className="py-3">
                             <img src={item.image} alt={item.name} className="w-10 h-14 rounded-xl object-cover shadow-sm border border-stone-100" onError={(e) => { (e.target as HTMLImageElement).src = PLACEHOLDER_IMG; }} />
                           </td>
-                          <td className="py-3 pl-3 font-semibold text-stone-900 max-w-[180px] truncate">
+                          <td className="py-3 pl-3 font-semibold text-stone-900 max-w-[140px] truncate">
                             <Link href={`/product/${item.id}`} className="hover:text-emerald-800 transition-colors underline decoration-stone-200 hover:decoration-emerald-800">
                               {item.name}
                             </Link>
                           </td>
+                          
+                          {/* 🟢 CELL MỚI: Hiển thị tên tiêu đề thật của Blog bài viết giúp nhận diện nhanh */}
+                          <td className="py-3 pl-3 font-normal text-stone-500 max-w-[180px] truncate italic">
+                            {item.hasBlog ? (
+                              <span className="text-stone-800 font-medium not-italic">{item.blogTitle}</span>
+                            ) : (
+                              <span className="text-stone-300 not-italic">Không kèm bài viết</span>
+                            )}
+                          </td>
+
                           <td className="py-3 text-center text-stone-500 font-medium">{item.size}</td>
                           <td className="py-3 text-center font-medium text-emerald-900">
                             {item.isRentalActive ? `${item.rentalPrice.toLocaleString()}đ` : "—"}
@@ -426,7 +439,6 @@ export default function MyClosetPage() {
                             {item.isSaleActive ? `${item.salePrice.toLocaleString()}đ` : "—"}
                           </td>
                           
-                          {/* 🛠️ NÂNG CẤP: KHỐI ĐIỀU KHIỂN TÁCH RỜI CHỢ SHOP VÀ LOOKBOOK BLOG */}
                           <td className="py-3 text-right pr-2">
                             <div className="flex flex-col items-end gap-2 text-[11px]">
                               {item.isCurrentlyRenting ? (
@@ -439,51 +451,47 @@ export default function MyClosetPage() {
                                   </p>
                                 </div>
                               ) : (
-                                <div className="flex flex-col gap-2 w-full max-w-[190px] bg-stone-50/60 p-2 rounded-xl border border-stone-200/40">
+                                <div className="flex flex-col gap-1.5 w-full max-w-[170px] bg-stone-50/60 p-2 rounded-xl border border-stone-200/40">
                                   
-                                  {/* Hàng 1: Quản lý Visibility của Chợ Shop */}
-                                  <div className="flex items-center justify-between gap-3">
-                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5 font-sans tracking-wide shrink-0
+                                  {/* Hàng 1: Quản lý ẩn hiện Shop */}
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className={`text-[9px] font-bold px-1 py-0.5 rounded flex items-center gap-0.5 font-sans tracking-wide shrink-0
                                       ${item.isShopHidden ? "bg-red-50 text-red-600" : "bg-stone-100 text-stone-600"}`}>
-                                      {item.isShopHidden ? <EyeOff size={10} /> : <Eye size={10} />}
-                                      <span>{item.isShopHidden ? "Shop: Ẩn" : "Shop: Hiện"}</span>
+                                      {item.isShopHidden ? <EyeOff size={9} /> : <Eye size={9} />}
+                                      <span>Cửa hàng</span>
                                     </span>
                                     <button
                                       type="button"
                                       onClick={() => handleToggleShopVisibility(item.listingIds, item.isShopHidden)}
-                                      className={`text-[9px] font-extrabold uppercase px-2 py-1 rounded-md border transition-all duration-150 cursor-pointer select-none
+                                      className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md border transition-all duration-150 cursor-pointer
                                         ${item.isShopHidden 
                                           ? "bg-stone-900 text-white border-stone-900 hover:bg-stone-800" 
                                           : "bg-white text-stone-600 border-stone-200 hover:bg-stone-100"
                                         }`}
                                     >
-                                      {item.isShopHidden ? "Mở kệ" : "Ẩn kệ"}
+                                      {item.isShopHidden ? "Mở" : "Ẩn"}
                                     </button>
                                   </div>
 
-                                  {/* Hàng 2: Quản lý Visibility của Lookbook Blog */}
-                                  {item.hasBlog ? (
-                                    <div className="flex items-center justify-between gap-3 border-t border-dashed border-stone-200/60 pt-1.5">
-                                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5 font-sans tracking-wide shrink-0
+                                  {/* Hàng 2: Quản lý ẩn hiện Lookbook Tạp chí Blog */}
+                                  {item.hasBlog && (
+                                    <div className="flex items-center justify-between gap-2 border-t border-dashed border-stone-200/60 pt-1.5">
+                                      <span className={`text-[9px] font-bold px-1 py-0.5 rounded flex items-center gap-0.5 font-sans tracking-wide shrink-0
                                         ${item.isBlogHidden ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-700"}`}>
-                                        {item.isBlogHidden ? <EyeOff size={10} /> : <Eye size={10} />}
-                                        <span>{item.isBlogHidden ? "Blog: Ẩn" : "Blog: Hiện"}</span>
+                                        {item.isBlogHidden ? <EyeOff size={9} /> : <Eye size={9} />}
+                                        <span>Lookbook</span>
                                       </span>
                                       <button
                                         type="button"
                                         onClick={() => handleToggleBlogVisibility(item.id, item.isBlogHidden)}
-                                        className={`text-[9px] font-extrabold uppercase px-2 py-1 rounded-md border transition-all duration-150 cursor-pointer select-none
+                                        className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md border transition-all duration-150 cursor-pointer
                                           ${item.isBlogHidden 
                                             ? "bg-stone-900 text-white border-stone-900 hover:bg-stone-800" 
                                             : "bg-white text-stone-600 border-stone-200 hover:bg-stone-100"
                                           }`}
                                       >
-                                        {item.isBlogHidden ? "Mở bài" : "Ẩn bài"}
+                                        {item.isBlogHidden ? "Mở" : "Ẩn"}
                                       </button>
-                                    </div>
-                                  ) : (
-                                    <div className="text-[9px] text-stone-400 italic text-right pr-1 border-t border-dashed border-stone-200/60 pt-1.5 select-none">
-                                      Không kèm bài viết Blog
                                     </div>
                                   )}
 
