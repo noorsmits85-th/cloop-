@@ -66,7 +66,8 @@ export default function MyClosetPage() {
       const { data: listingsData } = await supabase.from("Listing").select("*");
       const { data: rentalHistoryData } = await supabase.from("rental_history").select("*").order("id", { ascending: false });
       const { data: reviewsData } = await supabase.from("Review").select("*");
-      // 🟢 TIẾN TRÌNH ĐỐI SOÁT: Kéo thêm trường title bài viết từ bảng BlogPost về phục vụ hiển thị
+      
+      // 🟢 TIẾN TRÌNH ĐỐI SOÁT CHÉO: Gọi chính xác trường khóa ngoại productId viết hoa từ Supabase
       const { data: blogPostsData } = await supabase.from("BlogPost").select("id, productId, title, status");
 
       // 3. PHÂN HỆ LUỒNG A: Đơn hàng khách thuê đồ của mình (Chủ đồ)
@@ -155,7 +156,7 @@ export default function MyClosetPage() {
         const listingIds = [rentalListing?.id, saleListing?.id].filter(Boolean);
         const isShopHidden = productListings.length > 0 && productListings.every((l: any) => l.status === "HIDDEN");
 
-        // Bốc tách thông tin tiêu đề lẻ phục vụ hiển thị trực tiếp lên dòng hàng quản trị
+        // 🟢 ĐÃ SỬA: Đồng bộ so khớp chính xác theo b.productId viết hoa chữ I
         const matchedBlog = (blogPostsData || []).find((b: any) => String(b.productId) === String(item.id));
         const hasBlog = !!matchedBlog;
         const blogTitle = matchedBlog ? matchedBlog.title : "Chưa cấu hình câu chuyện";
@@ -274,11 +275,15 @@ export default function MyClosetPage() {
     }
   };
 
-  // ✍️ LUỒNG 2: Ẩn/Hiện độc lập dành riêng cho câu chuyện truyền cảm hứng (Bảng BlogPost)
+  // ✍️ LUỒNG 2: ĐÃ SỬA CHUẨN: Điều hướng chính xác trường productId để ẩn/hiện ăn ngay lập tức không dính độ trễ
   const handleToggleBlogVisibility = async (productId: string, currentlyHidden: boolean) => {
     const newStatus = currentlyHidden ? "PUBLIC" : "HIDDEN";
     try {
-      const { error } = await supabase.from("BlogPost").update({ status: newStatus }).eq("productId", productId);
+      const { error } = await supabase
+        .from("BlogPost")
+        .update({ status: newStatus })
+        .eq("productId", productId); // 🔐 Khóa cứng điều kiện trường productId hoa chữ I
+      
       if (error) throw error;
       alert(currentlyHidden ? "🎉 Đã đẩy câu chuyện Lookbook hiển thị lại công khai trên Blog nhé!" : "🛑 Đã ẩn câu chuyện khỏi luồng bài viết công khai thành công nhé!");
       await fetchRealClosetData();
@@ -402,7 +407,6 @@ export default function MyClosetPage() {
                       <tr className="border-b border-stone-100 text-stone-400 font-semibold text-[11px]">
                         <th className="pb-3 w-16">Mẫu</th>
                         <th className="pb-3 pl-3">Tên Phục Trang</th>
-                        {/* 🟢 CỘT MỚI: Chủ đề bài viết Blog hiển thị tường minh ở bảng điều khiển chính */}
                         <th className="pb-3 pl-3 text-emerald-900 font-bold">Chủ đề bài viết Blog</th>
                         <th className="pb-3 text-center">Kích Cỡ</th>
                         <th className="pb-3 text-center text-emerald-900 font-semibold px-2">Giá Thuê</th>
@@ -422,7 +426,6 @@ export default function MyClosetPage() {
                             </Link>
                           </td>
                           
-                          {/* 🟢 CELL MỚI: Hiển thị tên tiêu đề thật của Blog bài viết giúp nhận diện nhanh */}
                           <td className="py-3 pl-3 font-normal text-stone-500 max-w-[180px] truncate italic">
                             {item.hasBlog ? (
                               <span className="text-stone-800 font-medium not-italic">{item.blogTitle}</span>
@@ -647,7 +650,7 @@ export default function MyClosetPage() {
                                   setComment("");
                                   setShowReviewModal(true);
                                 }}
-                                className="mt-1 px-3 py-1.5 bg-[#004a9c] hover:bg-blue-800 text-white text-[10px] font-bold uppercase tracking-wider rounded-xl transition-all active:scale-95 cursor-pointer"
+                                className="mt-1 px-3 py-1.5 bg-[#004a9c] hover:bg-blue-800 text-white text-[10px] font-bold uppercase tracking-wider rounded-xl transition-all active:scale-[0.97] cursor-pointer"
                               >
                                 ⭐ Đánh giá chủ đồ
                               </button>

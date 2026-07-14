@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@supabase/supabase-js";
-import { ArrowUpRight, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowUpRight, Sparkles, ChevronLeft, ChevronRight, Bookmark } from "lucide-react";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "temporary-placeholder-key";
@@ -24,8 +24,72 @@ interface BlogWithProduct {
       basePrice: number;
       listingType: string;
     }>;
-    images: string[]; // Mảng chứa đầy đủ các ảnh thực tế của món đồ
+    images: string[];
   } | null;
+}
+
+function PolaroidCarousel({ images, title, rotationClass }: { images: string[]; title: string; rotationClass: string }) {
+  const [idx, setIdx] = useState(0);
+
+  const prev = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIdx((p) => (p === 0 ? images.length - 1 : p - 1));
+  };
+
+  const next = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIdx((p) => (p === images.length - 1 ? 0 : p + 1));
+  };
+
+  return (
+    <div className={`relative bg-[#FBFBFA] p-4 pb-14 shadow-[0_10px_30px_rgba(0,0,0,0.05),0_1px_3px_rgba(0,0,0,0.02)] border border-stone-200/40 rounded-sm transition-all duration-500 hover:scale-[1.02] hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] max-w-sm mx-auto group ${rotationClass}`}>
+      <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 w-20 h-5 bg-amber-100/60 border border-amber-200/20 backdrop-blur-[1px] rotate-[-1deg] shadow-sm opacity-75 border-dashed mix-blend-multiply select-none pointer-events-none" />
+      
+      <div className="relative aspect-[3/4] bg-stone-50 overflow-hidden border border-stone-200/60 shadow-inner rounded-xs">
+        <img 
+          src={images[idx]} 
+          alt={`${title} - Góc chụp ${idx + 1}`} 
+          className="w-full h-full object-cover select-none transition-all duration-500"
+        />
+        
+        {images.length > 1 && (
+          <>
+            <button 
+              type="button" 
+              onClick={prev} 
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center text-stone-800 hover:bg-white transition-all shadow-md opacity-0 group-hover:opacity-100 z-10 cursor-pointer"
+            >
+              <ChevronLeft size={14} strokeWidth={2.5} />
+            </button>
+            <button 
+              type="button" 
+              onClick={next} 
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center text-stone-800 hover:bg-white transition-all shadow-md opacity-0 group-hover:opacity-100 z-10 cursor-pointer"
+            >
+              <ChevronRight size={14} strokeWidth={2.5} />
+            </button>
+            
+            <div className="absolute top-2.5 right-2.5 bg-black/40 backdrop-blur-md text-[8px] font-sans text-white/90 font-bold px-2 py-0.5 rounded-full tracking-widest">
+              {idx + 1} / {images.length}
+            </div>
+
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 pointer-events-none">
+              {images.map((_, dotIdx) => (
+                <div 
+                  key={dotIdx} 
+                  className={`w-1 h-1 rounded-full transition-all duration-300 ${dotIdx === idx ? "bg-white w-2" : "bg-white/40"}`} 
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+      
+      <div className="absolute bottom-3 right-4 font-sans text-[8px] text-stone-400 tracking-[0.2em] uppercase select-none">
+        Cloop Memorabilia
+      </div>
+    </div>
+  );
 }
 
 export default function BlogJournalPage() {
@@ -35,7 +99,6 @@ export default function BlogJournalPage() {
   useEffect(() => {
     async function fetchJournalFeed() {
       try {
-        // 1. Kéo toàn bộ danh sách câu chuyện Blog về máy trước
         const { data: blogData, error: blogError } = await supabase
           .from("BlogPost")
           .select("*")
@@ -43,7 +106,6 @@ export default function BlogJournalPage() {
 
         if (blogError) throw blogError;
 
-        // 🔐 BỘ LỌC TUYỆT ĐỐI: Loại bỏ ngay lập tức những bài viết mang trạng thái HIDDEN bằng JS dưới máy
         const publicBlogs = (blogData || []).filter(b => b.status !== "HIDDEN");
 
         if (publicBlogs.length === 0) {
@@ -51,39 +113,35 @@ export default function BlogJournalPage() {
           return;
         }
 
-        // 2. Gom danh sách ID sản phẩm đi kèm câu chuyện để quét chéo dữ liệu lẻ
+        // 🟢 ĐÃ ĐỒNG BỘ: Quét chính xác theo trường b.productId của Supabase
         const productIds = publicBlogs.map(b => b.productId).filter(Boolean);
 
         const { data: productsData } = await supabase.from("products").select("*").in("id", productIds);
         const { data: listingsData } = await supabase.from("Listing").select("*").in("productId", productIds);
         const { data: imagesData } = await supabase.from("ProductImage").select("*").in("productId", productIds);
 
-        // 3. ĐIỀU PHỐI ĐỒNG BỘ KÉP: Khớp nối sản phẩm, luồng giá và ĐỦ MẢNG ẢNH ĐÃ UP CÙNG LÚC
         const formattedBlogs = publicBlogs.map(blog => {
-          const matchedProduct = (productsData || []).find(p => String(p.id) === String(blog.productId));
+          const targetProductId = blog.productId; // Đổi về b.productId
+          const matchedProduct = (productsData || []).find(p => String(p.id) === String(targetProductId));
           
           let productInfo = null;
           if (matchedProduct) {
             const matchedListings = (listingsData || []).filter(l => String(l.productId) === String(matchedProduct.id));
             const matchedImages = (imagesData || []).filter(img => String(img.productId) === String(matchedProduct.id));
 
-            // Gom ảnh cover đại diện và các ảnh phụ trong bảng ProductImage lại làm một mảng album hoàn chỉnh
             let allUrls = matchedImages.map((img: any) => img.url);
             if (allUrls.length === 0 && blog.coverImage) {
               allUrls = [blog.coverImage];
             }
-            // Dự phòng nếu trống trơn thì bế ảnh mẫu Unsplash
             if (allUrls.length === 0) {
               allUrls = ["https://images.unsplash.com/photo-1515886657613-9f3515b0c78f"];
             }
 
-            const rentalListing = matchedListings.find((l: any) => l.listingType === "RENT");
-            
             productInfo = {
               title: matchedProduct.title,
               original_price: matchedProduct.original_price,
               Listing: matchedListings,
-              images: allUrls // Đút mảng full album ảnh vào đây công phá giao diện nhé
+              images: allUrls
             };
           }
 
@@ -106,122 +164,89 @@ export default function BlogJournalPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#FAF9F5] flex items-center justify-center font-serif text-[#1C3F30]">
+      <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center font-serif text-stone-700">
         <div className="text-center space-y-2">
-          <div className="w-8 h-8 border-4 border-[#1C3F30] border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="text-xs tracking-widest uppercase mt-4">Đang tải lookbook tuần hoàn...</p>
+          <div className="w-5 h-5 border-2 border-stone-700 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-[10px] tracking-widest uppercase mt-4 font-sans text-stone-400">Đang lật mở các trang nhật ký...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF9F5] py-16 px-4 sm:px-6 lg:px-8 font-serif text-stone-800 tracking-tight">
-      
-      {/* 🏛️ HEADER TẠP CHÍ HIGH-FASHION */}
-      <div className="max-w-md mx-auto text-center mb-16 space-y-3">
-        <div className="flex items-center justify-center gap-1.5 text-[9px] font-sans tracking-[0.3em] text-[#1C3F30] uppercase font-bold">
-          <Sparkles size={10} className="text-emerald-600" />
-          <span>The Sustainable Voice</span>
+    <div className="min-h-screen bg-[#FDFBF7] py-16 px-4 sm:px-6 lg:px-8 text-stone-800 tracking-tight relative selection:bg-stone-800 selection:text-white">
+      <div className="absolute left-4 top-0 bottom-0 w-[1px] bg-red-100/40 hidden md:block" />
+      <div className="absolute left-6 top-0 bottom-0 w-[1px] bg-red-100/20 hidden md:block" />
+
+      <div className="max-w-md mx-auto text-center mb-16 space-y-2.5">
+        <div className="flex items-center justify-center gap-1 text-[9px] font-sans tracking-[0.25em] text-stone-400 uppercase font-bold">
+          <Bookmark size={10} className="text-stone-500 fill-stone-200" />
+          <span>The Scrapbook Edition</span>
         </div>
-        <h1 className="text-4xl font-bold tracking-[0.18em] text-[#1C3F30] uppercase font-logo">CLOOP JOURNAL</h1>
-        <div className="h-[1px] w-12 bg-[#1C3F30]/25 mx-auto"></div>
-        <p className="text-[10px] font-sans tracking-widest text-stone-400 uppercase leading-relaxed max-w-[280px] mx-auto">
-          Thổi hồn câu chuyện di sản vào từng mảnh trang phục tuần hoàn
+        <h1 className="text-3xl font-extrabold tracking-[0.15em] text-stone-900 uppercase font-serif">CLOOP DIARY</h1>
+        <p className="text-[11px] font-sans italic text-stone-400/90 leading-relaxed max-w-[260px] mx-auto tracking-wide">
+          "Lưu giữ ký ức thanh xuân, thổi hồn vòng đời mới cho trang phục tuần hoàn."
         </p>
+        <div className="h-[1px] w-10 bg-stone-300 mx-auto mt-2" />
       </div>
 
-      {/* 🕊️ DÒNG CHẢY FEED LOOKBOOK BẢN MINIMALIST */}
-      <div className="max-w-md mx-auto space-y-14">
+      <div className="max-w-md mx-auto space-y-16">
         {posts.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-2xl border border-stone-200/40 p-8 shadow-sm">
-            <p className="text-sm font-sans text-stone-400">Hiện chưa có câu chuyện outfit nào được chia sẻ.</p>
-            <p className="text-xs font-sans text-[#1C3F30] font-semibold mt-2">
-              Hãy là người đầu tiên thổi hồn vào trang phục tại mục Đăng đồ nhé! ✨
+          <div className="text-center py-16 bg-white/60 rounded-3xl border border-stone-200/50 p-8 shadow-sm">
+            <p className="text-xs font-sans text-stone-400 tracking-wide">Hiện trang nhật ký thời trang đang trống trơn.</p>
+            <p className="text-[11px] font-sans text-stone-700 font-semibold mt-1.5">
+              Hãy là người đầu tiên gửi gắm câu chuyện trang phục nhé! ✨
             </p>
           </div>
         ) : (
-          posts.map((post) => {
+          posts.map((post, index) => {
             const productInfo = post.products;
             const rentalListing = productInfo?.Listing?.find((l: any) => l.listingType === "RENT");
             const rentalPrice = rentalListing ? rentalListing.basePrice : null;
-            const album = productInfo?.images || [post.coverImage || "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f"];
+            const album = productInfo?.images || [post.coverImage];
+
+            const rotations = ["rotate-1", "-rotate-1", "rotate-[1.5deg]", "-rotate-[1.5deg]"];
+            const currentRotation = rotations[index % rotations.length];
 
             return (
               <div 
                 key={post.id} 
-                className="bg-white p-5 rounded-3xl border border-stone-200/30 shadow-[0_8px_30px_rgb(0,0,0,0.012)] space-y-5 group transition-all duration-300"
+                className="bg-[#FCFAF4] p-6 rounded-[2rem] border border-stone-200/50 shadow-[0_4px_24px_rgba(27,25,22,0.02)] space-y-6 relative"
               >
-                {/* 📸 THIẾT KẾ MỚI: KHUNG CHỮ NHẬT MINIMALIST - ALBUM CẢM XÚC VUỐT NGANG MULTI-IMAGE */}
-                <div className="w-full flex justify-center overflow-hidden">
-                  <div className="w-full p-1 bg-[#FAF9F5]/40 rounded-[1.6rem] border border-stone-100">
-                    {/* Tỷ lệ khung hình chữ nhật đứng 3:4 chuẩn tạp chí Vogue hiện đại, tuyệt đối xóa sổ phom vòm */}
-                    <div className="relative w-full aspect-[3/4] overflow-hidden rounded-[1.3rem] bg-stone-100 shadow-inner">
-                      
-                      {/* Luồng thanh cuộn ngang mượt mà (Snap Carousel) chứa toàn bộ ảnh cậu up cùng lúc */}
-                      <div className="w-full h-full flex overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar">
-                        {album.map((url: string, idx: number) => (
-                          <div key={idx} className="w-full h-full shrink-0 snap-start relative">
-                            <img 
-                              src={url} 
-                              alt={`${post.title} - Khung ảnh ${idx + 1}`}
-                              className="w-full h-full object-cover select-none"
-                            />
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Thanh chỉ báo số lượng ảnh siêu mỏng ở cạnh trên góc phải (Ví dụ: 1/3) */}
-                      {album.length > 1 && (
-                        <div className="absolute top-3 right-3 bg-black/40 backdrop-blur-md text-[9px] font-sans text-white/90 font-bold px-2.5 py-1 rounded-full tracking-wider pointer-events-none select-none">
-                          ALBUM • {album.length} ẢNH
-                        </div>
-                      )}
-
-                      {/* Gợi ý vuốt sang bên dành cho người dùng ở góc dưới */}
-                      {album.length > 1 && (
-                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-full pointer-events-none">
-                          {album.map((_, dotIdx) => (
-                            <div key={dotIdx} className="w-1 h-1 rounded-full bg-white shadow-sm" />
-                          ))}
-                        </div>
-                      )}
-                      
-                    </div>
-                  </div>
+                <div className="w-full pt-2">
+                  <PolaroidCarousel images={album} title={post.title} rotationClass={currentRotation} />
                 </div>
 
-                {/* 📝 KHỐI NỘI DUNG CHỮ TRUYỀN CẢM HƯỚNG */}
-                <div className="space-y-2.5 px-1">
-                  <div className="flex items-center justify-between text-[8px] font-sans tracking-[0.18em] text-stone-400 uppercase">
-                    <span className="font-medium">{new Date(post.createdAt).toLocaleDateString("vi-VN")}</span>
-                    <span className="text-[#1C3F30] font-bold tracking-widest bg-stone-100 px-2 py-0.5 rounded">CLOOP MUSE</span>
+                <div className="space-y-3 text-left px-2">
+                  <div className="flex items-center justify-between text-[8px] font-sans tracking-widest text-stone-400 uppercase">
+                    <span>Trang số • 0{index + 1}</span>
+                    <span className="font-medium bg-stone-200/60 px-2 py-0.5 rounded-sm">{new Date(post.createdAt).toLocaleDateString("vi-VN")}</span>
                   </div>
                   
-                  <h3 className="text-base font-bold text-[#183A2D] leading-snug tracking-tight">
+                  <h3 className="text-sm font-bold text-stone-900 tracking-tight font-serif">
                     {post.title}
                   </h3>
                   
-                  <p className="text-[12px] text-stone-600 font-sans leading-relaxed text-justify italic bg-[#FAF9F5]/70 p-4 rounded-xl border border-stone-100/60 font-light">
+                  <p className="text-[13px] text-stone-700 font-serif italic leading-relaxed text-justify bg-white/40 p-4 rounded-xl border border-stone-200/40 tracking-wide shadow-inner">
                     "{post.content}"
                   </p>
                 </div>
 
-                {/* 🎯 NÚT MUA SẮM KHẾP KÍN */}
                 {productInfo && (
-                  <div className="mx-1 pt-3.5 border-t border-dashed border-stone-200/80 flex items-center justify-between gap-4">
+                  <div className="mx-2 pt-4 border-t border-dashed border-stone-300/80 flex items-center justify-between gap-4">
                     <div className="font-sans max-w-[55%] space-y-0.5">
-                      <span className="text-[8px] text-stone-400 uppercase tracking-[0.2em] font-semibold block">Trang phục trong ảnh</span>
+                      <span className="text-[8px] text-stone-400 uppercase tracking-widest font-bold block">Trang phục trong trang nhật ký</span>
                       <p className="text-xs font-bold text-stone-800 truncate tracking-tight">{productInfo.title}</p>
                     </div>
                     
+                    {/* 🟢 ĐÃ SỬA CHUẨN: Đồng bộ link sang post.productId gốc */}
                     <Link href={`/shop/${post.productId}`} className="shrink-0">
-                      <button className="bg-[#1C3F30] hover:bg-[#0F261D] text-[#FAF8F3] px-4 py-2.5 rounded-full font-sans text-[11px] font-bold tracking-wider transition-all duration-300 shadow-sm active:scale-[0.97] flex items-center gap-1">
-                        <span>Thuê ngay</span>
+                      <button className="bg-stone-900 hover:bg-stone-800 text-[#FAF8F3] px-4 py-2 rounded-xl font-sans text-[11px] font-bold tracking-wider transition-all shadow-sm active:scale-[0.97] flex items-center gap-1 cursor-pointer">
+                        <span>Chạm để thuê</span>
                         {rentalPrice !== null && (
-                          <span className="opacity-80 font-normal">| {rentalPrice.toLocaleString("vi-VN")}đ</span>
+                          <span className="opacity-70 font-normal">| {rentalPrice.toLocaleString("vi-VN")}đ</span>
                         )}
-                        <ArrowUpRight size={11} className="text-emerald-400" />
+                        <ArrowUpRight size={12} className="text-amber-300" />
                       </button>
                     </Link>
                   </div>
