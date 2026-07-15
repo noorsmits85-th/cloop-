@@ -6,148 +6,73 @@ import Image from "next/image";
 import { 
   Search, ShoppingBag, ArrowRight, Sparkles, MapPin, 
   Layers, Star, Plus, Gift, ShieldCheck, Heart, Zap, Shield,
-  Handshake, RefreshCw, Leaf, Users, Shirt, Sun, Moon, X
+  Handshake, RefreshCw, Leaf, Users, Shirt, Sun, Moon, X, Pin, BookOpen
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@supabase/supabase-js";
 import AiStylistChat from "./components/AiStylistChat"; 
-// 🟢 ĐẤU NỐI CONTEXT: Gọi Hook dùng chung để kết nối Modal tổng ở Layout
+// 🟢 BIẾN ĐỘC QUYỀN: Giữ nguyên vẹn đầu nối kích nổ Modal từ Context chung
 import { useAuthModal } from "./AuthModalContext";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "temporary-placeholder-key";
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+const PLACEHOLDER_IMG = "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600";
+
 interface Product { 
   id: string; 
   image: string; 
   type: string; 
   title: string; 
-  price: string; 
+  price: number; 
+  rawPriceText: string;
   location: string; 
   rating: string; 
   condition: string; 
   size?: string; 
+  brand?: string;
+  ownerName?: string;
+  userId: string;
   storeRetailPrice: number; 
   savedPercentage: number;  
+  occasion: string;
 }
 
+interface BlogPreview {
+  id: string;
+  title: string;
+  content: string;
+  coverImage: string;
+  createdAt: string;
+}
+
+interface OccasionItem { name: string; label: string; img: string; }
 interface ServiceItem { tag: string; icon: any; title: string; desc: string; btn: string; href: string; isModal?: boolean; }
-interface StatItem { num: string; label: string; icon: any; }
 interface PrivilegeItem { icon: any; title: string; desc: string; }
 
 export default function Home() {
-  // Giữ lại state darkMode cục bộ để phục vụ hiển thị màu nền CSS của các Section
   const [darkMode, setDarkMode] = useState<boolean>(false);
-  
-  // 🟢 Kích hoạt đầu nối lấy tính năng kích nổ Modal từ Context chung
   const { handleFeatureRequirement } = useAuthModal();
 
   const [placeholderIndex, setPlaceholderIndex] = useState<number>(0);
   const [products, setProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [recentBlogs, setRecentStories] = useState<BlogPreview[]>([]);
   const [productsLoading, setProductsLoading] = useState<boolean>(true);
+  const [selectedOccasion, setSelectedOccasion] = useState<string>("All");
 
-  const placeholders = ["Search outfits...", "AI Stylist...", "AI Discovery...", "AI Pricing...", "Near me..."];
+  const placeholders = ["Tìm kiếm trang phục...", "Trợ lý ảo AI Stylist...", "Khám phá tủ đồ hiệu...", "Ước tính giá thuê..."];
 
-  useEffect(() => {
-    const interval = setInterval(() => { 
-      setPlaceholderIndex((prev) => (prev + 1) % placeholders.length); 
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [placeholders.length]);
-
-  // 📡 ĐỒNG BỘ MẠCH NEW FEED CHUẨN XÁC VÀ LẤY DƯ POOL DỮ LIỆU CHỐNG HỤT UI
-  useEffect(() => {
-    async function fetchFeaturedProducts() {
-      try {
-        setProductsLoading(true);
-        
-        // 🔄 ĐỔI TỪ .limit(4) -> .limit(20): Lấy dư ra để tránh bị hụt thẻ sau khi filter hàng ẩn
-        let response = await supabase
-          .from("products")
-          .select("*, ProductImage(*), Listing(*)") 
-          .order("createdAt", { ascending: false })
-          .limit(20);
-
-        if (response.error) {
-          response = await supabase
-            .from("products")
-            .select("*, images(*), listings(*)") 
-            .order("createdAt", { ascending: false })
-            .limit(20);
-        }
-
-        if (response.error) {
-          response = await supabase
-            .from("products")
-            .select("*") 
-            .order("id", { ascending: false })
-            .limit(20);
-        }
-
-        const { data, error } = response;
-        if (error) throw error;
-
-        if (data) {
-          const mappedProducts = data.map((item: any) => {
-            const listingsArr = item.Listing || item.listings || [];
-            const imagesArr = item.ProductImage || item.images || [];
-
-            // Tích hợp bộ lọc điều kiện trạng thái AVAILABLE để lọc bỏ các bài viết đã HIDDEN
-            const rentListing = listingsArr.find((l: any) => l.listingType === "RENT" && l.status === "AVAILABLE");
-            const sellListing = listingsArr.find((l: any) => (l.listingType === "SELL" || l.listingType === "SALE") && l.status === "AVAILABLE");
-
-            const rentPrice = rentListing ? Number(rentListing.basePrice) : 0;
-            const sellPrice = sellListing ? Number(sellListing.basePrice) : 0;
-
-            // 🟢 CHỐT CHẶN: Nếu không còn listing nào khả dụng (bị chủ tủ ẩn hết) -> Loại bỏ hoàn toàn khỏi New Feed
-            if (rentPrice <= 0 && sellPrice <= 0) {
-              return null;
-            }
-
-            const currentViewIsRental = rentPrice > 0;
-            const finalPrice = currentViewIsRental ? rentPrice : sellPrice;
-
-            const storeRetailPrice = item.original_price || item.originalPrice || (sellPrice ? sellPrice * 2.2 : finalPrice * 7);
-            const savedPercentage = Math.round(((storeRetailPrice - finalPrice) / storeRetailPrice) * 100);
-
-            let currentImage = "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600";
-            if (imagesArr && imagesArr.length > 0) {
-              currentImage = imagesArr[0].url || imagesArr[0] || currentImage;
-            } else if (item.image_url || item.imageUrl) {
-              currentImage = item.image_url || item.imageUrl;
-            }
-
-            return {
-              id: item.id,
-              image: currentImage, 
-              type: currentViewIsRental ? "Thuê" : "Mua sắm",
-              title: item.title || item.name || "Trang phục CLOOP",
-              price: currentViewIsRental 
-                ? `${finalPrice.toLocaleString()}đ / ngày` 
-                : `${finalPrice.toLocaleString()}đ`,
-              location: item.province || "Nghệ An", 
-              rating: "5.0",            
-              condition: item.condition === "GOOD" ? "Mới 95%" : "Mới 98%",
-              size: item.size || "M",
-              storeRetailPrice,
-              savedPercentage
-            };
-          })
-          .filter(Boolean) // 🟢 Lọc sạch bỏ qua các dòng null của sản phẩm bị ẩn bài viết
-          .slice(0, 4);    // 🟢 Cắt lấy đúng 4 sản phẩm khả dụng đầu tiên để lấp đầy New Feed hoàn hảo
-
-          setProducts(mappedProducts as Product[]);
-        }
-        setProductsLoading(false);
-      } catch (err: any) {
-        console.error("❌ LỖI KHỞI CHẠY DATA TRANG CHỦ CHỮ THẬT:", err);
-        setProductsLoading(false);
-      }
-    }
-    
-    fetchFeaturedProducts();
-  }, []);
+  // 🏛️ DANH MỤC PHÂN LOẠI THEO DỊP: Ngắn gọn, mộc mạc, thực tế theo đúng yêu cầu điều phối của Trang
+  const occasions: OccasionItem[] = [
+    { name: "All", label: "Tất cả phục trang", img: "" },
+    { name: "Tiệc cưới", label: "Tiệc cưới", img: "https://images.unsplash.com/photo-1549417229-aa67d3263c09?q=80&w=300" },
+    { name: "Dạ hội", label: "Dạ hội", img: "https://images.unsplash.com/photo-1566174053879-31528523f8ae?q=80&w=300" },
+    { name: "Dạo phố", label: "Dạo phố", img: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=300" },
+    { name: "Áo dài", label: "Áo dài", img: "https://images.unsplash.com/photo-1621184455862-c163dfb30e0f?q=80&w=300" },
+    { name: "Đi biển", label: "Đi biển", img: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=300" }
+  ];
 
   const services: ServiceItem[] = [
     { tag: "01", icon: ShoppingBag, title: "THUÊ ĐỒ", desc: "Thuê trang phục theo nhu cầu thực tế, tối ưu chi phí tiêu dùng.", btn: "Khám phá ngay →", href: "/shop?type=rent" },
@@ -157,7 +82,7 @@ export default function Home() {
     { tag: "05", icon: Leaf, title: "TÁI CHẾ", desc: "Gửi quần áo cũ hỏng cho xưởng Upcycle để thiết kế và tái sinh vòng đời.", btn: "Tìm hiểu ngay →", href: "#", isModal: true }
   ];
 
-  const statsData: StatItem[] = [
+  const statsData = [
     { num: "12.000+", label: "Sản phẩm", icon: Shirt },
     { num: "5.000+", label: "Người dùng", icon: Users },
     { num: "680kg", label: "CO₂ đã giảm", icon: Leaf },
@@ -171,138 +96,197 @@ export default function Home() {
     { icon: <Heart size={18} />, title: "Kết Nối Xưởng Upcycle", desc: "Gửi yêu cầu thiết kế và sửa đổi quần áo cũ trực tiếp đến các đối tác tái chế." }
   ];
 
-  const heroContainerVariants: any = {
-    hidden: { opacity: 0 },
-    show: { opacity: 1, transition: { staggerChildren: 0.15 } }
+  useEffect(() => {
+    const interval = setInterval(() => { 
+      setPlaceholderIndex((prev) => (prev + 1) % placeholders.length); 
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [placeholders.length]);
+
+  // 📡 THÔNG MẠCH DỮ LIỆU THẬT ĐỘNG TOÀN DIỆN TỪ SUPABASE (REAL MARKETPLACE FLOW)
+  useEffect(() => {
+    async function fetchRealMarketplaceData() {
+      try {
+        setProductsLoading(true);
+        
+        let productsQuery = await supabase.from("products").select("*, ProductImage(*), Listing(*)");
+        if (productsQuery.error) {
+          productsQuery = await supabase.from("products").select("*, images(*), listings(*)");
+        }
+        if (productsQuery.error) {
+          productsQuery = await supabase.from("products").select("*");
+        }
+
+        const { data: pData, error: pError } = productsQuery;
+        if (pError) throw pError;
+
+        if (pData) {
+          const mappedProducts = pData.map((item: any) => {
+            // 🔐 ĐÃ SỬA: Xóa bỏ hoàn toàn biến rác productListings chưa định nghĩa gây lỗi
+            const listingsArr = item.Listing || item.listings || []; 
+            const imagesArr = item.ProductImage || item.images || [];
+
+            const rentListing = listingsArr.find((l: any) => l.listingType === "RENT" && l.status === "AVAILABLE");
+            const sellListing = listingsArr.find((l: any) => (l.listingType === "SELL" || l.listingType === "SALE") && l.status === "AVAILABLE");
+
+            const rentPrice = rentListing ? Number(rentListing.basePrice) : 0;
+            const sellPrice = sellListing ? Number(sellListing.basePrice) : 0;
+
+            if (rentPrice <= 0 && sellPrice <= 0 && !item.rental_price) {
+              return null;
+            }
+
+            const currentViewIsRental = rentPrice > 0 || !!item.rental_price;
+            const finalPrice = rentPrice || item.rental_price || sellPrice;
+
+            const storeRetailPrice = item.original_price || item.originalPrice || 500000;
+            const savedPercentage = Math.round(((storeRetailPrice - finalPrice) / storeRetailPrice) * 100);
+
+            let currentImage = PLACEHOLDER_IMG;
+            if (imagesArr && imagesArr.length > 0) {
+              currentImage = imagesArr[0].url || imagesArr[0] || currentImage;
+            } else if (item.image_url || item.imageUrl) {
+              currentImage = item.image_url || item.imageUrl;
+            }
+
+            return {
+              id: item.id,
+              image: currentImage, 
+              type: currentViewIsRental ? "Thuê" : "Mua sắm",
+              title: item.title || item.name || "Trang phục CLOOP",
+              price: finalPrice,
+              rawPriceText: currentViewIsRental ? `${finalPrice.toLocaleString()}đ / ngày` : `${finalPrice.toLocaleString()}đ`,
+              location: item.province || "Nghệ An", 
+              rating: "5.0",            
+              condition: item.condition === "GOOD" ? "Mới 95%" : "Mới 98%",
+              size: item.size || "M",
+              brand: item.brand || "Thiết kế Việt",
+              ownerName: item.owner_name || "Thành viên CLOOP",
+              userId: item.userId,
+              storeRetailPrice,
+              savedPercentage,
+              occasion: item.occasion || "Dạo phố"
+            };
+          }).filter(Boolean);
+
+          setProducts(mappedProducts as Product[]);
+          setFilteredProducts(mappedProducts as Product[]);
+        }
+
+        // 📡 QUÉT LƯU BÚT ĐỜI THƯỜNG: Bốc giới hạn đúng 3 bài đăng mới nhất từ database về
+        const { data: blogData } = await supabase
+          .from("BlogPost")
+          .select("*")
+          .filter("status", "neq", "HIDDEN")
+          .order("isPinned", { ascending: false })
+          .order("createdAt", { ascending: false })
+          .limit(3);
+
+        if (blogData) {
+          const mappedBlogs = blogData.map((b: any) => ({
+            id: b.id,
+            title: b.title,
+            content: b.content,
+            coverImage: b.coverImage || b.cover_image || PLACEHOLDER_IMG,
+            createdAt: b.createdAt
+          }));
+          setRecentStories(mappedBlogs);
+        }
+
+      } catch (err: any) {
+        console.error("❌ LỖI VẬN HÀNH KHO DỮ LIỆU ĐỘNG TRANG CHỦ:", err);
+      } finally {
+        setProductsLoading(false);
+      }
+    }
+    
+    fetchRealMarketplaceData();
+  }, []);
+
+  const handleFilterOccasion = (occName: string) => {
+    setSelectedOccasion(occName);
+    if (occName === "All") {
+      setFilteredProducts(products);
+    } else {
+      setFilteredProducts(products.filter(p => p.occasion === occName));
+    }
   };
 
-  const heroItemVariants: any = {
-    hidden: { opacity: 0, scale: 0.95, y: 40 },
-    show: { opacity: 1, scale: 1, y: 0, transition: { type: "spring", stiffness: 100, damping: 15 } }
+  const containerVariants: any = {
+    hidden: { opacity: 0 },
+    show: { opacity: 1, transition: { staggerChildren: 0.1 } }
+  };
+
+  const itemVariants: any = {
+    hidden: { opacity: 0, y: 30 },
+    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 80, damping: 14 } }
   };
 
   return (
-    <main className="min-h-screen overflow-x-hidden antialiased relative transition-colors duration-500 font-body selection:bg-[#183A2D] selection:text-white">
+    <main className="min-h-screen overflow-x-hidden antialiased relative transition-colors duration-500 bg-[#FAF9F6] text-stone-900 font-body selection:bg-[#183A2D] selection:text-white">
       
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Cormorant+Garamond:ital,wght=0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght=300;400;500;600;700&display=swap" />
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght=0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" />
 
       <style>{`
         html { scroll-behavior: smooth; }
-        .font-logo { font-family: 'Cinzel', serif; }
         .font-heading { font-family: 'Cormorant Garamond', serif; }
         .font-body { font-family: 'Plus Jakarta Sans', sans-serif; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
-      {/* DẢI LỤA XANH NỀN ĐỘNG NGUYÊN BẢN */}
-      <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+      {/* 🟢 PHÂN ĐOẠN 1: EDITORIAL HERO SECTION - BANNER PHẲNG XANH LỤC BẢO SANG TRỌNG */}
+      <section className="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-12 pt-8 pb-6">
         <motion.div 
-          animate={{ y: [0, -25, 0] }}
-          transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-[2%] right-[-6%] w-[850px] h-[850px] flex items-center justify-center"
+          initial={{ opacity: 0, scale: 0.99 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6 }}
+          className="bg-[#183A2D] text-[#FAF9F6] rounded-[2.5rem] py-20 px-6 sm:px-12 lg:px-20 text-center relative overflow-hidden shadow-md"
         >
-          <motion.div animate={{ rotate: [0, 15, -15, 0] }} transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }} className="w-full h-full relative">
-            <Image src="/loogo.png" alt="CLOOP Brand Logo" fill sizes="100vw" className={`object-contain mix-blend-multiply select-none transition-opacity ${darkMode ? "opacity-10" : "opacity-20"}`} priority />
-          </motion.div>
-        </motion.div>
-      </div>
-
-      {/* 2. HERO SECTION */}
-      <section className="max-w-[1500px] mx-auto px-6 lg:px-12 pt-12 pb-16 relative z-10">
-        <motion.div 
-          variants={heroContainerVariants} initial="hidden" animate="show"
-          className={`rounded-[3rem] border p-8 lg:p-14 flex flex-col lg:flex-row items-center justify-between gap-12 relative overflow-hidden shadow-sm transition-colors duration-500 ${darkMode ? "bg-[#18222B] border-[#2B3946]" : "bg-gradient-to-br from-[#FAF8F3] via-white to-[#EFECE5]/40 border-[#E9E2D8]"}`}
-        >
-          <div className="w-full lg:w-[48%] relative z-10 text-left">
-            <motion.div variants={heroItemVariants} className="inline-flex items-center gap-2 bg-[#EAEFEA] border border-[#C8DCC8] rounded-full px-4 py-1.5 mb-6">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#1B5E20] animate-pulse" />
-              <span className="font-body text-[9px] font-bold uppercase tracking-widest text-[#1B5E20]">Nền tảng thời trang số tuần hoàn</span>
-            </motion.div>
-
-            <h1 className={`font-heading text-[52px] md:text-[72px] lg:text-[80px] leading-[1.05] font-bold tracking-tight ${darkMode ? "text-white" : "text-[#183A2D]"}`}>
-              Mặc đẹp hơn. <br /> Tiêu ít hơn. <br />
-              <span className="italic font-normal text-[#6BA37A]">Sống xanh hơn.</span>
+          <div className="absolute inset-0 opacity-5 bg-[radial-gradient(#FAF9F6_1px,transparent_1px)] bg-[size:16px_16px] pointer-events-none" />
+          
+          <div className="max-w-3xl mx-auto space-y-6 relative z-10">
+            <div className="inline-flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3.5 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase text-emerald-300">
+              <Sparkles size={10} className="fill-emerald-300" />
+              <span>Nền tảng số tuần hoàn Việt Nam</span>
+            </div>
+            <h1 className="font-heading text-4xl sm:text-6xl lg:text-7xl font-bold leading-[1.1] tracking-tight">
+              Mặc đẹp hơn. Tiêu ít hơn. <br />
+              <span className="italic font-normal text-emerald-300/90">Sống xanh hơn.</span>
             </h1>
-
-            <p className="font-body mt-6 text-[14px] leading-relaxed text-gray-500 max-w-[460px]">
-              CLOOP là nền tảng thời trang tuần hoàn. Thuê, cho thuê, mua bán và tái chế thời trang để kéo dài vòng đời sản phẩm — vì một tương lai bền vững của cộng đồng tiêu dùng thông minh.
+            <p className="font-body text-xs sm:text-sm text-stone-300 max-w-md mx-auto font-medium leading-relaxed">
+              Kéo dài vòng đời trang phục nhàn rỗi thông qua mô hình chia sẻ thông minh. Tự đăng đồ, tự quyết giá thuê và bảo chứng cọc an toàn.
             </p>
-
-            <div className="mt-8 flex items-center gap-4">
-              <Link href="/shop">
-                <motion.button whileHover={{ scale: 1.05, boxShadow: "0px 10px 25px rgba(24,58,45,0.18)" }} whileTap={{ scale: 0.96 }} className="font-body text-[11px] font-bold uppercase tracking-[0.15em] bg-[#183A2D] text-white px-8 py-4 rounded-full hover:bg-[#2E5A3D] transition flex items-center gap-2">
-                  Khám phá ngay <ArrowRight size={14} />
-                </motion.button>
-              </Link>
-              <Link href="/shop">
-                <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }} className={`font-body text-[11px] font-bold uppercase tracking-[0.15em] border px-8 py-4 rounded-full transition shadow-sm ${darkMode ? "bg-[#1C2834] text-gray-200 border-[#2B3946]" : "bg-white text-[#183A2D] border-[#E4DDD3]"}`}>
-                  Tìm hiểu thêm
-                </motion.button>
+            <div className="pt-2 flex justify-center gap-3">
+              <Link href="/shop" className="bg-[#FAF9F6] hover:bg-stone-100 text-[#183A2D] text-xs font-black uppercase tracking-wider px-7 py-3.5 rounded-full transition-all shadow-sm active:scale-95">
+                Khám phá tủ đồ ngay
               </Link>
             </div>
-
-            <div className="mt-12 flex items-center gap-3 border-t border-[#E9E2D8]/60 pt-6">
-              <div className="flex -space-x-3">
-                {[1, 2, 3].map((v) => (
-                  <div key={v} className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#183A2D] to-[#6BA37A] border-2 border-white" />
-                ))}
-              </div>
-              <span className="font-body text-xs text-gray-500">Hơn <strong className={darkMode ? "text-emerald-400" : "text-[#183A2D]"}>5.000+ người</strong> đang cùng CLOOP sống xanh mỗi ngày</span>
-            </div>
-          </div>
-
-          <div className="w-full lg:w-[48%] flex items-center justify-center relative">
-            <motion.div variants={heroItemVariants} className={`relative w-full max-w-[480px] h-[480px] rounded-[2.5rem] border-[4px] border-dashed shadow-inner flex flex-col items-center justify-center p-8 text-center group transition-all duration-500 ${darkMode ? "border-emerald-800/40 bg-[#14212A]" : "border-[#183A2D]/20 bg-gradient-to-br from-white to-[#EFECE5]/40"}`}>
-              <div className="w-14 h-14 rounded-full bg-white text-[#183A2D] flex items-center justify-center border border-[#E9E2D8] mb-4 shadow-sm group-hover:scale-105 transition-transform">
-                <Layers size={22} className="text-[#6BA37A]" />
-              </div>
-              <h3 className={`font-heading text-2xl font-bold tracking-wide uppercase ${darkMode ? "text-white" : "text-[#183A2D]"}`}>Khung ảnh xu hướng</h3>
-              <p className="font-body text-xs text-gray-400 mt-2 max-w-[280px] leading-relaxed">
-                Phân hệ đặc quyền dành riêng cho <strong className={darkMode ? "text-emerald-400" : "text-[#183A2D]"}>Admin</strong> đăng tải bài viết và đề xuất thay thế hình ảnh chiến dịch liên tục để cập nhật xu thế thời trang mới nhất.
-              </p>
-              <Link href="/admin" className={`mt-6 text-[9px] tracking-[0.2em] uppercase font-bold font-body px-5 py-2.5 rounded-full border shadow-sm hover:scale-105 transition-transform ${darkMode ? "bg-emerald-600 text-white border-emerald-500" : "bg-[#183A2D] text-white border-[#183A2D]/10"}`}>
-                🔗 Mở Cổng Quản Trị Admin →
-              </Link>
-            </motion.div>
-
-            <motion.div variants={heroItemVariants} className={`absolute right-[-20px] top-1/2 -translate-y-1/2 border p-6 rounded-[2rem] shadow-xl hidden xl:flex flex-col gap-5 w-[180px] z-20 text-left ${darkMode ? "bg-[#18222B] border-[#2B3946]" : "bg-white/95 border-[#E9E2D8]"}`}>
-              {statsData.map((item, index) => {
-                const StatIcon = item.icon;
-                return (
-                  <div key={index} className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-[#FAF8F3] border border-[#E9E2D8] flex items-center justify-center text-[#6BA37A]">
-                      <StatIcon size={16} />
-                    </div>
-                    <div>
-                      <div className="font-heading text-lg font-bold leading-none">{item.num}</div>
-                      <div className="font-body text-[10px] text-gray-400 font-medium mt-0.5">{item.label}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </motion.div>
           </div>
         </motion.div>
       </section>
 
-      {/* 3. KHỐI CHỨC NĂNG CHÍNH */}
+      {/* 🟢 PHÂN ĐOẠN 2: KHỒI 5 CHỨC NĂNG CHÍNH - ĐÃ HỒI SINH GIAO DIỆN EDITORIAL PHẲNG CAO CẤP */}
       <section className="max-w-[1500px] mx-auto px-6 lg:px-12 py-8 relative z-10">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
           {services.map((srv, i) => {
             const ServiceIcon = srv.icon;
             return (
               <Link href={srv.href} key={i} className="block h-full">
-                <motion.div whileHover={{ y: -6, boxShadow: "0px 12px 30px rgba(24,58,45,0.08)" }} onClick={(e) => { if(srv.isModal) { e.preventDefault(); handleFeatureRequirement(srv.title); } }} className={`border p-6 xl:p-8 rounded-3xl flex flex-col justify-between transition-all duration-300 relative group cursor-pointer text-left h-full ${darkMode ? "bg-[#18222B] border-[#2B3946]" : "bg-white border-[#E9E2D8]"}`}>
-                  <span className="absolute top-4 right-5 font-heading text-xs text-gray-300 font-bold tracking-wider">{srv.tag}</span>
+                <motion.div 
+                  whileHover={{ y: -6, boxShadow: "0px 12px 30px rgba(24,58,45,0.05)" }} 
+                  onClick={(e) => { if(srv.isModal) { e.preventDefault(); handleFeatureRequirement(srv.title); } }} 
+                  className="border border-stone-200 bg-white p-6 xl:p-8 rounded-3xl flex flex-col justify-between transition-all duration-300 relative group cursor-pointer text-left h-full"
+                >
+                  <span className="absolute top-4 right-5 font-heading text-xs text-stone-300 font-bold tracking-wider">{srv.tag}</span>
                   <div>
-                    <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center mb-5 group-hover:bg-[#183A2D] group-hover:text-white transition-colors duration-300 ${darkMode ? "bg-[#162721] border-[#254236] text-emerald-400" : "bg-[#FAF8F3] border-[#E9E2D8] text-[#183A2D]"}`}>
-                      <ServiceIcon size={20} />
+                    <div className="w-12 h-12 rounded-2xl border border-stone-200 bg-[#FAF9F6] text-[#183A2D] flex items-center justify-center mb-5 group-hover:bg-[#183A2D] group-hover:text-white transition-colors duration-300">
+                      <ServiceIcon size={18} />
                     </div>
-                    <h3 className="font-body text-[11px] xl:text-xs font-bold uppercase tracking-wider mb-2 line-clamp-1">{srv.title}</h3>
-                    <p className="font-body text-[11px] xl:text-xs text-gray-400 leading-relaxed mb-6 line-clamp-3">{srv.desc}</p>
+                    <h3 className="font-body text-xs font-bold uppercase tracking-wider mb-2 text-stone-900">{srv.title}</h3>
+                    <p className="font-body text-[11px] text-stone-400 leading-relaxed mb-6 line-clamp-3">{srv.desc}</p>
                   </div>
-                  <span className={`font-body text-[10px] font-bold uppercase tracking-wider text-left border-t pt-4 block group-hover:text-[#6BA37A] transition-colors ${darkMode ? "border-[#2B3946] text-emerald-400" : "border-gray-100 text-[#183A2D]"}`}>{srv.btn}</span>
+                  <span className="font-body text-[10px] font-black uppercase tracking-wider text-left border-t border-stone-100 pt-4 block text-[#183A2D] group-hover:text-[#6BA37A] transition-colors">
+                    {srv.btn}
+                  </span>
                 </motion.div>
               </Link>
             );
@@ -310,113 +294,241 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 4. SẢN PHẨM NỔI BẬT KHU VỰC */}
-      <section className="max-w-[1500px] mx-auto px-6 lg:px-12 py-12 relative z-10">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4 text-left">
-          <div>
-            <div className="flex items-center gap-3">
-              <h2 className="font-heading text-3xl font-bold">Sản phẩm nổi bật</h2>
-              <div className={`flex items-center gap-1.5 border px-2.5 py-1 rounded-full shadow-sm ${darkMode ? "bg-[#162721] border-emerald-800/40" : "bg-white border-[#E9E2D8]"}`}>
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="font-body text-[8px] font-bold uppercase tracking-widest">Live Inventory</span>
+      {/* 🎯 PHÂN ĐOẠN 3: EXPLORE BY OCCASION - PHÂN LUỒNG THEO DỊP MỘC MẠC */}
+      <section className="max-w-[1500px] mx-auto px-6 lg:px-12 py-6 space-y-6">
+        <div className="text-left space-y-1">
+          <h2 className="font-heading text-2xl sm:text-3xl font-bold text-stone-900">Tìm kiếm theo dịp mặc đồ</h2>
+          <p className="font-body text-stone-400 text-xs font-medium">Lọc nhanh mớ phục trang thực tế bám sát mục đích ngày hội của bạn</p>
+        </div>
+
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-4">
+          {occasions.map((occ) => (
+            <div 
+              key={occ.name}
+              onClick={() => handleFilterOccasion(occ.name)}
+              className={`p-2 rounded-2xl border text-center space-y-2 cursor-pointer transition-all duration-200 shadow-2xs group
+                ${selectedOccasion === occ.name 
+                  ? "bg-[#183A2D] border-[#183A2D] text-white" 
+                  : "bg-white border-stone-200 text-stone-700 hover:border-stone-400"
+                }`}
+            >
+              <div className="aspect-square w-full rounded-xl overflow-hidden bg-stone-50 relative">
+                {occ.img ? (
+                  <img src={occ.img} alt={occ.label} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-stone-100 text-stone-400 font-bold text-xs uppercase tracking-wider">ALL</div>
+                )}
               </div>
+              <div className="text-[11px] font-bold tracking-tight truncate px-1">{occ.label}</div>
             </div>
-            <p className="font-body text-xs text-gray-400 mt-2 max-w-[700px] leading-relaxed">
-              Hệ thống kết nối thời gian thực hiển thị phục trang mới tinh vừa lên kệ. Khách hàng đăng đồ phát là xuất hiện ở đây ngay lập tức!
-            </p>
+          ))}
+        </div>
+      </section>
+
+      {/* 👗 PHÂN ĐOẠN 4: CURATED PREMIUM FEED - KỆ ĐỒ THỜI GIAN THỰC KHUNG Ả LỚN 3:4 */}
+      <section className="max-w-[1500px] mx-auto px-6 lg:px-12 py-8 space-y-6">
+        <div className="flex items-center justify-between border-b border-stone-200/60 pb-3">
+          <div className="text-left space-y-1">
+            <h3 className="font-heading text-xl sm:text-2xl font-bold text-[#183A2D]">Trang phục lên kệ thời gian thực</h3>
+            <p className="font-body text-stone-400 text-xs">Sản phẩm thật, giao dịch thật do các thành viên tự đăng tải điều phối</p>
           </div>
-          <Link href="/shop" className="font-body text-xs font-bold uppercase tracking-widest text-[#6BA37A] hover:text-[#183A2D] transition-colors whitespace-nowrap">
+          <Link href="/shop" className="font-body text-xs font-black uppercase tracking-widest text-[#6BA37A] hover:text-[#183A2D] transition-colors whitespace-nowrap">
             Xem tất cả →
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
-          {productsLoading ? (
-            [1, 2, 3, 4].map((n) => (
-              <div key={n} className="w-full aspect-[3/4] bg-gray-200/60 rounded-3xl animate-pulse" />
-            ))
-          ) : (
-            products.map((prod) => (
-              <Link href={`/product/${prod.id}`} key={prod.id} className="block h-full">
-                <motion.div whileHover={{ y: -5, boxShadow: "0px 10px 25px rgba(24,58,45,0.06)" }} className={`border rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 h-full flex flex-col justify-between group cursor-pointer text-left ${darkMode ? "bg-[#18222B] border-[#2B3946]" : "bg-white border-[#E9E2D8]"}`}>
-                  <div className="relative w-full h-[260px] bg-[#FAF8F3] overflow-hidden">
-                    <Image src={prod.image} alt={prod.title} fill unoptimized sizes="(max-w-768px) 50vw, 20vw" className="object-cover object-top transition-transform duration-500 group-hover:scale-104" />
-                    <div className="absolute top-3 left-3 flex flex-col gap-1.5">
-                      <span className={`text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md text-white ${prod.type === "Thuê" ? "bg-[#183A2D]" : "bg-amber-700"}`}>
-                        {prod.type}
-                      </span>
-                      <span className="text-[8.5px] font-bold bg-white/90 text-gray-600 px-2 py-0.5 rounded shadow-sm border border-black/5">
-                        {prod.condition}
-                      </span>
-                    </div>
-                    <div className="absolute bottom-2 right-2 bg-white/80 backdrop-blur-sm px-2 py-0.5 rounded-full text-[10px] font-bold text-[#183A2D] flex items-center gap-0.5">
-                      <Star size={10} className="fill-amber-400 stroke-none" /> {prod.rating}
-                    </div>
+        {productsLoading ? (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map((n) => (
+              <div key={n} className="w-full aspect-[3/4] bg-stone-200/40 rounded-2xl animate-pulse" />
+            ))}
+          </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="text-center py-20 bg-white border border-stone-200 rounded-3xl shadow-2xs">
+            <p className="text-xs font-medium text-stone-400">Tủ đồ danh mục này tạm thời chưa có đồ mới đăng tải.</p>
+          </div>
+        ) : (
+          <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-10">
+            {filteredProducts.slice(0, 4).map((item) => (
+              <motion.div variants={itemVariants} key={item.id} className="group flex flex-col space-y-3 relative text-left">
+                
+                <div className="w-full aspect-[3/4] bg-stone-50 rounded-2xl overflow-hidden relative border border-stone-200/30 shadow-2xs">
+                  <Image 
+                    src={item.image} 
+                    alt={item.title} 
+                    fill unoptimized
+                    className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+                  />
+                  
+                  <button className="absolute top-3 right-3 w-7 h-7 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center text-stone-600 hover:text-red-500 transition-colors shadow-2xs cursor-pointer z-10">
+                    <Heart size={12} strokeWidth={2.5} />
+                  </button>
+
+                  <div className="absolute top-3 left-3 flex flex-col gap-1 z-10">
+                    <span className="text-[8px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md text-white shadow-sm bg-[#183A2D]">
+                      {item.type}
+                    </span>
                   </div>
 
-                  <div className="p-4 flex-1 flex flex-col justify-between">
-                    <div>
-                      <h4 className="font-body text-xs font-bold line-clamp-1 group-hover:text-[#6BA37A] transition-colors">{prod.title}</h4>
-                      <p className="text-[10px] font-medium text-stone-400 line-through mt-1">
-                        Giá gốc: {Math.round(prod.storeRetailPrice).toLocaleString()}đ
+                  <div className="absolute bottom-3 left-3 bg-stone-900/70 backdrop-blur-md text-[9px] font-bold text-white px-2 py-0.5 rounded-md tracking-wider">
+                    SIZE {item.size}
+                  </div>
+                </div>
+
+                <div className="space-y-1 px-0.5">
+                  <div className="flex items-center justify-between text-[9px] font-bold text-stone-400 uppercase tracking-wider">
+                    <Link href={`/closet/${item.userId}`} className="hover:text-[#183A2D] underline decoration-stone-200/60 z-10 relative">
+                      @{item.brand}
+                    </Link>
+                    <span className="flex items-center gap-0.5 text-stone-400 font-medium">
+                      <MapPin size={9} className="text-[#6BA37A]" /> {item.location}
+                    </span>
+                  </div>
+
+                  <h4 className="text-xs font-bold text-stone-900 line-clamp-1 group-hover:text-[#183A2D] transition-colors tracking-tight">
+                    {item.title}
+                  </h4>
+
+                  <div className="pt-1.5 flex items-baseline justify-between border-t border-dashed border-stone-200 mt-1">
+                    <div className="space-y-0.5">
+                      <span className="text-[8px] font-bold text-stone-400 uppercase tracking-widest block">Chi phí</span>
+                      <p className="text-xs font-black text-[#183A2D] font-mono">
+                        {item.rawPriceText}
                       </p>
-                      <div className="flex justify-between items-end mt-1.5">
-                        <div className={`font-body text-xs font-mono font-black ${darkMode ? "text-white" : "text-stone-900"}`}>{prod.price}</div>
-                        <span className="text-[8px] font-black text-emerald-700 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded uppercase tracking-wider">
-                          -{prod.savedPercentage}%
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[8px] font-bold text-stone-400 uppercase tracking-widest block">Giá gốc Store</span>
+                      <div className="flex items-center gap-1.5 justify-end">
+                        <p className="text-[10px] font-semibold text-stone-400 line-through font-mono">
+                          {item.storeRetailPrice.toLocaleString()}đ
+                        </p>
+                        <span className="text-[8px] font-black text-emerald-700 bg-emerald-50 border border-emerald-100 px-1 py-0.5 rounded uppercase tracking-wider">
+                          -{item.savedPercentage}%
                         </span>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between text-[10px] text-gray-400 mt-3 border-t border-gray-50 pt-2.5">
-                      <div className="flex items-center gap-1">
-                        <MapPin size={10} className="text-[#6BA37A]" /> <span className="font-medium text-gray-600">{prod.location}</span>
-                      </div>
-                      {prod.size && <span className="font-mono font-bold text-stone-400">SIZE {prod.size}</span>}
-                    </div>
                   </div>
-                </motion.div>
-              </Link>
-            ))
-          )}
+                </div>
 
-          <Link href="/my-closet/create" className="block h-full">
-            <motion.div whileHover={{ scale: 1.02, borderStyle: "solid", borderColor: "#183A2D" }} className={`border-2 border-dashed rounded-3xl p-6 flex flex-col items-center justify-center text-center transition-all cursor-pointer group h-full ${darkMode ? "bg-[#1E2D38]/30 border-[#2B3946]" : "bg-[#EFECE5]/30 border-[#183A2D]/20 hover:bg-[#EFECE5]/50"}`}>
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center border mb-4 group-hover:bg-[#183A2D] group-hover:text-white transition-all shadow-sm ${darkMode ? "bg-[#18222B] border-[#2B3946]" : "bg-white border-[#E9E2D8] text-[#183A2D]"}`}>
-                <Plus size={20} />
+                <Link href={`/product/${item.id}`} className="absolute inset-0 z-0">
+                  <span className="sr-only">Xem chi tiết {item.title}</span>
+                </Link>
+
+              </motion.div>
+            ))}
+            
+            <Link href="/my-closet/create" className="block h-full">
+              <div className="border-2 border-dashed border-stone-300 rounded-2xl p-6 flex flex-col items-center justify-center text-center transition-all cursor-pointer group h-full bg-stone-50/20 hover:bg-stone-50/80 min-h-[340px]">
+                <div className="w-10 h-14 bg-white border border-stone-200 rounded-lg flex items-center justify-center text-stone-400 group-hover:bg-stone-900 group-hover:text-white transition-all shadow-2xs">
+                  <Plus size={16} />
+                </div>
+                <h4 className="font-body text-xs font-bold uppercase tracking-wider mt-4">Ký gửi mở rộng tủ đồ</h4>
+                <p className="font-body text-[11px] text-stone-400 mt-1 max-w-[130px] leading-normal">Tự đăng bài kinh doanh quần áo nhàn rỗi miễn phí</p>
               </div>
-              <h4 className="font-body text-xs font-bold uppercase tracking-wider">Bạn có đồ nhàn rỗi?</h4>
-              <p className="font-body text-[11px] text-gray-400 mt-1 max-w-[140px] leading-normal">Đăng bài ngay, tự đính kèm GPS định vị vị trí tủ đồ chính xác</p>
-              <span className={`mt-5 font-body text-[10px] font-bold uppercase tracking-widest px-5 py-2.5 rounded-full block text-white ${darkMode ? "bg-emerald-600" : "bg-[#183A2D]"}`}>Đăng ngay</span>
-            </motion.div>
-          </Link>
-        </div>
+            </Link>
+          </motion.div>
+        )}
       </section>
 
-      {/* 5. SECTION: ĐẶC QUYỀN THÀNH VIÊN */}
-      <section id="register-privilege" className={`max-w-[1500px] mx-auto px-6 lg:px-12 py-16 border-t relative z-10 text-left ${darkMode ? "border-[#2B3946]" : "border-[#E9E2D8]/60"}`}>
-        <div className={`border rounded-[2.5rem] p-8 lg:p-12 shadow-sm flex flex-col lg:flex-row items-center justify-between gap-10 transition-colors duration-500 ${darkMode ? "bg-[#18222B] border-[#2B3946]" : "bg-white border-[#E9E2D8]"}`}>
+      {/* 📔 PHÂN ĐOẠN 5: TRẠM LƯU BÚT ĐỜI THƯỜNG - ADMIN GHIM TINH TUYỂN */}
+      <section className="max-w-[1500px] mx-auto px-6 lg:px-12 py-8 space-y-6">
+        <div className="bg-white border-2 border-stone-900/5 p-6 sm:p-8 rounded-[2rem] flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-2xs text-left relative overflow-hidden">
+          <div className="space-y-1.5 max-w-2xl relative z-10">
+            <span className="text-[9px] font-bold uppercase tracking-widest bg-emerald-50 text-emerald-800 px-2.5 py-0.5 rounded-md inline-block">Góc Lưu Niệm</span>
+            <h2 className="font-heading text-2xl font-bold text-stone-900 tracking-tight flex items-center gap-1.5">
+              <BookOpen size={18} className="text-stone-700" />
+              <span>Góc nhật ký lưu bút phục trang</span>
+            </h2>
+            <p className="font-body text-stone-400 text-xs leading-relaxed font-normal">
+              Mỗi bộ phục trang cũ đều ôm giữ những hồi ức thanh xuân dạt dào cảm xúc. Hãy gửi gắm câu chuyện lưu niệm của bạn, hệ thống Admin sẽ chọn lọc phê duyệt ghim những dòng chữ phản hồi ấm áp nhất lên trang chủ CLOOP.
+            </p>
+          </div>
+          <Link href="/blog" className="shrink-0 w-full md:w-auto relative z-10">
+            <button className="w-full md:w-auto bg-stone-900 hover:bg-emerald-800 text-[#FAF9F6] text-[11px] font-black uppercase tracking-wider px-6 py-3 rounded-xl transition-all cursor-pointer shadow-sm active:scale-95">
+              Lật xem toàn bộ sổ ký ức →
+            </button>
+          </Link>
+        </div>
+
+        {recentBlogs.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {recentBlogs.map((story) => (
+              <Link href="/blog" key={story.id} className="block group">
+                <div className="bg-[#FCFAF5] border border-stone-200/50 p-4 rounded-2xl flex gap-4 items-center text-left hover:bg-white hover:shadow-sm transition-all duration-300 h-24">
+                  <div className="w-12 h-16 bg-stone-100 rounded-lg overflow-hidden border border-stone-200/60 shrink-0 relative">
+                    <img src={story.coverImage} className="w-full h-full object-cover" alt="Cover" />
+                    <div className="absolute top-1 left-1 bg-amber-400 text-white p-0.5 rounded-xs shadow-2xs">
+                      <Pin size={8} className="rotate-45 fill-white" />
+                    </div>
+                  </div>
+                  <div className="space-y-0.5 min-w-0 flex-1">
+                    <span className="text-[8px] font-mono font-bold text-stone-400 uppercase tracking-widest block">
+                      {new Date(story.createdAt).toLocaleDateString("vi-VN")}
+                    </span>
+                    <h4 className="text-xs font-extrabold text-stone-900 truncate group-hover:text-emerald-700 transition-colors">
+                      {story.title}
+                    </h4>
+                    <p className="text-[11px] text-stone-500 font-serif italic truncate">
+                      "{story.content}"
+                    </p>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* 🌿 PHÂN ĐOẠN 6: ĐẶC QUYỀN THÀNH VIÊN - ĐÃ HỒI SINH HOÀN CHỈNH CHUẨN THƯƠNG HIỆU */}
+      <section id="register-privilege" className="max-w-[1500px] mx-auto px-6 lg:px-12 py-10 border-t border-stone-200/60 text-left relative z-10">
+        <div className="border border-stone-200 bg-white rounded-[2.5rem] p-8 lg:p-12 shadow-sm flex flex-col lg:flex-row items-center justify-between gap-10">
           <div className="w-full lg:w-[55%]">
-            <h2 className="font-heading text-3xl lg:text-4xl font-bold">Hãy đăng ký tài khoản để trải nghiệm trọn vẹn đặc quyền xanh</h2>
+            <h2 className="font-heading text-3xl font-bold text-stone-900">Hãy đăng ký tài khoản để trải nghiệm trọn vẹn đặc quyền xanh</h2>
             <p className="font-body text-xs tracking-[0.15em] text-[#6BA37A] uppercase font-bold mt-2 mb-6">Trở thành một phần của hệ sinh thái thời trang tuần hoàn thông minh</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {privileges.map((item: PrivilegeItem, idx: number) => (
                 <div key={idx} className="flex gap-3 items-start">
-                  <div className={`w-8 h-8 rounded-xl border flex items-center justify-center shrink-0 mt-0.5 ${darkMode ? "bg-[#162721] border-[#254236] text-emerald-400" : "bg-[#FAF8F3] border-[#E9E2D8] text-[#183A2D]"}`}>{item.icon}</div>
+                  <div className="w-8 h-8 rounded-xl border border-stone-200 bg-[#FAF8F3] text-[#183A2D] flex items-center justify-center shrink-0 mt-0.5">
+                    {item.icon}
+                  </div>
                   <div>
-                    <h4 className="font-body text-xs font-bold uppercase tracking-wider">{item.title}</h4>
-                    <p className="font-body text-xs text-gray-400 mt-1 leading-relaxed">{item.desc}</p>
+                    <h4 className="font-body text-xs font-bold uppercase tracking-wider text-stone-900">{item.title}</h4>
+                    <p className="font-body text-xs text-stone-400 mt-1 leading-relaxed">{item.desc}</p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
-          <div className={`w-full lg:w-[38%] border p-8 rounded-3xl text-center flex flex-col items-center ${darkMode ? "bg-[#1C2834] border-[#2B3946]" : "bg-[#FAF8F3] border-[#E9E2D8]"}`}>
-            <div className="w-12 h-12 rounded-full bg-[#EAEFEA] border border-[#C8DCC8] flex items-center justify-center mb-4"><Zap size={20} className="text-[#1B5E20]" /></div>
-            <h3 className="font-heading text-2xl font-bold">Kích Hoạt Tài Khoản</h3>
-            <p className="font-body text-xs text-gray-400 mt-2 mb-6 leading-relaxed">Chỉ mất 30 giây để thiết lập tủ đồ xanh của riêng bạn trên ứng dụng.</p>
-            {/* 🟢 Nút bấm mở tủ đồ xanh bốc trực tiếp lệnh từ Context tổng thông mạch */}
-            <button onClick={() => handleFeatureRequirement("Mở tủ đồ xanh")} className={`w-full font-body text-xs font-bold uppercase tracking-widest py-4 rounded-full shadow-md transition ${darkMode ? "bg-emerald-600 text-white hover:bg-emerald-500" : "bg-[#183A2D] text-white hover:bg-[#23452F]"}`}>Đăng ký thành viên ngay</button>
+          <div className="w-full lg:w-[38%] border border-stone-200 bg-[#FAF8F3] p-8 rounded-3xl text-center flex flex-col items-center">
+            <div className="w-12 h-12 rounded-full bg-white border border-stone-200 flex items-center justify-center mb-4 text-[#183A2D] shadow-2xs">
+              <Zap size={18} />
+            </div>
+            <h3 className="font-heading text-2xl font-bold text-stone-900">Kích Hoạt Tài Khoản</h3>
+            <p className="font-body text-xs text-stone-400 mt-2 mb-6 leading-relaxed">Chỉ mất 30 giây để thiết lập tủ đồ xanh của riêng bạn trên ứng dụng.</p>
+            <button onClick={() => handleFeatureRequirement("Mở tủ đồ xanh")} className="w-full font-body text-xs font-black uppercase tracking-widest py-4 rounded-full shadow-md bg-[#183A2D] text-white hover:bg-emerald-800 transition active:scale-[0.98] cursor-pointer">
+              Đăng ký thành viên ngay
+            </button>
           </div>
+        </div>
+      </section>
+
+      {/* 🌿 PHÂN ĐOẠN 7: CHỈ SỐ TÁC ĐỘNG XANH ESG LÓT MỎNG TRÊN FOOTER */}
+      <section className="max-w-[1500px] mx-auto px-6 lg:px-12 py-8 border-t border-stone-200/60">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 items-center">
+          {statsData.map((item, idx) => {
+            const StatIcon = item.icon;
+            return (
+              <div key={idx} className="flex items-center gap-3 bg-white p-4 rounded-2xl border border-stone-200/40 text-left shadow-3xs">
+                <div className="w-9 h-9 rounded-xl bg-stone-50 text-[#6BA37A] border border-stone-200/40 flex items-center justify-center shrink-0">
+                  <StatIcon size={16} />
+                </div>
+                <div>
+                  <div className="font-heading text-lg font-black text-stone-900 leading-none">{item.num}</div>
+                  <div className="font-body text-[10px] text-stone-400 font-bold uppercase tracking-wider mt-1">{item.label}</div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </section>
 
