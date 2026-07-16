@@ -285,7 +285,6 @@ export default function CreateProductListingPage() {
         if (hasStory && storyText.trim() !== "") {
           const isSafe = !checkContactInfoLeak(storyText);
           if (isSafe) {
-            // 🟢 ĐÃ ĐỒNG BỘ: Giữ chặt trạng thái PUBLIC và kết nối khóa ngoại khép kín với Blog Diary 3 cột
             await supabase.from("BlogPost").insert([{
               title: `Kỷ niệm cùng ${insertedProduct.title}`,
               content: storyText.trim(),
@@ -306,7 +305,6 @@ export default function CreateProductListingPage() {
 
     } catch (error: any) {
       alert(`Lỗi tiến trình vận hành: ${error.message || error}`);
-    // 🔐 ĐÃ VÁ LỖI CÚ PHÁP: Chuyển cụm lỗi tiếng Việt 'final hành:' cũ thành 'finally' sạch bóng lỗi
     } finally {
       setIsSubmitting(false);
     }
@@ -328,7 +326,7 @@ export default function CreateProductListingPage() {
             <Sparkles size={18} className="text-amber-300 animate-pulse" />
             <span>Cập nhật Tủ đồ Tuần hoàn</span>
           </h1>
-          <p className="text-stone-300 text-xs mt-1 font-medium tracking-normal relative z-10">Phát triển vòng đời sản phẩm thông qua mô hình chia sẻ thời trang xanh bền vững cùng giới trẻ.</p>
+          <p className="text-stone-300 text-xs mt-1 font-medium tracking-normal relative z-10">Phát triển vòng đời sản phẩm thông qua mô hình chia sẻ thời trang xanh bền vũg cùng giới trẻ.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="p-8 sm:p-10 space-y-10 text-left">
@@ -403,6 +401,7 @@ export default function CreateProductListingPage() {
                 <input type="text" required className="w-full px-4 py-3 rounded-xl border border-stone-200 text-xs focus:outline-none focus:border-stone-900 bg-[#FCFCFB]" value={product.color} onChange={(e) => setProduct({...product, color: e.target.value})} />
               </div>
 
+              {/* 🎯 ĐÃ ĐỒNG BỘ: Sửa dropdown occasion khớp chính xác các dịp cốt lõi của trang chủ và thêm Lễ hội, Công sở */}
               <div>
                 <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1.5">Dịp / Phong cách phù hợp</label>
                 <select className="w-full px-3 py-3 rounded-xl border border-stone-200 bg-[#FCFCFB] text-xs focus:outline-none focus:border-stone-900 text-stone-800 cursor-pointer" value={product.occasion} onChange={(e) => setProduct({...product, occasion: e.target.value})}>
@@ -411,9 +410,9 @@ export default function CreateProductListingPage() {
                   <option value="Dạ hội">Dạ hội</option>
                   <option value="Áo dài">Áo dài</option>
                   <option value="Đi biển">Đi biển</option>
+                  <option value="Kỷ yếu">Kỷ yếu</option>
                   <option value="Lễ hội">Lễ hội</option>
                   <option value="Công sở">Công sở</option>
-                  <option value="Khác">Khác</option>
                 </select>
               </div>
 

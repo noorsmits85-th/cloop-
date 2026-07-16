@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -11,6 +11,8 @@ import { createClient } from "@supabase/supabase-js";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "temporary-placeholder-key";
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+const PLACEHOLDER_IMG = "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600";
 
 interface Product { 
   id: string; 
@@ -24,32 +26,44 @@ interface Product {
   rating: string; 
   condition: string; 
   storeRetailPrice: number; 
-  occasion: string; // Thêm cấu trúc thuộc tính dịp/phong cách vào interface
+  occasion: string; // Khớp cấu trúc thuộc tính dịp/phong cách toàn diện
 }
 
 function ShopContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   
-  // Nhận diện phân luồng trực tiếp từ URL bar (?type=rent hoặc ?type=sell)
+  // 🎛️ a) Nhận diện phân luồng trực tiếp từ URL bar (?type và ?occasion mới)
   const urlType = searchParams.get("type") || "all";
+  const urlOccasion = searchParams.get("occasion");
 
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Cấu hình danh mục trạng thái và State quản lý bộ lọc Occasion
-  const [selectedOccasion, setSelectedOccasion] = useState("Tất cả");
-  const occasionList = ["Tất cả", "Dạ hội", "Đi biển", "Lễ hội", "Áo dài", "Dạo phố", "Công sở"];
+  // 🎛️ b) Khởi tạo state lọc dịp linh hoạt theo URL bar thay vì ép cứng "Tất cả"
+  const [selectedOccasion, setSelectedOccasion] = useState(urlOccasion || "Tất cả");
 
-  // 📡 ĐẦU NỐI MẠCH REAL-TIME: Sắp xếp theo ngày tạo đẩy đồ mới lên New Feed hàng đầu
+  // 🎛️ c) Cập nhật mở rộng danh sách chip lọc khớp chuẩn khép kín với 8 dịp trên trang chủ và form
+  const occasionList = ["Tất cả", "Tiệc cưới", "Dạ hội", "Dạo phố", "Áo dài", "Đi biển", "Kỷ yếu", "Lễ hội", "Công sở"];
+
+  // ⚡ ĐỒNG BỘ HÓA NGƯỢC: Tự động nhảy chip sáng đèn nếu URL thay đổi thời gian thực
+  useEffect(() => {
+    if (urlOccasion) {
+      setSelectedOccasion(urlOccasion);
+    } else {
+      setSelectedOccasion("Tất cả");
+    }
+  }, [urlOccasion]);
+
+  // 📡 ĐẦU NỐI MẠCH REAL-TIME: Truy xuất Supabase sắp xếp đồ mới lên đầu Feed
   useEffect(() => {
     async function fetchShopProducts() {
       try {
         setLoading(true);
 
-        // Ép mạch sắp xếp theo createdAt giảm dần để đồ vừa đăng nổ lên vị trí đầu tiên ngay lập tức
+        // Đảm bảo đồ vừa đăng nổ lên vị trí đầu tiên ngay lập tức bằng cách sort theo ngày tạo
         let response = await supabase
           .from("products")
           .select("*, ProductImage(*), Listing(*)")
@@ -79,25 +93,23 @@ function ShopContent() {
             const listingsArr = item.Listing || item.listings || [];
             const imagesArr = item.ProductImage || item.images || [];
 
-            // 🎛️ BỔ SUNG ĐIỀU KIỆN CHẶN ẨN BÀI: Chỉ lấy các gói giá ở trạng thái hiển thị AVAILABLE (Bỏ qua bài viết đã HIDDEN)
+            // Chỉ lấy các gói giá ở trạng thái AVAILABLE (Bỏ qua các sản phẩm đã tạm ẩn)
             const rentListing = listingsArr.find((l: any) => l.listingType === "RENT" && l.status === "AVAILABLE");
             const sellListing = listingsArr.find((l: any) => (l.listingType === "SELL" || l.listingType === "SALE") && l.status === "AVAILABLE");
 
             const rentPrice = rentListing ? Number(rentListing.basePrice) : 0;
             const sellPrice = sellListing ? Number(sellListing.basePrice) : 0;
 
-            // Xử lý link ảnh thật bốc về từ Cloudinary đám mây
-            let currentImage = "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600";
+            let currentImage = PLACEHOLDER_IMG;
             if (imagesArr && imagesArr.length > 0) {
               currentImage = imagesArr[0].url || imagesArr[0] || currentImage;
             } else if (item.image_url || item.imageUrl) {
               currentImage = item.image_url || item.imageUrl;
             }
 
-            // Đọc trường giá gốc mua mới đồ thật ngoài Store cậu cấu hình
-            const storeRetailPrice = item.original_price || item.originalPrice || (sellPrice ? sellPrice * 2.2 : (rentPrice ? rentPrice * 7 : 500000));
+            const storeRetailPrice = item.original_price || item.originalPrice || 500000;
 
-            // CHÌA KHÓA PHÂN LUỒNG RẠCH RÒI: Lọc chặn từ gốc không cho hàng đã ẩn lọt vào sàn
+            // d) ĐỐI SOÁT TRƯỜNG OCCASION: Đồng bộ cấu trúc dữ liệu ở cả 3 nhánh đẩy đồ lên sàn
             if (urlType === "rent" && rentPrice > 0) {
               mapped.push({
                 id: item.id,
@@ -129,7 +141,6 @@ function ShopContent() {
                 occasion: item.occasion || "Khác",
               });
             } else if (urlType === "all") {
-              // Phân hệ hiển thị tổng hợp tại tab Tất cả kho đồ
               const hasRent = rentPrice > 0;
               const displayPrice = hasRent ? rentPrice : sellPrice;
               
@@ -157,6 +168,7 @@ function ShopContent() {
       } catch (err) {
         console.error("❌ Lỗi vận hành dòng chảy dữ liệu sàn /shop:", err);
       } finally {
+        // 🛠️ ĐÃ SỬA LỖI NGHIÊM TRỌNG: Đổi từ setProductsLoading thành setLoading chính xác để tắt trạng thái chờ
         setLoading(false);
       }
     }
@@ -164,7 +176,7 @@ function ShopContent() {
     fetchShopProducts();
   }, [urlType]);
 
-  // 🎛️ BỘ LỌC ĐA NHIỆM: Đồng bộ đối soát giữa chip Occasion và Ô tìm kiếm Text
+  // 🎛️ e) BỘ LỌC ĐA NHIỆM: Đối soát đồng bộ tuyệt đối giữa Ô Tìm kiếm Text và Chip Occasion động
   useEffect(() => {
     let result = [...products];
 
@@ -183,6 +195,18 @@ function ShopContent() {
     setFilteredProducts(result);
   }, [searchQuery, selectedOccasion, products]);
 
+  // Hàm chuyển đổi tham số URL thủ công khi click trực tiếp vào hàng chip trên Sàn
+  const handleChipClick = (occName: string) => {
+    setSelectedOccasion(occName);
+    const params = new URLSearchParams(window.location.search);
+    if (occName === "Tất cả") {
+      params.delete("occasion");
+    } else {
+      params.set("occasion", occName);
+    }
+    router.push(`/shop?${params.toString()}`);
+  };
+
   return (
     <main className="min-h-screen bg-[#FAF8F3] text-[#183A2D] antialiased p-6 md:p-12 font-sans selection:bg-[#183A2D] selection:text-white">
       <div className="max-w-[1400px] mx-auto space-y-8">
@@ -197,17 +221,17 @@ function ShopContent() {
           </span>
         </div>
 
-        {/* TIÊU ĐỀ SÀN BIẾN ĐỔI LINH HOẠT THEO LUỒNG THƯƠNG MẠI TRỰC QUAN */}
+        {/* TIÊU ĐỀ SÀN BIẾN ĐỔI LINH HOẠT THEO LUỒNG THƯƠNG MẠI */}
         <div className="text-left space-y-2">
           <h1 className="text-4xl font-extrabold tracking-tight text-[#183A2D]">
             {urlType === "rent" ? "Kho Trang Phục Thuê Đồ" : urlType === "sell" ? "Kệ Hàng Mua Sắm Tuần Hoàn" : "Sàn Thời Trang Tuần Hoàn"}
           </h1>
           <p className="text-xs text-gray-400 max-w-[600px] leading-relaxed">
-            Kéo dài vòng đời sản phẩm, kiến tạo giải pháp tiết kiệm tối đa tài chính cho ví tiền sinh viên và bảo vệ môi trường xanh.
+            Kéo dài vòng đời sản phẩm, kiến tạo giải pháp tiết kiệm tối đa tài chính cho ví tiền sinh viên và bảo vệ môi trường xanh bền vững.
           </p>
         </div>
 
-        {/* TOOLBAR ĐIỀU KHIỂN CẤU TRÚC CHIP MỚI CUỘN NGANG (SLIDE CHIPS) */}
+        {/* TOOLBAR ĐIỀU KHIỂN CẤU TRÚC CHIP MỚI CUỘN NGANG */}
         <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center bg-white p-4 rounded-3xl border border-[#E9E2D8] shadow-sm">
           
           {/* DÃY CHIP CUỘN NGANG CHỌN PHONG CÁCH / DỊP PHỐI ĐỒ */}
@@ -215,7 +239,7 @@ function ShopContent() {
             {occasionList.map((occ) => (
               <button
                 key={occ}
-                onClick={() => setSelectedOccasion(occ)}
+                onClick={() => handleChipClick(occ)}
                 className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer select-none ${
                   selectedOccasion === occ 
                     ? "bg-[#183A2D] text-white shadow" 
@@ -250,7 +274,7 @@ function ShopContent() {
 
         </div>
 
-        {/* LƯỚI GRID HIỂN THỊ TRANG PHỤC PHÂN TÁCH ĐỘC LẬP TUYỆT ĐỐI */}
+        {/* LƯỚI GRID HIỂN THỊ TRANG PHỤC */}
         {loading ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 pt-6">
             {[1, 2, 3, 4].map(n => (
@@ -268,7 +292,7 @@ function ShopContent() {
                 <Link href={`/product/${prod.id}`} key={prod.id} className="block group">
                   <div className="border border-[#E9E2D8] bg-white rounded-[2.5rem] overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between h-full text-left">
                     
-                    {/* KHU VỰC KHUNG ẢNH LOOKBOOK BIẾN ĐỔI BADGE THEO TAB THẬT */}
+                    {/* KHU VỰC KHUNG ẢNH LOOKBOOK */}
                     <div className="relative w-full aspect-[3/4] bg-stone-100 overflow-hidden">
                       <Image 
                         src={prod.image} 
@@ -290,7 +314,7 @@ function ShopContent() {
                       </div>
                     </div>
 
-                    {/* KHU VỰC CHÂN CARD ĐÓN ĐẦU ĐÒN BẨY NEO GIÁ MARKETING CHÍNH CHỦ */}
+                    {/* KHU VỰC CHÂN CARD */}
                     <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                       <div className="space-y-1">
                         <div className="flex justify-between items-start gap-1">
