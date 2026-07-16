@@ -107,10 +107,6 @@ export default function Home() {
   // 🏆 STATE "TOP TỦ ĐỒ UY TÍN" (Ẩn sạch nếu database chưa có review thật)
   const [topClosets, setTopClosets] = useState<any[]>([]);
 
-  // 📔 TRẠM QUẢN LÝ LẬT TRANG NHẬT KÝ & DUYỆT ALBUM ẢNH TRONG POLAROID
-  const [activeDiaryIdx, setActiveDiaryIdx] = useState<number>(0);
-  const [activeImageIdx, setActiveImageIdx] = useState<number>(0);
-
   // 🏛️ DANH MỤC PHÂN LOẠI THEO DỊP: Gồm 9 mục đứng dạng khung chữ nhật bo góc rộng rãi
   const [occasions, setOccasions] = useState<OccasionItem[]>([
     { name: "All", label: "Tất cả đồ", img: "" },
@@ -147,32 +143,23 @@ export default function Home() {
     { icon: <Heart size={18} />, title: "Kết Nối Xưởng Upcycle", desc: "Gửi yêu cầu thiết kế và sửa đổi quần áo cũ trực tiếp đến các đối tác tái chế." }
   ];
 
-  // Reset index ảnh về 0 khi lật trang nhật ký khác
-  useEffect(() => {
-    setActiveImageIdx(0);
-  }, [activeDiaryIdx]);
-
   // 📡 TRUY XUẤT DỮ LIỆU SẢN PHẨM & ALBUM NHẬT KÝ ĐỘNG TỪ SUPABASE
   useEffect(() => {
     async function fetchRealMarketplaceData() {
       try {
         setProductsLoading(true);
-        let productsQuery = await supabase.from("products").select("*, ProductImage(*), Listing(*)");
-
-        if (productsQuery.error) {
-          productsQuery = await supabase.from("products").select("*, images(*), listings(*)");
-        }
-        if (productsQuery.error) {
-          productsQuery = await supabase.from("products").select("*");
-        }
-
-        const { data: pData, error: pError } = productsQuery;
+        
+        // Truy vấn rời từng bảng để ghép tự động, tránh lỗi khoá ngoại của Listing & ProductImage
+        const { data: pData, error: pError } = await supabase.from("products").select("*");
         if (pError) throw pError;
+
+        const { data: listingsData } = await supabase.from("Listing").select("*");
+        const { data: imagesData } = await supabase.from("ProductImage").select("*");
 
         if (pData) {
           const mappedProducts = pData.map((item: any) => {
-            const listingsArr = item.Listing || item.listings || []; 
-            const imagesArr = item.ProductImage || item.images || [];
+            const listingsArr = (listingsData || []).filter((l: any) => l.productId === item.id);
+            const imagesArr = (imagesData || []).filter((img: any) => img.productId === item.id);
 
             const rentListing = listingsArr.find((l: any) => l.listingType === "RENT" && l.status === "AVAILABLE");
             const sellListing = listingsArr.find((l: any) => (l.listingType === "SELL" || l.listingType === "SALE") && l.status === "AVAILABLE");
@@ -190,8 +177,8 @@ export default function Home() {
             const savedPercentage = Math.round(((storeRetailPrice - finalPrice) / storeRetailPrice) * 100);
 
             let currentImage = PLACEHOLDER_IMG;
-            if (imagesArr && imagesArr.length > 0) {
-              currentImage = imagesArr[0].url || imagesArr[0] || currentImage;
+            if (imagesArr.length > 0) {
+              currentImage = imagesArr[0].url || currentImage;
             } else if (item.image_url || item.imageUrl) {
               currentImage = item.image_url || item.imageUrl;
             }
@@ -275,10 +262,10 @@ export default function Home() {
 
         if (blogData && blogData.length > 0) {
           const productIds = blogData.map((b: any) => b.productId).filter(Boolean);
-          const { data: imagesData } = await supabase.from("ProductImage").select("*").in("productId", productIds);
+          const { data: blogImagesData } = await supabase.from("ProductImage").select("*").in("productId", productIds);
 
           const mappedBlogs = blogData.map((b: any) => {
-            const imgs = (imagesData || [])
+            const imgs = (blogImagesData || [])
               .filter((img: any) => img.productId === b.productId)
               .map((img: any) => img.url);
 
@@ -354,16 +341,6 @@ export default function Home() {
     setRandomPick(random);
   };
 
-  // Hàm chuyển ảnh tiếp theo trong album truyện lưu bút công cộng
-  const handleNextImage = (albumLength: number) => {
-    setActiveImageIdx((prev) => (prev + 1) % albumLength);
-  };
-
-  // Hàm lùi ảnh trước đó trong album truyện lưu bút công cộng
-  const handlePrevImage = (albumLength: number) => {
-    setActiveImageIdx((prev) => (prev - 1 + albumLength) % albumLength);
-  };
-
   return (
     <main className="min-h-screen overflow-x-hidden antialiased relative bg-[#FAF9F6] text-stone-900 selection:bg-[#183A2D] selection:text-white">
       
@@ -396,19 +373,28 @@ export default function Home() {
           height: 220px;
           left: -40%;
           border-radius: 999px;
-          background: linear-gradient(110deg, #ffffff, #faf7f3, #ffffff, #f4efe7, #ffffff);
-          filter: blur(12px);
-          opacity: .9;
-          box-shadow: 0 35px 70px rgba(0,0,0,.03), 0 -20px 40px rgba(255,255,255,.6);
+          background: linear-gradient(
+            110deg,
+            rgba(255,255,255,0.95),
+            rgba(212,175,140,0.45),
+            rgba(255,255,255,0.9),
+            rgba(107,163,122,0.28),
+            rgba(255,255,255,0.95)
+          );
+          filter: blur(14px);
+          opacity: 1;
+          box-shadow: 
+            0 35px 70px rgba(24,58,45,0.1),
+            0 -10px 30px rgba(255,255,255,0.9);
           animation: silkMove 12s ease-in-out infinite;
         }
         .silk-1 { top: 230px; transform: rotate(-4deg); }
-        .silk-2 { top: 310px; transform: rotate(3deg); opacity: .65; animation-delay: -3s; }
-        .silk-3 { top: 390px; transform: rotate(-2deg); opacity: .45; animation-delay: -6s; }
+        .silk-2 { top: 310px; transform: rotate(3deg); opacity: .8; animation-delay: -3s; }
+        .silk-3 { top: 390px; transform: rotate(-2deg); opacity: .6; animation-delay: -6s; }
 
         @keyframes silkMove {
           0%, 100% { transform: translateX(0) rotate(-4deg); }
-          50% { transform: translateX(40px) rotate(-3deg); }
+          50% { transform: translateX(80px) rotate(-3deg); }
         }
         @keyframes gradient-xy {
           0%, 100% { background-position: 0% 50%; }
@@ -689,106 +675,63 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 📔 PHÂN ĐOẠN 5: GÓC NHẬT KÝ LƯU BÚT — ĐÃ NÂNG CẤP HIGHLIGHT NỔI BẬT VÀ CHO PHÉP TUA XEM TRỌN BỘ ALBUM ẢNH UP LÊN */}
-      <section className="max-w-[1500px] mx-auto px-6 lg:px-12 py-12 space-y-12">
+      {/* 📔 PHÂN ĐOẠN 5: GÓC NHẬT KÝ LƯU BÚT — 3 BÀI DÀN HÀNG NGANG, HIỆU ỨNG HOÀI NIỆM */}
+      <section className="max-w-[1500px] mx-auto px-6 lg:px-12 py-14 space-y-10">
         <div className="text-center space-y-3">
-          {/* Dòng chữ highlight nổi bật đập ngay vào mắt ban giám khảo */}
-          <span className="text-[10px] font-bold uppercase tracking-widest bg-pink-100 text-pink-700 px-4 py-1.5 rounded-full inline-block shadow-2xs border border-pink-200/50">
+          <span className="text-[10px] font-bold uppercase tracking-widest bg-pink-100 text-pink-700 px-4 py-1.5 rounded-full inline-block shadow-sm border border-pink-200/50">
             📖 KHÔNG GIAN LƯU GIỮ KÝ ỨC PHỤC TRANG CHUNG
           </span>
           <h2 className="text-4xl font-normal text-stone-900 tracking-tight">cloop.<span className="text-pink-500 font-diary-quote">diary</span></h2>
-          <p className="text-stone-400 text-xs max-w-md mx-auto leading-relaxed">Nơi tụi mình gom nhặt những trang nhật ký kỷ niệm dạt dào cảm xúc và thổi hồn vòng đời mới cho phục trang.</p>
+          <p className="text-stone-400 text-xs max-w-md mx-auto leading-relaxed">
+            Mỗi món đồ đi qua tay một người là một câu chuyện chưa kể. Đọc lại, chạm vào ký ức, rồi mang chính món đồ ấy về nhà.
+          </p>
         </div>
 
         {recentBlogs.length > 0 ? (
-          <div className="flex flex-col items-center justify-center space-y-8">
-            
-            {/* Khung ảnh chồng Polaroid có chiều sâu nghệ thuật, tích hợp nút tua ảnh thực tế */}
-            <div className="w-full max-w-sm bg-white p-6 rounded-[2.5rem] border border-stone-200 shadow-xl space-y-6 text-left relative group">
-              
-              <div className="relative w-full aspect-[4/5] bg-stone-50 flex items-center justify-center select-none">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {recentBlogs.slice(0, 3).map((story, index) => (
+              <div
+                key={story.id}
+                className="bg-[#FCFAF5] p-4 rounded-2xl border border-stone-200 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative group"
+                style={{ transform: `rotate(${index % 2 === 0 ? "-1.5deg" : "1.5deg"})` }}
+              >
+                {/* Băng dán washi tape hoài niệm */}
+                <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-14 h-5 bg-pink-100/70 rotate-[-4deg] border-l border-r border-dashed border-pink-300/50 backdrop-blur-[1px] z-10" />
                 
-                {/* Ảnh phụ lót nghiêng nghệ thuật ở phía sau (Lấy vòng lặp xoay tua các blog) */}
-                {recentBlogs[(activeDiaryIdx + 1) % recentBlogs.length] && (
-                  <div className="absolute w-[80%] aspect-[3/4] bg-white p-2.5 rounded-xl border border-stone-200 shadow-md rotate-[-6deg] z-0 transition-all duration-500 opacity-50">
-                    <img src={recentBlogs[(activeDiaryIdx + 1) % recentBlogs.length].coverImage} className="w-full h-[85%] object-cover rounded-md" alt="" />
-                    <div className="absolute top-2 left-1/3 w-10 h-3 bg-pink-100/30 rotate-[-5deg] border-l border-r border-dashed border-pink-200/20" />
+                <div className="relative w-full aspect-[4/5] rounded-lg overflow-hidden border border-stone-200/60 sepia-[0.08] contrast-[1.02]">
+                  <img src={story.coverImage} alt={story.title} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent" />
+                  <div className="absolute bottom-2 left-2 text-[9px] font-mono font-bold text-white/90 tracking-wider">
+                    PAGE #0{index + 1} · {new Date(story.createdAt).toLocaleDateString("vi-VN")}
                   </div>
-                )}
-
-                {/* Khung ảnh chính Polaroid đè lên trên - TÍCH HỢP NÚT TUA XEM TRỌN BỘ ALBUM ẢNH CỦA NGƯỜI ĐĂNG */}
-                <div className="absolute w-[82%] aspect-[3/4] bg-white p-3 rounded-xl border border-stone-200 shadow-xl rotate-[3deg] z-10 transition-all duration-500 group/album">
-                  <div className="w-full h-[85%] relative rounded-md overflow-hidden bg-stone-100 shadow-inner">
-                    <img 
-                      src={recentBlogs[activeDiaryIdx].album[activeImageIdx] || recentBlogs[activeDiaryIdx].coverImage} 
-                      className="w-full h-full object-cover transition-all duration-300" 
-                      alt={recentBlogs[activeDiaryIdx].title} 
-                    />
-                    
-                    {/* Thanh điều hướng lướt xem ảnh con bên trong album post nếu bài viết có nhiều ảnh up lên */}
-                    {recentBlogs[activeDiaryIdx].album.length > 1 && (
-                      <div className="absolute inset-0 flex items-center justify-between px-2 opacity-0 group-hover/album:opacity-100 transition-opacity duration-300">
-                        <button 
-                          onClick={() => handlePrevImage(recentBlogs[activeDiaryIdx].album.length)}
-                          className="w-6 h-6 rounded-full bg-white/90 shadow-sm flex items-center justify-center text-stone-800 hover:bg-white active:scale-90 cursor-pointer"
-                        >
-                          <ChevronLeft size={12} strokeWidth={2.5} />
-                        </button>
-                        <button 
-                          onClick={() => handleNextImage(recentBlogs[activeDiaryIdx].album.length)}
-                          className="w-6 h-6 rounded-full bg-white/90 shadow-sm flex items-center justify-center text-stone-800 hover:bg-white active:scale-90 cursor-pointer"
-                        >
-                          <ChevronRight size={12} strokeWidth={2.5} />
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Chỉ số đếm số lượng ảnh con đang xem của album */}
-                    <div className="absolute bottom-2 right-2 bg-black/60 text-white font-mono text-[8px] font-bold px-1.5 py-0.5 rounded">
-                      {activeImageIdx + 1}/{recentBlogs[activeDiaryIdx].album.length}
-                    </div>
-                  </div>
-                  
-                  <div className="absolute -top-1.5 left-1/3 w-12 h-4 bg-pink-100/50 rotate-[-12deg] border-l border-r border-dashed border-pink-200/40 backdrop-blur-[1px]" />
                 </div>
 
-              </div>
-
-              {/* Chi tiết câu chữ hoài niệm sâu lắng kích thích cảm xúc tương tác */}
-              <div className="space-y-3 pt-2">
-                <div className="flex justify-between items-center text-[9px] font-mono font-bold text-stone-400 uppercase tracking-wider border-b border-stone-100 pb-1.5">
-                  <span>PAGE #0{activeDiaryIdx + 1}</span>
-                  <span>{new Date(recentBlogs[activeDiaryIdx].createdAt).toLocaleDateString("vi-VN")}</span>
+                <div className="pt-4 space-y-2 text-left">
+                  <h4 className="text-sm font-bold text-stone-900 leading-snug group-hover:text-pink-600 transition-colors">
+                    {story.title}
+                  </h4>
+                  <p className="text-xs text-stone-500 font-diary-quote leading-relaxed line-clamp-3 italic">
+                    "{story.content}"
+                  </p>
+                  <Link
+                    href={`/blog/${story.id}`}
+                    className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-[#183A2D] pt-2 hover:gap-2 transition-all"
+                  >
+                    Đọc trọn câu chuyện <ArrowRight size={11} />
+                  </Link>
                 </div>
-                <h4 className="text-sm font-bold text-stone-900 tracking-tight transition-colors group-hover:text-pink-600">{recentBlogs[activeDiaryIdx].title}</h4>
-                <p className="text-xs text-stone-600 bg-[#FCFAF5] p-4 rounded-xl border border-stone-200/50 font-diary-quote leading-relaxed text-justify shadow-inner min-h-[95px]">
-                  "{recentBlogs[activeDiaryIdx].content}"
-                </p>
               </div>
-
-            </div>
-
-            {/* Thanh điều khiển đổi câu chuyện nổi bật công khai */}
-            <div className="flex items-center gap-2 bg-stone-100 p-1.5 rounded-full border border-stone-200 z-10 relative">
-              {recentBlogs.map((story, index) => (
-                <button
-                  key={story.id}
-                  onClick={() => setActiveDiaryIdx(index)}
-                  className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                    activeDiaryIdx === index 
-                      ? "bg-stone-900 text-white shadow-sm" 
-                      : "text-stone-400 hover:text-stone-900"
-                  }`}
-                >
-                  Kỷ niệm 0{index + 1}
-                </button>
-              ))}
-            </div>
-
+            ))}
           </div>
         ) : (
           <p className="text-xs text-stone-400 text-center py-6">Cuốn sổ nhật ký hiện chưa dán bài ghim truyền cảm hứng nào.</p>
         )}
+
+        <div className="text-center">
+          <Link href="/blog" className="inline-block text-xs font-bold uppercase tracking-widest text-stone-500 hover:text-[#183A2D] border-b border-stone-300 hover:border-[#183A2D] pb-0.5 transition-all">
+            Xem toàn bộ cloop.diary →
+          </Link>
+        </div>
       </section>
 
       {/* 🌿 PHÂN ĐOẠN 6: ĐẶC QUYỀN THÀNH VIÊN */}
