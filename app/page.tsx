@@ -84,7 +84,7 @@ function CountUpNumber({ target, suffix = "", duration = 2000 }: { target: numbe
   return <span ref={ref} className="font-mono">{count.toLocaleString("vi-VN")}{suffix}</span>;
 }
 
-// 🎀 COMPONENT DẢI LỤA SATIN CSS CHẠY ẨN SAU NỀN HERO ĐÚNG THEO BẢN THIẾT KẾ CỦA TRANG[cite: 5]
+// 🎀 COMPONENT DẢI LỤA SATIN CSS CHẠY ẨN SAU NỀN HERO ĐÚNG THEO BẢN THIẾT KẾ CỦA TRANG
 function SilkBackground() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
@@ -132,7 +132,7 @@ export default function Home() {
     { tag: "05", icon: Leaf, title: "TÁI CHẾ", desc: "Gửi quần áo cũ hỏng cho xưởng Upcycle để thiết kế và tái sinh vòng đời.", btn: "Tìm hiểu ngay →", href: "#", isModal: true }
   ];
 
-  // 🌿 ĐẶC QUYỀN THÀNH VIÊN[cite: 5]
+  // 🌿 ĐẶC QUYỀN THÀNH VIÊN
   const privileges = [
     { icon: <Gift size={18} />, title: "Tặng Ngay 100 Green Points", desc: "Tích lũy điểm thưởng sau mỗi lần thuê hoặc tái chế đồ để đổi voucher ưu đãi." },
     { icon: <Sparkles size={18} />, title: "Trợ Lý Phối Đồ AI Stylist", desc: "Mở khóa tính năng AI tự động gợi ý phụ kiện, túi xách phù hợp với từng outfit." },
@@ -151,6 +151,10 @@ export default function Home() {
 
         const { data: listingsData } = await supabase.from("Listing").select("*");
         const { data: imagesData } = await supabase.from("ProductImage").select("*");
+
+        // 🟢 NÂNG CẤP XỬ LÝ: Lấy danh sách tất cả userId độc nhất từ danh sách sản phẩm để gọi bảng User một lần duy nhất
+        const productUserIds = [...new Set((pData || []).map((item: any) => item.userId).filter(Boolean))];
+        const { data: usersDataForProducts } = await supabase.from("User").select("id, name").in("id", productUserIds);
 
         if (pData) {
           const mappedRents: Product[] = [];
@@ -176,6 +180,9 @@ export default function Home() {
               currentImage = item.image_url || item.imageUrl;
             }
 
+            // 🟢 NÂNG CẤP XỬ LÝ: Đối chiếu tìm thông tin User để gán tên thật thay vì gán chữ "Ẩn danh" cố định
+            const matchedUser = (usersDataForProducts || []).find((u: any) => u.id === item.userId);
+
             const baseProduct = {
               id: item.id,
               image: currentImage, 
@@ -185,7 +192,7 @@ export default function Home() {
               condition: item.condition === "GOOD" ? "Mới 95%" : "Mới 98%",
               size: item.size || "M",
               brand: item.brand || "Thiết kế Việt",
-              ownerName: item.owner_name || item.ownerName || "Ẩn danh",
+              ownerName: matchedUser?.name || item.owner_name || item.ownerName || "Ẩn danh",
               userId: item.userId || "anonymous-user",
               storeRetailPrice,
               occasion: item.occasion || "Dạo phố"
@@ -229,7 +236,7 @@ export default function Home() {
           }));
         }
 
-        // 📔 NÂNG CẤP ĐỘNG: QUY QUÉT CHÉO BẢNG USER ĐỂ HIỂN THỊ DANH TÍNH THẬT TRÊN LƯU BÚT[cite: 5]
+        // 📔 NÂNG CẤP ĐỘNG: QUY QUÉT CHÉO BẢNG USER ĐỂ HIỂN THỊ DANH TÍNH THẬT TRÊN LƯU BÚT
         const { data: blogData } = await supabase
           .from("BlogPost")
           .select("*")
@@ -429,7 +436,6 @@ export default function Home() {
         <SilkBackground />
 
         <div className="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-12 relative z-10">
-          {/* Cải tiến: Kéo sát chữ và cụm Lookbook xích lại gần nhau qua gap-14 */}
           <div className="flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-14 relative text-left">
             
             <div className="w-full lg:w-[48%] space-y-6">
@@ -473,7 +479,6 @@ export default function Home() {
             </div>
 
           </div>
-          {/* ĐÃ LƯỢC BỎ: Khối thanh ESG lặp lại tại đây để nhường chỗ cho khối bọc chìm bám sổ Scrapbook bên dưới[cite: 5] */}
         </div>
       </section>
 
@@ -668,7 +673,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 📔 PHÂN ĐOẠN 5: GÓC NHẬT KÝ LƯU BÚT HOÀI NIỆM - KÝ ỨC TUẦN HOÀN DỮ LIỆU THẬT[cite: 5] */}
+      {/* 📔 PHÂN ĐOẠN 5: GÓC NHẬT KÝ LƯU BÚT HOÀI NIỆM - KÝ ỨC TUẦN HOÀN DỮ LIỆU THẬT */}
       <KyUcTuanHoanSection recentBlogs={recentBlogs} />
 
       {/* 🌿 PHÂN ĐOẠN 6: ĐẶC QUYỀN THÀNH VIÊN */}
