@@ -65,13 +65,13 @@ export default function ClosetProfilePage() {
   const [activeTab, setActiveTab] = useState<"ALL" | "RENT" | "SALE">("ALL");
 
   // ==========================================
-  // 🟢 STATE QUẢN LÝ POPUP CHỈNH SỬA HỒ SƠ
+  // 🟢 STATE QUẢN LÝ POPUPS (Chỉnh sửa & Góc Ký Ức)
   // ==========================================
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isMemoryModalOpen, setIsMemoryModalOpen] = useState(false); // Thêm state cho Sổ lưu bút mở rộng
   const [isSaving, setIsSaving] = useState(false);
   const [uploadingField, setUploadingField] = useState<"avatar" | "coverImage" | null>(null);
   
-  // Dữ liệu tạm thời trong form chỉnh sửa
   const [editForm, setEditForm] = useState({
     name: "",
     bio: "",
@@ -82,7 +82,6 @@ export default function ClosetProfilePage() {
     coverImage: "" as string | null,
   });
 
-  // Mở Popup và đổ dữ liệu hiện tại vào Form
   const handleOpenEditModal = () => {
     if (ownerInfo) {
       setEditForm({
@@ -98,7 +97,6 @@ export default function ClosetProfilePage() {
     }
   };
 
-  // Hàm Upload Ảnh lên Cloudinary
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: "avatar" | "coverImage") => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -106,8 +104,6 @@ export default function ClosetProfilePage() {
     setUploadingField(field);
     const formData = new FormData();
     formData.append("file", file);
-    // BẠN CẦN TẠO MỘT UPLOAD PRESET DẠNG "UNSIGNED" TRÊN CLOUDINARY ĐỂ CHẠY CLIENT-SIDE
-    // Tạm thời đặt tên preset là "cloop_preset", nếu bạn đặt tên khác thì sửa ở đây nhé!
     formData.append("upload_preset", "cloop_preset"); 
 
     try {
@@ -128,7 +124,6 @@ export default function ClosetProfilePage() {
     }
   };
 
-  // Hàm Lưu dữ liệu lên Supabase
   const handleSaveProfile = async () => {
     setIsSaving(true);
     try {
@@ -147,7 +142,6 @@ export default function ClosetProfilePage() {
 
       if (error) throw error;
 
-      // Cập nhật lại UI ngay lập tức
       setOwnerInfo(prev => prev ? { ...prev, ...editForm } : null);
       setIsEditModalOpen(false);
       alert("🎉 Cập nhật hồ sơ thành công!");
@@ -157,7 +151,6 @@ export default function ClosetProfilePage() {
       setIsSaving(false);
     }
   };
-  // ==========================================
 
   useEffect(() => {
     if (!userId) return;
@@ -247,8 +240,8 @@ export default function ClosetProfilePage() {
           setAllProducts(formatted);
         }
 
-        // 4. Fetch Blog (Ký ức)
-        const { data: blogData } = await supabase.from("BlogPost").select("*").eq("userId", userId).eq("status", "PUBLIC").order("createdAt", { ascending: false }).limit(3);
+        // 4. Fetch Blog (Ký ức) -> 🟢 Đã gỡ bỏ giới hạn .limit(3) để tải toàn bộ album
+        const { data: blogData } = await supabase.from("BlogPost").select("*").eq("userId", userId).eq("status", "PUBLIC").order("createdAt", { ascending: false });
         
         if (blogData && blogData.length > 0) {
            const mappedMemories = blogData.map((b:any) => {
@@ -266,6 +259,7 @@ export default function ClosetProfilePage() {
                 { id: '1', title: "Chuyến đi cùng chiếc váy hoa nhí đầu tiên", image: "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?q=80&w=400", date: "05.2025" },
                 { id: '2', title: "Chiếc váy lụa mình đã mặc trong buổi hoàng hôn", image: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=400", date: "04.2025" },
                 { id: '3', title: "Nhận chiếc váy vintage mình yêu thích nhất", image: "https://images.unsplash.com/photo-1485968579580-b6d095142e6e?q=80&w=400", date: "03.2025" },
+                { id: '4', title: "Kỷ niệm đáng nhớ ngày khai trương CLOOP", image: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?q=80&w=400", date: "02.2025" }
             ]);
         }
 
@@ -322,6 +316,10 @@ export default function ClosetProfilePage() {
             transition: transform 0.3s ease;
         }
         .polaroid:hover { transform: scale(1.05) rotate(0deg) !important; z-index: 30; }
+        
+        /* 🟢 Ẩn thanh cuộn cho khu vực Ký Ức mượt mà hơn */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
       <div className="absolute top-0 left-0 w-64 h-96 opacity-40 pointer-events-none z-0" style={{ background: "radial-gradient(circle, rgba(107,163,122,0.15) 0%, rgba(245,242,235,0) 70%)" }} />
@@ -378,7 +376,6 @@ export default function ClosetProfilePage() {
                 </p>
 
                 <div className="flex items-center gap-3 pt-2">
-                    {/* 🟢 NÚT MỞ BẢNG CHỈNH SỬA DÀNH CHO CHÍNH CHỦ */}
                     {isMe ? (
                         <button onClick={handleOpenEditModal} className="bg-[#183A2D] hover:bg-[#234F3E] text-white text-xs font-bold px-6 py-3.5 rounded-full transition-all flex items-center gap-2 shadow-sm cursor-pointer">
                             <Settings size={14} /> CHỈNH SỬA HỒ SƠ
@@ -414,7 +411,7 @@ export default function ClosetProfilePage() {
             </div>
         </div>
 
-        {/* CÁC PHẦN DƯỚI (STATS, KÝ ỨC, TỦ ĐỒ) GIỮ NGUYÊN NHƯ BẢN TRƯỚC */}
+        {/* 📊 THANH CHỈ SỐ STATS */}
         <div className="bg-white border border-[#EBE6D8] rounded-[2rem] p-4 md:p-6 shadow-3xs">
             <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-stone-100">
                 <div className="flex flex-col items-center text-center p-2 group">
@@ -457,16 +454,28 @@ export default function ClosetProfilePage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="bg-[#FCFBFA] border border-[#EBE6D8] rounded-[2rem] p-6 lg:p-8 shadow-sm relative">
-                <div className="flex items-center gap-2 mb-8">
-                    <Leaf size={18} className="text-[#183A2D]" />
-                    <div>
-                        <h2 className="text-lg font-bold text-[#183A2D] font-heading tracking-wide uppercase">Góc Ký Ức</h2>
-                        <p className="text-[10px] text-stone-400 font-medium">Những khoảnh khắc đẹp gắn với CLOOP</p>
+                <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-2">
+                        <Leaf size={18} className="text-[#183A2D]" />
+                        <div>
+                            <h2 className="text-lg font-bold text-[#183A2D] font-heading tracking-wide uppercase">Góc Ký Ức</h2>
+                            <p className="text-[10px] text-stone-400 font-medium">Những khoảnh khắc đẹp gắn với CLOOP</p>
+                        </div>
                     </div>
+                    {/* 🟢 NÂNG CẤP: Nút mở Pop-up hiển thị TẤT CẢ ký ức */}
+                    {memories.length > 3 && (
+                        <button 
+                            onClick={() => setIsMemoryModalOpen(true)}
+                            className="text-xs font-semibold text-stone-500 hover:text-[#183A2D] cursor-pointer"
+                        >
+                            Xem tất cả →
+                        </button>
+                    )}
                 </div>
 
                 <div className="flex gap-4 overflow-x-auto no-scrollbar pb-6 pt-2 px-2 -mx-2">
-                    {memories.map((mem, idx) => (
+                    {/* 🟢 NÂNG CẤP: Dùng .slice(0, 3) để CỐ ĐỊNH CHỈ HIỆN 3 ẢNH trên layout chính */}
+                    {memories.slice(0, 3).map((mem, idx) => (
                         <div key={mem.id} className={`polaroid w-36 shrink-0 relative ${idx % 2 === 0 ? '-rotate-2' : 'rotate-3'} mt-${idx % 2 === 0 ? '0' : '4'}`}>
                             <div className="tape w-8 h-3 -top-1.5 left-1/2 -translate-x-1/2" />
                             <div className="w-full aspect-square bg-stone-100 overflow-hidden relative mb-3">
@@ -496,7 +505,16 @@ export default function ClosetProfilePage() {
                             <p className="text-[10px] text-stone-400 font-medium">Phong cách của {ownerInfo?.name}</p>
                         </div>
                     </div>
-                    <button onClick={() => setActiveTab("ALL")} className="text-xs font-semibold text-stone-500 hover:text-[#183A2D] cursor-pointer">Xem tất cả →</button>
+                    {/* 🟢 NÂNG CẤP: Nút cuộn trang mượt mà xuống khu vực "Tủ Đồ" */}
+                    <button 
+                        onClick={() => {
+                            document.getElementById("wardrobe-section")?.scrollIntoView({ behavior: "smooth" });
+                            setActiveTab("ALL");
+                        }} 
+                        className="text-xs font-semibold text-stone-500 hover:text-[#183A2D] cursor-pointer"
+                    >
+                        Xem tất cả →
+                    </button>
                 </div>
 
                 <div className="grid grid-cols-3 grid-rows-2 gap-3 h-[220px]">
@@ -516,7 +534,8 @@ export default function ClosetProfilePage() {
             </div>
         </div>
 
-        <div className="bg-[#FCFBFA] border border-[#EBE6D8] rounded-[2rem] p-6 lg:p-8 shadow-sm">
+        {/* 🟢 NÂNG CẤP: Gắn ID và chỉnh khoảng cách cuộn (scroll-mt-24) để không bị che bởi Header */}
+        <div id="wardrobe-section" className="bg-[#FCFBFA] border border-[#EBE6D8] rounded-[2rem] p-6 lg:p-8 shadow-sm scroll-mt-24">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8 border-b border-[#EBE6D8] pb-6">
                 <div className="flex items-center gap-2">
                     <Leaf size={20} className="text-[#183A2D]" />
@@ -585,6 +604,52 @@ export default function ClosetProfilePage() {
       </div>
 
       {/* ========================================================
+          🟢 MODAL XEM TẤT CẢ KÝ ỨC (Cuốn Sổ Lưu Bút Mở Rộng)
+          ======================================================== */}
+      <AnimatePresence>
+        {isMemoryModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-[#FCFBFA] w-full max-w-4xl max-h-[85vh] overflow-y-auto rounded-[2.5rem] shadow-2xl border border-stone-200 no-scrollbar"
+              style={{ backgroundImage: `url(${PAPER_BG})` }}
+            >
+              <div className="sticky top-0 bg-[#FCFBFA]/90 backdrop-blur-md px-6 md:px-8 py-4 md:py-5 border-b border-stone-200/60 flex items-center justify-between z-10">
+                <div className="flex items-center gap-3">
+                  <BookOpen size={24} className="text-[#183A2D]" />
+                  <div>
+                    <h2 className="text-xl font-bold text-[#183A2D] font-heading">Cuốn Sổ Lưu Bút</h2>
+                    <p className="text-[10px] text-stone-400 uppercase tracking-widest mt-0.5">Tất cả kỷ niệm của {ownerInfo?.name}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setIsMemoryModalOpen(false)}
+                  className="w-9 h-9 rounded-full bg-stone-100 flex items-center justify-center text-stone-500 hover:bg-stone-200 transition-colors cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="p-6 md:p-8 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6 md:gap-8">
+                {memories.map((mem, idx) => (
+                  <div key={mem.id} className={`polaroid w-full relative border border-stone-200/30 ${idx % 2 === 0 ? '-rotate-2' : 'rotate-2'} hover:rotate-0 transition-transform duration-300`}>
+                    <div className="tape w-10 h-3.5 -top-2 left-1/2 -translate-x-1/2" />
+                    <div className="w-full aspect-square bg-stone-50 overflow-hidden relative mb-3 rounded-xs">
+                      <Image src={mem.image} alt={mem.title} fill unoptimized className="object-cover" />
+                    </div>
+                    <h4 className="text-[11px] font-bold text-stone-800 text-center font-heading leading-tight line-clamp-2 min-h-[32px] mb-1 px-1">{mem.title}</h4>
+                    <p className="text-[9px] text-stone-400 text-center font-mono">{mem.date}</p>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ========================================================
           🟢 MODAL (POPUP) CHỈNH SỬA HỒ SƠ 
           ======================================================== */}
       <AnimatePresence>
@@ -596,7 +661,6 @@ export default function ClosetProfilePage() {
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               className="bg-[#FCFBFA] w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-[2rem] shadow-2xl border border-stone-200"
             >
-              {/* Header Popup */}
               <div className="sticky top-0 bg-[#FCFBFA]/90 backdrop-blur-md px-6 py-4 border-b border-stone-200 flex items-center justify-between z-10">
                 <div>
                   <h2 className="text-lg font-bold text-[#183A2D] font-heading">Chỉnh sửa hồ sơ Scrapbook</h2>
@@ -612,14 +676,12 @@ export default function ClosetProfilePage() {
 
               <div className="p-6 space-y-6">
                 
-                {/* Khu vực Up Ảnh (Avatar & Cover) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  {/* Up Ảnh Bìa */}
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-stone-700">Ảnh Bìa (Cover)</label>
                     <div className="relative w-full h-32 bg-stone-100 rounded-2xl overflow-hidden border border-stone-200 group">
                       <Image src={editForm.coverImage || DEFAULT_VINTAGE_COVER} alt="Cover Preview" fill className="object-cover" />
-                      <label className="absolute inset-0 bg-stone-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer cursor-pointer">
+                      <label className="absolute inset-0 bg-stone-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer">
                         {uploadingField === "coverImage" ? <Loader2 className="animate-spin" size={24} /> : <Camera size={24} />}
                         <span className="text-[10px] mt-1 font-medium">Thay đổi</span>
                         <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, "coverImage")} disabled={!!uploadingField} />
@@ -627,7 +689,6 @@ export default function ClosetProfilePage() {
                     </div>
                   </div>
 
-                  {/* Up Avatar */}
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-stone-700">Ảnh Đại Diện (Avatar)</label>
                     <div className="relative w-24 h-24 bg-stone-100 rounded-full overflow-hidden border-4 border-white shadow-sm group mx-auto sm:mx-0">
@@ -646,7 +707,6 @@ export default function ClosetProfilePage() {
                   </div>
                 </div>
 
-                {/* Các input Text */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Tên hiển thị</label>
@@ -702,7 +762,6 @@ export default function ClosetProfilePage() {
 
               </div>
 
-              {/* Footer Modal */}
               <div className="sticky bottom-0 bg-[#FCFBFA]/90 backdrop-blur-md px-6 py-4 border-t border-stone-200 flex justify-end gap-3 rounded-b-[2rem]">
                 <button 
                   onClick={() => setIsEditModalOpen(false)}
