@@ -5,14 +5,19 @@ import { useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@supabase/supabase-js";
-import { MapPin, Star, ShieldCheck, ArrowLeft, Shirt } from "lucide-react";
+import { 
+  MapPin, Star, ShieldCheck, ArrowLeft, Shirt, Settings, 
+  Calendar, ShoppingBag, Leaf, Heart, Share2, Plus, BookOpen
+} from "lucide-react";
 
-// Khởi tạo kết nối Supabase đồng bộ với hệ thống trang chủ
+// Kết nối Supabase
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "temporary-placeholder-key";
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const PLACEHOLDER_IMG = "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600";
+const VINTAGE_COVER = "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?q=80&w=800"; // Ảnh bìa vintage mặc định
+const PAPER_BG = "https://www.transparenttextures.com/patterns/cream-paper.png"; // Texture giấy kem
 
 interface ClosetProduct {
   id: string;
@@ -22,12 +27,21 @@ interface ClosetProduct {
   priceText: string;
   location: string;
   size: string;
+  createdAt: string;
 }
 
 interface UserProfile {
   id: string;
   name: string;
   avatar: string | null;
+  joinDate: string;
+}
+
+interface Memory {
+  id: string;
+  title: string;
+  image: string;
+  date: string;
 }
 
 export default function ClosetProfilePage() {
@@ -35,9 +49,13 @@ export default function ClosetProfilePage() {
   const userId = params?.userId as string;
 
   const [ownerInfo, setOwnerInfo] = useState<UserProfile | null>(null);
-  const [rentalProducts, setRentalProducts] = useState<ClosetProduct[]>([]);
-  const [saleProducts, setSaleProducts] = useState<ClosetProduct[]>([]);
+  const [allProducts, setAllProducts] = useState<ClosetProduct[]>([]);
+  const [memories, setMemories] = useState<Memory[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [isMe, setIsMe] = useState<boolean>(false);
+  
+  // Trạng thái Tab tủ đồ
+  const [activeTab, setActiveTab] = useState<"ALL" | "RENT" | "SALE">("ALL");
 
   useEffect(() => {
     if (!userId) return;
@@ -46,47 +64,42 @@ export default function ClosetProfilePage() {
       try {
         setLoading(true);
 
-        // 1. Quy quét thông tin định danh của chủ tủ đồ (Hỗ trợ đối soát cả bảng hoa lẫn bảng thường)
-        const { data: userData, error: userError } = await supabase
-          .from("User")
-          .select("id, name, avatar")
-          .eq("id", userId)
-          .maybeSingle();
-
-        if (!userError && userData) {
-          setOwnerInfo({
-            id: userData.id,
-            name: userData.name || "Thành viên CLOOP",
-            avatar: userData.avatar || null,
-          });
-        } else {
-          const { data: fallbackUser } = await supabase
-            .from("users")
-            .select("id, name, avatar")
-            .eq("id", userId)
-            .maybeSingle();
-          if (fallbackUser) {
-            setOwnerInfo({
-              id: fallbackUser.id,
-              name: fallbackUser.name || "Thành viên CLOOP",
-              avatar: fallbackUser.avatar || null,
-            });
-          }
+        // 1. Check quyền chính chủ
+        let loggedInId = null;
+        if (typeof window !== "undefined") {
+          loggedInId = localStorage.getItem("cloop_user_id");
+        }
+        if (loggedInId === userId) setIsMe(true);
+        else {
+          try {
+            const { data: authData } = await supabase.auth.getUser();
+            if (authData?.user?.id === userId) setIsMe(true);
+          } catch (e) {}
         }
 
-        // 2. Tải toàn bộ danh sách sản phẩm thuộc sở hữu của chủ tủ đồ này
-        const { data: productsData, error: productsError } = await supabase
-          .from("products")
-          .select("*")
-          .eq("userId", userId)
-          .order("createdAt", { ascending: false });
+        // 2. Fetch Thông tin User
+        const { data: userData } = await supabase.from("User").select("id, name, avatar, created_at").eq("id", userId).maybeSingle();
+        let finalUser = userData;
+        if (!finalUser) {
+          const { data: fallbackUser } = await supabase.from("users").select("id, name, avatar, created_at").eq("id", userId).maybeSingle();
+          finalUser = fallbackUser;
+        }
 
-        if (productsError) throw productsError;
+        const joinDateObj = finalUser?.created_at ? new Date(finalUser.created_at) : new Date();
+        const joinDateStr = `${String(joinDateObj.getMonth() + 1).padStart(2, '0')}/${joinDateObj.getFullYear()}`;
+
+        setOwnerInfo({
+          id: finalUser?.id || userId,
+          name: finalUser?.name || "Thành viên CLOOP",
+          avatar: finalUser?.avatar || null,
+          joinDate: joinDateStr
+        });
+
+        // 3. Fetch Sản phẩm của User
+        const { data: productsData } = await supabase.from("products").select("*").eq("userId", userId).order("createdAt", { ascending: false });
 
         if (productsData && productsData.length > 0) {
           const productIds = productsData.map((p) => p.id);
-
-          // Tải danh sách Listing niêm yết giá và ProductImage đi kèm sản phẩm
           const { data: listingsData } = await supabase.from("Listing").select("*").in("productId", productIds);
           const { data: imagesData } = await supabase.from("ProductImage").select("*").in("productId", productIds);
 
@@ -103,46 +116,44 @@ export default function ClosetProfilePage() {
             const sellPrice = sellListing ? Number(sellListing.basePrice) : 0;
             const effectiveRentPrice = rentPrice || item.rental_price;
 
-            let image = PLACEHOLDER_IMG;
-            if (imagesArr.length > 0) {
-              image = imagesArr[0].url || image;
-            } else if (item.image_url || item.imageUrl) {
-              image = item.image_url || item.imageUrl;
-            }
+            let image = imagesArr.length > 0 ? imagesArr[0].url : (item.image_url || item.imageUrl || PLACEHOLDER_IMG);
 
-            // Gán thông tin phân loại luồng Đồ Cho Thuê
             if (effectiveRentPrice > 0) {
-              formatted.push({
-                id: item.id,
-                title: item.title || item.name || "Trang phục CLOOP",
-                image,
-                type: "Thuê",
-                priceText: `${effectiveRentPrice.toLocaleString()}đ / ngày`,
-                location: item.province || "Nghệ An",
-                size: item.size || "M",
-              });
+              formatted.push({ id: item.id + '-rent', title: item.title || item.name, image, type: "Thuê", priceText: `${effectiveRentPrice.toLocaleString()}đ / ngày`, location: item.province || "Nghệ An", size: item.size || "M", createdAt: item.createdAt });
             }
-
-            // Gán thông tin phân loại luồng Đồ Thanh Lý / Mua Đứt
             if (sellPrice > 0) {
-              formatted.push({
-                id: item.id,
-                title: item.title || item.name || "Trang phục CLOOP",
-                image,
-                type: "Mua sắm",
-                priceText: `${sellPrice.toLocaleString()}đ`,
-                location: item.province || "Nghệ An",
-                size: item.size || "M",
-              });
+              formatted.push({ id: item.id + '-sale', title: item.title || item.name, image, type: "Mua sắm", priceText: `${sellPrice.toLocaleString()}đ`, location: item.province || "Nghệ An", size: item.size || "M", createdAt: item.createdAt });
             }
           });
 
-          // Phân tách mảng dữ liệu gán riêng biệt vào 2 State độc lập
-          setRentalProducts(formatted.filter((p) => p.type === "Thuê"));
-          setSaleProducts(formatted.filter((p) => p.type === "Mua sắm"));
+          setAllProducts(formatted);
         }
+
+        // 4. Fetch Blog (Ký ức)
+        const { data: blogData } = await supabase.from("BlogPost").select("*").eq("userId", userId).eq("status", "PUBLIC").order("createdAt", { ascending: false }).limit(3);
+        
+        if (blogData && blogData.length > 0) {
+           const mappedMemories = blogData.map((b:any) => {
+               const dateObj = new Date(b.createdAt);
+               return {
+                   id: b.id,
+                   title: b.title,
+                   image: b.coverImage || b.cover_image || PLACEHOLDER_IMG,
+                   date: `${String(dateObj.getMonth() + 1).padStart(2, '0')}.${dateObj.getFullYear()}`
+               }
+           });
+           setMemories(mappedMemories);
+        } else {
+            // Mock data nếu chưa có blog để giữ UI đẹp
+            setMemories([
+                { id: '1', title: "Chuyến đi cùng chiếc váy hoa nhí đầu tiên", image: "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?q=80&w=400", date: "05.2025" },
+                { id: '2', title: "Chiếc váy lụa mình đã mặc trong buổi hoàng hôn", image: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=400", date: "04.2025" },
+                { id: '3', title: "Nhận chiếc váy vintage mình yêu thích nhất", image: "https://images.unsplash.com/photo-1485968579580-b6d095142e6e?q=80&w=400", date: "03.2025" },
+            ]);
+        }
+
       } catch (err) {
-        console.error("❌ Lỗi vận hành đồng bộ dữ liệu chi tiết tủ đồ cá nhân:", err);
+        console.error("❌ Lỗi tải tủ đồ:", err);
       } finally {
         setLoading(false);
       }
@@ -151,143 +162,331 @@ export default function ClosetProfilePage() {
     fetchClosetData();
   }, [userId]);
 
+  // Bộ lọc sản phẩm theo Tab
+  const displayProducts = allProducts.filter(p => {
+      if (activeTab === "ALL") return true;
+      if (activeTab === "RENT") return p.type === "Thuê";
+      if (activeTab === "SALE") return p.type === "Mua sắm";
+      return true;
+  });
+
+  // Giả lập tính toán ESG
+  const co2Saved = allProducts.length * 6; // Ví dụ: mỗi món 6kg
+  const totalRentals = 18; // Mock data lượt thuê
+
   if (loading) {
     return (
-      <div className="flex flex-col justify-center items-center min-h-screen bg-[#FAF9F6] space-y-3">
+      <div className="flex flex-col justify-center items-center min-h-screen bg-[#F7F5F0] space-y-3">
         <div className="w-5 h-5 border border-emerald-800/40 border-t-emerald-900 rounded-full animate-spin" />
-        <p className="text-[10px] font-medium text-emerald-900 uppercase tracking-widest">Đang tải cấu trúc tủ đồ...</p>
+        <p className="text-[10px] font-medium text-emerald-900 uppercase tracking-widest">Đang tải sổ lưu bút...</p>
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[#FAF9F6] text-stone-900 antialiased pb-20 pt-8">
-      {/* Khóa chặt font chữ đồng bộ với trang chủ dự án */}
+    <main 
+        className="min-h-screen text-stone-800 antialiased pb-20 pt-6 relative overflow-hidden"
+        style={{ backgroundColor: "#F5F2EB", backgroundImage: `url(${PAPER_BG})` }}
+    >
+      {/* Khóa font & CSS Custom cho hiệu ứng Băng dính, Polaroid */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=Caveat:ital@1&display=swap');
         body, p, span, div { font-family: 'Inter', sans-serif !important; }
         h1, h2, h3, .font-heading { font-family: 'Cormorant Garamond', serif !important; }
+        .font-handwriting { font-family: 'Caveat', cursive !important; }
+        
+        .tape {
+            position: absolute;
+            background-color: rgba(255, 235, 150, 0.6);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            backdrop-filter: blur(2px);
+            z-index: 20;
+        }
+        .polaroid {
+            background: white;
+            padding: 8px 8px 24px 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.03);
+            transition: transform 0.3s ease;
+        }
+        .polaroid:hover { transform: scale(1.05) rotate(0deg) !important; z-index: 30; }
       `}</style>
 
-      <div className="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-12 space-y-12">
+      {/* Hoa lá trang trí góc màn hình (Absolute Decor) */}
+      <div className="absolute top-0 left-0 w-64 h-96 opacity-40 pointer-events-none z-0" style={{ background: "radial-gradient(circle, rgba(107,163,122,0.15) 0%, rgba(245,242,235,0) 70%)" }} />
+      <div className="absolute bottom-0 right-0 w-[500px] h-[500px] opacity-30 pointer-events-none z-0" style={{ background: "radial-gradient(circle, rgba(212,175,140,0.15) 0%, rgba(245,242,235,0) 70%)" }} />
+
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 relative z-10 space-y-8">
         
-        {/* NÚT QUAY LẠI TRANG CHỦ & KHỐI HỒ SƠ ĐẦU TRANG */}
-        <div className="space-y-4">
-          <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-bold text-stone-400 hover:text-[#183A2D] transition-colors uppercase tracking-wider text-left">
-            <ArrowLeft size={14} /> Quay lại trang chủ
-          </Link>
+        {/* Nút Back */}
+        <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-bold text-stone-400 hover:text-[#183A2D] transition-colors uppercase tracking-wider">
+          <ArrowLeft size={14} /> Quay lại trang chủ
+        </Link>
 
-          <div className="bg-white border border-stone-200/60 rounded-[2.5rem] p-6 md:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-2xs text-left">
-            <div className="flex flex-col sm:flex-row items-center gap-5 w-full sm:w-auto">
-              {/* Khung viền Avatar dải màu chuyển động chuẩn CLOOP Network */}
-              <div className="w-20 h-20 rounded-full p-[2px] bg-gradient-to-tr from-emerald-500 via-amber-300 to-pink-500 shrink-0 shadow-xs">
-                <div className="w-full h-full rounded-full border-2 border-white bg-stone-100 overflow-hidden flex items-center justify-center">
-                  {ownerInfo?.avatar ? (
-                    <img src={ownerInfo.avatar} className="w-full h-full object-cover" alt={ownerInfo.name} />
-                  ) : (
-                    <span className="text-stone-400 font-bold text-xl">{(ownerInfo?.name || "C").charAt(0).toUpperCase()}</span>
-                  )}
-                </div>
-              </div>
+        {/* 🌿 HERO SECTION: BẢNG HỒ SƠ CHÍNH */}
+        <div className="relative bg-[#FCFBFA] border border-[#EBE6D8] rounded-[2.5rem] p-6 shadow-sm flex flex-col md:flex-row items-center gap-8 md:gap-12">
+            {/* Băng dính góc */}
+            <div className="tape w-24 h-6 -top-2 left-10 -rotate-3" />
+            <div className="tape w-16 h-5 -bottom-2 right-20 rotate-2" />
 
-              <div className="space-y-1.5 text-center sm:text-left">
-                <h1 className="text-2xl sm:text-3xl font-bold text-stone-900 font-heading">@{ownerInfo?.name || "Thành viên CLOOP"}</h1>
-                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
-                  <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full">
-                    <ShieldCheck size={12} /> {rentalProducts.length + saleProducts.length} sản phẩm đang công khai
-                  </span>
-                  <span className="flex items-center gap-0.5 text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200/30 px-2.5 py-1 rounded-full">
-                    ★ 5.0 Uy tín
-                  </span>
-                </div>
-              </div>
+            {/* Cột 1: Ảnh Cover dọc */}
+            <div className="w-full md:w-[280px] h-[360px] rounded-3xl overflow-hidden relative shrink-0 shadow-inner border border-stone-100">
+                <Image src={VINTAGE_COVER} alt="Cover" fill unoptimized className="object-cover" />
             </div>
 
-            <div className="hidden md:flex items-center gap-2 border border-stone-100 bg-stone-50 px-4 py-3 rounded-2xl text-left">
-              <Shirt size={14} className="text-stone-400" />
-              <p className="text-[11px] text-stone-400 max-w-xs leading-tight">
-                Bằng việc sử dụng thời trang tuần hoàn, chủ gian hàng này đã góp phần giảm thiểu lượng CO2 phát thải ra môi trường.
-              </p>
+            {/* Cột 2: Thông tin User */}
+            <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left space-y-4">
+                <div className="flex items-center gap-2">
+                    <span className="font-handwriting text-2xl text-stone-500 -rotate-6">hello</span>
+                    <Heart size={16} className="text-stone-400 -rotate-12" />
+                </div>
+                
+                <div className="relative">
+                    <div className="w-24 h-24 rounded-full p-1 bg-[#F5F2EB] shadow-sm border border-[#EBE6D8]">
+                        <div className="w-full h-full rounded-full overflow-hidden bg-stone-100 flex items-center justify-center border border-white">
+                            {ownerInfo?.avatar ? (
+                                <img src={ownerInfo.avatar} className="w-full h-full object-cover" alt={ownerInfo.name} />
+                            ) : (
+                                <span className="text-[#183A2D] font-bold text-3xl font-heading">{(ownerInfo?.name || "C").charAt(0).toUpperCase()}</span>
+                            )}
+                        </div>
+                    </div>
+                    <div className="absolute bottom-0 right-0 bg-emerald-500 text-white p-1 rounded-full border-2 border-white shadow-sm">
+                        <ShieldCheck size={12} />
+                    </div>
+                </div>
+
+                <div className="space-y-1">
+                    <h1 className="text-4xl font-bold text-[#183A2D] font-heading">{ownerInfo?.name || "Thành viên CLOOP"}</h1>
+                    <p className="font-heading text-lg text-stone-600 italic">"Lưu giữ ký ức qua từng chiếc váy."</p>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-xs font-medium text-stone-500">
+                    <span className="flex items-center gap-1.5"><MapPin size={14} className="text-stone-400" /> Hà Nội, Việt Nam</span>
+                    <span className="flex items-center gap-1.5"><Calendar size={14} className="text-stone-400" /> Thành viên từ {ownerInfo?.joinDate}</span>
+                </div>
+
+                <p className="text-[13px] text-stone-500 leading-relaxed max-w-md mx-auto md:mx-0">
+                    Mình là một người yêu thời trang vintage và những chuyến đi. Mình tin rằng mỗi món đồ đều có một câu chuyện đẹp để kể lại.
+                </p>
+
+                <div className="flex items-center gap-3 pt-2">
+                    {isMe ? (
+                        <Link href="/my-closet" className="bg-[#183A2D] hover:bg-[#234F3E] text-white text-xs font-bold px-6 py-3.5 rounded-full transition-all flex items-center gap-2 shadow-sm">
+                            <Settings size={14} /> CHỈNH SỬA HỒ SƠ
+                        </Link>
+                    ) : (
+                        <button className="bg-[#183A2D] hover:bg-[#234F3E] text-white text-xs font-bold px-6 py-3.5 rounded-full transition-all flex items-center gap-2 shadow-sm">
+                            <Shirt size={14} /> THUÊ ĐỒ CỦA MÌNH
+                        </button>
+                    )}
+                    <button className="w-11 h-11 rounded-full border border-stone-200 flex items-center justify-center text-stone-500 hover:bg-stone-50 transition-colors bg-white shadow-3xs">
+                        <Share2 size={16} />
+                    </button>
+                </div>
             </div>
-          </div>
+
+            {/* Cột 3: Sticky Note Ký ức */}
+            <div className="hidden lg:block w-[260px] shrink-0 relative mr-4">
+                {/* Dấu mộc Cloop */}
+                <div className="absolute -top-12 right-0 w-24 h-24 border border-stone-300 rounded-full flex items-center justify-center opacity-40 rotate-12 pointer-events-none">
+                    <div className="text-center">
+                        <Leaf size={16} className="mx-auto mb-0.5 text-stone-400" />
+                        <span className="text-[8px] font-bold tracking-widest text-stone-400 block uppercase">CLOOP</span>
+                        <span className="text-[6px] tracking-widest text-stone-400 font-mono">FASHION IN A LOOP</span>
+                    </div>
+                </div>
+
+                {/* Giấy Note */}
+                <div className="bg-[#FFFDF4] p-5 shadow-sm border border-[#EBE6D8] rotate-2 transform hover:rotate-0 transition-transform duration-300 relative">
+                    <div className="tape w-12 h-4 -top-2 left-1/2 -translate-x-1/2 -rotate-3" />
+                    <h3 className="font-handwriting text-xl text-stone-700 mb-2">Today's Memory</h3>
+                    <p className="text-xs text-stone-600 leading-relaxed italic font-serif">
+                        Hôm nay mình vừa cho thuê chiếc váy đầu tiên trên CLOOP. Một khởi đầu thật đáng nhớ! ✨
+                    </p>
+                    <Heart size={14} className="text-amber-400 absolute bottom-3 right-4 rotate-12" />
+                </div>
+            </div>
         </div>
 
-        <div className="space-y-14">
-          
-          {/* KHỐI 1: ĐỒ CHO THUÊ TUẦN HOÀN */}
-          <div className="space-y-5 text-left">
-            <div className="border-b border-stone-200/60 pb-3 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-600 inline-block animate-pulse" />
-              <h2 className="text-xl font-bold text-[#183A2D] font-heading">Tủ đồ cho thuê tuần hoàn</h2>
+        {/* 📊 THANH CHỈ SỐ STATS */}
+        <div className="bg-white border border-[#EBE6D8] rounded-[2rem] p-4 md:p-6 shadow-3xs">
+            <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-stone-100">
+                <div className="flex flex-col items-center text-center p-2 group">
+                    <div className="w-10 h-10 rounded-full bg-[#F5F2EB] flex items-center justify-center text-[#183A2D] mb-2 group-hover:scale-110 transition-transform">
+                        <ShoppingBag size={18} />
+                    </div>
+                    <div className="text-2xl font-bold font-heading text-stone-900">{allProducts.length}</div>
+                    <div className="text-[10px] font-bold text-stone-500 uppercase tracking-widest mt-1">Sản phẩm</div>
+                    <div className="text-[9px] text-stone-400">Đang hiển thị</div>
+                </div>
+                
+                <div className="flex flex-col items-center text-center p-2 group">
+                    <div className="w-10 h-10 rounded-full bg-[#F5F2EB] flex items-center justify-center text-[#183A2D] mb-2 group-hover:scale-110 transition-transform">
+                        <Shirt size={18} />
+                    </div>
+                    <div className="text-2xl font-bold font-heading text-stone-900">{totalRentals}</div>
+                    <div className="text-[10px] font-bold text-stone-500 uppercase tracking-widest mt-1">Lượt thuê</div>
+                    <div className="text-[9px] text-stone-400">Đã hoàn thành</div>
+                </div>
+
+                <div className="flex flex-col items-center text-center p-2 group">
+                    <div className="w-10 h-10 rounded-full bg-[#F5F2EB] flex items-center justify-center text-[#183A2D] mb-2 group-hover:scale-110 transition-transform">
+                        <Star size={18} className="fill-[#183A2D]" />
+                    </div>
+                    <div className="text-2xl font-bold font-heading text-stone-900">5.0</div>
+                    <div className="text-[10px] font-bold text-stone-500 uppercase tracking-widest mt-1">Uy tín</div>
+                    <div className="text-[9px] text-stone-400">Đánh giá trung bình</div>
+                </div>
+
+                <div className="flex flex-col items-center text-center p-2 group">
+                    <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-700 mb-2 group-hover:scale-110 transition-transform">
+                        <Leaf size={18} className="fill-emerald-700" />
+                    </div>
+                    <div className="text-2xl font-bold font-heading text-emerald-800">{co2Saved} kg</div>
+                    <div className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest mt-1">CO₂ tiết kiệm</div>
+                    <div className="text-[9px] text-stone-400">Cùng CLOOP sống xanh</div>
+                </div>
+            </div>
+        </div>
+
+        {/* 📸 SECTION KÝ ỨC & LOOKBOOK (Cấu trúc Lưới Scrapbook) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            {/* GÓC KÝ ỨC (Polaroid) */}
+            <div className="bg-[#FCFBFA] border border-[#EBE6D8] rounded-[2rem] p-6 lg:p-8 shadow-sm relative">
+                <div className="flex items-center gap-2 mb-8">
+                    <Leaf size={18} className="text-[#183A2D]" />
+                    <div>
+                        <h2 className="text-lg font-bold text-[#183A2D] font-heading tracking-wide uppercase">Góc Ký Ức</h2>
+                        <p className="text-[10px] text-stone-400 font-medium">Những khoảnh khắc đẹp gắn với CLOOP</p>
+                    </div>
+                </div>
+
+                <div className="flex gap-4 overflow-x-auto no-scrollbar pb-6 pt-2 px-2 -mx-2">
+                    {memories.map((mem, idx) => (
+                        <div key={mem.id} className={`polaroid w-36 shrink-0 relative ${idx % 2 === 0 ? '-rotate-2' : 'rotate-3'} mt-${idx % 2 === 0 ? '0' : '4'}`}>
+                            <div className="tape w-8 h-3 -top-1.5 left-1/2 -translate-x-1/2" />
+                            <div className="w-full aspect-square bg-stone-100 overflow-hidden relative mb-3">
+                                <Image src={mem.image} alt={mem.title} fill unoptimized className="object-cover" />
+                            </div>
+                            <h4 className="text-[10px] font-bold text-stone-800 text-center font-heading leading-tight line-clamp-2 mb-1">{mem.title}</h4>
+                            <p className="text-[8px] text-stone-400 text-center font-mono">{mem.date}</p>
+                        </div>
+                    ))}
+
+                    {/* Ô thêm mới */}
+                    {isMe && (
+                        <Link href="/blog/create" className="polaroid w-36 shrink-0 border border-dashed border-stone-300 bg-[#F5F2EB]/50 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-[#F5F2EB]">
+                            <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-xs text-stone-400">
+                                <Plus size={16} />
+                            </div>
+                            <span className="text-[10px] font-medium text-stone-500 text-center">Thêm kỷ niệm<br/>của bạn</span>
+                        </Link>
+                    )}
+                </div>
             </div>
 
-            {rentalProducts.length === 0 ? (
-              <div className="bg-white border border-dashed border-stone-200 rounded-[2rem] p-12 text-center text-xs text-stone-400 shadow-3xs font-medium">
-                Chủ tủ đồ này hiện chưa có sản phẩm cho thuê nào.
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                {rentalProducts.map((p) => (
-                  <Link href={`/product/${p.id}`} key={p.id} className="block group relative">
-                    <div className="relative w-full aspect-[3/4] rounded-2xl overflow-hidden bg-white border border-stone-200/30 shadow-3xs">
-                      <Image src={p.image} alt={p.title} fill unoptimized className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.02]" />
-                      <span className="absolute top-3 left-3 text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 rounded text-white bg-[#183A2D] shadow-xs font-heading">
-                        RENTAL
-                      </span>
-                      <span className="absolute bottom-3 left-3 bg-stone-900/70 backdrop-blur-md text-[9px] font-bold text-white px-2 py-0.5 rounded-md font-heading">
-                        SIZE {p.size}
-                      </span>
+            {/* LOOKBOOK (Collage) */}
+            <div className="bg-[#FCFBFA] border border-[#EBE6D8] rounded-[2rem] p-6 lg:p-8 shadow-sm">
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-2">
+                        <BookOpen size={18} className="text-[#183A2D]" />
+                        <div>
+                            <h2 className="text-lg font-bold text-[#183A2D] font-heading tracking-wide uppercase">Lookbook</h2>
+                            <p className="text-[10px] text-stone-400 font-medium">Phong cách của {ownerInfo?.name}</p>
+                        </div>
                     </div>
-                    <div className="mt-3 space-y-1 px-0.5 text-xs">
-                      <p className="font-bold text-stone-800 line-clamp-1 font-heading text-sm group-hover:text-[#183A2D] transition-colors">{p.title}</p>
-                      <div className="text-stone-400 flex items-center justify-between text-[11px]">
-                        <span className="flex items-center gap-0.5 truncate max-w-[60%]"><MapPin size={10} className="text-[#6BA37A] shrink-0" /> {p.location}</span>
-                        <span className="font-mono font-bold text-[#183A2D]">{p.priceText}</span>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
+                    <Link href="#" className="text-xs font-semibold text-stone-500 hover:text-[#183A2D]">Xem tất cả →</Link>
+                </div>
 
-          {/* KHỐI 2: ĐỒ MUA ĐỨT / CHUYỂN NHƯỢNG (KỆ THANH LÝ) */}
-          <div className="space-y-5 text-left">
-            <div className="border-b border-stone-200/60 pb-3 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-blue-600 inline-block animate-pulse" />
-              <h2 className="text-xl font-bold text-[#183A2D] font-heading">Kệ thanh lý phục trang</h2>
+                {/* Khung Collage Giả Lập */}
+                <div className="grid grid-cols-3 grid-rows-2 gap-3 h-[220px]">
+                    <div className="col-span-2 row-span-2 rounded-2xl overflow-hidden relative group">
+                        <Image src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=600" alt="Look 1" fill unoptimized className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-stone-900/60 to-transparent flex items-end p-4">
+                            <span className="font-handwriting text-2xl text-white">Summer Collection</span>
+                        </div>
+                    </div>
+                    <div className="col-span-1 row-span-1 rounded-2xl overflow-hidden relative group">
+                        <Image src="https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?q=80&w=400" alt="Look 2" fill unoptimized className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                    </div>
+                    <div className="col-span-1 row-span-1 rounded-2xl overflow-hidden relative group">
+                        <Image src="https://images.unsplash.com/photo-1595777457583-95e059d581b8?q=80&w=400" alt="Look 3" fill unoptimized className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {/* 👗 TỦ ĐỒ CỦA USER */}
+        <div className="bg-[#FCFBFA] border border-[#EBE6D8] rounded-[2rem] p-6 lg:p-8 shadow-sm">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8 border-b border-[#EBE6D8] pb-6">
+                <div className="flex items-center gap-2">
+                    <Leaf size={20} className="text-[#183A2D]" />
+                    <h2 className="text-xl font-bold text-[#183A2D] font-heading tracking-wide uppercase">Tủ Đồ Của {ownerInfo?.name}</h2>
+                </div>
+
+                {/* Tabs Filter */}
+                <div className="flex flex-wrap items-center gap-2">
+                    {[
+                        { id: "ALL", label: "Tất cả" },
+                        { id: "RENT", label: "Đang cho thuê" },
+                        { id: "SALE", label: "Đã bán/Thanh lý" }
+                    ].map(tab => (
+                        <button 
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id as any)}
+                            className={`px-5 py-2 rounded-full text-xs font-bold transition-all shadow-3xs cursor-pointer
+                                ${activeTab === tab.id 
+                                    ? "bg-[#183A2D] text-white border border-[#183A2D]" 
+                                    : "bg-white text-stone-500 border border-stone-200 hover:bg-stone-50"
+                                }`}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
             </div>
 
-            {saleProducts.length === 0 ? (
-              <div className="bg-white border border-dashed border-stone-200 rounded-[2rem] p-12 text-center text-xs text-stone-400 shadow-3xs font-medium">
-                Chủ tủ đồ này hiện chưa có sản phẩm chuyển nhượng nào.
-              </div>
+            {displayProducts.length === 0 ? (
+                <div className="py-16 text-center text-stone-400 font-medium bg-white rounded-3xl border border-dashed border-stone-200">
+                    <Shirt size={32} className="mx-auto mb-3 opacity-40" />
+                    <p className="text-sm font-heading italic">Tủ đồ hiện tại chưa có sản phẩm nào thuộc mục này.</p>
+                </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                {saleProducts.map((p) => (
-                  <Link href={`/product/${p.id}`} key={p.id} className="block group relative">
-                    <div className="relative w-full aspect-[3/4] rounded-2xl overflow-hidden bg-white border border-stone-200/30 shadow-3xs">
-                      <Image src={p.image} alt={p.title} fill unoptimized className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.02]" />
-                      <span className="absolute top-3 left-3 text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 rounded text-white bg-blue-700 shadow-xs font-heading">
-                        BUY OUT
-                      </span>
-                      <span className="absolute bottom-3 left-3 bg-stone-900/70 backdrop-blur-md text-[9px] font-bold text-white px-2 py-0.5 rounded-md font-heading">
-                        SIZE {p.size}
-                      </span>
-                    </div>
-                    <div className="mt-3 space-y-1 px-0.5 text-xs">
-                      <p className="font-bold text-stone-800 line-clamp-1 font-heading text-sm group-hover:text-[#183A2D] transition-colors">{p.title}</p>
-                      <div className="text-stone-400 flex items-center justify-between text-[11px]">
-                        <span className="flex items-center gap-0.5 truncate max-w-[60%]"><MapPin size={10} className="text-[#6BA37A] shrink-0" /> {p.location}</span>
-                        <span className="font-mono font-bold text-[#183A2D]">{p.priceText}</span>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 lg:gap-6">
+                    {displayProducts.map((p) => (
+                        <Link href={`/product/${p.id.split('-')[0]}`} key={p.id} className="block group relative">
+                            <div className="relative w-full aspect-[3/4] rounded-2xl overflow-hidden bg-stone-100 border border-stone-200/40 shadow-3xs">
+                                <Image src={p.image} alt={p.title} fill unoptimized className="object-cover transition-transform duration-500 group-hover:scale-105" />
+                                
+                                {/* Badge Loại Đồ */}
+                                <span className={`absolute top-3 left-3 text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 rounded text-white shadow-xs font-heading
+                                    ${p.type === 'Thuê' ? 'bg-[#183A2D]' : 'bg-blue-700'}`}>
+                                    {p.type === 'Thuê' ? 'RENTAL' : 'BUY OUT'}
+                                </span>
 
+                                {/* Nút thả tim bay lơ lửng */}
+                                <button className="absolute top-3 right-3 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-stone-400 hover:text-red-500 shadow-sm transition-colors z-20">
+                                    <Heart size={12} />
+                                </button>
+                                
+                                {/* Nhãn Size */}
+                                <span className="absolute bottom-3 left-3 bg-stone-900/70 backdrop-blur-md text-[9px] font-bold text-white px-2 py-0.5 rounded-md font-heading">
+                                    SIZE {p.size}
+                                </span>
+                            </div>
+
+                            <div className="mt-3 space-y-1 px-1">
+                                <p className="text-sm font-bold text-stone-800 line-clamp-1 font-heading group-hover:text-[#183A2D] transition-colors">{p.title}</p>
+                                <div className="flex flex-col gap-0.5 text-[11px] text-stone-400">
+                                    <span className="flex items-center gap-0.5 truncate"><MapPin size={10} className="text-[#6BA37A] shrink-0" /> {p.location}</span>
+                                    <span className="font-mono font-bold text-[#183A2D] text-xs mt-0.5">{p.priceText}</span>
+                                </div>
+                            </div>
+                        </Link>
+                    ))}
+                </div>
+            )}
         </div>
       </div>
     </main>
