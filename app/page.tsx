@@ -14,6 +14,8 @@ import { createClient } from "@supabase/supabase-js";
 import AiStylistChat from "./components/AiStylistChat"; 
 // 🟢 BIẾN ĐỘC QUYỀN: Giữ nguyên vẹn đầu nối kích nổ Modal từ Context chung
 import { useAuthModal } from "./AuthModalContext";
+// 📔 TÍCH HỢP COMPONENT GÓC NHẬT KÝ TUẦN HOÀN CHUẨN ĐÉT EDITORIAL MAGAZINE
+import KyUcTuanHoanSection from "./components/KyUcTuanHoanSection";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "temporary-placeholder-key";
@@ -48,6 +50,8 @@ interface BlogPreview {
   coverImage: string;
   album: string[];
   createdAt: string;
+  authorName?: string;
+  authorAvatar?: string;
 }
 
 interface OccasionItem { name: string; label: string; img: string; }
@@ -80,7 +84,7 @@ function CountUpNumber({ target, suffix = "", duration = 2000 }: { target: numbe
   return <span ref={ref} className="font-mono">{count.toLocaleString("vi-VN")}{suffix}</span>;
 }
 
-// 🎀 COMPONENT DẢI LỤA SATIN CSS CHẠY ẨN SAU NỀN HERO ĐÚNG THEO BẢN THIẾT KẾ CỦA TRANG
+// 🎀 COMPONENT DẢI LỤA SATIN CSS CHẠY ẨN SAU NỀN HERO ĐÚNG THEO BẢN THIẾT KẾ CỦA TRANG[cite: 5]
 function SilkBackground() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
@@ -128,14 +132,7 @@ export default function Home() {
     { tag: "05", icon: Leaf, title: "TÁI CHẾ", desc: "Gửi quần áo cũ hỏng cho xưởng Upcycle để thiết kế và tái sinh vòng đời.", btn: "Tìm hiểu ngay →", href: "#", isModal: true }
   ];
 
-  // 📊 SỐ LIỆU ĐÀI ESG
-  const statsData = [
-    { num: 2000, suffix: "+", label: "Sản phẩm tuần hoàn", icon: Shirt },
-    { num: 1000, suffix: "+", label: "Người dùng thông thái", icon: Users },
-    { num: 12500, suffix: " kg", label: "Lượng CO₂ đã giảm", icon: Leaf },
-    { num: 5000000, suffix: " lít", label: "Nước sạch tiết kiệm", icon: Sparkles }
-  ];
-
+  // 🌿 ĐẶC QUYỀN THÀNH VIÊN[cite: 5]
   const privileges = [
     { icon: <Gift size={18} />, title: "Tặng Ngay 100 Green Points", desc: "Tích lũy điểm thưởng sau mỗi lần thuê hoặc tái chế đồ để đổi voucher ưu đãi." },
     { icon: <Sparkles size={18} />, title: "Trợ Lý Phối Đồ AI Stylist", desc: "Mở khóa tính năng AI tự động gợi ý phụ kiện, túi xách phù hợp với từng outfit." },
@@ -206,7 +203,7 @@ export default function Home() {
               });
             }
 
-            // Tách biệt luồng Đồ Bán đứt (Kệ thanh lý)
+            // Tách biệt luồng Đồ Bán đứt (Kệ thanh lý phục trang)
             if (sellPrice > 0) {
               mappedSells.push({
                 ...baseProduct,
@@ -219,7 +216,6 @@ export default function Home() {
             }
           });
 
-          // Gộp chung cho state products tổng nếu cần
           const allUniqueProducts = [...mappedRents, ...mappedSells].filter((v,i,a)=>a.findIndex(t=>(t.id === v.id))===i);
 
           setProducts(allUniqueProducts);
@@ -233,7 +229,7 @@ export default function Home() {
           }));
         }
 
-        // TRUY VẤN BLOG NHẬT KÝ HOÀI NIỆM THANH XUÂN CỦA GEN Z
+        // 📔 NÂNG CẤP ĐỘNG: QUY QUÉT CHÉO BẢNG USER ĐỂ HIỂN THỊ DANH TÍNH THẬT TRÊN LƯU BÚT[cite: 5]
         const { data: blogData } = await supabase
           .from("BlogPost")
           .select("*")
@@ -249,7 +245,9 @@ export default function Home() {
             content: "Chiếc áo dài lụa tơ tằm mình mặc đúng một lần duy nhất vào buổi bế giảng cấp 3 năm ấy. Giữ mãi mùi nắng của ngày hạ cuối cùng, tiếng cười khúc khích sân trường và những dòng chữ lưu bút viết vội vàng bên mép tà áo nếp gấp kỉ niệm.",
             coverImage: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?q=80&w=600",
             album: [],
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            authorName: "Trang Hoài",
+            authorAvatar: ""
           },
           {
             id: "story-2",
@@ -257,7 +255,9 @@ export default function Home() {
             content: "Váy hai dây voan tơ thướt tha mềm mại đồng hành cùng mình trong buổi hẹn hò đầu tiên. Cơn mưa rào bất chợt làm ướt gấu váy nhưng lại thắp lên ngọn lửa ấm áp của mối tình thanh xuân rực rỡ.",
             coverImage: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=600",
             album: [],
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            authorName: "Thành viên CLOOP",
+            authorAvatar: ""
           },
           {
             id: "story-3",
@@ -265,19 +265,36 @@ export default function Home() {
             content: "Bộ đồ phom đứng thanh lịch đã nâng đỡ sự tự tin của mình trước hội đồng giám khảo khó tính ngày đầu bước chân vào thế giới người lớn. Vừa có nét trang trọng quy chuẩn, vừa ôm trọn hoài bão khát vọng rực cháy tuổi trẻ.",
             coverImage: "https://images.unsplash.com/photo-1485968579580-b6d095142e6e?q=80&w=600",
             album: [],
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            authorName: "Thành viên CLOOP",
+            authorAvatar: ""
           }
         ];
 
         if (blogData && blogData.length > 0) {
+          const productIds = blogData.map((b: any) => b.productId).filter(Boolean);
+          const userIds = blogData.map((b: any) => b.userId).filter(Boolean);
+          
+          const { data: imagesData } = await supabase.from("ProductImage").select("*").in("productId", productIds);
+          const { data: usersData } = await supabase.from("User").select("id, name, avatar").in("id", userIds);
+
           const mappedBlogs = blogData.map((b: any) => {
+            const imgs = (imagesData || []).filter((img: any) => img.productId === b.productId).map((img: any) => img.url);
+            const author = (usersData || []).find((u: any) => u.id === b.userId);
+            
+            // Bảo chứng lọc bỏ ảnh screenshot lỗi hệ thống từ database test
+            const imgUrl = b.coverImage || b.cover_image;
+            const isTechImage = imgUrl && (imgUrl.includes("screenshot") || imgUrl.includes("notxrjsuukrrxdlboavo") || imgUrl.includes("localhost"));
+
             return {
               id: b.id,
               title: b.title,
               content: b.content,
-              coverImage: b.coverImage || b.cover_image || PLACEHOLDER_IMG,
-              album: [],
-              createdAt: b.createdAt
+              coverImage: isTechImage || !imgUrl ? "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600" : imgUrl,
+              album: imgs.length > 0 ? imgs : [imgUrl || PLACEHOLDER_IMG],
+              createdAt: b.createdAt,
+              authorName: author?.name || "Thành viên CLOOP",
+              authorAvatar: author?.avatar || ""
             };
           });
           setRecentStories(mappedBlogs);
@@ -295,6 +312,7 @@ export default function Home() {
     fetchRealMarketplaceData();
   }, []);
 
+  // 🏆 BỘ ĐỐI SOÁT "TOP TỦ ĐỒ UY TÍN"
   useEffect(() => {
     async function fetchTopClosets() {
       try {
@@ -366,7 +384,7 @@ export default function Home() {
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* 🎀 THIẾT LẬP KỊCH BẢN DẢI LỤA SATIN CSS CHẢY TRÀN NẰM ẨN SAU NỀN THEO ĐÚNG CẤU TRÚC TRANG */
+        /* 🎀 THIẾT LẬP KỊCH BẢN DẢI LỤA SATIN CSS CHẠY ẨN SAU NỀN THEO ĐÚNG CẤU TRÚC TRANG */
         .silk {
           position: absolute;
           width: 180%;
@@ -404,23 +422,14 @@ export default function Home() {
           background-size: 400% 400%;
           animation: gradient-xy 3s ease infinite;
         }
-
-        /* 🎨 CSS ĐỘC QUYỀN CHO GÓC NHẬT KÝ SCRAPBOOK */
-        .bg-scrapbook {
-          background-color: #f7f3eb;
-          background-image: radial-gradient(#d5cbb8 1px, transparent 1px);
-          background-size: 20px 20px;
-        }
       `}</style>
 
       {/* 🟢 PHÂN ĐOẠN 1: HERO SECTION CHỨA DẢI LỤA SATIN ẨN NỀN PHÍA SAU */}
       <section className="relative overflow-hidden pt-12 pb-16">
-        
-        {/* Khung vải satin tơ tằm mềm mại lót dưới gầm chữ */}
         <SilkBackground />
 
         <div className="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-12 relative z-10">
-          {/* ĐÃ ĐIỀU CHỈNH: Kéo sát ảnh và chữ bằng justify-center và gap-8 lg:gap-14 */}
+          {/* Cải tiến: Kéo sát chữ và cụm Lookbook xích lại gần nhau qua gap-14 */}
           <div className="flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-14 relative text-left">
             
             <div className="w-full lg:w-[48%] space-y-6">
@@ -429,7 +438,6 @@ export default function Home() {
                 <span>Nền tảng thời trang số tuần hoàn</span>
               </div>
 
-              {/* 🎯 Slogan gốc giữ nguyên */}
               <h1 className="editorial-title text-5xl sm:text-6xl lg:text-[4.5rem] font-bold leading-[1.08] text-[#183A2D]">
                 Mặc đẹp hơn. <br />
                 Tiêu ít hơn. <br />
@@ -465,32 +473,7 @@ export default function Home() {
             </div>
 
           </div>
-
-          {/* 📊 ĐẢI SỐ ESG NỔI TRÊN LẠI SATIN NẰM NGANG TINH TẾ */}
-          <div className="mt-16 bg-white/80 backdrop-blur-xl rounded-3xl border border-white/50 p-6 md:p-8 shadow-[0_30px_80px_rgba(0,0,0,.08)] max-w-[1300px] mx-auto z-20 relative h-[120px] md:h-[130px] flex items-center">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 items-center w-full">
-              {statsData.map((item, idx) => {
-                const StatIcon = item.icon;
-                const numericPart = item.num;
-                const suffixPart = item.suffix || "";
-
-                return (
-                  <div key={idx} className="flex items-center gap-4 text-left px-4">
-                    <div className="w-12 h-12 rounded-2xl bg-[#183A2D]/5 text-[#183A2D] flex items-center justify-center shrink-0 border border-[#183A2D]/10">
-                      <StatIcon size={18} />
-                    </div>
-                    <div>
-                      <div className="text-2xl md:text-3xl font-black text-[#183A2D] leading-none tracking-tight">
-                        <CountUpNumber target={numericPart} suffix={suffixPart} />
-                      </div>
-                      <div className="text-[11px] text-stone-400 font-bold tracking-wide uppercase mt-1.5">{item.label}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
+          {/* ĐÃ LƯỢC BỎ: Khối thanh ESG lặp lại tại đây để nhường chỗ cho khối bọc chìm bám sổ Scrapbook bên dưới[cite: 5] */}
         </div>
       </section>
 
@@ -633,7 +616,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* TẦNG 2: KỆ THANH LÝ PHỤC TRANG (ĐÃ BỐC DỮ LIỆU ĐỘNG CHUẨN) */}
+        {/* TẦNG 2: KỆ THANH LÝ PHỤC TRANG */}
         <div className="space-y-4">
           <div className="border-b border-stone-200/60 pb-3 text-left">
             <h3 className="text-xl font-bold text-[#183A2D] flex items-center gap-1.5 mb-1 font-heading">
@@ -685,76 +668,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 📔 PHÂN ĐOẠN 5: GÓC NHẬT KÝ LƯU BÚT HOÀI NIỆM - GIAO DIỆN POLAROID NGHỆ THUẬT */}
-      <section className="max-w-[1500px] mx-auto px-6 lg:px-12 py-16 space-y-12">
-        <div className="text-center space-y-4">
-          <span className="text-[10px] font-bold font-heading uppercase tracking-widest bg-stone-900 text-white px-4 py-1.5 rounded-full inline-block shadow-md">
-            Dấu Ấn Thanh Xuân
-          </span>
-          <h2 className="editorial-title text-4xl sm:text-5xl font-semibold text-stone-900 tracking-tight italic">
-            Ký Ức Tuần Hoàn
-          </h2>
-          <p className="text-stone-500 text-xs sm:text-sm max-w-xl mx-auto leading-relaxed">
-            Mỗi nếp gấp áo là một câu chuyện chưa kể. Hãy để những kỷ niệm rực rỡ nhất được sống lại và viết tiếp vòng đời mới trên cuốn lưu bút của CLOOP.
-          </p>
-        </div>
-
-        {recentBlogs.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 bg-scrapbook p-8 sm:p-12 rounded-[3rem] border border-[#d5cbb8] shadow-inner relative mt-8">
-            
-            {/* Washi tape trang trí scrapbook */}
-            <div className="absolute top-0 right-10 w-24 h-6 bg-pink-100/60 rotate-45 border-l border-r border-dashed border-pink-300 backdrop-blur-sm -translate-y-3 z-10" />
-            <div className="absolute bottom-0 left-10 w-24 h-6 bg-emerald-100/60 -rotate-45 border-l border-r border-dashed border-emerald-300 backdrop-blur-sm translate-y-3 z-10" />
-
-            {recentBlogs.map((story, idx) => (
-              <div 
-                key={story.id} 
-                className="group relative"
-                style={{ 
-                  transform: `rotate(${idx % 2 === 0 ? '-3deg' : '3deg'}) translateY(${idx % 2 !== 0 ? '20px' : '0'})` 
-                }}
-              >
-                {/* Khung ảnh Polaroid xếp chồng */}
-                <div className="bg-white p-4 pb-16 rounded-sm shadow-[0_15px_35px_rgba(0,0,0,0.1)] border border-stone-200 transition-transform duration-500 hover:rotate-0 hover:scale-105 relative z-20">
-                  
-                  {/* Ghim kẹp giấy */}
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 flex items-center justify-center z-30">
-                     <div className="w-1.5 h-6 bg-stone-300 rounded-full shadow-sm"></div>
-                  </div>
-
-                  <div className="w-full aspect-square bg-stone-100 overflow-hidden relative shadow-inner">
-                    <img src={story.coverImage} className="w-full h-full object-cover sepia-[0.1] contrast-[1.1] transition-transform duration-700 group-hover:scale-110" alt={story.title} />
-                  </div>
-                  
-                  {/* Nội dung trích dẫn viết tay lãng mạn */}
-                  <div className="absolute bottom-0 left-0 w-full p-4 text-center">
-                    <h4 className="font-heading text-xs font-bold text-stone-900 uppercase tracking-widest line-clamp-1 mb-1">
-                      {story.title}
-                    </h4>
-                    <p className="font-diary-quote text-[15px] font-medium text-stone-600 italic line-clamp-2 leading-relaxed">
-                      "{story.content}"
-                    </p>
-                  </div>
-                </div>
-
-                <Link href={`/blog/${story.id}`} className="absolute inset-0 z-30"><span className="sr-only">Đọc bài viết {story.title}</span></Link>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="bg-scrapbook p-16 rounded-[3rem] border border-[#d5cbb8] text-center shadow-inner">
-             <p className="font-diary-quote text-lg italic text-stone-500">Cuốn sổ lưu bút hiện đang lật giở những trang trắng đầu tiên...</p>
-          </div>
-        )}
-
-        <div className="text-center pt-8">
-          <Link href="/blog">
-            <button className="bg-transparent border border-stone-900 text-stone-900 hover:bg-stone-900 hover:text-[#FAF9F6] text-[11px] font-bold uppercase tracking-widest px-8 py-3.5 rounded-full transition-all cursor-pointer shadow-sm font-heading">
-              Lật xem toàn bộ lưu bút
-            </button>
-          </Link>
-        </div>
-      </section>
+      {/* 📔 PHÂN ĐOẠN 5: GÓC NHẬT KÝ LƯU BÚT HOÀI NIỆM - KÝ ỨC TUẦN HOÀN DỮ LIỆU THẬT[cite: 5] */}
+      <KyUcTuanHoanSection recentBlogs={recentBlogs} />
 
       {/* 🌿 PHÂN ĐOẠN 6: ĐẶC QUYỀN THÀNH VIÊN */}
       <section id="register-privilege" className="max-w-[1500px] mx-auto px-6 lg:px-12 py-8 border-t border-stone-200/60 text-left relative z-10">

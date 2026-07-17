@@ -175,7 +175,7 @@ export default function BlogJournalPage() {
       </div>
 
       {/* HEADER DIARY TIÊU ĐIỂM */}
-      <div className="max-w-xl mx-auto text-center mb-14 space-y-2 relative z-10">
+      <div className="max-w-[600px] mx-auto text-center mb-14 space-y-2 relative z-10">
         <div className="inline-flex items-center gap-1 bg-pink-100 text-pink-600 text-[9px] font-sans tracking-widest uppercase font-black px-2.5 py-1 rounded-full shadow-xs">
           <Sparkles size={10} className="animate-spin text-pink-500" />
           <span>Y2K Scrapbook Network</span>
@@ -260,7 +260,8 @@ export default function BlogJournalPage() {
                         <p className="text-[11px] font-bold text-stone-800 truncate tracking-tight">{productInfo.title}</p>
                       </div>
                       
-                      <Link href={`/shop/${post.productId}`} className="shrink-0">
+                      {/* 🛠️ ĐÃ SỬA LỖI ĐỊNH TUYẾN CHUẨN XÁC VỀ TRANG PRODUCT */}
+                      <Link href={`/product/${post.productId}`} className="shrink-0">
                         <button className="bg-stone-900 hover:bg-pink-600 text-white px-3 py-2 rounded-xl font-sans text-[10px] font-black tracking-wider transition-all duration-200 shadow-sm flex items-center gap-1 cursor-pointer whitespace-nowrap active:scale-95">
                           <span>Thuê ngay</span>
                           {rentalPrice !== null && (
