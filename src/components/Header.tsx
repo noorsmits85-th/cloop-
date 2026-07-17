@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
-import { motion, AnimatePresence } from "framer-motion"; // 🟢 ĐÃ THÊM: AnimatePresence cho menu mượt mà
-import { useAuthModal } from "../../app/AuthModalContext";
+import { motion, AnimatePresence } from "framer-motion";
+import { useAuthModal } from "../../app/AuthModalContext"; // Đã vá lỗi đường dẫn chính xác
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "temporary-placeholder-key";
@@ -18,7 +18,7 @@ export default function Header() {
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false); // 🟢 ĐÃ THÊM: Trạng thái đóng mở menu mobile
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const handleAuthCheck = async () => {
@@ -32,14 +32,14 @@ export default function Header() {
             try {
               const parsed = JSON.parse(storedUserRaw);
               setProfile({
-                full_name: parsed.name || parsed.full_name || "Trang Hoàng",
-                username: parsed.username || "tranghoang",
+                full_name: parsed.name || parsed.full_name || "Thành viên CLOOP",
+                username: parsed.username || "cloop_user",
                 avatar_url: parsed.avatar_url || parsed.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb"
               });
             } catch (e) {
               setProfile({
-                full_name: storedUserRaw || "Trang Hoàng",
-                username: "tranghoang",
+                full_name: storedUserRaw || "Thành viên CLOOP",
+                username: "cloop_user",
                 avatar_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb"
               });
             }
@@ -52,15 +52,15 @@ export default function Header() {
                 .single();
               if (uData) {
                 setProfile({
-                  full_name: uData.name || uData.full_name || "Trang Hoàng",
-                  username: uData.username || "tranghoang",
+                  full_name: uData.name || uData.full_name || "Thành viên CLOOP",
+                  username: uData.username || "cloop_user",
                   avatar_url: uData.avatar_url || uData.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb"
                 });
               }
             } catch (err) {
               setProfile({
-                full_name: "Trang Hoàng",
-                username: "tranghoang",
+                full_name: "Thành viên CLOOP",
+                username: "cloop_user",
                 avatar_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb"
               });
             }
@@ -92,10 +92,9 @@ export default function Header() {
 
   return (
     <header className="w-full bg-[#FAF9F5] border-b border-gray-200/60 px-4 md:px-8 py-3 lg:py-4 sticky top-0 z-50 transition-all duration-300">
-      {/* KHUNG GIỚI HẠN TRUNG TÂM: Giúp màn hình laptop 100% gom lại gọn gàng như bản 80% */}
       <div className="max-w-[1400px] mx-auto w-full flex items-center justify-between">
         
-        {/* KHỐI TRÁI: LOGO CLOOP & THANH TÌM KIẾM AI STYLIST */}
+        {/* KHỐI TRÁI: LOGO CLOOP */}
         <div className="flex items-center gap-4 lg:gap-6">
           <Link href="/" className="flex items-center gap-2 shrink-0">
             <span className="text-xl lg:text-2xl font-bold tracking-wider text-[#1C3F30] font-serif">CLOOP</span>
@@ -112,7 +111,7 @@ export default function Header() {
           </div>
         </div>
 
-        {/* KHỐI GIỮA: THANH MENU ĐIỀU HƯỚNG CHÍNH (Tự động ẩn trên Mobile) */}
+        {/* KHỐI GIỮA: THANH MENU ĐIỀU HƯỚNG CHÍNH */}
         <nav className="hidden md:flex items-center gap-5 lg:gap-6 text-[10px] lg:text-[11px] font-bold tracking-widest text-[#1C3F30]/80">
           <Link href="/" className="hover:text-[#1C3F30] pb-1 transition">TRANG CHỦ</Link>
           <Link href="/shop?type=rent" className="hover:text-[#1C3F30] pb-1 transition">THUÊ ĐỒ</Link>
@@ -135,13 +134,10 @@ export default function Header() {
 
         {/* KHỐI PHẢI: UTILS CHỨC NĂNG & ĐẤU DÂY XÁC THỰC */}
         <div className="flex items-center gap-2 md:gap-4 shrink-0">
-          {/* Nút Darkmode */}
           <button className="text-[#1C3F30] opacity-80 hover:opacity-100 text-sm p-1">🌙</button>
-
-          {/* Giỏ hàng */}
           <button className="text-[#1C3F30] opacity-80 hover:opacity-100 text-sm p-1 mr-1">🛍️</button>
 
-          {/* Khu vực Đăng nhập / Profile (Ẩn nút chữ trên Mobile để chống vỡ) */}
+          {/* KHU VỰC ĐĂNG NHẬP / SMART PROFILE DROPDOWN */}
           <div className="hidden md:block">
             {user ? (
               <div className="relative">
@@ -157,19 +153,33 @@ export default function Header() {
                   />
                 </button>
 
+                {/* 🟢 SMART DROPDOWN NÂNG CẤP CHUẨN UX */}
                 {dropdownOpen && (
                   <div className="absolute right-0 mt-3 w-52 bg-white border border-gray-100 rounded-xl shadow-xl py-2 z-50">
                     <div className="px-4 py-2 border-b border-gray-50 text-left">
-                      <p className="text-xs font-bold text-gray-800 truncate">{profile?.full_name || "Trang Hoàng"}</p>
-                      <p className="text-[10px] text-gray-400 font-mono truncate">@{profile?.username || "tranghoang"}</p>
+                      <p className="text-xs font-bold text-gray-800 truncate">{profile?.full_name}</p>
+                      <p className="text-[10px] text-gray-400 font-mono truncate">@{profile?.username}</p>
                     </div>
+                    
+                    {/* Link 1: Bay thẳng ra Scrapbook công khai */}
+                    <Link 
+                      href={`/closet/${user.id}`} 
+                      className="block px-4 py-2.5 text-xs font-bold text-emerald-700 hover:bg-emerald-50 transition text-left"
+                      onClick={() => setDropdownOpen(false)}
+                    >
+                      🌍 Hồ sơ công khai
+                    </Link>
+                    
+                    {/* Link 2: Quản lý tủ đồ nội bộ */}
                     <Link 
                       href="/my-closet" 
                       className="block px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition text-left"
                       onClick={() => setDropdownOpen(false)}
                     >
-                      👚 Tủ đồ của tôi
+                      ⚙️ Quản lý tủ đồ
                     </Link>
+                    
+                    {/* Link 3: Đăng xuất */}
                     <button
                       onClick={handleSignOut}
                       className="w-full text-left px-4 py-2.5 text-xs font-bold text-red-600 hover:bg-red-50 border-t border-gray-50 transition cursor-pointer"
@@ -197,7 +207,7 @@ export default function Header() {
             )}
           </div>
 
-          {/* Nếu đã Đăng nhập trên Mobile -> Vẫn ưu tiên hiện Avatar nhỏ gọn xinh xắn */}
+          {/* AVATAR TRÊN MOBILE */}
           {user && (
             <div className="block md:hidden mr-1">
               <Link href="/my-closet" className="w-7 h-7 rounded-full overflow-hidden border border-[#1C3F30] relative block">
@@ -211,7 +221,7 @@ export default function Header() {
             </div>
           )}
 
-          {/* ☰ NÚT HAMBURGER DI ĐỘNG: Bật tắt menu trên điện thoại */}
+          {/* NÚT HAMBURGER DI ĐỘNG */}
           <button 
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="block md:hidden text-[#1C3F30] p-1.5 text-lg focus:outline-none select-none"
@@ -222,7 +232,7 @@ export default function Header() {
         </div>
       </div>
 
-      {/* 📱 MENU THẢ XUỐNG DÀNH CHO MOBILE (Sử dụng hiệu ứng mượt của Framer Motion) */}
+      {/* 📱 MENU THẢ XUỐNG DÀNH CHO MOBILE */}
       <AnimatePresence>
         {mobileMenuOpen && (
           <motion.div 
@@ -251,7 +261,6 @@ export default function Header() {
                 BLOG
               </button>
 
-              {/* Phần tài khoản dưới đáy menu di động khi CHƯA đăng nhập */}
               {!user && (
                 <div className="flex items-center gap-3 pt-2 border-t border-gray-200/60 w-full">
                   <button 
@@ -269,11 +278,22 @@ export default function Header() {
                 </div>
               )}
 
-              {/* Phần đăng xuất dưới đáy menu di động khi ĐÃ đăng nhập */}
+              {/* 🟢 SMART DROPDOWN TRÊN MOBILE NÂNG CẤP CHUẨN UX */}
               {user && (
-                <div className="pt-2 border-t border-gray-200/60 w-full flex flex-col space-y-3">
-                  <Link href="/my-closet" onClick={() => setMobileMenuOpen(false)} className="text-gray-700">
-                    👚 Tủ đồ của tôi ({profile?.full_name})
+                <div className="pt-2 border-t border-gray-200/60 w-full flex flex-col space-y-4">
+                  <Link 
+                    href={`/closet/${user.id}`} 
+                    onClick={() => setMobileMenuOpen(false)} 
+                    className="text-emerald-700 font-bold"
+                  >
+                    🌍 Hồ sơ công khai
+                  </Link>
+                  <Link 
+                    href="/my-closet" 
+                    onClick={() => setMobileMenuOpen(false)} 
+                    className="text-gray-700 font-bold"
+                  >
+                    ⚙️ Quản lý tủ đồ ({profile?.full_name})
                   </Link>
                   <button 
                     onClick={handleSignOut}
