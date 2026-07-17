@@ -601,7 +601,8 @@ export default function Home() {
                   </div>
 
                   <div className="space-y-1 px-0.5 text-xs font-normal">
-                    <div className="text-[#183A2D] font-bold truncate font-heading">
+                    {/* KHU VỰC ĐÃ FIX LỖI ĐÈ LINK: Thêm thuộc tính relative z-10 vào wrapper */}
+                    <div className="text-[#183A2D] font-bold truncate font-heading relative z-10">
                       <Link href={`/closet/${item.userId}`} className="hover:text-stone-600 font-bold transition-colors">@{item.ownerName}</Link>
                     </div>
                     <div className="text-stone-400 truncate">
@@ -614,6 +615,7 @@ export default function Home() {
                       {item.rawPriceText}
                     </div>
                   </div>
+                  {/* LINK ẨN CỦA TOÀN BỘ SẢN PHẨM Ở DƯỚI CÙNG */}
                   <Link href={`/product/${item.id}`} className="absolute inset-0 z-0"><span className="sr-only">Xem chi tiết {item.title}</span></Link>
                 </div>
               ))
@@ -652,7 +654,8 @@ export default function Home() {
                   </div>
 
                   <div className="space-y-1 px-0.5 text-xs font-normal">
-                    <div className="text-[#183A2D] font-bold truncate font-heading">
+                    {/* KHU VỰC ĐÃ FIX LỖI ĐÈ LINK: Thêm thuộc tính relative z-10 vào wrapper */}
+                    <div className="text-[#183A2D] font-bold truncate font-heading relative z-10">
                       <Link href={`/closet/${item.userId}`} className="hover:text-stone-600 font-bold transition-colors">@{item.ownerName}</Link>
                     </div>
                     <div className="text-stone-400 truncate">
@@ -665,6 +668,7 @@ export default function Home() {
                       {item.rawPriceText}
                     </div>
                   </div>
+                  {/* LINK ẨN CỦA TOÀN BỘ SẢN PHẨM Ở DƯỚI CÙNG */}
                   <Link href={`/product/${item.id}`} className="absolute inset-0 z-0"><span className="sr-only">Xem chi tiết {item.title}</span></Link>
                 </div>
               ))
