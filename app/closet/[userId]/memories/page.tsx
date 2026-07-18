@@ -60,7 +60,7 @@ export default function MemoriesDiaryPage() {
               image: b.coverImage || b.cover_image || PLACEHOLDER_IMG,
               date: `${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`,
               fullDate: d.toLocaleDateString("vi-VN", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
-              productId: b.productId || b.product_id || "" // 🟢 ĐỒNG BỘ: Bốc chính xác trường productId từ DB (bất kể camelCase hay snake_case)
+              productId: b.productId || b.product_id || "" // 🟢 ĐỒNG BỘ: Bốc chính xác trường productId từ DB
             };
           });
           setMemories(mapped);
@@ -96,7 +96,53 @@ export default function MemoriesDiaryPage() {
       className="min-h-screen text-stone-800 antialiased pb-24 pt-8 relative selection:bg-[#183A2D] selection:text-white"
       style={{ backgroundColor: "#F5F2EB", backgroundImage: `url(${PAPER_BG})` }}
     >
+      {/* 🟢 ĐÃ FIX LỖI: Thêm khối Style định dạng font chữ, Polaroid và Băng dính */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=Caveat:wght@400;500;600;700&display=swap');
+        h1, h2, h3, .font-heading { font-family: 'Cormorant Garamond', serif !important; }
+        .font-handwriting { font-family: 'Caveat', cursive !important; }
+        
+        .tape {
+            position: absolute;
+            background-color: rgba(255, 235, 150, 0.65);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            backdrop-filter: blur(2px);
+            z-index: 20;
+        }
+        .polaroid-big {
+            background: white;
+            padding: 12px 12px 32px 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05), 0 2px 5px rgba(0,0,0,0.02);
+        }
+      `}</style>
+
+      {/* Hoa văn góc nền */}
       <div className="fixed top-0 left-0 w-[500px] h-[500px] opacity-20 pointer-events-none z-0" style={{ background: "radial-gradient(circle, rgba(107,163,122,0.2) 0%, rgba(245,242,235,0) 70%)" }} />
+      
+      {/* 🟢 ĐÃ FIX LỖI: CÀNH LÁ & HOA CỎ KHÔ TRANG TRÍ GÓC TRANG — HOÀI NIỆM NHƯ ẢNH MẪU */}
+      <svg className="fixed top-24 left-4 w-40 h-52 text-[#7C9473]/50 pointer-events-none z-0 hidden lg:block" viewBox="0 0 100 140" fill="none">
+        <path d="M10 130 Q 25 90 15 40 Q 40 60 32 100 Q 55 70 45 20" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" />
+        <ellipse cx="20" cy="60" rx="7" ry="3" fill="currentColor" opacity="0.55" transform="rotate(40 20 60)" />
+        <ellipse cx="35" cy="85" rx="7" ry="3" fill="currentColor" opacity="0.55" transform="rotate(-30 35 85)" />
+        <ellipse cx="42" cy="45" rx="6" ry="2.5" fill="currentColor" opacity="0.5" transform="rotate(20 42 45)" />
+      </svg>
+      
+      <svg className="fixed bottom-16 right-6 w-44 h-56 text-[#B98B5E]/40 pointer-events-none z-0 hidden lg:block" viewBox="0 0 100 140" fill="none">
+        <path d="M90 130 Q 70 90 80 40 Q 55 60 65 100 Q 40 70 50 20" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" />
+        <ellipse cx="75" cy="60" rx="7" ry="3" fill="currentColor" opacity="0.5" transform="rotate(-40 75 60)" />
+        <ellipse cx="60" cy="85" rx="7" ry="3" fill="currentColor" opacity="0.5" transform="rotate(30 60 85)" />
+        <circle cx="55" cy="30" r="4" fill="#D4A574" opacity="0.4" />
+      </svg>
+
+      {/* Bông hoa cỏ khô nhỏ điểm xuyết giữa trang */}
+      <div className="fixed top-1/3 left-8 rotate-[-12deg] opacity-40 pointer-events-none z-0 hidden xl:block">
+        <svg width="60" height="80" viewBox="0 0 60 80" fill="none">
+          <path d="M30 80 L30 20" stroke="#8B9D77" strokeWidth="1.2" />
+          <circle cx="30" cy="18" r="3" fill="#E8C4A0" />
+          <circle cx="24" cy="30" r="2.5" fill="#E8C4A0" />
+          <circle cx="36" cy="42" r="2.5" fill="#E8C4A0" />
+        </svg>
+      </div>
       
       <div className="max-w-[800px] mx-auto px-4 sm:px-6 relative z-10">
         
@@ -142,7 +188,7 @@ export default function MemoriesDiaryPage() {
                   <div className="w-[calc(100%-4rem)] md:w-[calc(50%-3rem)] bg-[#FCFBFA] border border-[#EBE6D8] p-6 rounded-[2rem] shadow-sm hover:shadow-md transition-shadow relative">
                     <div className={`tape w-16 h-4 -top-2 ${idx % 2 === 0 ? 'right-6 rotate-3' : 'left-6 -rotate-3'}`} />
                     
-                    {/* 🟢 NÂNG CẤP: Khung ảnh Polaroid trỏ thẳng về trang chi tiết sản phẩm /product/[id] */}
+                    {/* Khung ảnh Polaroid trỏ thẳng về trang chi tiết sản phẩm /product/[id] */}
                     <Link href={targetLink} className={`block polaroid-big relative mb-6 ${idx % 2 === 0 ? '-rotate-1' : 'rotate-1'} hover:rotate-0 transition-transform duration-500`}>
                       <div className="w-full aspect-[4/3] bg-stone-100 overflow-hidden relative border border-stone-200/50">
                         <Image src={mem.image} alt={mem.title} fill unoptimized className="object-cover" />
@@ -153,7 +199,7 @@ export default function MemoriesDiaryPage() {
                     <div className="space-y-3 px-2">
                       <p className="text-[10px] font-bold text-emerald-700 tracking-widest uppercase">{mem.fullDate}</p>
                       
-                      {/* 🟢 NÂNG CẤP: Tiêu đề bài viết trỏ thẳng về trang chi tiết sản phẩm /product/[id] */}
+                      {/* Tiêu đề bài viết trỏ thẳng về trang chi tiết sản phẩm /product/[id] */}
                       <Link href={targetLink} className="block">
                         <h3 className="text-xl font-bold text-stone-800 font-heading hover:text-[#183A2D] transition-colors">{mem.title}</h3>
                       </Link>
@@ -165,7 +211,7 @@ export default function MemoriesDiaryPage() {
                   </div>
 
                 </div>
-              );
+              ); // 🟢 ĐÃ FIX LỖI: Đóng ngoặc chuẩn xác của lệnh return bên trong hàm map()
             })}
           </div>
         )}
