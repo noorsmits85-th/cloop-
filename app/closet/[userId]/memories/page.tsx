@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@supabase/supabase-js";
-import { ArrowLeft, BookOpen, Clock, Heart } from "lucide-react";
+import { ArrowLeft, BookOpen, Clock, Heart, Quote } from "lucide-react";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "temporary-placeholder-key";
@@ -63,13 +63,8 @@ export default function MemoriesDiaryPage() {
           });
           setMemories(mapped);
         } else {
-            // Dữ liệu mẫu (Mock data)
-            setMemories([
-                { id: '1', title: "Chuyến đi cùng chiếc váy hoa nhí đầu tiên", content: "Chiếc váy hoa nhí nhẹ nhàng cùng mình đi qua những con phố nhỏ hoài cổ, cảm giác thời trang xanh thực sự ý nghĩa.", image: "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?q=80&w=400", date: "05.2025", fullDate: "Thứ Hai, ngày 12 tháng 05 năm 2025", productId: "mock-product-1" },
-                { id: '2', title: "Chiếc váy lụa mình đã mặc trong buổi hoàng hôn", content: "Chất lụa mát rượi lướt nhẹ theo làn gió biển. Thuê món đồ này trên CLOOP là quyết định đúng đắn nhất mùa hè này của mình.", image: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=400", date: "04.2025", fullDate: "Thứ Sáu, ngày 18 tháng 04 năm 2025", productId: "mock-product-2" },
-                { id: '3', title: "Nhận chiếc váy vintage mình yêu thích nhất", content: "Mở hộp đồ thuê mà tim đập thình thịch vì gói ghém quá xinh. Món đồ thơm tho, sạch sẽ như mới tinh vậy khui ra cực thích.", image: "https://images.unsplash.com/photo-1485968579580-b6d095142e6e?q=80&w=400", date: "03.2025", fullDate: "Chủ Nhật, ngày 02 tháng 03 năm 2025", productId: "mock-product-3" },
-                { id: '4', title: "Kỷ niệm đáng nhớ ngày khai trương CLOOP", content: "Được gặp gỡ những người bạn có cùng tần số yêu lối sống bền vững. Cảm ơn CLOOP vì đã kết nối tụi mình lại với nhau.", image: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?q=80&w=400", date: "02.2025", fullDate: "Thứ Bảy, ngày 15 tháng 02 năm 2025", productId: "mock-product-4" }
-            ]);
+            // 🟢 ĐÃ FIX: Trả về mảng rỗng để hiển thị thông báo "Trang giấy trắng..." chuẩn dữ liệu thật
+            setMemories([]);
         }
       } catch (e) {
         console.error("Lỗi lấy nhật ký:", e);
@@ -82,43 +77,49 @@ export default function MemoriesDiaryPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col justify-center items-center min-h-screen bg-[#F7F5F0] space-y-3">
+      <div className="flex flex-col justify-center items-center min-h-screen bg-[#EBE5D9] space-y-3">
         <div className="w-5 h-5 border border-emerald-800/40 border-t-emerald-900 rounded-full animate-spin" />
-        <p className="text-[10px] font-medium text-emerald-900 uppercase tracking-widest">Đang giở từng trang lưu bút...</p>
+        <p className="text-[10px] font-medium text-emerald-900 uppercase tracking-widest">Đang lật mở trang nhật ký...</p>
       </div>
     );
   }
 
   return (
-    <main 
-      className="min-h-screen text-stone-800 antialiased pb-32 pt-8 relative selection:bg-[#183A2D] selection:text-white"
-      style={{ backgroundColor: "#F5F2EB", backgroundImage: `url(${PAPER_BG})` }}
-    >
+    <main className="min-h-screen bg-[#EAE4D8] py-8 md:py-16 px-2 sm:px-6 relative overflow-x-hidden selection:bg-[#183A2D] selection:text-white font-sans">
+      
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=Caveat:wght@400;500;600;700&display=swap');
         h1, h2, h3, .font-heading { font-family: 'Cormorant Garamond', serif !important; }
         .font-handwriting { font-family: 'Caveat', cursive !important; }
         
-        /* Đổ bóng cho các mẩu giấy dán vào sổ */
-        .scrapbook-shadow {
-            box-shadow: 2px 5px 15px rgba(0,0,0,0.04), 0px 1px 3px rgba(0,0,0,0.02);
+        .torn-paper {
+            background: #FFFDF9;
+            box-shadow: 2px 4px 15px rgba(0,0,0,0.05);
+            border-radius: 2px 2px 15px 2px;
+            border: 1px solid #E9E2D5;
         }
-        
-        .tape {
+
+        .washi-tape {
             position: absolute;
-            background-color: rgba(232, 220, 196, 0.8);
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-            backdrop-filter: blur(1px);
+            background-color: rgba(220, 205, 175, 0.85);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            backdrop-filter: blur(2px);
             mix-blend-mode: multiply;
             z-index: 20;
+            clip-path: polygon(1% 5%, 100% 0%, 98% 95%, 0% 100%);
+        }
+
+        .polaroid-frame {
+            background: #fff;
+            padding: 12px 12px 35px 12px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.06), 0 2px 6px rgba(0,0,0,0.03);
+            border: 1px solid #F0ECE1;
         }
       `}</style>
 
-      {/* HIỆU ỨNG ÁNH SÁNG & GÓC NỀN */}
       <div className="fixed top-0 left-0 w-[600px] h-[600px] opacity-20 pointer-events-none z-0" style={{ background: "radial-gradient(circle, rgba(107,163,122,0.2) 0%, rgba(245,242,235,0) 70%)" }} />
       <div className="fixed bottom-0 right-0 w-[500px] h-[500px] opacity-30 pointer-events-none z-0" style={{ background: "radial-gradient(circle, rgba(212,175,140,0.2) 0%, rgba(245,242,235,0) 70%)" }} />
       
-      {/* 🌿 CÀNH LÁ & HOA CỎ KHÔ TRANG TRÍ GÓC TRANG (Giữ nguyên) */}
       <svg className="fixed top-24 left-4 w-40 h-52 text-[#7C9473]/50 pointer-events-none z-0 hidden lg:block" viewBox="0 0 100 140" fill="none">
         <path d="M10 130 Q 25 90 15 40 Q 40 60 32 100 Q 55 70 45 20" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" />
         <ellipse cx="20" cy="60" rx="7" ry="3" fill="currentColor" opacity="0.55" transform="rotate(40 20 60)" />
@@ -142,48 +143,67 @@ export default function MemoriesDiaryPage() {
         </svg>
       </div>
       
-      {/* WRAPPER RỘNG HƠN ĐỂ HIỂN THỊ QUYỂN SỔ 2 TRANG */}
-      <div className="max-w-[1000px] mx-auto px-4 sm:px-6 relative z-10">
-        
-        {/* THANH ĐIỀU HƯỚNG BÊN TRÊN */}
-        <div className="flex items-center justify-between mb-12">
-          <Link href={`/closet/${userId}`} className="inline-flex items-center gap-1.5 text-xs font-bold text-stone-500 hover:text-[#183A2D] transition-colors uppercase tracking-wider bg-white/60 px-5 py-2.5 rounded-full border border-stone-200/60 shadow-sm backdrop-blur-md">
-            <ArrowLeft size={14} /> Quay lại tủ đồ
-          </Link>
-          <div className="w-10 h-10 rounded-full border border-dashed border-stone-300 flex items-center justify-center text-stone-400 bg-white/30 backdrop-blur-sm">
-            <BookOpen size={16} />
-          </div>
-        </div>
+      <div 
+        className="w-full max-w-[1100px] mx-auto bg-[#FBF9F4] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.15)] rounded-sm relative flex flex-col md:flex-row min-h-[85vh] border border-[#D5C6B1]"
+        style={{ backgroundImage: `url(${PAPER_BG})` }}
+      >
+        <div className="hidden md:block absolute top-0 bottom-0 left-1/2 w-[70px] -translate-x-1/2 bg-gradient-to-r from-transparent via-[#DACBB6]/60 to-transparent shadow-[inset_0_0_12px_rgba(0,0,0,0.03)] border-l border-r border-[#DACBB6]/30 z-0" />
 
-        {/* TIÊU ĐỀ SỔ LƯU BÚT */}
-        <div className="text-center mb-16 space-y-4 relative">
-          <div className="tape w-20 h-5 -top-4 left-1/2 -translate-x-1/2 rotate-2" />
-          <h1 className="text-5xl md:text-7xl font-bold text-[#1C3F30] font-heading tracking-tight">Cuốn Nhật Ký Kỷ Niệm</h1>
-          <p className="text-[15px] text-stone-500 italic font-serif flex items-center justify-center gap-2">
-            <Heart size={12} className="text-amber-600/60" /> Ghi chép hành trình thời trang của {userName} <Heart size={12} className="text-amber-600/60" />
-          </p>
-        </div>
-
-        {/* ========================================================
-            🟢 NÂNG CẤP GIAO DIỆN SCRAPBOOK: 2 CỘT SO LE CỰC NGHỆ 
-            ======================================================== */}
-        <div className="relative mt-8">
+        <div className="w-full relative z-10 p-6 sm:p-10 md:p-16">
           
-          {/* ĐƯỜNG GÁY SỔ Ở GIỮA (Chỉ hiện trên Desktop) */}
-          <div className="hidden md:block absolute inset-y-0 left-1/2 w-px bg-gradient-to-b from-transparent via-stone-300/80 to-transparent -translate-x-1/2 z-0" />
-          <div className="hidden md:block absolute inset-y-0 left-1/2 w-12 bg-gradient-to-r from-stone-200/20 to-transparent -translate-x-full z-0" />
-          <div className="hidden md:block absolute inset-y-0 left-1/2 w-12 bg-gradient-to-l from-stone-200/20 to-transparent z-0" />
+          <div className="flex items-center justify-between mb-12 border-b border-[#DACBB6]/40 pb-6">
+            <Link href={`/closet/${userId}`} className="inline-flex items-center gap-2 text-xs font-bold text-stone-500 hover:text-[#183A2D] transition-colors uppercase tracking-wider bg-white/60 px-4 py-2 rounded-full border border-stone-200/60 shadow-sm">
+              <ArrowLeft size={14} /> Quay lại tủ đồ
+            </Link>
+          </div>
 
-          {memories.length === 0 ? (
-            <div className="text-center py-24 bg-white/40 rounded-3xl border border-stone-200 border-dashed">
-              <p className="font-handwriting text-3xl text-stone-400">Trang giấy trắng chưa có nét mực nào...</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-x-20 md:gap-y-12 relative z-10 px-2">
-              {memories.map((mem, idx) => {
-                const targetLink = mem.productId ? `/product/${mem.productId}` : `/closet/${userId}#wardrobe-section`;
+          <div className="columns-1 md:columns-2 gap-16 md:gap-32">
+            
+            <div className="break-inside-avoid mb-14 relative z-10">
+              <div className="torn-paper p-8 relative -rotate-1">
+                <div className="washi-tape w-24 h-6 -top-3 left-1/2 -translate-x-1/2 rotate-2" />
+                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-[#1C3F30] font-heading leading-tight mb-4">
+                  Cuốn Nhật Ký<br/>Kỷ Niệm
+                </h1>
+                <p className="text-[16px] text-stone-500 italic font-serif flex items-center gap-2 border-l-2 border-amber-600/30 pl-3">
+                  Ghi chép hành trình thời trang của {userName.split(" ")[0]}
+                </p>
                 
-                // Thuật toán tạo góc nghiêng ngẫu nhiên để trông giống dán tay
+                <div className="absolute -bottom-6 -right-6 text-amber-800/40 rotate-12 mix-blend-multiply opacity-80 pointer-events-none">
+                   <svg width="100" height="100" viewBox="0 0 100 100">
+                     <path id="curve" d="M 20 50 A 30 30 0 1 1 80 50 A 30 30 0 1 1 20 50" fill="transparent"/>
+                     <text className="text-[9px] font-mono tracking-[0.2em] font-bold" fill="currentColor">
+                       <textPath href="#curve">
+                         • CLOOP FASHION LOOP • 2026
+                       </textPath>
+                     </text>
+                     <circle cx="50" cy="50" r="16" stroke="currentColor" fill="none" strokeWidth="1.5" strokeDasharray="4 2"/>
+                   </svg>
+                </div>
+              </div>
+            </div>
+
+            <div className="break-inside-avoid mb-14 relative p-6 bg-[#FDFBF7]/50 border border-[#E9E2D5] rounded-lg shadow-sm rotate-2">
+               <div className="absolute -top-3 -left-3 w-6 h-6 rounded-full bg-stone-200 shadow-sm flex items-center justify-center border-2 border-white">
+                 <div className="w-1.5 h-1.5 rounded-full bg-stone-400" />
+               </div>
+               <Quote size={20} className="text-stone-300 mb-3" />
+               <p className="font-handwriting text-lg text-stone-600 leading-relaxed">
+                 "Mỗi món đồ vintage đều cất giữ một linh hồn. Khi chúng ta trao đi hoặc mượn lại, ta đang viết tiếp câu chuyện của chúng."
+               </p>
+               <Heart size={14} className="text-amber-500 mt-3 opacity-60" />
+            </div>
+
+            {/* KIỂM TRA NẾU TRỐNG: Hiển thị giao diện "chưa có nét mực" cực thơ */}
+            {memories.length === 0 ? (
+                <div className="break-inside-avoid mb-16 relative transition-transform duration-500 text-center py-20 opacity-60">
+                    <p className="font-handwriting text-2xl md:text-3xl text-stone-400 rotate-2">
+                        Trang giấy trắng chưa có nét mực nào...
+                    </p>
+                </div>
+            ) : (
+              memories.map((mem, idx) => {
+                const targetLink = mem.productId ? `/product/${mem.productId}` : `/closet/${userId}#wardrobe-section`;
                 const rotations = ["-rotate-2", "rotate-3", "-rotate-1", "rotate-2"];
                 const currentRotation = rotations[idx % rotations.length];
                 const isTape = idx % 2 === 0;
@@ -191,47 +211,50 @@ export default function MemoriesDiaryPage() {
                 return (
                   <div 
                     key={mem.id} 
-                    className={`flex flex-col bg-[#FFFDF9] border border-[#E9E2D5] p-5 md:p-6 rounded-sm scrapbook-shadow relative transition-all duration-500 hover:scale-[1.02] hover:z-20
-                      ${currentRotation}
-                      ${idx % 2 === 1 ? "md:mt-32" : ""} 
-                    `}
+                    className={`break-inside-avoid mb-16 relative transition-transform duration-500 hover:scale-[1.02] hover:z-30 ${currentRotation}`}
                   >
-                    {/* TRANG TRÍ: BĂNG KEO DÁN HOẶC GHIM ĐÓNG */}
                     {isTape ? (
-                      <div className="tape w-16 h-5 -top-2 left-1/2 -translate-x-1/2 -rotate-3" />
+                      <div className="washi-tape w-20 h-6 -top-3 left-10 rotate-3" />
                     ) : (
-                      <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-amber-700/90 border-2 border-white shadow-sm z-30 flex items-center justify-center">
-                         <div className="w-1 h-1 rounded-full bg-amber-900/50" />
-                      </div>
+                      <div className="washi-tape w-24 h-5 -top-2 right-10 -rotate-2 bg-stone-300/80" />
                     )}
 
-                    {/* KHUNG ẢNH POLAROID TRẮNG */}
-                    <Link href={targetLink} className="block relative mb-5 bg-white p-3 pb-8 shadow-sm border border-stone-100/80 hover:shadow-md transition-shadow">
-                      <div className="w-full aspect-[4/3] bg-stone-100 overflow-hidden relative">
-                        <Image src={mem.image} alt={mem.title} fill unoptimized className="object-cover hover:scale-105 transition-transform duration-700" />
+                    <Link href={targetLink} className="block polaroid-frame group">
+                      <div className="w-full aspect-square md:aspect-[4/3] bg-stone-100 overflow-hidden relative">
+                        <Image src={mem.image} alt={mem.title} fill unoptimized className="object-cover group-hover:scale-105 transition-transform duration-700" />
                       </div>
                     </Link>
                     
-                    {/* LỜI TỰA & MỐC THỜI GIAN BIÊN TẬP (CAPTION) */}
-                    <div className="space-y-3 px-2">
-                      <div className="flex items-baseline justify-between border-b border-stone-200/60 pb-2">
-                        <h3 className="text-xl md:text-2xl font-bold text-[#1C3F30] font-heading leading-tight flex-1 pr-4">
-                          <Link href={targetLink} className="hover:text-emerald-700 transition-colors">{mem.title}</Link>
+                    <div className="bg-[#FFFDF9] border border-[#E9E2D5] border-t-0 p-5 rounded-b-lg shadow-sm -mt-2 relative z-10">
+                      <div className="flex justify-between items-baseline mb-3">
+                        <h3 className="text-[18px] md:text-[20px] font-bold text-[#1C3F30] font-heading pr-4">
+                          <Link href={targetLink} className="hover:textemerald-700 transition-colors line-clamp-2">{mem.title}</Link>
                         </h3>
-                        <span className="text-[9px] font-bold text-amber-700/80 font-mono tracking-widest uppercase shrink-0 bg-amber-50 px-2 py-0.5 rounded border border-amber-100/50">
+                        <span className="text-[9px] font-bold text-stone-500 font-mono tracking-widest uppercase shrink-0">
                           {mem.date}
                         </span>
                       </div>
                       
-                      <p className="text-[17px] md:text-[19px] leading-relaxed text-stone-600 font-handwriting">
-                        "{mem.content}"
+                      <p className="text-[16px] md:text-[18px] leading-relaxed text-stone-600 font-handwriting">
+                        {mem.content}
                       </p>
                     </div>
                   </div>
                 );
-              })}
-            </div>
-          )}
+              })
+            )}
+
+          </div>
+        </div>
+
+        <div className="absolute bottom-4 right-4 text-[#7C9473]/30 pointer-events-none -rotate-12 z-20 hidden md:block">
+           <svg width="120" height="120" viewBox="0 0 100 100" fill="none">
+             <path d="M10 90 Q 40 70 80 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+             <path d="M25 80 Q 40 50 60 40" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+             <circle cx="80" cy="10" r="3" fill="currentColor" opacity="0.8" />
+             <circle cx="60" cy="40" r="4" fill="currentColor" opacity="0.6" />
+             <circle cx="45" cy="25" r="2.5" fill="currentColor" opacity="0.7" />
+           </svg>
         </div>
       </div>
     </main>
