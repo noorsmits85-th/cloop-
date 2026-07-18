@@ -5,11 +5,11 @@ import { useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@supabase/supabase-js";
-import { motion, AnimatePresence } from "framer-motion"; // 🟢 THÊM FRAMER MOTION CHO HIỆU ỨNG POPUP
+import { motion, AnimatePresence } from "framer-motion"; 
 import { 
   MapPin, Star, ShieldCheck, ArrowLeft, Shirt, Settings, 
   Calendar, ShoppingBag, Leaf, Heart, Share2, Plus, BookOpen,
-  X, Camera, Save, Loader2 // 🟢 THÊM CÁC ICON CHO BẢNG CHỈNH SỬA
+  X, Camera, Save, Loader2 
 } from "lucide-react";
 
 // Kết nối Supabase
@@ -65,10 +65,10 @@ export default function ClosetProfilePage() {
   const [activeTab, setActiveTab] = useState<"ALL" | "RENT" | "SALE">("ALL");
 
   // ==========================================
-  // 🟢 STATE QUẢN LÝ POPUPS (Chỉnh sửa & Góc Ký Ức)
+  // 🟢 STATE QUẢN LÝ POPUPS CHỈNH SỬA
+  // (Đã gỡ bỏ Modal Ký Ức theo yêu cầu)
   // ==========================================
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isMemoryModalOpen, setIsMemoryModalOpen] = useState(false); // Thêm state cho Sổ lưu bút mở rộng
   const [isSaving, setIsSaving] = useState(false);
   const [uploadingField, setUploadingField] = useState<"avatar" | "coverImage" | null>(null);
   
@@ -159,7 +159,6 @@ export default function ClosetProfilePage() {
       try {
         setLoading(true);
 
-        // 1. Check quyền chính chủ
         let loggedInId = null;
         if (typeof window !== "undefined") {
           loggedInId = localStorage.getItem("cloop_user_id");
@@ -172,7 +171,6 @@ export default function ClosetProfilePage() {
           } catch (e) {}
         }
 
-        // 2. Fetch Thông tin User
         const { data: userData } = await supabase
           .from("User")
           .select("id, name, avatar, created_at, bio, quote, coverImage, location, todaysMemory, rating, completedOrders")
@@ -200,13 +198,12 @@ export default function ClosetProfilePage() {
           bio: finalUser?.bio || "Mình là một người yêu thời trang vintage và những chuyến đi. Mình tin rằng mỗi món đồ đều có một câu chuyện đẹp để kể lại.",
           quote: finalUser?.quote || "Lưu giữ ký ức qua từng chiếc váy.",
           coverImage: finalUser?.coverImage || null,
-          location: finalUser?.location || "Hà Nội, Việt Nam",
+          location: finalUser?.location || "Nghệ An, Việt Nam",
           todaysMemory: finalUser?.todaysMemory || "Hôm nay mình vừa cho thuê chiếc váy đầu tiên trên CLOOP. Một khởi đầu thật đáng nhớ! ✨",
           rating: finalUser?.rating !== undefined ? Number(finalUser.rating) : 5.0,
           completedOrders: finalUser?.completedOrders !== undefined ? Number(finalUser.completedOrders) : 0
         });
 
-        // 3. Fetch Sản phẩm của User
         const { data: productsData } = await supabase.from("products").select("*").eq("userId", userId).order("createdAt", { ascending: false });
 
         if (productsData && productsData.length > 0) {
@@ -240,7 +237,6 @@ export default function ClosetProfilePage() {
           setAllProducts(formatted);
         }
 
-        // 4. Fetch Blog (Ký ức) -> 🟢 Đã gỡ bỏ giới hạn .limit(3) để tải toàn bộ album
         const { data: blogData } = await supabase.from("BlogPost").select("*").eq("userId", userId).eq("status", "PUBLIC").order("createdAt", { ascending: false });
         
         if (blogData && blogData.length > 0) {
@@ -317,7 +313,6 @@ export default function ClosetProfilePage() {
         }
         .polaroid:hover { transform: scale(1.05) rotate(0deg) !important; z-index: 30; }
         
-        /* 🟢 Ẩn thanh cuộn cho khu vực Ký Ức mượt mà hơn */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
@@ -462,19 +457,18 @@ export default function ClosetProfilePage() {
                             <p className="text-[10px] text-stone-400 font-medium">Những khoảnh khắc đẹp gắn với CLOOP</p>
                         </div>
                     </div>
-                    {/* 🟢 NÂNG CẤP: Nút mở Pop-up hiển thị TẤT CẢ ký ức */}
+                    {/* 🟢 NÂNG CẤP: Thay nút Button thành LINK bay thẳng sang trang Nhật ký mới */}
                     {memories.length > 3 && (
-                        <button 
-                            onClick={() => setIsMemoryModalOpen(true)}
-                            className="text-xs font-semibold text-stone-500 hover:text-[#183A2D] cursor-pointer"
+                        <Link 
+                            href={`/closet/${userId}/memories`}
+                            className="text-xs font-semibold text-stone-500 hover:text-[#183A2D] transition-colors"
                         >
                             Xem tất cả →
-                        </button>
+                        </Link>
                     )}
                 </div>
 
                 <div className="flex gap-4 overflow-x-auto no-scrollbar pb-6 pt-2 px-2 -mx-2">
-                    {/* 🟢 NÂNG CẤP: Dùng .slice(0, 3) để CỐ ĐỊNH CHỈ HIỆN 3 ẢNH trên layout chính */}
                     {memories.slice(0, 3).map((mem, idx) => (
                         <div key={mem.id} className={`polaroid w-36 shrink-0 relative ${idx % 2 === 0 ? '-rotate-2' : 'rotate-3'} mt-${idx % 2 === 0 ? '0' : '4'}`}>
                             <div className="tape w-8 h-3 -top-1.5 left-1/2 -translate-x-1/2" />
@@ -505,7 +499,6 @@ export default function ClosetProfilePage() {
                             <p className="text-[10px] text-stone-400 font-medium">Phong cách của {ownerInfo?.name}</p>
                         </div>
                     </div>
-                    {/* 🟢 NÂNG CẤP: Nút cuộn trang mượt mà xuống khu vực "Tủ Đồ" */}
                     <button 
                         onClick={() => {
                             document.getElementById("wardrobe-section")?.scrollIntoView({ behavior: "smooth" });
@@ -534,7 +527,6 @@ export default function ClosetProfilePage() {
             </div>
         </div>
 
-        {/* 🟢 NÂNG CẤP: Gắn ID và chỉnh khoảng cách cuộn (scroll-mt-24) để không bị che bởi Header */}
         <div id="wardrobe-section" className="bg-[#FCFBFA] border border-[#EBE6D8] rounded-[2rem] p-6 lg:p-8 shadow-sm scroll-mt-24">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8 border-b border-[#EBE6D8] pb-6">
                 <div className="flex items-center gap-2">
@@ -602,52 +594,6 @@ export default function ClosetProfilePage() {
             )}
         </div>
       </div>
-
-      {/* ========================================================
-          🟢 MODAL XEM TẤT CẢ KÝ ỨC (Cuốn Sổ Lưu Bút Mở Rộng)
-          ======================================================== */}
-      <AnimatePresence>
-        {isMemoryModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-sm">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-[#FCFBFA] w-full max-w-4xl max-h-[85vh] overflow-y-auto rounded-[2.5rem] shadow-2xl border border-stone-200 no-scrollbar"
-              style={{ backgroundImage: `url(${PAPER_BG})` }}
-            >
-              <div className="sticky top-0 bg-[#FCFBFA]/90 backdrop-blur-md px-6 md:px-8 py-4 md:py-5 border-b border-stone-200/60 flex items-center justify-between z-10">
-                <div className="flex items-center gap-3">
-                  <BookOpen size={24} className="text-[#183A2D]" />
-                  <div>
-                    <h2 className="text-xl font-bold text-[#183A2D] font-heading">Cuốn Sổ Lưu Bút</h2>
-                    <p className="text-[10px] text-stone-400 uppercase tracking-widest mt-0.5">Tất cả kỷ niệm của {ownerInfo?.name}</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setIsMemoryModalOpen(false)}
-                  className="w-9 h-9 rounded-full bg-stone-100 flex items-center justify-center text-stone-500 hover:bg-stone-200 transition-colors cursor-pointer"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <div className="p-6 md:p-8 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6 md:gap-8">
-                {memories.map((mem, idx) => (
-                  <div key={mem.id} className={`polaroid w-full relative border border-stone-200/30 ${idx % 2 === 0 ? '-rotate-2' : 'rotate-2'} hover:rotate-0 transition-transform duration-300`}>
-                    <div className="tape w-10 h-3.5 -top-2 left-1/2 -translate-x-1/2" />
-                    <div className="w-full aspect-square bg-stone-50 overflow-hidden relative mb-3 rounded-xs">
-                      <Image src={mem.image} alt={mem.title} fill unoptimized className="object-cover" />
-                    </div>
-                    <h4 className="text-[11px] font-bold text-stone-800 text-center font-heading leading-tight line-clamp-2 min-h-[32px] mb-1 px-1">{mem.title}</h4>
-                    <p className="text-[9px] text-stone-400 text-center font-mono">{mem.date}</p>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       {/* ========================================================
           🟢 MODAL (POPUP) CHỈNH SỬA HỒ SƠ 
