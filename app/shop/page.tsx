@@ -26,7 +26,9 @@ interface Product {
   rating: string; 
   condition: string; 
   storeRetailPrice: number; 
-  occasion: string; // Khớp cấu trúc thuộc tính dịp/phong cách toàn diện
+  occasion: string;
+  ownerName?: string; // 🟢 NÂNG CẤP: Khai báo thêm trường lưu trữ tên chủ đồ
+  userId: string;
 }
 
 function ShopContent() {
@@ -87,6 +89,18 @@ function ShopContent() {
         if (error) throw error;
 
         if (data) {
+          // 🟢 NÂNG CẤP XỬ LÝ: Quét chéo bảng `User` và `users` để kéo đúng tên Tác giả
+          const productUserIds = [...new Set(data.map((item: any) => item.userId || item.user_id).filter(Boolean))];
+          let usersDataForProducts: any[] = [];
+          
+          if (productUserIds.length > 0) {
+            const [res1, res2] = await Promise.all([
+              supabase.from("User").select("id, name").in("id", productUserIds),
+              supabase.from("users").select("id, name").in("id", productUserIds)
+            ]);
+            usersDataForProducts = [...(res1.data || []), ...(res2.data || [])];
+          }
+
           const mapped: Product[] = [];
 
           data.forEach((item: any) => {
@@ -109,6 +123,11 @@ function ShopContent() {
 
             const storeRetailPrice = item.original_price || item.originalPrice || 500000;
 
+            // 🟢 TÌM VÀ GẮN TÊN CHỦ ĐỒ
+            const uId = item.userId || item.user_id;
+            const matchedUser = usersDataForProducts.find((u: any) => u.id === uId);
+            const ownerName = matchedUser?.name || item.owner_name || item.ownerName || "Thành viên CLOOP";
+
             // d) ĐỐI SOÁT TRƯỜNG OCCASION: Đồng bộ cấu trúc dữ liệu ở cả 3 nhánh đẩy đồ lên sàn
             if (urlType === "rent" && rentPrice > 0) {
               mapped.push({
@@ -124,6 +143,8 @@ function ShopContent() {
                 condition: item.condition === "GOOD" ? "Mới 95%" : "Mới 98%",
                 storeRetailPrice,
                 occasion: item.occasion || "Khác",
+                ownerName: ownerName, // 🟢 Đẩy vào Object
+                userId: uId || "anonymous"
               });
             } else if (urlType === "sell" && sellPrice > 0) {
               mapped.push({
@@ -139,6 +160,8 @@ function ShopContent() {
                 condition: item.condition === "GOOD" ? "Mới 95%" : "Mới 98%",
                 storeRetailPrice,
                 occasion: item.occasion || "Khác",
+                ownerName: ownerName, // 🟢 Đẩy vào Object
+                userId: uId || "anonymous"
               });
             } else if (urlType === "all") {
               const hasRent = rentPrice > 0;
@@ -158,6 +181,8 @@ function ShopContent() {
                   condition: item.condition === "GOOD" ? "Mới 95%" : "Mới 98%",
                   storeRetailPrice,
                   occasion: item.occasion || "Khác",
+                  ownerName: ownerName, // 🟢 Đẩy vào Object
+                  userId: uId || "anonymous"
                 });
               }
             }
@@ -188,7 +213,8 @@ function ShopContent() {
       const q = searchQuery.toLowerCase();
       result = result.filter(p => 
         p.title.toLowerCase().includes(q) || 
-        p.location.toLowerCase().includes(q)
+        p.location.toLowerCase().includes(q) ||
+        (p.ownerName && p.ownerName.toLowerCase().includes(q)) // Cho phép search luôn theo tên tác giả
       );
     }
 
@@ -223,10 +249,10 @@ function ShopContent() {
 
         {/* TIÊU ĐỀ SÀN BIẾN ĐỔI LINH HOẠT THEO LUỒNG THƯƠNG MẠI */}
         <div className="text-left space-y-2">
-          <h1 className="text-4xl font-extrabold tracking-tight text-[#183A2D]">
+          <h1 className="text-4xl font-extrabold tracking-tight text-[#183A2D] font-heading">
             {urlType === "rent" ? "Kho Trang Phục Thuê Đồ" : urlType === "sell" ? "Kệ Hàng Mua Sắm Tuần Hoàn" : "Sàn Thời Trang Tuần Hoàn"}
           </h1>
-          <p className="text-xs text-gray-400 max-w-[600px] leading-relaxed">
+          <p className="text-xs text-gray-400 max-w-[600px] leading-relaxed font-sans">
             Kéo dài vòng đời sản phẩm, kiến tạo giải pháp tiết kiệm tối đa tài chính cho ví tiền sinh viên và bảo vệ môi trường xanh bền vững.
           </p>
         </div>
@@ -240,7 +266,7 @@ function ShopContent() {
               <button
                 key={occ}
                 onClick={() => handleChipClick(occ)}
-                className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer select-none ${
+                className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer select-none font-sans ${
                   selectedOccasion === occ 
                     ? "bg-[#183A2D] text-white shadow" 
                     : "bg-stone-50 text-gray-500 hover:text-[#183A2D] border border-stone-200"
@@ -252,7 +278,7 @@ function ShopContent() {
           </div>
 
           {/* Ô TÌM KIẾM TEXT ĐỘNG CHUẨN JSX */}
-          <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+          <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto font-sans">
             <div className="flex items-center gap-2 border border-stone-200 bg-stone-50 rounded-full px-4 py-2 w-full sm:w-[280px] focus-within:bg-white focus-within:border-[#183A2D] transition-colors shadow-inner">
               <Search size={14} className="text-gray-400" />
               <input 
@@ -289,17 +315,17 @@ function ShopContent() {
                 : 0;
 
               return (
-                <Link href={`/product/${prod.id}`} key={prod.id} className="block group">
-                  <div className="border border-[#E9E2D8] bg-white rounded-[2.5rem] overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between h-full text-left">
+                <div key={prod.id} className="block group relative">
+                  <div className="border border-[#E9E2D8] bg-white rounded-[2.5rem] overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between h-full text-left font-sans">
                     
                     {/* KHU VỰC KHUNG ẢNH LOOKBOOK */}
-                    <div className="relative w-full aspect-[3/4] bg-stone-100 overflow-hidden">
+                    <Link href={`/product/${prod.id}`} className="relative w-full aspect-[3/4] bg-stone-100 overflow-hidden block">
                       <Image 
                         src={prod.image} 
                         alt={prod.title} 
                         fill 
                         unoptimized 
-                        className="object-cover object-top transition-transform duration-700 group-hover:scale-104" 
+                        className="object-cover object-top transition-transform duration-700 group-hover:scale-105" 
                       />
                       <div className="absolute top-4 left-4 flex flex-col gap-1.5">
                         <span className={`text-[8.5px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md text-white shadow-sm transition-colors ${prod.listingTypeRaw === "RENT" ? "bg-[#183A2D]" : "bg-amber-700"}`}>
@@ -312,22 +338,28 @@ function ShopContent() {
                       <div className="absolute bottom-3 right-3 bg-white/80 backdrop-blur-sm px-2.5 py-0.5 rounded-full text-[10px] font-bold text-[#183A2D] flex items-center gap-0.5 shadow-sm">
                         <Star size={10} className="fill-amber-400 stroke-none" /> {prod.rating}
                       </div>
-                    </div>
+                    </Link>
 
                     {/* KHU VỰC CHÂN CARD */}
-                    <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                    <div className="p-5 flex-1 flex flex-col justify-between space-y-4 relative z-10">
+                      
                       <div className="space-y-1">
+                        {/* 🟢 NÂNG CẤP 1: Bố trí tên Tác Giả (Owner Name) lên vị trí trang trọng có gắn Link tủ đồ cá nhân */}
+                        <div className="text-[#183A2D] font-bold truncate font-heading text-sm mb-1.5 hover:text-stone-500 transition-colors w-fit">
+                           <Link href={`/closet/${prod.userId}`}>@{prod.ownerName}</Link>
+                        </div>
+                        
                         <div className="flex justify-between items-start gap-1">
-                          <h4 className="text-xs font-bold line-clamp-1 text-stone-800 group-hover:text-green-700 transition-colors uppercase tracking-wide leading-tight">
-                            {prod.title}
+                          <h4 className="text-xs font-bold line-clamp-1 text-stone-800 transition-colors uppercase tracking-wide leading-tight group-hover:text-[#183A2D]">
+                            <Link href={`/product/${prod.id}`}>{prod.title}</Link>
                           </h4>
-                          <span className="text-[8px] font-semibold text-stone-400 border border-stone-200 px-1 py-0.2 rounded shrink-0">
+                          <span className="text-[8px] font-semibold text-stone-400 border border-stone-200 px-1 py-[1px] rounded shrink-0">
                             {prod.occasion}
                           </span>
                         </div>
                         
                         {prod.storeRetailPrice > 0 && (
-                          <p className="text-[10px] font-medium text-stone-400 line-through">
+                          <p className="text-[10px] font-medium text-stone-400 line-through mt-1">
                             Giá mua mới: {Math.round(prod.storeRetailPrice).toLocaleString()}đ
                           </p>
                         )}
@@ -353,12 +385,12 @@ function ShopContent() {
                     </div>
 
                   </div>
-                </Link>
+                </div>
               );
             })}
           </div>
         ) : (
-          <div className="border border-stone-200/60 bg-white rounded-[2.5rem] p-12 text-center shadow-sm max-w-xl mx-auto mt-8">
+          <div className="border border-stone-200/60 bg-white rounded-[2.5rem] p-12 text-center shadow-sm max-w-xl mx-auto mt-8 font-sans">
             <div className="w-12 h-12 bg-stone-50 border rounded-full flex items-center justify-center mx-auto text-stone-400 mb-4 shadow-inner">
               <Shirt size={20} />
             </div>
