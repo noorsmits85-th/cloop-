@@ -14,6 +14,12 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 const PLACEHOLDER_IMG = "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600";
 const PAPER_BG = "https://www.transparenttextures.com/patterns/cream-paper.png";
 
+// 🟢 LINK ẢNH HOA LÁ KHÔ REAL (Đã chọn lọc nền sáng để dùng hiệu ứng Multiply)
+const DRIED_LEAF_1 = "https://images.unsplash.com/photo-1621274220349-2e06cb388ea2?q=80&w=500"; // Nhành lá rủ
+const DRIED_FLOWER_1 = "https://images.unsplash.com/photo-1563241527-3004b7be2ffd?q=80&w=500"; // Hoa nhí
+const VINTAGE_PAPER = "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?q=80&w=500"; // Mảnh giấy báo cũ
+const DRIED_ROSE = "https://images.unsplash.com/photo-1601614486663-8a3f81e3a731?q=80&w=500"; // Hoa hồng ép
+
 interface FullMemory {
   id: string;
   title: string;
@@ -63,7 +69,6 @@ export default function MemoriesDiaryPage() {
           });
           setMemories(mapped);
         } else {
-            // 🟢 ĐÃ FIX: Trả về mảng rỗng để hiển thị thông báo "Trang giấy trắng..." chuẩn dữ liệu thật
             setMemories([]);
         }
       } catch (e) {
@@ -85,8 +90,10 @@ export default function MemoriesDiaryPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#EAE4D8] py-8 md:py-16 px-2 sm:px-6 relative overflow-x-hidden selection:bg-[#183A2D] selection:text-white font-sans">
-      
+    <main 
+      className="min-h-screen py-8 md:py-16 px-2 sm:px-6 relative overflow-x-hidden selection:bg-[#183A2D] selection:text-white font-sans"
+      style={{ backgroundColor: "#EBE6DA", backgroundImage: `url(${PAPER_BG})` }} // Màu nền gỗ/giấy ngả vàng
+    >
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=Caveat:wght@400;500;600;700&display=swap');
         h1, h2, h3, .font-heading { font-family: 'Cormorant Garamond', serif !important; }
@@ -115,89 +122,107 @@ export default function MemoriesDiaryPage() {
             box-shadow: 0 8px 25px rgba(0,0,0,0.06), 0 2px 6px rgba(0,0,0,0.03);
             border: 1px solid #F0ECE1;
         }
+
+        /* 🟢 Lớp Multiply để in hằn ảnh vào nền */
+        .blend-multiply {
+            mix-blend-mode: multiply;
+            filter: grayscale(30%) sepia(40%) contrast(1.1); /* Phủ màu hoài cổ lên hoa lá */
+        }
       `}</style>
 
-      <div className="fixed top-0 left-0 w-[600px] h-[600px] opacity-20 pointer-events-none z-0" style={{ background: "radial-gradient(circle, rgba(107,163,122,0.2) 0%, rgba(245,242,235,0) 70%)" }} />
-      <div className="fixed bottom-0 right-0 w-[500px] h-[500px] opacity-30 pointer-events-none z-0" style={{ background: "radial-gradient(circle, rgba(212,175,140,0.2) 0%, rgba(245,242,235,0) 70%)" }} />
-      
-      <svg className="fixed top-24 left-4 w-40 h-52 text-[#7C9473]/50 pointer-events-none z-0 hidden lg:block" viewBox="0 0 100 140" fill="none">
-        <path d="M10 130 Q 25 90 15 40 Q 40 60 32 100 Q 55 70 45 20" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" />
-        <ellipse cx="20" cy="60" rx="7" ry="3" fill="currentColor" opacity="0.55" transform="rotate(40 20 60)" />
-        <ellipse cx="35" cy="85" rx="7" ry="3" fill="currentColor" opacity="0.55" transform="rotate(-30 35 85)" />
-        <ellipse cx="42" cy="45" rx="6" ry="2.5" fill="currentColor" opacity="0.5" transform="rotate(20 42 45)" />
-      </svg>
-      
-      <svg className="fixed bottom-16 right-6 w-44 h-56 text-[#B98B5E]/40 pointer-events-none z-0 hidden lg:block" viewBox="0 0 100 140" fill="none">
-        <path d="M90 130 Q 70 90 80 40 Q 55 60 65 100 Q 40 70 50 20" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" />
-        <ellipse cx="75" cy="60" rx="7" ry="3" fill="currentColor" opacity="0.5" transform="rotate(-40 75 60)" />
-        <ellipse cx="60" cy="85" rx="7" ry="3" fill="currentColor" opacity="0.5" transform="rotate(30 60 85)" />
-        <circle cx="55" cy="30" r="4" fill="#D4A574" opacity="0.4" />
-      </svg>
+      {/* ========================================================
+          🟢 NÂNG CẤP: DECOR MẶT BÀN BẰNG HOA LÁ KHÔ THẬT
+          ======================================================== */}
+      {/* Vết ố ly cà phê */}
+      <div className="fixed top-[15%] right-[10%] w-32 h-32 border-[4px] border-[#91714E] opacity-10 rounded-full pointer-events-none z-0 mix-blend-multiply" style={{ borderRadius: '40% 60% 70% 30% / 40% 50% 60% 50%' }} />
+      <div className="fixed top-[14%] right-[11%] w-24 h-24 border-[2px] border-[#91714E] opacity-[0.07] rounded-full pointer-events-none z-0 mix-blend-multiply rotate-45" style={{ borderRadius: '60% 40% 50% 50% / 40% 50% 60% 50%' }} />
 
-      <div className="fixed top-1/3 left-8 rotate-[-12deg] opacity-40 pointer-events-none z-0 hidden xl:block">
-        <svg width="60" height="80" viewBox="0 0 60 80" fill="none">
-          <path d="M30 80 L30 20" stroke="#8B9D77" strokeWidth="1.2" />
-          <circle cx="30" cy="18" r="3" fill="#E8C4A0" />
-          <circle cx="24" cy="30" r="2.5" fill="#E8C4A0" />
-          <circle cx="36" cy="42" r="2.5" fill="#E8C4A0" />
-        </svg>
+      {/* Cành lá rủ góc trên bên trái */}
+      <div className="fixed -top-16 -left-16 w-[350px] h-[350px] opacity-60 pointer-events-none z-0 blend-multiply rotate-12">
+        <Image src={DRIED_LEAF_1} alt="Dried leaves" fill unoptimized className="object-contain" />
       </div>
-      
+
+      {/* Nhành hoa nhí nằm mép phải */}
+      <div className="fixed top-1/3 -right-24 w-[300px] h-[400px] opacity-50 pointer-events-none z-0 blend-multiply -rotate-12 hidden md:block">
+        <Image src={DRIED_FLOWER_1} alt="Dried wildflowers" fill unoptimized className="object-contain" />
+      </div>
+
+      {/* Mảnh giấy báo cũ góc dưới trái */}
+      <div className="fixed -bottom-10 -left-10 w-[280px] h-[280px] opacity-40 pointer-events-none z-0 blend-multiply -rotate-6">
+        <Image src={VINTAGE_PAPER} alt="Vintage paper" fill unoptimized className="object-contain" />
+      </div>
+
+      {/* Cánh hoa ép góc dưới phải */}
+      <div className="fixed -bottom-8 right-10 w-[200px] h-[200px] opacity-40 pointer-events-none z-0 blend-multiply rotate-45 hidden sm:block">
+        <Image src={DRIED_ROSE} alt="Pressed flower" fill unoptimized className="object-contain" />
+      </div>
+
+      {/* ========================================================
+          📖 CUỐN SỔ SCRAPBOOK ĐẶT GIỮA MÀN HÌNH
+          ======================================================== */}
       <div 
-        className="w-full max-w-[1100px] mx-auto bg-[#FBF9F4] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.15)] rounded-sm relative flex flex-col md:flex-row min-h-[85vh] border border-[#D5C6B1]"
+        className="w-full max-w-[1100px] mx-auto bg-[#FBF9F4] shadow-[0_25px_60px_-10px_rgba(40,30,20,0.3)] rounded-sm relative flex flex-col md:flex-row min-h-[85vh] border border-[#D5C6B1]"
         style={{ backgroundImage: `url(${PAPER_BG})` }}
       >
-        <div className="hidden md:block absolute top-0 bottom-0 left-1/2 w-[70px] -translate-x-1/2 bg-gradient-to-r from-transparent via-[#DACBB6]/60 to-transparent shadow-[inset_0_0_12px_rgba(0,0,0,0.03)] border-l border-r border-[#DACBB6]/30 z-0" />
+        
+        {/* GÁY SỔ CỰC SÂU */}
+        <div className="hidden md:block absolute top-0 bottom-0 left-1/2 w-[80px] -translate-x-1/2 bg-gradient-to-r from-transparent via-[#C3B29D]/60 to-transparent shadow-[inset_0_0_15px_rgba(60,50,40,0.1)] border-l border-r border-[#C3B29D]/20 z-0" />
+        <div className="hidden md:block absolute top-0 bottom-0 left-1/2 w-[2px] -translate-x-1/2 bg-stone-300/40 z-0 shadow-[2px_0_4px_rgba(0,0,0,0.05)]" />
 
+        {/* NỘI DUNG SỔ */}
         <div className="w-full relative z-10 p-6 sm:p-10 md:p-16">
           
-          <div className="flex items-center justify-between mb-12 border-b border-[#DACBB6]/40 pb-6">
-            <Link href={`/closet/${userId}`} className="inline-flex items-center gap-2 text-xs font-bold text-stone-500 hover:text-[#183A2D] transition-colors uppercase tracking-wider bg-white/60 px-4 py-2 rounded-full border border-stone-200/60 shadow-sm">
+          <div className="flex items-center justify-between mb-12 border-b border-[#DACBB6]/50 pb-6 relative z-30">
+            <Link href={`/closet/${userId}`} className="inline-flex items-center gap-2 text-xs font-bold text-stone-600 hover:text-[#183A2D] transition-colors uppercase tracking-wider bg-[#FFFDF9]/80 px-5 py-2.5 rounded-full border border-stone-200/80 shadow-[0_2px_10px_rgba(0,0,0,0.03)] backdrop-blur-md">
               <ArrowLeft size={14} /> Quay lại tủ đồ
             </Link>
           </div>
 
+          {/* MASONRY LAYOUT TRÀN 2 TRANG */}
           <div className="columns-1 md:columns-2 gap-16 md:gap-32">
             
+            {/* KHỐI 1: HEADER NẰM TRÊN TRANG TRÁI */}
             <div className="break-inside-avoid mb-14 relative z-10">
-              <div className="torn-paper p-8 relative -rotate-1">
-                <div className="washi-tape w-24 h-6 -top-3 left-1/2 -translate-x-1/2 rotate-2" />
-                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-[#1C3F30] font-heading leading-tight mb-4">
+              <div className="torn-paper p-8 relative -rotate-2">
+                <div className="washi-tape w-24 h-6 -top-3 left-1/2 -translate-x-1/2 rotate-2 bg-[#D1C5B4]/80" />
+                <h1 className="text-5xl md:text-6xl font-bold text-[#1C3F30] font-heading leading-[1.1] mb-5">
                   Cuốn Nhật Ký<br/>Kỷ Niệm
                 </h1>
-                <p className="text-[16px] text-stone-500 italic font-serif flex items-center gap-2 border-l-2 border-amber-600/30 pl-3">
+                <p className="text-[17px] text-stone-500 italic font-serif flex items-center gap-2 border-l-2 border-amber-600/40 pl-4">
                   Ghi chép hành trình thời trang của {userName.split(" ")[0]}
                 </p>
                 
-                <div className="absolute -bottom-6 -right-6 text-amber-800/40 rotate-12 mix-blend-multiply opacity-80 pointer-events-none">
-                   <svg width="100" height="100" viewBox="0 0 100 100">
+                {/* Con dấu mộc */}
+                <div className="absolute -bottom-8 -right-8 text-[#987654]/40 rotate-12 mix-blend-multiply opacity-70 pointer-events-none">
+                   <svg width="110" height="110" viewBox="0 0 100 100">
                      <path id="curve" d="M 20 50 A 30 30 0 1 1 80 50 A 30 30 0 1 1 20 50" fill="transparent"/>
-                     <text className="text-[9px] font-mono tracking-[0.2em] font-bold" fill="currentColor">
+                     <text className="text-[9.5px] font-mono tracking-[0.22em] font-bold" fill="currentColor">
                        <textPath href="#curve">
                          • CLOOP FASHION LOOP • 2026
                        </textPath>
                      </text>
-                     <circle cx="50" cy="50" r="16" stroke="currentColor" fill="none" strokeWidth="1.5" strokeDasharray="4 2"/>
+                     <circle cx="50" cy="50" r="15" stroke="currentColor" fill="none" strokeWidth="1.2" strokeDasharray="3 2"/>
                    </svg>
                 </div>
               </div>
             </div>
 
-            <div className="break-inside-avoid mb-14 relative p-6 bg-[#FDFBF7]/50 border border-[#E9E2D5] rounded-lg shadow-sm rotate-2">
-               <div className="absolute -top-3 -left-3 w-6 h-6 rounded-full bg-stone-200 shadow-sm flex items-center justify-center border-2 border-white">
-                 <div className="w-1.5 h-1.5 rounded-full bg-stone-400" />
+            {/* KHỐI 2: DECOR LỜI NGỎ */}
+            <div className="break-inside-avoid mb-14 relative p-7 bg-[#FDFBF7]/60 border border-[#E9E2D5] rounded-sm shadow-sm rotate-1">
+               <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-stone-300/80 shadow-sm flex items-center justify-center border-2 border-white">
+                 <div className="w-1.5 h-1.5 rounded-full bg-stone-500" />
                </div>
-               <Quote size={20} className="text-stone-300 mb-3" />
-               <p className="font-handwriting text-lg text-stone-600 leading-relaxed">
+               <Quote size={24} className="text-[#C3B29D] mb-4" />
+               <p className="font-handwriting text-[19px] text-stone-700 leading-relaxed">
                  "Mỗi món đồ vintage đều cất giữ một linh hồn. Khi chúng ta trao đi hoặc mượn lại, ta đang viết tiếp câu chuyện của chúng."
                </p>
-               <Heart size={14} className="text-amber-500 mt-3 opacity-60" />
+               <Heart size={14} className="text-amber-600 mt-4 opacity-50" />
             </div>
 
-            {/* KIỂM TRA NẾU TRỐNG: Hiển thị giao diện "chưa có nét mực" cực thơ */}
+            {/* KIỂM TRA NẾU TRỐNG */}
             {memories.length === 0 ? (
                 <div className="break-inside-avoid mb-16 relative transition-transform duration-500 text-center py-20 opacity-60">
-                    <p className="font-handwriting text-2xl md:text-3xl text-stone-400 rotate-2">
+                    <p className="font-handwriting text-3xl md:text-4xl text-stone-400 -rotate-2">
                         Trang giấy trắng chưa có nét mực nào...
                     </p>
                 </div>
@@ -214,9 +239,11 @@ export default function MemoriesDiaryPage() {
                     className={`break-inside-avoid mb-16 relative transition-transform duration-500 hover:scale-[1.02] hover:z-30 ${currentRotation}`}
                   >
                     {isTape ? (
-                      <div className="washi-tape w-20 h-6 -top-3 left-10 rotate-3" />
+                      <div className="washi-tape w-20 h-6 -top-3 left-1/2 -translate-x-1/2 rotate-1 bg-[#D1C5B4]/80" />
                     ) : (
-                      <div className="washi-tape w-24 h-5 -top-2 right-10 -rotate-2 bg-stone-300/80" />
+                      <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-amber-800/80 border-[2px] border-white shadow-sm z-30 flex items-center justify-center">
+                          <div className="w-1 h-1 rounded-full bg-amber-900/60" />
+                      </div>
                     )}
 
                     <Link href={targetLink} className="block polaroid-frame group">
@@ -225,17 +252,17 @@ export default function MemoriesDiaryPage() {
                       </div>
                     </Link>
                     
-                    <div className="bg-[#FFFDF9] border border-[#E9E2D5] border-t-0 p-5 rounded-b-lg shadow-sm -mt-2 relative z-10">
-                      <div className="flex justify-between items-baseline mb-3">
-                        <h3 className="text-[18px] md:text-[20px] font-bold text-[#1C3F30] font-heading pr-4">
-                          <Link href={targetLink} className="hover:textemerald-700 transition-colors line-clamp-2">{mem.title}</Link>
+                    <div className="bg-[#FFFDF9] border border-[#E9E2D5] border-t-0 p-5 rounded-b-sm shadow-sm -mt-[1px] relative z-10">
+                      <div className="flex justify-between items-baseline mb-3 border-b border-stone-200/50 pb-2">
+                        <h3 className="text-[20px] md:text-[22px] font-bold text-[#1C3F30] font-heading pr-4 leading-tight">
+                          <Link href={targetLink} className="hover:text-emerald-700 transition-colors line-clamp-2">{mem.title}</Link>
                         </h3>
-                        <span className="text-[9px] font-bold text-stone-500 font-mono tracking-widest uppercase shrink-0">
+                        <span className="text-[10px] font-bold text-amber-700/70 font-mono tracking-widest uppercase shrink-0 bg-amber-50 px-2 py-0.5 rounded border border-amber-100/40">
                           {mem.date}
                         </span>
                       </div>
                       
-                      <p className="text-[16px] md:text-[18px] leading-relaxed text-stone-600 font-handwriting">
+                      <p className="text-[17px] md:text-[19px] leading-relaxed text-stone-600 font-handwriting">
                         {mem.content}
                       </p>
                     </div>
@@ -245,16 +272,6 @@ export default function MemoriesDiaryPage() {
             )}
 
           </div>
-        </div>
-
-        <div className="absolute bottom-4 right-4 text-[#7C9473]/30 pointer-events-none -rotate-12 z-20 hidden md:block">
-           <svg width="120" height="120" viewBox="0 0 100 100" fill="none">
-             <path d="M10 90 Q 40 70 80 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-             <path d="M25 80 Q 40 50 60 40" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-             <circle cx="80" cy="10" r="3" fill="currentColor" opacity="0.8" />
-             <circle cx="60" cy="40" r="4" fill="currentColor" opacity="0.6" />
-             <circle cx="45" cy="25" r="2.5" fill="currentColor" opacity="0.7" />
-           </svg>
         </div>
       </div>
     </main>
