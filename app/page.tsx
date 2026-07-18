@@ -362,7 +362,6 @@ export default function Home() {
                 <span>Nền tảng thời trang số tuần hoàn</span>
               </div>
 
-              {/* KHẮC PHỤC: Chữ Mặc đẹp hơn siêu to, in đậm, nổi bật điểm nhấn */}
               <h1 className="font-heading text-6xl sm:text-7xl lg:text-[6.5rem] font-black tracking-tighter leading-[0.95] text-[#183A2D] drop-shadow-lg">
                 Mặc đẹp hơn. <br />
                 Tiêu ít hơn. <br />
@@ -400,25 +399,33 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 5 KHỐI TÍNH NĂNG CHÍNH (SỬA LỖI NHỢT NHẠT) */}
+      {/* 🟢 KHẮC PHỤC 1: 5 KHỐI TÍNH NĂNG CHÍNH (ĐIỂM NHẤN CỰC MẠNH) */}
       <section className="max-w-[1500px] mx-auto px-6 lg:px-12 py-6 relative z-10">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
           {services.map((srv, i) => {
             const ServiceIcon = srv.icon;
             return (
               <Link href={srv.href} key={i} className="block h-full">
-                <div className="border border-gray-200 bg-white p-6 xl:p-8 rounded-[2rem] flex flex-col justify-between transition-all duration-300 relative group cursor-pointer text-left h-full shadow-sm hover:shadow-xl hover:border-emerald-200 hover:-translate-y-1">
-                  <span className="absolute top-4 right-5 text-sm text-gray-300 font-mono font-bold">{srv.tag}</span>
-                  <div>
-                    <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-800 flex items-center justify-center mb-6 group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-300 shadow-inner">
-                      <ServiceIcon size={20} strokeWidth={2.5} />
+                <div className="bg-white p-6 xl:p-8 rounded-[2rem] flex flex-col justify-between transition-all duration-500 relative group cursor-pointer text-left h-full shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_10px_40px_rgba(24,58,45,0.08)] border border-stone-100 hover:border-[#183A2D]/30 overflow-hidden hover:-translate-y-2">
+                  
+                  {/* Hiệu ứng ánh sáng nền mờ khi Hover */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/0 to-emerald-50/0 group-hover:from-emerald-50/50 group-hover:to-transparent transition-colors duration-500" />
+                  
+                  <span className="absolute top-5 right-6 text-3xl text-stone-100 font-heading font-black italic group-hover:text-emerald-100 transition-colors">{srv.tag}</span>
+                  
+                  <div className="relative z-10">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#183A2D] to-emerald-800 text-white flex items-center justify-center mb-6 shadow-lg transform group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500">
+                      <ServiceIcon size={24} strokeWidth={2} />
                     </div>
-                    {/* KHẮC PHỤC: Font đậm hơn, màu tối hơn */}
-                    <h3 className="text-sm font-extrabold uppercase tracking-wide mb-2 text-gray-900">{srv.title}</h3>
-                    <p className="text-xs text-gray-600 leading-relaxed mb-6 font-medium">{srv.desc}</p>
+                    
+                    {/* KHẮC PHỤC: Tiêu đề To, Đậm, Điểm nhấn gạch chân */}
+                    <h3 className="text-base lg:text-lg font-black uppercase tracking-widest mb-3 text-[#183A2D] font-heading drop-shadow-sm">{srv.title}</h3>
+                    <div className="w-8 h-1 bg-emerald-400 rounded-full mb-4 transition-all duration-300 group-hover:w-16" />
+
+                    <p className="text-xs text-stone-500 leading-relaxed mb-8 font-medium">{srv.desc}</p>
                   </div>
-                  {/* KHẮC PHỤC: Nút bấm có khối màu rõ ràng, không còn nhợt nhạt */}
-                  <span className="text-xs font-bold uppercase tracking-wider text-center bg-gray-50 text-[#183A2D] py-3 rounded-xl group-hover:bg-[#183A2D] group-hover:text-white transition-colors block border border-gray-100">
+
+                  <span className="relative z-10 text-[11px] font-black uppercase tracking-widest text-center bg-[#FAF9F5] text-[#183A2D] py-3.5 rounded-xl group-hover:bg-[#183A2D] group-hover:text-white transition-all duration-300 block border border-stone-200 group-hover:border-[#183A2D]">
                     {srv.btn}
                   </span>
                 </div>
@@ -590,48 +597,57 @@ export default function Home() {
 
       <KyUcTuanHoanSection recentBlogs={recentBlogs} />
 
-      {/* 🟢 KHẮC PHỤC: Mỏ neo cuối trang - Biến mảng trắng nhợt nhạt thành Xanh Lục Bảo thẫm rực rỡ */}
+      {/* 🟢 KHẮC PHỤC 2: TRẢ LẠI SỰ TRONG TRẺO CHO FORM ĐĂNG KÝ (BỎ CỤC XANH THẪM) */}
       <section id="register-privilege" className="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-12 py-12 relative z-10">
-        <div className="bg-[#183A2D] rounded-[3rem] p-8 lg:p-14 shadow-2xl flex flex-col lg:flex-row items-center justify-between gap-12 relative overflow-hidden">
-          {/* Ánh sáng mờ ảo bên trong khối Dark Mode */}
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-500/20 blur-[100px] rounded-full pointer-events-none" />
-
-          <div className="w-full lg:w-[55%] relative z-10 text-white">
-            {/* VINTAGE FONT CHO CHỮ CLOOP VÀ TIÊU ĐỀ */}
-            <div className="font-heading text-xl text-emerald-300 italic mb-3">CLOOP Fashion</div>
-            <h2 className="text-4xl lg:text-5xl font-bold font-heading leading-tight tracking-tight mb-4 text-white">
-              Đăng ký tài khoản để trải nghiệm <br/><span className="text-emerald-300 italic">trọn vẹn đặc quyền xanh</span>
+        <div className="bg-white/70 backdrop-blur-xl border border-stone-200/60 rounded-[3rem] p-8 lg:p-14 shadow-[0_8px_30px_rgba(24,58,45,0.03)] flex flex-col lg:flex-row items-center justify-between gap-12 relative overflow-hidden">
+          <div className="w-full lg:w-[55%] relative z-10">
+            <div className="font-heading text-xl text-[#6BA37A] italic mb-3">CLOOP Fashion</div>
+            <h2 className="text-4xl lg:text-5xl font-bold font-heading leading-tight tracking-tight mb-4 text-[#183A2D]">
+              Đăng ký tài khoản để trải nghiệm <br/><span className="text-[#6BA37A] italic">trọn vẹn đặc quyền xanh</span>
             </h2>
-            <p className="text-sm text-emerald-100/80 mb-8 font-medium leading-relaxed">
+            <p className="text-sm text-stone-500 mb-8 font-medium leading-relaxed">
               Trở thành một phần của hệ sinh thái thời trang tuần hoàn. Chia sẻ tủ đồ, gia tăng thu nhập và bảo vệ môi trường.
             </p>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-8">
               {privileges.map((item: any, idx: number) => (
                 <div key={idx} className="flex gap-4 items-start">
-                  <div className="w-10 h-10 rounded-2xl bg-white/10 text-emerald-300 flex items-center justify-center shrink-0 border border-white/10">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-100/50">
                     {item.icon}
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-white mb-1.5">{item.title}</h4>
-                    <p className="text-xs text-emerald-100/70 font-medium leading-relaxed">{item.desc}</p>
+                    <h4 className="text-sm font-bold text-stone-900 mb-1.5">{item.title}</h4>
+                    <p className="text-xs text-stone-500 font-medium leading-relaxed">{item.desc}</p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="w-full lg:w-[38%] relative z-10 bg-[#FAF9F6] p-10 rounded-[2.5rem] text-center shadow-2xl border border-emerald-900/50">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mb-6 mx-auto text-[#183A2D] shadow-inner">
+          <div className="w-full lg:w-[38%] relative z-10 bg-[#FAF9F6] p-10 rounded-[2.5rem] text-center shadow-lg border border-stone-200/50">
+            <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center mb-6 mx-auto text-[#183A2D] shadow-sm border border-stone-100">
               <Zap size={24} className="fill-emerald-600" />
             </div>
             <h3 className="text-3xl font-bold text-gray-900 font-heading mb-2">Kích Hoạt Tài Khoản</h3>
-            <p className="text-sm text-gray-600 mb-8 font-medium">Chỉ mất 30 giây để thiết lập tủ đồ xanh của riêng bạn trên nền tảng.</p>
+            <p className="text-sm text-gray-500 mb-8 font-medium">Chỉ mất 30 giây để thiết lập tủ đồ xanh của riêng bạn trên nền tảng.</p>
             
-            <button onClick={() => handleFeatureRequirement("Mở tủ đồ xanh")} className="w-full text-sm font-bold uppercase tracking-widest py-4 rounded-2xl shadow-[0_8px_20px_rgba(24,58,45,0.2)] bg-[#183A2D] text-white hover:bg-emerald-900 transition-all active:scale-[0.98] hover:-translate-y-1">
+            <button onClick={() => handleFeatureRequirement("Mở tủ đồ xanh")} className="w-full text-sm font-bold uppercase tracking-widest py-4 rounded-2xl shadow-[0_8px_20px_rgba(24,58,45,0.15)] bg-[#183A2D] text-white hover:bg-emerald-900 transition-all active:scale-[0.98] hover:-translate-y-1">
               Đăng ký ngay
             </button>
           </div>
+        </div>
+      </section>
+
+      {/* 🟢 KHẮC PHỤC 3: ĐIỂM NHẤN CLOOP KHỔNG LỒ NẰM Ở ĐÁY CÙNG CỦA TRANG */}
+      <section className="mt-8 bg-[#0B1E15] rounded-t-[3rem] lg:rounded-t-[4rem] pt-20 pb-16 relative overflow-hidden flex flex-col items-center border-t border-emerald-900/30">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80%] h-[300px] bg-emerald-500/10 blur-[120px] rounded-full pointer-events-none" />
+        <h1 className="font-logo text-[18vw] leading-[0.75] font-black text-white/5 select-none tracking-[0.05em] text-center w-full block pointer-events-none drop-shadow-2xl">
+          CLOOP
+        </h1>
+        <div className="text-center mt-6 relative z-10">
+          <p className="text-emerald-400/60 font-body text-[10px] sm:text-xs tracking-[0.4em] uppercase font-bold">
+            The Future of Circular Fashion
+          </p>
         </div>
       </section>
 
