@@ -184,7 +184,7 @@ export default function BlogJournalPage() {
           cloop<span className="text-pink-500 font-sans font-light">.diary</span>
         </h1>
         <p className="text-[11px] font-sans text-stone-400 font-medium tracking-wide">
-          Bảng ghim ký ức trang phục tuần hoàn — Phân luồng hiển thị 3 cột tinh nghịch. ✨
+          Bảng ghim ký ức trang phục tuần hoàn — Cuốn sổ tay ghi chép những mẩu chuyện nhỏ bước ra từ tủ đồ tuần hoàn.
         </p>
       </div>
 
