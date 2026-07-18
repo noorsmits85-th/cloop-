@@ -12,9 +12,7 @@ import {
 import Link from "next/link";
 import { createClient } from "@supabase/supabase-js";
 import AiStylistChat from "./components/AiStylistChat"; 
-// 🟢 BIẾN ĐỘC QUYỀN: Giữ nguyên vẹn đầu nối kích nổ Modal từ Context chung
 import { useAuthModal } from "./AuthModalContext";
-// 📔 TÍCH HỢP COMPONENT GÓC NHẬT KÝ TUẦN HOÀN CHUẨN ĐÉT EDITORIAL MAGAZINE
 import KyUcTuanHoanSection from "./components/KyUcTuanHoanSection";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
@@ -57,7 +55,6 @@ interface BlogPreview {
 interface OccasionItem { name: string; label: string; img: string; }
 interface ServiceItem { tag: string; icon: any; title: string; desc: string; btn: string; href: string; isModal?: boolean; }
 
-// 📈 PHÂN ĐOẠN 1 — BỘ ĐẾM SỐ ESG TỰ ĐỘNG CHẠY KHI CUỘN TỚI KHUNG
 function CountUpNumber({ target, suffix = "", duration = 2000 }: { target: number; suffix?: string; duration?: number }) {
   const ref = useRef<HTMLDivElement>(null);
   const [count, setCount] = useState(0);
@@ -84,7 +81,6 @@ function CountUpNumber({ target, suffix = "", duration = 2000 }: { target: numbe
   return <span ref={ref} className="font-mono">{count.toLocaleString("vi-VN")}{suffix}</span>;
 }
 
-// 🎀 COMPONENT DẢI LỤA SATIN CSS CHẠY ẨN SAU NỀN HERO ĐÚNG THEO BẢN THIẾT KẾ CỦA TRANG
 function SilkBackground() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
@@ -105,13 +101,9 @@ export default function Home() {
   const [recentBlogs, setRecentStories] = useState<BlogPreview[]>([]);
   const [productsLoading, setProductsLoading] = useState<boolean>(true);
 
-  // 🎲 STATE "LẮC TỦ ĐỒ AI"
   const [randomPick, setRandomPick] = useState<Product | null>(null);
-
-  // 🏆 STATE "TOP TỦ ĐỒ UY TÍN" (Ẩn sạch nếu database chưa có review thật)
   const [topClosets, setTopClosets] = useState<any[]>([]);
 
-  // 🏛️ DANH MỤC PHÂN LOẠI THEO DỊP
   const [occasions, setOccasions] = useState<OccasionItem[]>([
     { name: "All", label: "Tất cả đồ", img: "" },
     { name: "Tiệc cưới", label: "Tiệc cưới", img: "" },
@@ -132,7 +124,6 @@ export default function Home() {
     { tag: "05", icon: Leaf, title: "TÁI CHẾ", desc: "Gửi quần áo cũ hỏng cho xưởng Upcycle để thiết kế và tái sinh vòng đời.", btn: "Tìm hiểu ngay →", href: "#", isModal: true }
   ];
 
-  // 🌿 ĐẶC QUYỀN THÀNH VIÊN
   const privileges = [
     { icon: <Gift size={18} />, title: "Tặng Ngay 100 Green Points", desc: "Tích lũy điểm thưởng sau mỗi lần thuê hoặc tái chế đồ để đổi voucher ưu đãi." },
     { icon: <Sparkles size={18} />, title: "Trợ Lý Phối Đồ AI Stylist", desc: "Mở khóa tính năng AI tự động gợi ý phụ kiện, túi xách phù hợp với từng outfit." },
@@ -140,7 +131,6 @@ export default function Home() {
     { icon: <Heart size={18} />, title: "Kết Nối Xưởng Upcycle", desc: "Gửi yêu cầu thiết kế và sửa đổi quần áo cũ trực tiếp đến các đối tác tái chế." }
   ];
 
-  // 📡 TRUY XUẤT DỮ LIỆU SẢN PHẨM & ALBUM NHẬT KÝ ĐỘNG TỪ SUPABASE
   useEffect(() => {
     async function fetchRealMarketplaceData() {
       try {
@@ -152,9 +142,17 @@ export default function Home() {
         const { data: listingsData } = await supabase.from("Listing").select("*");
         const { data: imagesData } = await supabase.from("ProductImage").select("*");
 
-        // 🟢 NÂNG CẤP XỬ LÝ: Lấy danh sách tất cả userId độc nhất từ danh sách sản phẩm để gọi bảng User một lần duy nhất
-        const productUserIds = [...new Set((pData || []).map((item: any) => item.userId).filter(Boolean))];
-        const { data: usersDataForProducts } = await supabase.from("User").select("id, name").in("id", productUserIds);
+        // 🟢 NÂNG CẤP XỬ LÝ: Quét chéo cả bảng `User` và `users` để tìm tên chuẩn xác
+        const productUserIds = [...new Set((pData || []).map((item: any) => item.userId || item.user_id).filter(Boolean))];
+        let usersDataForProducts: any[] = [];
+        
+        if (productUserIds.length > 0) {
+          const [res1, res2] = await Promise.all([
+            supabase.from("User").select("id, name").in("id", productUserIds),
+            supabase.from("users").select("id, name").in("id", productUserIds)
+          ]);
+          usersDataForProducts = [...(res1.data || []), ...(res2.data || [])];
+        }
 
         if (pData) {
           const mappedRents: Product[] = [];
@@ -180,8 +178,9 @@ export default function Home() {
               currentImage = item.image_url || item.imageUrl;
             }
 
-            // 🟢 NÂNG CẤP XỬ LÝ: Đối chiếu tìm thông tin User để gán tên thật thay vì gán chữ "Ẩn danh" cố định
-            const matchedUser = (usersDataForProducts || []).find((u: any) => u.id === item.userId);
+            // 🟢 Lấy chuẩn uID và Tên
+            const uId = item.userId || item.user_id;
+            const matchedUser = usersDataForProducts.find((u: any) => u.id === uId);
 
             const baseProduct = {
               id: item.id,
@@ -192,13 +191,12 @@ export default function Home() {
               condition: item.condition === "GOOD" ? "Mới 95%" : "Mới 98%",
               size: item.size || "M",
               brand: item.brand || "Thiết kế Việt",
-              ownerName: matchedUser?.name || item.owner_name || item.ownerName || "Ẩn danh",
-              userId: item.userId || "anonymous-user",
+              ownerName: matchedUser?.name || item.owner_name || item.ownerName || "Thành viên CLOOP",
+              userId: uId || "anonymous-user",
               storeRetailPrice,
               occasion: item.occasion || "Dạo phố"
             };
 
-            // Tách biệt luồng Đồ Thuê
             if (effectiveRentPrice > 0) {
               mappedRents.push({
                 ...baseProduct,
@@ -210,7 +208,6 @@ export default function Home() {
               });
             }
 
-            // Tách biệt luồng Đồ Bán đứt (Kệ thanh lý phục trang)
             if (sellPrice > 0) {
               mappedSells.push({
                 ...baseProduct,
@@ -236,7 +233,6 @@ export default function Home() {
           }));
         }
 
-        // 📔 NÂNG CẤP ĐỘNG: QUY QUÉT CHÉO BẢNG USER ĐỂ HIỂN THỊ DANH TÍNH THẬT TRÊN LƯU BÚT
         const { data: blogData } = await supabase
           .from("BlogPost")
           .select("*")
@@ -280,16 +276,23 @@ export default function Home() {
 
         if (blogData && blogData.length > 0) {
           const productIds = blogData.map((b: any) => b.productId).filter(Boolean);
-          const userIds = blogData.map((b: any) => b.userId).filter(Boolean);
+          const userIds = blogData.map((b: any) => b.userId || b.user_id).filter(Boolean);
           
           const { data: imagesData } = await supabase.from("ProductImage").select("*").in("productId", productIds);
-          const { data: usersData } = await supabase.from("User").select("id, name, avatar").in("id", userIds);
+          
+          let allBlogUsers: any[] = [];
+          if (userIds.length > 0) {
+            const [res1, res2] = await Promise.all([
+              supabase.from("User").select("id, name, avatar").in("id", userIds),
+              supabase.from("users").select("id, name, avatar").in("id", userIds)
+            ]);
+            allBlogUsers = [...(res1.data || []), ...(res2.data || [])];
+          }
 
           const mappedBlogs = blogData.map((b: any) => {
             const imgs = (imagesData || []).filter((img: any) => img.productId === b.productId).map((img: any) => img.url);
-            const author = (usersData || []).find((u: any) => u.id === b.userId);
+            const author = allBlogUsers.find((u: any) => u.id === (b.userId || b.user_id));
             
-            // Bảo chứng lọc bỏ ảnh screenshot lỗi hệ thống từ database test
             const imgUrl = b.coverImage || b.cover_image;
             const isTechImage = imgUrl && (imgUrl.includes("screenshot") || imgUrl.includes("notxrjsuukrrxdlboavo") || imgUrl.includes("localhost"));
 
@@ -319,7 +322,6 @@ export default function Home() {
     fetchRealMarketplaceData();
   }, []);
 
-  // 🏆 BỘ ĐỐI SOÁT "TOP TỦ ĐỒ UY TÍN"
   useEffect(() => {
     async function fetchTopClosets() {
       try {
@@ -345,10 +347,18 @@ export default function Home() {
           .slice(0, 8);
 
         const userIds = ranked.map((r) => r.userId);
-        const { data: usersData } = await supabase.from("User").select("id, name, avatar").in("id", userIds);
+        
+        let allTopUsers: any[] = [];
+        if (userIds.length > 0) {
+          const [res1, res2] = await Promise.all([
+            supabase.from("User").select("id, name, avatar").in("id", userIds),
+            supabase.from("users").select("id, name, avatar").in("id", userIds)
+          ]);
+          allTopUsers = [...(res1.data || []), ...(res2.data || [])];
+        }
 
         const merged = ranked.map((r) => {
-          const u = (usersData || []).find((u: any) => u.id === r.userId);
+          const u = allTopUsers.find((u: any) => u.id === r.userId);
           return { ...r, name: u?.name || "Thành viên CLOOP", avatar: u?.avatar || null };
         });
 
@@ -369,7 +379,6 @@ export default function Home() {
   return (
     <main className="min-h-screen overflow-x-hidden antialiased relative bg-[#FAF9F6] text-stone-900 selection:bg-[#183A2D] selection:text-white">
       
-      {/* 🔐 CSS INJECTION KHÓA CHẶT FONT CHỮ CORMORANT GARAMOND VÀ THỚ VẢI LỤA SATIN CSS */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700&display=swap');
         
@@ -391,7 +400,6 @@ export default function Home() {
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* 🎀 THIẾT LẬP KỊCH BẢN DẢI LỤA SATIN CSS CHẠY ẨN SAU NỀN THEO ĐÚNG CẤU TRÚC TRANG */
         .silk {
           position: absolute;
           width: 180%;
@@ -431,7 +439,6 @@ export default function Home() {
         }
       `}</style>
 
-      {/* 🟢 PHÂN ĐOẠN 1: HERO SECTION CHỨA DẢI LỤA SATIN ẨN NỀN PHÍA SAU */}
       <section className="relative overflow-hidden pt-12 pb-16">
         <SilkBackground />
 
@@ -464,7 +471,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* KHUNG ẢNH XU HƯỚNG */}
             <div className="w-full lg:w-[42%] relative flex items-center justify-center">
               <div className="w-full aspect-square max-w-[460px] bg-white rounded-[2.5rem] overflow-hidden relative border border-stone-200/40 p-4 shadow-xl flex items-center justify-center">
                 <div className="w-full h-full rounded-[2rem] overflow-hidden relative">
@@ -482,7 +488,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 🟢 PHÂN ĐOẠN 2: KHỐI 5 CHỨC NĂNG CHÍNH */}
       <section className="max-w-[1500px] mx-auto px-6 lg:px-12 py-6 relative z-10">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
           {services.map((srv, i) => {
@@ -508,7 +513,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 🎯 PHÂN ĐOẠN 3: TÌM KIẾM THEO DỊP */}
       <section className="max-w-[1500px] mx-auto px-6 lg:px-12 py-8 space-y-6">
         <div className="text-left space-y-1">
           <h2 className="text-2xl sm:text-3xl font-bold text-stone-900 tracking-tight font-heading">Tìm kiếm theo dịp mặc đồ</h2>
@@ -538,10 +542,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 👗 PHÂN ĐOẠN 4: HỆ THỐNG KỆ ĐỒ SONG HÀNH & CHỦ TỦ TRIỆU VIEW */}
       <section className="max-w-[1500px] mx-auto px-6 lg:px-12 py-6 space-y-12">
         
-        {/* TOP TỦ ĐỒ UY TÍN */}
         {topClosets.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center gap-1.5 border-b border-stone-200/60 pb-2 text-left">
@@ -570,7 +572,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* TẦNG 1: TỦ ĐỒ CHO THUÊ TUẦN HOÀN */}
         <div className="space-y-4">
           <div className="border-b border-stone-200/60 pb-3 text-left">
             <h3 className="text-xl font-bold text-[#183A2D] flex items-center gap-1.5 mb-1 font-heading">
@@ -601,7 +602,6 @@ export default function Home() {
                   </div>
 
                   <div className="space-y-1 px-0.5 text-xs font-normal">
-                    {/* KHU VỰC ĐÃ FIX LỖI ĐÈ LINK: Thêm thuộc tính relative z-10 vào wrapper */}
                     <div className="text-[#183A2D] font-bold truncate font-heading relative z-10">
                       <Link href={`/closet/${item.userId}`} className="hover:text-stone-600 font-bold transition-colors">@{item.ownerName}</Link>
                     </div>
@@ -615,7 +615,6 @@ export default function Home() {
                       {item.rawPriceText}
                     </div>
                   </div>
-                  {/* LINK ẨN CỦA TOÀN BỘ SẢN PHẨM Ở DƯỚI CÙNG */}
                   <Link href={`/product/${item.id}`} className="absolute inset-0 z-0"><span className="sr-only">Xem chi tiết {item.title}</span></Link>
                 </div>
               ))
@@ -623,7 +622,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* TẦNG 2: KỆ THANH LÝ PHỤC TRANG */}
         <div className="space-y-4">
           <div className="border-b border-stone-200/60 pb-3 text-left">
             <h3 className="text-xl font-bold text-[#183A2D] flex items-center gap-1.5 mb-1 font-heading">
@@ -654,7 +652,6 @@ export default function Home() {
                   </div>
 
                   <div className="space-y-1 px-0.5 text-xs font-normal">
-                    {/* KHU VỰC ĐÃ FIX LỖI ĐÈ LINK: Thêm thuộc tính relative z-10 vào wrapper */}
                     <div className="text-[#183A2D] font-bold truncate font-heading relative z-10">
                       <Link href={`/closet/${item.userId}`} className="hover:text-stone-600 font-bold transition-colors">@{item.ownerName}</Link>
                     </div>
@@ -668,7 +665,6 @@ export default function Home() {
                       {item.rawPriceText}
                     </div>
                   </div>
-                  {/* LINK ẨN CỦA TOÀN BỘ SẢN PHẨM Ở DƯỚI CÙNG */}
                   <Link href={`/product/${item.id}`} className="absolute inset-0 z-0"><span className="sr-only">Xem chi tiết {item.title}</span></Link>
                 </div>
               ))
@@ -677,10 +673,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 📔 PHÂN ĐOẠN 5: GÓC NHẬT KÝ LƯU BÚT HOÀI NIỆM - KÝ ỨC TUẦN HOÀN DỮ LIỆU THẬT */}
       <KyUcTuanHoanSection recentBlogs={recentBlogs} />
 
-      {/* 🌿 PHÂN ĐOẠN 6: ĐẶC QUYỀN THÀNH VIÊN */}
       <section id="register-privilege" className="max-w-[1500px] mx-auto px-6 lg:px-12 py-8 border-t border-stone-200/60 text-left relative z-10">
         <div className="border border-stone-200 bg-white rounded-[2.5rem] p-8 lg:p-12 shadow-sm flex flex-col lg:flex-row items-center justify-between gap-10">
           <div className="w-full lg:w-[55%]">
@@ -716,7 +710,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 🎲 TÍNH NĂNG MỚI B: TRẠM QUẸT ĐỒ NGẪU NHIÊN (LẮC TỦ ĐỒ AI) */}
       <button 
         onClick={handleShuffle} 
         className="fixed bottom-24 right-6 z-40 bg-[#183A2D] border border-emerald-400/20 text-white rounded-full px-5 py-3.5 shadow-lg text-xs font-bold uppercase tracking-widest flex items-center gap-1.5 transition active:scale-95 cursor-pointer hover:bg-emerald-950 font-heading"
@@ -725,7 +718,6 @@ export default function Home() {
         <span>🎲 Lắc tủ đồ AI</span>
       </button>
 
-      {/* MODAL HIỂN THỊ KẾT QUẢ "LẮC" */}
       <AnimatePresence>
         {randomPick && (
           <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4" onClick={() => setRandomPick(null)}>
