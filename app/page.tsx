@@ -55,39 +55,11 @@ interface BlogPreview {
 interface OccasionItem { name: string; label: string; img: string; }
 interface ServiceItem { tag: string; icon: any; title: string; desc: string; btn: string; href: string; isModal?: boolean; }
 
-function CountUpNumber({ target, suffix = "", duration = 2000 }: { target: number; suffix?: string; duration?: number }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [count, setCount] = useState(0);
-  const [hasRun, setHasRun] = useState(false);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting && !hasRun) {
-        setHasRun(true);
-        const start = performance.now();
-        const animate = (now: number) => {
-          const progress = Math.min((now - start) / duration, 1);
-          setCount(Math.floor(progress * target));
-          if (progress < 1) requestAnimationFrame(animate);
-        };
-        requestAnimationFrame(animate);
-      }
-    }, { threshold: 0.2 });
-
-    if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, [hasRun, target, duration]);
-
-  return <span ref={ref} className="font-mono">{count.toLocaleString("vi-VN")}{suffix}</span>;
-}
-
-// 🟢 NÂNG CẤP TẠI ĐÂY: Dẹp nền lụa cam cũ, làm nền sáng Xanh Matcha chuẩn vibe Canva sạch sẽ mượt mà
+// Nền sáng Xanh Matcha chuẩn vibe Canva sạch sẽ mượt mà
 function MatchaGlowBackground() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 bg-[#FCFCFB]">
-      {/* Vùng tỏa sáng Xanh Matcha chính ở góc trên */}
       <div className="absolute top-[-15%] left-[5%] w-[80%] h-[70%] rounded-full bg-gradient-to-b from-emerald-100/60 to-transparent blur-[120px] mix-blend-multiply opacity-90" />
-      {/* Vùng tỏa sáng cực nhẹ góc phải tạo chiều sâu */}
       <div className="absolute top-[10%] right-[-10%] w-[40%] h-[60%] rounded-full bg-gradient-to-l from-teal-50/50 to-transparent blur-[100px] mix-blend-multiply" />
     </div>
   );
@@ -119,18 +91,18 @@ export default function Home() {
   ]);
 
   const services: ServiceItem[] = [
-    { tag: "01", icon: ShoppingBag, title: "THUÊ ĐỒ", desc: "Thuê phục trang theo nhu cầu thực tế, tối ưu chi phí tiêu dùng.", btn: "Khám phá ngay →", href: "/shop?type=rent" },
-    { tag: "02", icon: Handshake, title: "CHO THUÊ ĐỒ", desc: "Chia sẻ tủ quần áo nhàn rỗi của bạn, tạo nguồn thu nhập xanh ổn định.", btn: "Đăng cho thuê →", href: "/my-closet/create?mode=rent" },
-    { tag: "03", icon: RefreshCw, title: "MUA SẮM", desc: "Sở hữu sản phẩm thời trang second-hand tuyển chọn, chất lượng cao.", btn: "Mua sắm ngay →", href: "/shop?type=sell" },
-    { tag: "04", icon: Layers, title: "CHUYỂN NHƯỢNG & KÝ GỬI", desc: "Ủy thác tủ đồ cũ để bán đứt hoặc phối hợp vận hành tuần hoàn.", btn: "Ký gửi ngay →", href: "/my-closet/create?mode=consign" },
-    { tag: "05", icon: Leaf, title: "TÁI CHẾ", desc: "Gửi quần áo cũ hỏng cho xưởng Upcycle để thiết kế và tái sinh vòng đời.", btn: "Tìm hiểu ngay →", href: "#", isModal: true }
+    { tag: "01", icon: ShoppingBag, title: "THUÊ ĐỒ", desc: "Thuê phục trang theo nhu cầu thực tế, tối ưu ngân sách.", btn: "Khám phá ngay →", href: "/shop?type=rent" },
+    { tag: "02", icon: Handshake, title: "CHO THUÊ ĐỒ", desc: "Chia sẻ tủ quần áo nhàn rỗi, tạo nguồn thu nhập xanh.", btn: "Đăng cho thuê →", href: "/my-closet/create?mode=rent" },
+    { tag: "03", icon: RefreshCw, title: "MUA SẮM", desc: "Sở hữu đồ hiệu second-hand tuyển chọn, chất lượng cao.", btn: "Mua sắm ngay →", href: "/shop?type=sell" },
+    { tag: "04", icon: Layers, title: "KÝ GỬI", desc: "Ủy thác tủ đồ cũ để bán đứt hoặc phối hợp vận hành.", btn: "Ký gửi ngay →", href: "/my-closet/create?mode=consign" },
+    { tag: "05", icon: Leaf, title: "TÁI CHẾ", desc: "Gửi quần áo cũ hỏng cho xưởng Upcycle để tái sinh.", btn: "Tìm hiểu ngay →", href: "#", isModal: true }
   ];
 
   const privileges = [
-    { icon: <Gift size={18} />, title: "Tặng Ngay 100 Green Points", desc: "Tích lũy điểm thưởng sau mỗi lần thuê hoặc tái chế đồ để đổi voucher ưu đãi." },
-    { icon: <Sparkles size={18} />, title: "Trợ Lý Phối Đồ AI Stylist", desc: "Mở khóa tính năng AI tự động gợi ý phụ kiện, túi xách phù hợp với từng outfit." },
-    { icon: <ShieldCheck size={18} />, title: "Mở Gian Hàng Tự Quản", desc: "Bất kỳ cá nhân nào cũng có thể đăng bài kinh doanh, chia sẻ tủ đồ tăng thu nhập." },
-    { icon: <Heart size={18} />, title: "Kết Nối Xưởng Upcycle", desc: "Gửi yêu cầu thiết kế và sửa đổi quần áo cũ trực tiếp đến các đối tác tái chế." }
+    { icon: <Gift size={20} />, title: "Tặng Ngay 100 Green Points", desc: "Tích lũy điểm thưởng sau mỗi lần thuê hoặc tái chế đồ để đổi voucher ưu đãi." },
+    { icon: <Sparkles size={20} />, title: "Trợ Lý Phối Đồ AI Stylist", desc: "Mở khóa tính năng AI tự động gợi ý phụ kiện, túi xách phù hợp với từng outfit." },
+    { icon: <ShieldCheck size={20} />, title: "Mở Gian Hàng Tự Quản", desc: "Bất kỳ cá nhân nào cũng có thể đăng bài kinh doanh, chia sẻ tủ đồ tăng thu nhập." },
+    { icon: <Heart size={20} />, title: "Kết Nối Xưởng Upcycle", desc: "Gửi yêu cầu thiết kế và sửa đổi quần áo cũ trực tiếp đến các đối tác tái chế." }
   ];
 
   useEffect(() => {
@@ -245,31 +217,11 @@ export default function Home() {
           {
             id: "story-1",
             title: "Tà Áo Dài trắng năm 18 tuổi",
-            content: "Chiếc áo dài lụa tơ tằm mình mặc đúng một lần duy nhất vào buổi bế giảng cấp 3 năm ấy. Giữ mãi mùi nắng của ngày hạ cuối cùng, tiếng cười khúc khích sân trường và những dòng chữ lưu bút viết vội vàng bên mép tà áo nếp gấp kỉ niệm.",
+            content: "Chiếc áo dài lụa tơ tằm mình mặc đúng một lần duy nhất vào buổi bế giảng cấp 3 năm ấy. Giữ mãi mùi nắng của ngày hạ cuối cùng...",
             coverImage: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?q=80&w=600",
             album: [],
             createdAt: new Date().toISOString(),
             authorName: "Trang Hoài",
-            authorAvatar: ""
-          },
-          {
-            id: "story-2",
-            title: "Chiếc váy hoa nhí dưới mưa",
-            content: "Váy hai dây voan tơ thướt tha mềm mại đồng hành cùng mình trong buổi hẹn hò đầu tiên. Cơn mưa rào bất chợt làm ướt gấu váy nhưng lại thắp lên ngọn lửa ấm áp của mối tình thanh xuân rực rỡ.",
-            coverImage: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=600",
-            album: [],
-            createdAt: new Date().toISOString(),
-            authorName: "Thành viên CLOOP",
-            authorAvatar: ""
-          },
-          {
-            id: "story-3",
-            title: "Blazer đen ngày đầu đi thực tập",
-            content: "Bộ đồ phom đứng thanh lịch đã nâng đỡ sự tự tin của mình trước hội đồng giám khảo khó tính ngày đầu bước chân vào thế giới người lớn. Vừa có nét trang trọng quy chuẩn, vừa ôm trọn hoài bão khát vọng rực cháy tuổi trẻ.",
-            coverImage: "https://images.unsplash.com/photo-1485968579580-b6d095142e6e?q=80&w=600",
-            album: [],
-            createdAt: new Date().toISOString(),
-            authorName: "Thành viên CLOOP",
             authorAvatar: ""
           }
         ];
@@ -379,7 +331,6 @@ export default function Home() {
   return (
     <main className="min-h-screen overflow-x-hidden antialiased relative bg-[#FCFCFB] text-stone-900 selection:bg-[#183A2D] selection:text-white">
       
-      {/* 🔴 GIỮ NGUYÊN TOÀN BỘ CSS THIẾT KẾ HIỆN TẠI - CHỈ XÓA ĐOẠN CLASS .SILK */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700&display=swap');
         
@@ -387,14 +338,10 @@ export default function Home() {
           font-family: 'Inter', sans-serif !important;
         }
         
+        /* Gắn font hoài cổ (Vintage) cho các Tiêu đề lớn */
         .editorial-title, .font-heading, h1, h2, h3 {
           font-family: 'Cormorant Garamond', serif !important;
           letter-spacing: -0.01em !important;
-        }
-        
-        .font-diary-quote, .editorial-title span.italic {
-          font-family: 'Cormorant Garamond', serif !important;
-          font-style: italic !important;
         }
 
         html { scroll-behavior: smooth; }
@@ -402,7 +349,7 @@ export default function Home() {
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
-      {/* 🟢 HERO SECTION: MATCH GLOW BACKGROUND MỚI */}
+      {/* HERO SECTION */}
       <section className="relative overflow-hidden pt-12 pb-16">
         <MatchaGlowBackground />
 
@@ -415,22 +362,22 @@ export default function Home() {
                 <span>Nền tảng thời trang số tuần hoàn</span>
               </div>
 
-              {/* 🟢 NÂNG CẤP SLOGAN: Tăng size lên cực to (text-[5.5rem]), ép độ dày extrabold, khoảng cách chữ chặt chẽ */}
-              <h1 className="editorial-title text-6xl sm:text-7xl lg:text-[5.5rem] font-extrabold tracking-tight leading-[1.05] text-[#183A2D] drop-shadow-sm">
+              {/* KHẮC PHỤC: Chữ Mặc đẹp hơn siêu to, in đậm, nổi bật điểm nhấn */}
+              <h1 className="font-heading text-6xl sm:text-7xl lg:text-[6.5rem] font-black tracking-tighter leading-[0.95] text-[#183A2D] drop-shadow-lg">
                 Mặc đẹp hơn. <br />
                 Tiêu ít hơn. <br />
-                <span className="text-[#6BA37A] italic font-semibold">Sống xanh hơn.</span>
+                <span className="text-[#6BA37A] italic">Sống xanh hơn.</span>
               </h1>
 
-              <p className="text-xs sm:text-sm text-stone-500 max-w-lg leading-relaxed font-normal opacity-90">
+              <p className="text-sm sm:text-base text-gray-600 max-w-lg leading-relaxed font-medium">
                 CLOOP là nền tảng thời trang tuần hoàn. Thuê, cho thuê, mua bán và tái chế thời trang để kéo dài vòng đời sản phẩm — vì một tương lai bền vững của cộng đồng tiêu dùng thông minh.
               </p>
 
               <div className="pt-4 flex items-center gap-3">
-                <Link href="/shop" className="bg-[#183A2D] hover:bg-stone-800 text-white text-xs font-bold uppercase tracking-wider px-8 py-4 rounded-full transition-all shadow-sm active:scale-95">
+                <Link href="/shop" className="bg-[#183A2D] hover:bg-stone-800 text-white text-xs font-bold uppercase tracking-wider px-8 py-4 rounded-full transition-all shadow-md active:scale-95">
                   Khám phá ngay →
                 </Link>
-                <Link href="#register-privilege" className="border border-stone-200 hover:bg-stone-50 text-[#183A2D] text-xs font-bold uppercase tracking-wider px-8 py-4 rounded-full transition-all bg-white/50 backdrop-blur-sm">
+                <Link href="#register-privilege" className="border border-stone-300 hover:bg-stone-50 text-[#183A2D] text-xs font-bold uppercase tracking-wider px-8 py-4 rounded-full transition-all bg-white/80 backdrop-blur-sm shadow-sm">
                   Tìm hiểu thêm
                 </Link>
               </div>
@@ -453,23 +400,25 @@ export default function Home() {
         </div>
       </section>
 
-      {/* TẤT CẢ CÁC SECTION CÒN LẠI GIỮ NGUYÊN 100% VỊ TRÍ, DATA VÀ THIẾT KẾ CŨ */}
+      {/* 5 KHỐI TÍNH NĂNG CHÍNH (SỬA LỖI NHỢT NHẠT) */}
       <section className="max-w-[1500px] mx-auto px-6 lg:px-12 py-6 relative z-10">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
           {services.map((srv, i) => {
             const ServiceIcon = srv.icon;
             return (
               <Link href={srv.href} key={i} className="block h-full">
-                <div className="border border-stone-200 bg-white p-6 xl:p-8 rounded-3xl flex flex-col justify-between transition-all duration-300 relative group cursor-pointer text-left h-full shadow-2xs hover:border-stone-400">
-                  <span className="absolute top-4 right-5 text-xs text-stone-300 font-mono font-bold">{srv.tag}</span>
+                <div className="border border-gray-200 bg-white p-6 xl:p-8 rounded-[2rem] flex flex-col justify-between transition-all duration-300 relative group cursor-pointer text-left h-full shadow-sm hover:shadow-xl hover:border-emerald-200 hover:-translate-y-1">
+                  <span className="absolute top-4 right-5 text-sm text-gray-300 font-mono font-bold">{srv.tag}</span>
                   <div>
-                    <div className="w-10 h-10 rounded-xl bg-stone-50 text-[#183A2D] flex items-center justify-center mb-5 group-hover:bg-[#183A2D] group-hover:text-white transition-colors duration-300">
-                      <ServiceIcon size={15} />
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-800 flex items-center justify-center mb-6 group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-300 shadow-inner">
+                      <ServiceIcon size={20} strokeWidth={2.5} />
                     </div>
-                    <h3 className="text-xs font-bold uppercase tracking-wider mb-1.5 text-stone-900 font-heading">{srv.title}</h3>
-                    <p className="text-[11px] text-stone-400 leading-relaxed mb-6 font-normal line-clamp-3">{srv.desc}</p>
+                    {/* KHẮC PHỤC: Font đậm hơn, màu tối hơn */}
+                    <h3 className="text-sm font-extrabold uppercase tracking-wide mb-2 text-gray-900">{srv.title}</h3>
+                    <p className="text-xs text-gray-600 leading-relaxed mb-6 font-medium">{srv.desc}</p>
                   </div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-left border-t border-stone-100 pt-4 block text-[#183A2D]">
+                  {/* KHẮC PHỤC: Nút bấm có khối màu rõ ràng, không còn nhợt nhạt */}
+                  <span className="text-xs font-bold uppercase tracking-wider text-center bg-gray-50 text-[#183A2D] py-3 rounded-xl group-hover:bg-[#183A2D] group-hover:text-white transition-colors block border border-gray-100">
                     {srv.btn}
                   </span>
                 </div>
@@ -481,8 +430,8 @@ export default function Home() {
 
       <section className="max-w-[1500px] mx-auto px-6 lg:px-12 py-8 space-y-6">
         <div className="text-left space-y-1">
-          <h2 className="text-2xl sm:text-3xl font-bold text-stone-900 tracking-tight font-heading">Tìm kiếm theo dịp mặc đồ</h2>
-          <p className="text-stone-400 text-xs font-medium">Lựa chọn trang phục hài hòa cùng điểm đến để mọi trải nghiệm thêm phần trọn vẹn.</p>
+          <h2 className="text-3xl sm:text-4xl font-bold text-stone-900 tracking-tight font-heading">Tìm kiếm theo dịp mặc đồ</h2>
+          <p className="text-gray-600 text-sm font-medium">Lựa chọn trang phục hài hòa cùng điểm đến để mọi trải nghiệm thêm phần trọn vẹn.</p>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-9 gap-4 justify-items-center">
@@ -513,8 +462,8 @@ export default function Home() {
         {topClosets.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center gap-1.5 border-b border-stone-200/60 pb-2 text-left">
-              <Sparkles size={14} className="text-amber-500 fill-amber-500" />
-              <h3 className="text-xs font-bold text-stone-800 uppercase tracking-widest font-heading">Top Tủ Đồ Uy Tín</h3>
+              <Sparkles size={16} className="text-amber-500 fill-amber-500" />
+              <h3 className="text-sm font-bold text-stone-800 uppercase tracking-widest font-heading">Top Tủ Đồ Uy Tín</h3>
             </div>
             <div className="flex gap-6 overflow-x-auto no-scrollbar py-1">
               {topClosets.map((c, i) => (
@@ -529,8 +478,8 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="text-center w-20">
-                    <p className="text-[10px] font-bold text-stone-700 truncate">@{c.name}</p>
-                    <span className="text-[8px] font-black text-amber-700 bg-amber-50 border border-amber-200/40 px-1.5 py-0.5 rounded-full mt-0.5 inline-block">★ {c.avgRating.toFixed(1)}</span>
+                    <p className="text-[11px] font-bold text-stone-800 truncate">@{c.name}</p>
+                    <span className="text-[9px] font-black text-amber-700 bg-amber-50 border border-amber-200/40 px-2 py-0.5 rounded-full mt-0.5 inline-block">★ {c.avgRating.toFixed(1)}</span>
                   </div>
                 </Link>
               ))}
@@ -540,11 +489,11 @@ export default function Home() {
 
         <div className="space-y-4">
           <div className="border-b border-stone-200/60 pb-3 text-left">
-            <h3 className="text-xl font-bold text-[#183A2D] flex items-center gap-1.5 mb-1 font-heading">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 inline-block animate-pulse" />
+            <h3 className="text-2xl font-bold text-[#183A2D] flex items-center gap-1.5 mb-1 font-heading">
+              <span className="w-2 h-2 rounded-full bg-emerald-600 inline-block animate-pulse" />
               <span>Tủ đồ cho thuê tuần hoàn</span>
             </h3>
-            <p className="text-xs text-stone-400 font-medium">Kho đồ cho thuê linh hoạt. Tiêu dùng thông minh, sống xanh bền vững.</p>
+            <p className="text-sm text-gray-500 font-medium">Kho đồ cho thuê linh hoạt. Tiêu dùng thông minh, sống xanh bền vững.</p>
           </div>
 
           <div className="overflow-x-auto no-scrollbar flex gap-6 pb-4 pt-1 snap-x">
@@ -553,31 +502,31 @@ export default function Home() {
                 <div key={n} className="w-[240px] aspect-[3/4] bg-stone-200/40 rounded-2xl animate-pulse shrink-0" />
               ))
             ) : rentalProducts.length === 0 ? (
-              <p className="text-xs text-stone-400 py-6 pl-2">Kho lưu trữ trang phục cho thuê tạm thời đang cập nhật sản phẩm mới.</p>
+              <p className="text-sm text-gray-500 py-6 pl-2 font-medium">Kho lưu trữ trang phục cho thuê tạm thời đang cập nhật sản phẩm mới.</p>
             ) : (
               rentalProducts.slice(0, 8).map((item) => (
                 <div key={item.id} className="w-[240px] shrink-0 snap-start group flex flex-col space-y-2.5 relative text-left">
                   <div className="w-full aspect-[3/4] bg-stone-50 rounded-2xl overflow-hidden relative border border-stone-200/30">
                     <Image src={item.image} alt={item.title} fill unoptimized className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.02]" />
-                    <div className="absolute top-3 left-3 bg-[#183A2D] text-[8px] font-bold text-white px-2 py-0.5 rounded shadow-xs uppercase tracking-wider z-10 font-heading">
+                    <div className="absolute top-3 left-3 bg-[#183A2D] text-[9px] font-bold text-white px-2.5 py-1 rounded shadow-xs uppercase tracking-wider z-10 font-heading">
                       RENTAL
                     </div>
-                    <div className="absolute top-3 right-3 bg-red-500 text-[9px] font-bold text-white px-1.5 py-0.5 rounded shadow-sm font-mono z-10">
+                    <div className="absolute top-3 right-3 bg-red-500 text-[10px] font-bold text-white px-2 py-1 rounded shadow-sm font-mono z-10">
                       -{item.savedPercentage}%
                     </div>
                   </div>
 
-                  <div className="space-y-1 px-0.5 text-xs font-normal">
-                    <div className="text-[#183A2D] font-bold truncate font-heading relative z-10">
+                  <div className="space-y-1.5 px-1 text-xs font-normal">
+                    <div className="text-[#183A2D] font-bold truncate font-heading relative z-10 text-sm">
                       <Link href={`/closet/${item.userId}`} className="hover:text-stone-600 font-bold transition-colors">@{item.ownerName}</Link>
                     </div>
-                    <div className="text-stone-400 truncate">
-                      Địa chỉ: <span className="text-stone-600">{item.location}</span>
+                    <div className="text-gray-500 truncate font-medium">
+                      Địa chỉ: <span className="text-gray-800 font-semibold">{item.location}</span>
                     </div>
-                    <div className="text-stone-400 flex items-center gap-1">
+                    <div className="text-gray-500 flex items-center gap-1 font-medium">
                       Sao: <span className="text-amber-600 font-bold flex items-center gap-0.5">★ {item.rating}</span>
                     </div>
-                    <div className="text-stone-800 font-mono font-bold pt-0.5">
+                    <div className="text-stone-900 font-mono font-extrabold pt-1 text-[13px]">
                       {item.rawPriceText}
                     </div>
                   </div>
@@ -590,11 +539,11 @@ export default function Home() {
 
         <div className="space-y-4">
           <div className="border-b border-stone-200/60 pb-3 text-left">
-            <h3 className="text-xl font-bold text-[#183A2D] flex items-center gap-1.5 mb-1 font-heading">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-600 inline-block animate-pulse" />
+            <h3 className="text-2xl font-bold text-[#183A2D] flex items-center gap-1.5 mb-1 font-heading">
+              <span className="w-2 h-2 rounded-full bg-blue-600 inline-block animate-pulse" />
               <span>Kệ thanh lý phục trang</span>
             </h3>
-            <p className="text-xs text-stone-400 font-medium">Không gian mua sắm thời trang sở hữu vòng đời thứ hai chất lượng cao.</p>
+            <p className="text-sm text-gray-500 font-medium">Không gian mua sắm thời trang sở hữu vòng đời thứ hai chất lượng cao.</p>
           </div>
 
           <div className="overflow-x-auto no-scrollbar flex gap-6 pb-4 pt-1 snap-x">
@@ -603,31 +552,31 @@ export default function Home() {
                 <div key={n} className="w-[240px] aspect-[3/4] bg-stone-200/40 rounded-2xl animate-pulse shrink-0" />
               ))
             ) : saleProducts.length === 0 ? (
-              <p className="text-xs text-stone-400 py-6 pl-2">Kho lưu trữ phục trang thanh lý hiện đang cập nhật sản phẩm.</p>
+              <p className="text-sm text-gray-500 py-6 pl-2 font-medium">Kho lưu trữ phục trang thanh lý hiện đang cập nhật sản phẩm.</p>
             ) : (
               saleProducts.slice(0, 8).map((item) => (
                 <div key={item.id} className="w-[240px] shrink-0 snap-start group flex flex-col space-y-2.5 relative text-left">
                   <div className="w-full aspect-[3/4] bg-stone-50 rounded-2xl overflow-hidden relative border border-stone-200/30">
                     <Image src={item.image} alt={item.title} fill unoptimized className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.02]" />
-                    <div className="absolute top-3 left-3 bg-blue-700 text-[8px] font-bold text-white px-2 py-0.5 rounded shadow-xs tracking-wider font-heading z-10">
+                    <div className="absolute top-3 left-3 bg-blue-700 text-[9px] font-bold text-white px-2.5 py-1 rounded shadow-xs tracking-wider font-heading z-10">
                       BUY OUT
                     </div>
-                    <div className="absolute top-3 right-3 bg-stone-900/80 text-[9px] font-bold text-white px-1.5 py-0.5 rounded shadow-sm font-mono z-10">
+                    <div className="absolute top-3 right-3 bg-stone-900/80 text-[10px] font-bold text-white px-2 py-1 rounded shadow-sm font-mono z-10">
                       -{item.savedPercentage}%
                     </div>
                   </div>
 
-                  <div className="space-y-1 px-0.5 text-xs font-normal">
-                    <div className="text-[#183A2D] font-bold truncate font-heading relative z-10">
+                  <div className="space-y-1.5 px-1 text-xs font-normal">
+                    <div className="text-[#183A2D] font-bold truncate font-heading relative z-10 text-sm">
                       <Link href={`/closet/${item.userId}`} className="hover:text-stone-600 font-bold transition-colors">@{item.ownerName}</Link>
                     </div>
-                    <div className="text-stone-400 truncate">
-                      Địa chỉ: <span className="text-stone-600">{item.location}</span>
+                    <div className="text-gray-500 truncate font-medium">
+                      Địa chỉ: <span className="text-gray-800 font-semibold">{item.location}</span>
                     </div>
-                    <div className="text-stone-400 flex items-center gap-1">
+                    <div className="text-gray-500 flex items-center gap-1 font-medium">
                       Sao: <span className="text-amber-600 font-bold flex items-center gap-0.5">★ {item.rating}</span>
                     </div>
-                    <div className="text-stone-800 font-mono font-bold pt-0.5">
+                    <div className="text-stone-900 font-mono font-extrabold pt-1 text-[13px]">
                       {item.rawPriceText}
                     </div>
                   </div>
@@ -641,36 +590,46 @@ export default function Home() {
 
       <KyUcTuanHoanSection recentBlogs={recentBlogs} />
 
-      <section id="register-privilege" className="max-w-[1500px] mx-auto px-6 lg:px-12 py-8 border-t border-stone-200/60 text-left relative z-10">
-        <div className="border border-stone-200 bg-white rounded-[2.5rem] p-8 lg:p-12 shadow-sm flex flex-col lg:flex-row items-center justify-between gap-10">
-          <div className="w-full lg:w-[55%]">
-            <h2 className="text-3xl font-bold text-stone-900 font-heading">Hãy đăng ký tài khoản để trải nghiệm trọn vẹn đặc quyền xanh</h2>
-            <p className="text-xs tracking-[0.15em] text-[#6BA37A] uppercase font-bold mt-2 mb-6 font-heading">Trở thành một phần của hệ sinh thái thời trang tuần hoàn thông minh</p>
+      {/* 🟢 KHẮC PHỤC: Mỏ neo cuối trang - Biến mảng trắng nhợt nhạt thành Xanh Lục Bảo thẫm rực rỡ */}
+      <section id="register-privilege" className="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-12 py-12 relative z-10">
+        <div className="bg-[#183A2D] rounded-[3rem] p-8 lg:p-14 shadow-2xl flex flex-col lg:flex-row items-center justify-between gap-12 relative overflow-hidden">
+          {/* Ánh sáng mờ ảo bên trong khối Dark Mode */}
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-500/20 blur-[100px] rounded-full pointer-events-none" />
+
+          <div className="w-full lg:w-[55%] relative z-10 text-white">
+            {/* VINTAGE FONT CHO CHỮ CLOOP VÀ TIÊU ĐỀ */}
+            <div className="font-heading text-xl text-emerald-300 italic mb-3">CLOOP Fashion</div>
+            <h2 className="text-4xl lg:text-5xl font-bold font-heading leading-tight tracking-tight mb-4 text-white">
+              Đăng ký tài khoản để trải nghiệm <br/><span className="text-emerald-300 italic">trọn vẹn đặc quyền xanh</span>
+            </h2>
+            <p className="text-sm text-emerald-100/80 mb-8 font-medium leading-relaxed">
+              Trở thành một phần của hệ sinh thái thời trang tuần hoàn. Chia sẻ tủ đồ, gia tăng thu nhập và bảo vệ môi trường.
+            </p>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-8">
               {privileges.map((item: any, idx: number) => (
-                <div key={idx} className="flex gap-3 items-start">
-                  <div className="w-8 h-8 rounded-xl border border-stone-200 bg-[#FAF8F3] text-[#183A2D] flex items-center justify-center shrink-0 mt-0.5">
+                <div key={idx} className="flex gap-4 items-start">
+                  <div className="w-10 h-10 rounded-2xl bg-white/10 text-emerald-300 flex items-center justify-center shrink-0 border border-white/10">
                     {item.icon}
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-stone-900 font-heading">{item.title}</h4>
-                    <p className="text-xs text-stone-400 mt-1 leading-relaxed">{item.desc}</p>
+                    <h4 className="text-sm font-bold text-white mb-1.5">{item.title}</h4>
+                    <p className="text-xs text-emerald-100/70 font-medium leading-relaxed">{item.desc}</p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="w-full lg:w-[38%] border border-stone-200 bg-[#FAF8F3] p-8 rounded-3xl text-center flex flex-col items-center">
-            <div className="w-12 h-12 rounded-full bg-white border border-stone-200 flex items-center justify-center mb-4 text-[#183A2D] shadow-2xs">
-              <Zap size={18} />
+          <div className="w-full lg:w-[38%] relative z-10 bg-[#FAF9F6] p-10 rounded-[2.5rem] text-center shadow-2xl border border-emerald-900/50">
+            <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mb-6 mx-auto text-[#183A2D] shadow-inner">
+              <Zap size={24} className="fill-emerald-600" />
             </div>
-            <h3 className="text-2xl font-bold text-stone-900 font-heading">Kích Hoạt Tài Khoản</h3>
-            <p className="text-xs text-stone-400 mt-2 mb-6 leading-relaxed">Chỉ mất 30 giây để thiết lập tủ đồ xanh của riêng bạn trên ứng dụng.</p>
+            <h3 className="text-3xl font-bold text-gray-900 font-heading mb-2">Kích Hoạt Tài Khoản</h3>
+            <p className="text-sm text-gray-600 mb-8 font-medium">Chỉ mất 30 giây để thiết lập tủ đồ xanh của riêng bạn trên nền tảng.</p>
             
-            <button onClick={() => handleFeatureRequirement("Mở tủ đồ xanh")} className="w-full text-xs font-black uppercase tracking-widest py-4 rounded-full shadow-md bg-[#183A2D] text-white hover:bg-emerald-800 transition active:scale-[0.98] cursor-pointer font-heading">
-              Đăng ký thành viên ngay
+            <button onClick={() => handleFeatureRequirement("Mở tủ đồ xanh")} className="w-full text-sm font-bold uppercase tracking-widest py-4 rounded-2xl shadow-[0_8px_20px_rgba(24,58,45,0.2)] bg-[#183A2D] text-white hover:bg-emerald-900 transition-all active:scale-[0.98] hover:-translate-y-1">
+              Đăng ký ngay
             </button>
           </div>
         </div>
