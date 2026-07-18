@@ -14,11 +14,16 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 const PLACEHOLDER_IMG = "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600";
 const PAPER_BG = "https://www.transparenttextures.com/patterns/cream-paper.png";
 
+// Hoa lá khô decor nền
+const DRIED_LEAF = "https://images.unsplash.com/photo-1621274220349-2e06cb388ea2?q=80&w=500";
+const VINTAGE_PAPER = "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?q=80&w=500"; 
+
+// 🟢 NÂNG CẤP: Đổi image (chuỗi) thành images (mảng) để chứa toàn bộ hình ảnh
 interface FullMemory {
   id: string;
   title: string;
   content: string;
-  image: string;
+  images: string[]; 
   date: string;
   fullDate: string;
   productId: string;
@@ -49,16 +54,39 @@ export default function MemoriesDiaryPage() {
           .order("createdAt", { ascending: false });
 
         if (blogData && blogData.length > 0) {
+          // 🟢 NÂNG CẤP: Lấy TẤT CẢ hình ảnh từ ProductImage khớp với productId của bài viết
+          const productIds = blogData.map((b: any) => b.productId || b.product_id).filter(Boolean);
+          let productImages: any[] = [];
+          
+          if (productIds.length > 0) {
+            const { data: pImages } = await supabase
+              .from("ProductImage")
+              .select("productId, url")
+              .in("productId", productIds);
+            if (pImages) productImages = pImages;
+          }
+
           const mapped = blogData.map((b: any) => {
             const d = new Date(b.createdAt);
+            const pId = b.productId || b.product_id || "";
+            
+            // Tìm tất cả ảnh của sản phẩm này
+            const relatedImages = productImages
+              .filter((img) => img.productId === pId)
+              .map((img) => img.url);
+
+            // Nếu không có ảnh nào trong kho, xài ảnh cover mặc định
+            const fallbackImage = b.coverImage || b.cover_image || PLACEHOLDER_IMG;
+            const finalImages = relatedImages.length > 0 ? relatedImages : [fallbackImage];
+
             return {
               id: b.id,
               title: b.title,
               content: b.excerpt || b.content || "Một kỷ niệm đẹp chưa được viết lời tựa...",
-              image: b.coverImage || b.cover_image || PLACEHOLDER_IMG,
+              images: finalImages,
               date: `${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`,
               fullDate: d.toLocaleDateString("vi-VN", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
-              productId: b.productId || b.product_id || "" 
+              productId: pId 
             };
           });
           setMemories(mapped);
@@ -104,7 +132,7 @@ export default function MemoriesDiaryPage() {
             box-shadow: 0 1px 2px rgba(0,0,0,0.05);
             backdrop-filter: blur(2px);
             mix-blend-mode: multiply;
-            z-index: 20;
+            z-index: 50; /* Z-index cao để đè lên mọi ảnh */
             clip-path: polygon(1% 5%, 100% 0%, 98% 95%, 0% 100%);
         }
 
@@ -239,24 +267,50 @@ export default function MemoriesDiaryPage() {
                     key={mem.id} 
                     className={`break-inside-avoid mb-16 relative transition-transform duration-500 hover:scale-[1.02] hover:z-30 ${currentRotation}`}
                   >
-                    {/* Ghim / Băng dính */}
+                    {/* Ghim / Băng dính (Phải có z-50 để đè lên mọi ảnh xếp chồng) */}
                     {isTape ? (
-                      <div className="washi-tape w-20 h-6 -top-3 left-1/2 -translate-x-1/2 rotate-1 bg-[#D1C5B4]/80" />
+                      <div className="washi-tape w-20 h-6 -top-3 left-1/2 -translate-x-1/2 rotate-1 bg-[#D1C5B4]/90 z-50" />
                     ) : (
-                      <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-amber-800/80 border-[2px] border-white shadow-sm z-30 flex items-center justify-center">
+                      <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-amber-800/80 border-[2px] border-white shadow-sm z-50 flex items-center justify-center">
                           <div className="w-1 h-1 rounded-full bg-amber-900/60" />
                       </div>
                     )}
 
-                    {/* Ảnh Polaroid */}
-                    <Link href={targetLink} className="block polaroid-frame group">
-                      <div className="w-full aspect-square md:aspect-[4/3] bg-stone-100 overflow-hidden relative">
-                        <Image src={mem.image} alt={mem.title} fill unoptimized className="object-cover group-hover:scale-105 transition-transform duration-700" />
-                      </div>
-                    </Link>
+                    {/* 🟢 NÂNG CẤP: STACK ẢNH XẾP CHỒNG LÊN NHAU NHƯ CẦM XẤP ẢNH POLAROID */}
+                    <div className="relative">
+                      {mem.images.slice(0, 3).map((imgUrl, imgIdx) => {
+                        const isFirst = imgIdx === 0;
+                        // Tính toán độ lệch cho từng bức ảnh nằm dưới
+                        const stackRotations = ["rotate-0", "rotate-3", "-rotate-2"];
+                        const stackPositions = ["", "translate-x-2 translate-y-2", "-translate-x-2 translate-y-4"];
+                        const stackZIndexes = ["z-30", "z-20", "z-10"];
+
+                        return (
+                          <Link 
+                            href={targetLink} 
+                            key={imgIdx} 
+                            className={`block polaroid-frame group shadow-sm transition-all duration-300 hover:-translate-y-2 hover:z-40 origin-bottom
+                              ${isFirst ? "relative" : "absolute top-0 left-0 w-full"}
+                              ${stackRotations[imgIdx]} ${stackPositions[imgIdx]} ${stackZIndexes[imgIdx]}
+                            `}
+                          >
+                            <div className="w-full aspect-[4/3] bg-stone-100 overflow-hidden relative">
+                              <Image src={imgUrl} alt={`${mem.title} - ${imgIdx}`} fill unoptimized className="object-cover group-hover:scale-105 transition-transform duration-700" />
+                            </div>
+                          </Link>
+                        );
+                      })}
+
+                      {/* Hiển thị badge số lượng nếu có > 3 ảnh */}
+                      {mem.images.length > 3 && (
+                        <div className="absolute -bottom-3 -right-3 w-10 h-10 bg-[#987654] text-white rounded-full flex items-center justify-center font-bold font-mono text-[11px] shadow-md z-40 rotate-12 border-2 border-[#FBF9F4]">
+                           +{mem.images.length - 3}
+                        </div>
+                      )}
+                    </div>
                     
                     {/* Caption viết tay */}
-                    <div className="bg-[#FFFDF9] border border-[#E9E2D5] border-t-0 p-5 rounded-b-sm shadow-sm -mt-[1px] relative z-10">
+                    <div className="bg-[#FFFDF9] border border-[#E9E2D5] border-t-0 p-5 rounded-b-sm shadow-sm -mt-[1px] relative z-40">
                       <div className="flex justify-between items-baseline mb-3 border-b border-stone-200/50 pb-2">
                         <h3 className="text-[20px] md:text-[22px] font-bold text-[#1C3F30] font-heading pr-4 leading-tight">
                           <Link href={targetLink} className="hover:text-emerald-700 transition-colors line-clamp-2">{mem.title}</Link>
@@ -267,9 +321,10 @@ export default function MemoriesDiaryPage() {
                       </div>
                       
                       <p className="text-[17px] md:text-[19px] leading-relaxed text-stone-600 font-handwriting">
-                        {mem.content}
+                        "{mem.content}"
                       </p>
                     </div>
+
                   </div>
                 );
               })
