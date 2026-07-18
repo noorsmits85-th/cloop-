@@ -64,7 +64,9 @@ export default function ClosetProfilePage() {
   const [isMe, setIsMe] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<"ALL" | "RENT" | "SALE">("ALL");
 
-  // State quản lý Popup chỉnh sửa thông tin
+  // ==========================================
+  // 🟢 STATE QUẢN LÝ POPUPS CHỈNH SỬA
+  // ==========================================
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [uploadingField, setUploadingField] = useState<"avatar" | "coverImage" | null>(null);
@@ -372,7 +374,14 @@ export default function ClosetProfilePage() {
                             <Settings size={14} /> CHỈNH SỬA HỒ SƠ
                         </button>
                     ) : (
-                        <button className="bg-[#183A2D] hover:bg-[#234F3E] text-white text-xs font-bold px-6 py-3.5 rounded-full transition-all flex items-center gap-2 shadow-sm">
+                        // 🟢 ĐÃ FIX: Thêm onClick để trượt xuống tủ đồ và chuyển tab sang "Thuê"
+                        <button 
+                            onClick={() => {
+                                document.getElementById("wardrobe-section")?.scrollIntoView({ behavior: "smooth" });
+                                setActiveTab("RENT");
+                            }}
+                            className="bg-[#183A2D] hover:bg-[#234F3E] text-white text-xs font-bold px-6 py-3.5 rounded-full transition-all flex items-center gap-2 shadow-sm cursor-pointer"
+                        >
                             <Shirt size={14} /> THUÊ ĐỒ CỦA MÌNH
                         </button>
                     )}
@@ -455,7 +464,6 @@ export default function ClosetProfilePage() {
                             <p className="text-[10px] text-stone-400 font-medium">Những khoảnh khắc đẹp gắn với CLOOP</p>
                         </div>
                     </div>
-                    {/* 🟢 NÂNG CẤP: Liên kết mượt mà sang trang Nhật Ký */}
                     <Link 
                         href={`/closet/${userId}/memories`}
                         className="text-xs font-semibold text-stone-500 hover:text-[#183A2D] transition-colors cursor-pointer"
@@ -496,7 +504,6 @@ export default function ClosetProfilePage() {
                             <p className="text-[10px] text-stone-400 font-medium">Phong cách của {ownerInfo?.name}</p>
                         </div>
                     </div>
-                    {/* 🟢 NÂNG CẤP: Liên kết mượt mà sang trang Nhật Ký (Bỏ sự kiện cuộn xuống kho đồ) */}
                     <Link 
                         href={`/closet/${userId}/memories`}
                         className="text-xs font-semibold text-stone-500 hover:text-[#183A2D] cursor-pointer transition-colors"
