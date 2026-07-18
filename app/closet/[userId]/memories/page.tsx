@@ -14,12 +14,6 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 const PLACEHOLDER_IMG = "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600";
 const PAPER_BG = "https://www.transparenttextures.com/patterns/cream-paper.png";
 
-// 🟢 LINK ẢNH HOA LÁ KHÔ REAL (Đã chọn lọc nền sáng để dùng hiệu ứng Multiply)
-const DRIED_LEAF_1 = "https://images.unsplash.com/photo-1621274220349-2e06cb388ea2?q=80&w=500"; // Nhành lá rủ
-const DRIED_FLOWER_1 = "https://images.unsplash.com/photo-1563241527-3004b7be2ffd?q=80&w=500"; // Hoa nhí
-const VINTAGE_PAPER = "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?q=80&w=500"; // Mảnh giấy báo cũ
-const DRIED_ROSE = "https://images.unsplash.com/photo-1601614486663-8a3f81e3a731?q=80&w=500"; // Hoa hồng ép
-
 interface FullMemory {
   id: string;
   title: string;
@@ -90,10 +84,8 @@ export default function MemoriesDiaryPage() {
   }
 
   return (
-    <main 
-      className="min-h-screen py-8 md:py-16 px-2 sm:px-6 relative overflow-x-hidden selection:bg-[#183A2D] selection:text-white font-sans"
-      style={{ backgroundColor: "#EBE6DA", backgroundImage: `url(${PAPER_BG})` }} // Màu nền gỗ/giấy ngả vàng
-    >
+    <main className="min-h-screen bg-[#EAE4D8] py-8 md:py-16 px-2 sm:px-6 relative overflow-x-hidden selection:bg-[#183A2D] selection:text-white font-sans">
+      
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=Caveat:wght@400;500;600;700&display=swap');
         h1, h2, h3, .font-heading { font-family: 'Cormorant Garamond', serif !important; }
@@ -123,54 +115,61 @@ export default function MemoriesDiaryPage() {
             border: 1px solid #F0ECE1;
         }
 
-        /* 🟢 Lớp Multiply để in hằn ảnh vào nền */
-        .blend-multiply {
+        /* Bóng đổ cho hoa lá ép khô */
+        .pressed-flora {
+            filter: drop-shadow(1px 2px 2px rgba(0,0,0,0.15));
             mix-blend-mode: multiply;
-            filter: grayscale(30%) sepia(40%) contrast(1.1); /* Phủ màu hoài cổ lên hoa lá */
         }
       `}</style>
 
+      {/* BACKGROUND BÊN NGOÀI SỔ (MẶT BÀN TRƠN, ÁNH SÁNG MỜ) */}
+      <div className="fixed top-0 left-0 w-[600px] h-[600px] opacity-20 pointer-events-none z-0" style={{ background: "radial-gradient(circle, rgba(107,163,122,0.2) 0%, rgba(245,242,235,0) 70%)" }} />
+      <div className="fixed bottom-0 right-0 w-[500px] h-[500px] opacity-30 pointer-events-none z-0" style={{ background: "radial-gradient(circle, rgba(212,175,140,0.2) 0%, rgba(245,242,235,0) 70%)" }} />
+      
       {/* ========================================================
-          🟢 NÂNG CẤP: DECOR MẶT BÀN BẰNG HOA LÁ KHÔ THẬT
-          ======================================================== */}
-      {/* Vết ố ly cà phê */}
-      <div className="fixed top-[15%] right-[10%] w-32 h-32 border-[4px] border-[#91714E] opacity-10 rounded-full pointer-events-none z-0 mix-blend-multiply" style={{ borderRadius: '40% 60% 70% 30% / 40% 50% 60% 50%' }} />
-      <div className="fixed top-[14%] right-[11%] w-24 h-24 border-[2px] border-[#91714E] opacity-[0.07] rounded-full pointer-events-none z-0 mix-blend-multiply rotate-45" style={{ borderRadius: '60% 40% 50% 50% / 40% 50% 60% 50%' }} />
-
-      {/* Cành lá rủ góc trên bên trái */}
-      <div className="fixed -top-16 -left-16 w-[350px] h-[350px] opacity-60 pointer-events-none z-0 blend-multiply rotate-12">
-        <Image src={DRIED_LEAF_1} alt="Dried leaves" fill unoptimized className="object-contain" />
-      </div>
-
-      {/* Nhành hoa nhí nằm mép phải */}
-      <div className="fixed top-1/3 -right-24 w-[300px] h-[400px] opacity-50 pointer-events-none z-0 blend-multiply -rotate-12 hidden md:block">
-        <Image src={DRIED_FLOWER_1} alt="Dried wildflowers" fill unoptimized className="object-contain" />
-      </div>
-
-      {/* Mảnh giấy báo cũ góc dưới trái */}
-      <div className="fixed -bottom-10 -left-10 w-[280px] h-[280px] opacity-40 pointer-events-none z-0 blend-multiply -rotate-6">
-        <Image src={VINTAGE_PAPER} alt="Vintage paper" fill unoptimized className="object-contain" />
-      </div>
-
-      {/* Cánh hoa ép góc dưới phải */}
-      <div className="fixed -bottom-8 right-10 w-[200px] h-[200px] opacity-40 pointer-events-none z-0 blend-multiply rotate-45 hidden sm:block">
-        <Image src={DRIED_ROSE} alt="Pressed flower" fill unoptimized className="object-contain" />
-      </div>
-
-      {/* ========================================================
-          📖 CUỐN SỔ SCRAPBOOK ĐẶT GIỮA MÀN HÌNH
+          📖 CUỐN SỔ SCRAPBOOK CHÍNH (Chứa mọi thứ bên trong)
           ======================================================== */}
       <div 
-        className="w-full max-w-[1100px] mx-auto bg-[#FBF9F4] shadow-[0_25px_60px_-10px_rgba(40,30,20,0.3)] rounded-sm relative flex flex-col md:flex-row min-h-[85vh] border border-[#D5C6B1]"
+        className="w-full max-w-[1100px] mx-auto bg-[#FBF9F4] shadow-[0_25px_60px_-10px_rgba(40,30,20,0.3)] rounded-sm relative flex flex-col md:flex-row min-h-[85vh] border border-[#D5C6B1] overflow-hidden"
         style={{ backgroundImage: `url(${PAPER_BG})` }}
       >
-        
-        {/* GÁY SỔ CỰC SÂU */}
+        {/* GÁY SỔ Ở GIỮA */}
         <div className="hidden md:block absolute top-0 bottom-0 left-1/2 w-[80px] -translate-x-1/2 bg-gradient-to-r from-transparent via-[#C3B29D]/60 to-transparent shadow-[inset_0_0_15px_rgba(60,50,40,0.1)] border-l border-r border-[#C3B29D]/20 z-0" />
         <div className="hidden md:block absolute top-0 bottom-0 left-1/2 w-[2px] -translate-x-1/2 bg-stone-300/40 z-0 shadow-[2px_0_4px_rgba(0,0,0,0.05)]" />
 
-        {/* NỘI DUNG SỔ */}
-        <div className="w-full relative z-10 p-6 sm:p-10 md:p-16">
+        {/* 🟢 DECOR 1: Cành lá dương xỉ ép khô dán góc trên bên trái sổ */}
+        <div className="absolute top-8 -left-4 md:left-6 w-32 h-40 opacity-70 pointer-events-none z-10 pressed-flora -rotate-12">
+            <div className="washi-tape w-8 h-4 top-8 left-12 rotate-45 bg-[#D1C5B4]/90" /> {/* Băng keo dán cành */}
+            <svg viewBox="0 0 100 200" className="w-full h-full text-[#6b705c]">
+                <path d="M50 180 Q 45 100 80 20 M50 160 Q 30 140 15 110 M48 140 Q 70 120 85 90 M46 110 Q 20 90 10 50 M48 80 Q 65 60 70 30" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+                <path d="M80 20 Q 70 30 75 40 Q 85 30 80 20" fill="currentColor" opacity="0.8"/>
+                <path d="M15 110 Q 25 100 30 115 Q 20 120 15 110" fill="currentColor" opacity="0.8"/>
+                <path d="M85 90 Q 75 95 70 80 Q 80 80 85 90" fill="currentColor" opacity="0.8"/>
+                <path d="M10 50 Q 20 55 25 40 Q 15 40 10 50" fill="currentColor" opacity="0.8"/>
+            </svg>
+        </div>
+
+        {/* 🟢 DECOR 2: Nhành hoa nhí sấy khô đính góc dưới bên phải sổ */}
+        <div className="absolute bottom-12 -right-4 md:right-10 w-40 h-48 opacity-60 pointer-events-none z-10 pressed-flora rotate-12">
+            <div className="washi-tape w-10 h-4 bottom-10 right-16 -rotate-12 bg-[#D1C5B4]/90" /> {/* Băng keo dán cành */}
+            <svg viewBox="0 0 100 200" className="w-full h-full text-[#8a7e71]">
+                <path d="M30 180 Q 50 100 20 20 M35 150 Q 70 130 80 90 M25 100 Q 60 70 70 40 M22 60 Q 40 50 50 20" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+                <circle cx="20" cy="20" r="4" fill="#a47e6a" opacity="0.9"/>
+                <circle cx="25" cy="15" r="3" fill="#a47e6a" opacity="0.9"/>
+                <circle cx="15" cy="25" r="3.5" fill="#a47e6a" opacity="0.9"/>
+                
+                <circle cx="80" cy="90" r="4" fill="#a47e6a" opacity="0.9"/>
+                <circle cx="85" cy="85" r="3" fill="#a47e6a" opacity="0.9"/>
+                
+                <circle cx="70" cy="40" r="4.5" fill="#a47e6a" opacity="0.9"/>
+                <circle cx="75" cy="35" r="3" fill="#a47e6a" opacity="0.9"/>
+                
+                <circle cx="50" cy="20" r="4" fill="#a47e6a" opacity="0.9"/>
+            </svg>
+        </div>
+
+        {/* NỘI DUNG CHÍNH CỦA SỔ */}
+        <div className="w-full relative z-20 p-6 sm:p-10 md:p-16">
           
           <div className="flex items-center justify-between mb-12 border-b border-[#DACBB6]/50 pb-6 relative z-30">
             <Link href={`/closet/${userId}`} className="inline-flex items-center gap-2 text-xs font-bold text-stone-600 hover:text-[#183A2D] transition-colors uppercase tracking-wider bg-[#FFFDF9]/80 px-5 py-2.5 rounded-full border border-stone-200/80 shadow-[0_2px_10px_rgba(0,0,0,0.03)] backdrop-blur-md">
@@ -178,11 +177,12 @@ export default function MemoriesDiaryPage() {
             </Link>
           </div>
 
-          {/* MASONRY LAYOUT TRÀN 2 TRANG */}
           <div className="columns-1 md:columns-2 gap-16 md:gap-32">
             
-            {/* KHỐI 1: HEADER NẰM TRÊN TRANG TRÁI */}
+            {/* TRANG TRÁI: TIÊU ĐỀ & LỜI NGỎ */}
             <div className="break-inside-avoid mb-14 relative z-10">
+              
+              {/* Note tiêu đề lớn */}
               <div className="torn-paper p-8 relative -rotate-2">
                 <div className="washi-tape w-24 h-6 -top-3 left-1/2 -translate-x-1/2 rotate-2 bg-[#D1C5B4]/80" />
                 <h1 className="text-5xl md:text-6xl font-bold text-[#1C3F30] font-heading leading-[1.1] mb-5">
@@ -192,7 +192,7 @@ export default function MemoriesDiaryPage() {
                   Ghi chép hành trình thời trang của {userName.split(" ")[0]}
                 </p>
                 
-                {/* Con dấu mộc */}
+                {/* Con dấu mộc in thẳng lên giấy */}
                 <div className="absolute -bottom-8 -right-8 text-[#987654]/40 rotate-12 mix-blend-multiply opacity-70 pointer-events-none">
                    <svg width="110" height="110" viewBox="0 0 100 100">
                      <path id="curve" d="M 20 50 A 30 30 0 1 1 80 50 A 30 30 0 1 1 20 50" fill="transparent"/>
@@ -205,18 +205,19 @@ export default function MemoriesDiaryPage() {
                    </svg>
                 </div>
               </div>
-            </div>
 
-            {/* KHỐI 2: DECOR LỜI NGỎ */}
-            <div className="break-inside-avoid mb-14 relative p-7 bg-[#FDFBF7]/60 border border-[#E9E2D5] rounded-sm shadow-sm rotate-1">
-               <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-stone-300/80 shadow-sm flex items-center justify-center border-2 border-white">
-                 <div className="w-1.5 h-1.5 rounded-full bg-stone-500" />
-               </div>
-               <Quote size={24} className="text-[#C3B29D] mb-4" />
-               <p className="font-handwriting text-[19px] text-stone-700 leading-relaxed">
-                 "Mỗi món đồ vintage đều cất giữ một linh hồn. Khi chúng ta trao đi hoặc mượn lại, ta đang viết tiếp câu chuyện của chúng."
-               </p>
-               <Heart size={14} className="text-amber-600 mt-4 opacity-50" />
+              {/* Note Quote nhỏ đính kèm */}
+              <div className="mt-12 p-7 bg-[#FDFBF7]/60 border border-[#E9E2D5] rounded-sm shadow-sm rotate-1 relative">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-stone-300/80 shadow-sm flex items-center justify-center border-2 border-white">
+                  <div className="w-1.5 h-1.5 rounded-full bg-stone-500" />
+                </div>
+                <Quote size={24} className="text-[#C3B29D] mb-4" />
+                <p className="font-handwriting text-[19px] text-stone-700 leading-relaxed">
+                  "Mỗi món đồ vintage đều cất giữ một linh hồn. Khi chúng ta trao đi hoặc mượn lại, ta đang viết tiếp câu chuyện của chúng."
+                </p>
+                <Heart size={14} className="text-amber-600 mt-4 opacity-50" />
+              </div>
+
             </div>
 
             {/* KIỂM TRA NẾU TRỐNG */}
@@ -238,6 +239,7 @@ export default function MemoriesDiaryPage() {
                     key={mem.id} 
                     className={`break-inside-avoid mb-16 relative transition-transform duration-500 hover:scale-[1.02] hover:z-30 ${currentRotation}`}
                   >
+                    {/* Ghim / Băng dính */}
                     {isTape ? (
                       <div className="washi-tape w-20 h-6 -top-3 left-1/2 -translate-x-1/2 rotate-1 bg-[#D1C5B4]/80" />
                     ) : (
@@ -246,12 +248,14 @@ export default function MemoriesDiaryPage() {
                       </div>
                     )}
 
+                    {/* Ảnh Polaroid */}
                     <Link href={targetLink} className="block polaroid-frame group">
                       <div className="w-full aspect-square md:aspect-[4/3] bg-stone-100 overflow-hidden relative">
                         <Image src={mem.image} alt={mem.title} fill unoptimized className="object-cover group-hover:scale-105 transition-transform duration-700" />
                       </div>
                     </Link>
                     
+                    {/* Caption viết tay */}
                     <div className="bg-[#FFFDF9] border border-[#E9E2D5] border-t-0 p-5 rounded-b-sm shadow-sm -mt-[1px] relative z-10">
                       <div className="flex justify-between items-baseline mb-3 border-b border-stone-200/50 pb-2">
                         <h3 className="text-[20px] md:text-[22px] font-bold text-[#1C3F30] font-heading pr-4 leading-tight">
