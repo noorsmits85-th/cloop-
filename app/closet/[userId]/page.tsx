@@ -64,10 +64,7 @@ export default function ClosetProfilePage() {
   const [isMe, setIsMe] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<"ALL" | "RENT" | "SALE">("ALL");
 
-  // ==========================================
-  // 🟢 STATE QUẢN LÝ POPUPS CHỈNH SỬA
-  // (Đã gỡ bỏ Modal Ký Ức theo yêu cầu)
-  // ==========================================
+  // State quản lý Popup chỉnh sửa thông tin
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [uploadingField, setUploadingField] = useState<"avatar" | "coverImage" | null>(null);
@@ -312,7 +309,6 @@ export default function ClosetProfilePage() {
             transition: transform 0.3s ease;
         }
         .polaroid:hover { transform: scale(1.05) rotate(0deg) !important; z-index: 30; }
-        
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
@@ -448,6 +444,8 @@ export default function ClosetProfilePage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            {/* 📸 GÓC KÝ ỨC */}
             <div className="bg-[#FCFBFA] border border-[#EBE6D8] rounded-[2rem] p-6 lg:p-8 shadow-sm relative">
                 <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-2">
@@ -457,15 +455,13 @@ export default function ClosetProfilePage() {
                             <p className="text-[10px] text-stone-400 font-medium">Những khoảnh khắc đẹp gắn với CLOOP</p>
                         </div>
                     </div>
-                    {/* 🟢 NÂNG CẤP: Thay nút Button thành LINK bay thẳng sang trang Nhật ký mới */}
-                    {memories.length > 3 && (
-                        <Link 
-                            href={`/closet/${userId}/memories`}
-                            className="text-xs font-semibold text-stone-500 hover:text-[#183A2D] transition-colors"
-                        >
-                            Xem tất cả →
-                        </Link>
-                    )}
+                    {/* 🟢 NÂNG CẤP: Liên kết mượt mà sang trang Nhật Ký */}
+                    <Link 
+                        href={`/closet/${userId}/memories`}
+                        className="text-xs font-semibold text-stone-500 hover:text-[#183A2D] transition-colors cursor-pointer"
+                    >
+                        Xem tất cả →
+                    </Link>
                 </div>
 
                 <div className="flex gap-4 overflow-x-auto no-scrollbar pb-6 pt-2 px-2 -mx-2">
@@ -490,6 +486,7 @@ export default function ClosetProfilePage() {
                 </div>
             </div>
 
+            {/* 📸 LOOKBOOK */}
             <div className="bg-[#FCFBFA] border border-[#EBE6D8] rounded-[2rem] p-6 lg:p-8 shadow-sm">
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-2">
@@ -499,15 +496,13 @@ export default function ClosetProfilePage() {
                             <p className="text-[10px] text-stone-400 font-medium">Phong cách của {ownerInfo?.name}</p>
                         </div>
                     </div>
-                    <button 
-                        onClick={() => {
-                            document.getElementById("wardrobe-section")?.scrollIntoView({ behavior: "smooth" });
-                            setActiveTab("ALL");
-                        }} 
-                        className="text-xs font-semibold text-stone-500 hover:text-[#183A2D] cursor-pointer"
+                    {/* 🟢 NÂNG CẤP: Liên kết mượt mà sang trang Nhật Ký (Bỏ sự kiện cuộn xuống kho đồ) */}
+                    <Link 
+                        href={`/closet/${userId}/memories`}
+                        className="text-xs font-semibold text-stone-500 hover:text-[#183A2D] cursor-pointer transition-colors"
                     >
                         Xem tất cả →
-                    </button>
+                    </Link>
                 </div>
 
                 <div className="grid grid-cols-3 grid-rows-2 gap-3 h-[220px]">
@@ -527,6 +522,7 @@ export default function ClosetProfilePage() {
             </div>
         </div>
 
+        {/* 👗 TỦ ĐỒ CỦA USER */}
         <div id="wardrobe-section" className="bg-[#FCFBFA] border border-[#EBE6D8] rounded-[2rem] p-6 lg:p-8 shadow-sm scroll-mt-24">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8 border-b border-[#EBE6D8] pb-6">
                 <div className="flex items-center gap-2">
@@ -645,7 +641,7 @@ export default function ClosetProfilePage() {
                           {(editForm.name || "C").charAt(0).toUpperCase()}
                         </div>
                       )}
-                      <label className="absolute inset-0 bg-stone-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer cursor-pointer">
+                      <label className="absolute inset-0 bg-stone-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer">
                         {uploadingField === "avatar" ? <Loader2 className="animate-spin" size={20} /> : <Camera size={20} />}
                         <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, "avatar")} disabled={!!uploadingField} />
                       </label>
