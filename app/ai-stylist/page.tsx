@@ -7,7 +7,7 @@ import {
   Sparkles, Shirt, Compass, Smile, Sliders, 
   CheckCircle2, RefreshCw, Calendar, Palette, DollarSign, 
   Leaf, ShieldCheck, ChevronLeft, ArrowRight, User,
-  CreditCard, ClipboardCheck, CheckCircle, Loader2, Upload, Camera, FileText
+  CreditCard, ClipboardCheck, CheckCircle, Loader2, Upload, Camera, FileText, Send, Bot, Sparkle
 } from "lucide-react";
 import Link from "next/link";
 
@@ -46,6 +46,13 @@ type RecommendedResult = {
   selectedOuter: string;
 };
 
+type ChatMessage = {
+  id: string;
+  role: "ai" | "user";
+  text: string;
+  isTyping?: boolean;
+};
+
 // KHO SEED DATA MẪU (DÙNG LÀM BỆ ĐỠ KHI DATABASE CHƯA CÓ ĐỒ MỚI ĐỂ TRANH BỊ TRỐNG TRANG)
 const SEED_OUTFIT_POOL: Outfit[] = [
   {
@@ -68,7 +75,7 @@ const SEED_OUTFIT_POOL: Outfit[] = [
     lifeCycleExtension: 42,
     isAvailable: true,
     ownerName: "Hoàng Trang (Tủ đồ Nghệ An)",
-    reasonBase: "Phom dáng Sporty ôm nhẹ tôn trọn đường cong cơ thể, sắc đen tối giản kết hợp hoàn hảo với quai đeo may phối họa tiết dệt của Làng nghề thổ cẩm Hoa Tiến (Nghệ An).",
+    reasonBase: "Vibe này chuẩn bài hẹn hò năng động luôn! Phom Sporty tôn trọn đường cong cơ thể cậu, sắc đen lại hack dáng cực xịn.",
     initialAccessories: { shoes: "Sneaker trắng Chunky", bag: "Túi đeo chéo Nylon Black", outer: "Áo khoác Varsity lửng" },
     alternatives: {
       shoes: ["Sneaker trắng Chunky", "Combat Boots cổ thấp", "Giày gót nhọn kiêu kỳ"],
@@ -84,19 +91,19 @@ const SEED_OUTFIT_POOL: Outfit[] = [
     depositFee: 200000,
     image: "/1.1.jpg",
     genderTarget: "Nữ",
-    suitableBodies: ["Pear (Quả lê)", "Hourglass (Đồng hồ cát)"],
+    suitableBodies: ["Pear (Quả lê)", "Hourglass (Đồng hồ cát)", "Apple (Quả táo)"],
     styleGroup: "Street Style / Modern Y2K",
     seasonTarget: "Xuân Hạ",
     colorTone: "Xám khói thời thượng",
     budgetGroup: "300k - 600k",
-    occasionGroups: ["Quán cà phê / Hẹn hò", "Dạo phố / Night Out", "Chụp ảnh Lookbook / Nghệ thuật"],
+    occasionGroups: ["Quán cà phê / Hẹn hò", "Dạo phố / Night Out", "Chụp ảnh Lookbook / Nghệ thuật", "Du lịch biển / Resort Look"],
     rentalCount: 18,
     carbonSaved: 1.9,
     waterSaved: 950,
     lifeCycleExtension: 18,
     isAvailable: true,
     ownerName: "Khánh Linh (Kho đồ Vinh)",
-    reasonBase: "Thiết kế quần suông che khuyết điểm đùi cực tốt, được cắt may cải tiến từ phom dáng nguyên bản giúp kéo dài vòng đời sợi vải dệt, giảm thiểu rác thải thời trang địa phương.",
+    reasonBase: "Cậu kể đi chơi cần thoái mái nhưng vẫn cháy đúng không? Quần suông che khuyết điểm siêu tốt, kết hợp Halter Top khoe khéo bờ vai mảnh mai.",
     initialAccessories: { shoes: "Giày bệt Mule da mềm", bag: "Túi xách kẹp nách Silver", outer: "Cardigan lửng mỏng" },
     alternatives: {
       shoes: ["Giày bệt Mule da mềm", "Sandal dây mảnh", "Sneaker trắng Chunky"],
@@ -124,9 +131,34 @@ export default function AIStylistHub() {
   const [outfitPool, setOutfitPool] = useState<Outfit[]>(SEED_OUTFIT_POOL);
   const [dbLoading, setDbLoading] = useState<boolean>(true);
 
-  // States bổ sung phục vụ phân hệ xử lý hình ảnh đầu vào thông minh (Computer Vision Simulation)
-  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
-  const [isScanningImage, setIsScanningImage] = useState<boolean>(false);
+  // States Ma trận ngầm (Bị Chat AI điều khiển)
+  const [gender, setGender] = useState("Nữ");
+  const [bodyType, setBodyType] = useState("Hourglass (Đồng hồ cát)");
+  const [targetStyle, setTargetStyle] = useState("Minimalism / Sporty Chic");
+  const [occasion, setOccasion] = useState("Quán cà phê / Hẹn hò");
+  const [season, setSeason] = useState("Thu Đông");
+  const [favColor, setFavColor] = useState("Đen mờ (Matte Black)");
+  const [budget, setBudget] = useState("<300k");
+
+  const [currentStep, setCurrentStep] = useState<"input" | "checkout" | "success">("input");
+  const [showResult, setShowResult] = useState(false);
+  const [isRecalculating, setIsRecalculating] = useState(false);
+
+  // AI Chat States
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const [userInput, setUserInput] = useState("");
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
+    { id: "1", role: "ai", text: "Chào cậu! Cậu cứ kể tự nhiên nhé, ví dụ: 'Cuối tuần mình đi Đà Lạt với người yêu, dáng mình hơi mũm mĩm xíu...' Mình sẽ hiểu và tự mix đồ cho cậu ngay! ✨" }
+  ]);
+
+  const [startDate, setStartDate] = useState("2026-07-01");
+  const [endDate, setEndDate] = useState("2026-07-04");
+  const [paymentMethod, setPaymentMethod] = useState("VietQR");
+  const [isPaying, setIsPaying] = useState(false);
+
+  const [recommendedList, setRecommendedResultList] = useState<RecommendedResult[]>([]);
+  const [activeIndex, setActiveIndex] = useState(0);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -168,15 +200,15 @@ export default function AIStylistHub() {
               seasonTarget: isWinter ? "Thu Đông" : "Xuân Hạ",
               colorTone: tagsLower.includes("đen") || titleLower.includes("black") ? "Đen mờ (Matte Black)" : tagsLower.includes("trắng") ? "Trắng kem (Soft Cream)" : "Xám khói thời thượng",
               budgetGroup,
-              occasionGroups: ["Quán cà phê / Hẹn hò", "Dạo phố / Night Out", "Đi làm / Công sở thanh lịch"],
+              occasionGroups: ["Quán cà phê / Hẹn hò", "Dạo phố / Night Out", "Đi làm / Công sở thanh lịch", "Du lịch biển / Resort Look"],
               rentalCount: Math.floor(Math.random() * 20) + 15,
               carbonSaved: parseFloat((Math.random() * 2 + 1.5).toFixed(1)),
               waterSaved: Math.floor(Math.random() * 800) + 700,
               lifeCycleExtension: Math.floor(Math.random() * 15) + 10,
               isAvailable: p.condition !== "Maintenance",
               ownerName: "Tủ đồ thành viên CLOOP",
-              reasonBase: `Sản phẩm tuần hoàn thực tế "${p.title}" sở hữu chất vải dệt chắc chắn, đã vượt qua khâu khử khuẩn sinh học bảo chứng, tối ưu phom dáng cho phong cách ${styleGroup}.`,
-              initialAccessories: { shoes: "Sneaker trắng Chunky", bag: "Túi kẹp nách Canvas", outer: "Blazer trơn cộc tay" },
+              reasonBase: `Vibe này chuẩn quá cậu ơi! Phom dáng sinh ra là để tối ưu cho phong cách ${styleGroup} cậu đang tìm nè.`,
+              initialAccessories: { shoes: "Sneaker trắng", bag: "Túi kẹp nách", outer: "Blazer trơn" },
               alternatives: {
                 shoes: ["Sneaker trắng Chunky", "Loafers da bóng", "Giày bệt Mule da mềm"],
                 bag: ["Túi kẹp nách Canvas", "Túi đeo chéo Nylon Black", "Túi xách kẹp nách Silver"],
@@ -188,7 +220,7 @@ export default function AIStylistHub() {
           setOutfitPool([...mappedProducts, ...SEED_OUTFIT_POOL]);
         }
       } catch (err) {
-        console.error("Lỗi đồng bộ dữ liệu AI Hub:", err);
+        console.error("Lỗi đồng bộ dữ liệu AI Hub, fallback về Seed Data");
       } finally {
         setDbLoading(false);
       }
@@ -196,114 +228,134 @@ export default function AIStylistHub() {
     syncRealData();
   }, []);
 
-  const [gender, setGender] = useState("Nữ");
-  const [bodyType, setBodyType] = useState("Hourglass (Đồng hồ cát)");
-  const [targetStyle, setTargetStyle] = useState("Minimalism / Sporty Chic");
-  const [occasion, setOccasion] = useState("Quán cà phê / Hẹn hò");
-  const [season, setSeason] = useState("Thu Đông");
-  const [favColor, setFavColor] = useState("Đen mờ (Matte Black)");
-  const [budget, setBudget] = useState("<300k");
-
-  const [currentStep, setCurrentStep] = useState<"input" | "checkout" | "success">("input");
-
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [showResult, setShowResult] = useState(false);
-  const [isRecalculating, setIsRecalculating] = useState(false);
-  const [analysisStep, setAnalysisStep] = useState(0);
-
-  const [startDate, setStartDate] = useState("2026-07-01");
-  const [endDate, setEndDate] = useState("2026-07-04");
-  const [paymentMethod, setPaymentMethod] = useState("VietQR");
-  const [isPaying, setIsPaying] = useState(false);
-
-  const [recommendedList, setRecommendedResultList] = useState<RecommendedResult[]>([]);
-  const [activeIndex, setActiveIndex] = useState(0);
-
-  const scanningTexts = [
-    "Đang phân tích cấu trúc sợi vải và phổ màu nguyên liệu...",
-    "Đang quét ma trận nhu cầu tiêu dùng tuần hoàn...",
-    "Đang kết nối danh mục thiết kế từ các Hợp tác xã Nghệ An...",
-    "Đang tối ưu bản vẽ thiết kế phối đồ Lookbook Net Zero..."
-  ];
-
-  // Hàm xử lý kích hoạt hộp thoại chọn file ảnh thực tế
-  const handleTriggerUpload = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
+  // Tự động cuộn xuống cuối khi có tin nhắn Chat mới
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
+  }, [chatHistory]);
+
+  // 🟢 NÂNG CẤP LỚN: HÀM MÔ PHỎNG NLP (Trích xuất từ khóa tự động không cần Token)
+  const analyzeUserStory = (text: string) => {
+    const lowerText = text.toLowerCase();
+    
+    let newOccasion = occasion;
+    let newSeason = season;
+    let newBody = bodyType;
+    let newStyle = targetStyle;
+    
+    // Nhận diện Dịp
+    if (lowerText.match(/đà lạt|sapa|du lịch|biển|resort|chơi xa/)) newOccasion = "Du lịch biển / Resort Look";
+    if (lowerText.match(/hẹn hò|crush|đi chơi|trà sữa|cà phê|cafe/)) newOccasion = "Quán cà phê / Hẹn hò";
+    if (lowerText.match(/công ty|đi làm|thực tập|văn phòng|họp|phỏng vấn/)) newOccasion = "Đi làm / Công sở thanh lịch";
+    if (lowerText.match(/bar|quẩy|pub|bay lắc|night/)) newOccasion = "Dạo phố / Night Out";
+
+    // Nhận diện Mùa
+    if (lowerText.match(/lạnh|đông|mưa|rét|đà lạt|sapa/)) newSeason = "Thu Đông";
+    if (lowerText.match(/nắng|nóng|hè|oi bức|biển/)) newSeason = "Xuân Hạ";
+
+    // Nhận diện Dáng người
+    if (lowerText.match(/mập|mũm mĩm|béo|eo to|chubby|tròn/)) newBody = "Apple (Quả táo)";
+    if (lowerText.match(/gầy|ốm|nhỏ con|mảnh/)) newBody = "Rectangle (Thước kẻ)";
+    if (lowerText.match(/đùi to|hông to|lê/)) newBody = "Pear (Quả lê)";
+
+    // Nhận diện Phong cách
+    if (lowerText.match(/cá tính|ngầu|cháy|y2k|hiphop/)) newStyle = "Street Style / Modern Y2K";
+    if (lowerText.match(/nàng thơ|bánh bèo|tiểu thư|vintage|nhẹ nhàng|thơ/)) newStyle = "Cozy Vintage / Korean Style";
+    if (lowerText.match(/sang chảnh|thanh lịch|quý phái|sang/)) newStyle = "Classic Luxury / Quiet Luxury";
+
+    // Cập nhật State ẩn (để render ra bảng tóm tắt)
+    setOccasion(newOccasion);
+    setSeason(newSeason);
+    setBodyType(newBody);
+    setTargetStyle(newStyle);
+
+    // Xuất kho (Gửi thẳng các biến vào để tránh bị kẹt state bất đồng bộ)
+    executeWeightedRecommendation(newOccasion, newSeason, newBody, newStyle, gender);
   };
 
-  // Hàm giả lập quét phân tích hình ảnh AI (Computer Vision Auto-fill)
+  const handleSendMessage = () => {
+    if (!userInput.trim()) return;
+    
+    const textToAnalyze = userInput;
+    const userMsg: ChatMessage = { id: Date.now().toString(), role: "user", text: textToAnalyze };
+    setChatHistory(prev => [...prev, userMsg]);
+    setUserInput("");
+
+    // AI Hiển thị trạng thái đang gõ
+    const aiTypingId = (Date.now() + 1).toString();
+    setChatHistory(prev => [...prev, { id: aiTypingId, role: "ai", text: "", isTyping: true }]);
+
+    setTimeout(() => {
+      // Bỏ trạng thái typing, thay bằng tin nhắn phản hồi
+      setChatHistory(prev => prev.filter(msg => msg.id !== aiTypingId));
+      
+      let aiResponse = "Oke cậu ơi, gu này mình lo được! Mình đã tự động nhặt các từ khóa phong cách từ câu chuyện của cậu. Đang xuất kho kết quả mượt mà luôn ✨";
+      if(textToAnalyze.toLowerCase().includes("crush") || textToAnalyze.toLowerCase().includes("hẹn hò")) {
+        aiResponse = "Đi hẹn hò hả? Chuyến này phải cho crush lác mắt luôn! Mình đã chọn ra mấy bộ tông màu cực kì nịnh da và hack dáng, cậu xem bên phải nha! 🥰";
+      } else if (textToAnalyze.toLowerCase().match(/đà lạt|lạnh|mưa/)) {
+        aiResponse = "Trời lạnh thì mặc layer là chân ái! Mình đã mix & match mấy set đồ ấm áp nhưng lên hình check-in vẫn thơ mộng rạng ngời. Xem thử nhé! 🌲";
+      } else if (textToAnalyze.toLowerCase().match(/biển|resort|nắng/)) {
+        aiResponse = "Đi biển thì phải vibe bay bổng mát mẻ đúng không! Đợi mình lấy mấy set voan tơ với maxi tung bay trong gió cho cậu coi! 🌊";
+      }
+
+      setChatHistory(prev => [...prev, { id: Date.now().toString(), role: "ai", text: aiResponse }]);
+      analyzeUserStory(textToAnalyze);
+    }, 1800);
+  };
+
+  const handleTriggerUpload = () => {
+    if (fileInputRef.current) fileInputRef.current.click();
+  };
+
+  // Giả lập quét ảnh AI
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
     reader.onloadend = () => {
-      setUploadedImage(reader.result as string);
-      setIsScanningImage(true);
+      setChatHistory(prev => [...prev, { id: Date.now().toString(), role: "user", text: `[Đã gửi một ảnh phân tích kiểu dáng]` }]);
+      
+      const aiTypingId = (Date.now() + 1).toString();
+      setChatHistory(prev => [...prev, { id: aiTypingId, role: "ai", text: "", isTyping: true }]);
 
-      // Giả lập AI quét ảnh trong 1.5 giây để tự động bốc dữ liệu điền vào Form
       setTimeout(() => {
-        setIsScanningImage(false);
-        // Trích xuất giả lập thuộc tính thực của ảnh để thiết lập ma trận tự động
-        setGender("Nữ");
-        setBodyType("Hourglass (Đồng hồ cát)");
+        setChatHistory(prev => prev.filter(msg => msg.id !== aiTypingId));
+        setChatHistory(prev => [...prev, { 
+          id: Date.now().toString(), 
+          role: "ai", 
+          text: "🔍 Mắt thần AI của mình vừa quét xong ảnh cậu gửi! Dựa trên chất liệu vải, mình thiết lập ngay style Y2K cá tính cho cậu rồi. Chốt đơn bên phải nha!" 
+        }]);
         setTargetStyle("Street Style / Modern Y2K");
-        setFavColor("Xám khói thời thượng");
         setOccasion("Dạo phố / Night Out");
-        alert("🔍 [AI VISION TRÍCH XUẤT THÀNH CÔNG]: Phát hiện nguyên liệu vải Denim dệt sợi dày, Tone màu xám khói chủ đạo. Hệ thống đã tự động tối ưu hóa cấu hình ma trận đầu vào tương thích!");
-      }, 1500);
+        executeWeightedRecommendation("Dạo phố / Night Out", season, bodyType, "Street Style / Modern Y2K", gender);
+      }, 2500);
     };
     reader.readAsDataURL(file);
   };
 
-  const runScanningSteps = (step: number) => {
-    if (step > 3) {
-      executeWeightedRecommendation();
-      return;
-    }
-    setAnalysisStep(step);
-    setTimeout(() => {
-      runScanningSteps(step + 1);
-    }, 520);
-  };
-
-  const startAIAnalysis = () => {
-    setIsAnalyzing(true);
-    setShowResult(false);
-    setCurrentStep("input");
-    runScanningSteps(0);
-  };
-
-  const executeWeightedRecommendation = () => {
+  const executeWeightedRecommendation = (
+    o = occasion, s = season, b = bodyType, sty = targetStyle, g = gender
+  ) => {
     const scoredOutfits = outfitPool.map(outfit => {
-      const genderMatch = outfit.genderTarget === gender || outfit.genderTarget === "Nam / Unisex" ? 1.0 : 0.1;
+      const genderMatch = outfit.genderTarget === g || outfit.genderTarget === "Nam / Unisex" ? 1.0 : 0.1;
       const availabilityScore = outfit.isAvailable ? 1.0 : 0.0;
 
-      const bodyScoreMap = BODY_SIMILARITY[bodyType] || {};
+      const bodyScoreMap = BODY_SIMILARITY[b] || {};
       const bodyMatch = bodyScoreMap[outfit.suitableBodies[0]] || 0.3;
-      const styleMatch = outfit.styleGroup === targetStyle ? 1.0 : 0.3;
-      const occasionMatch = outfit.occasionGroups.includes(occasion) ? 1.0 : 0.3;
-      const seasonMatch = outfit.seasonTarget === season ? 1.0 : 0.4;
+      const styleMatch = outfit.styleGroup === sty ? 1.0 : 0.3;
+      const occasionMatch = outfit.occasionGroups.includes(o) ? 1.0 : 0.3;
+      const seasonMatch = outfit.seasonTarget === s ? 1.0 : 0.4;
 
-      let budgetMatch = 0.2;
-      if (budget === "<300k" && outfit.budgetGroup === "<300k") budgetMatch = 1.0;
-      else if (budget === "300k - 600k" && (outfit.budgetGroup === "<300k" || outfit.budgetGroup === "300k - 600k")) budgetMatch = 1.0;
-      else if (budget === ">600k") budgetMatch = 1.0;
-
-      const colorScoreMap = COLOR_COMPATIBILITY[favColor] || {};
-      const colorMatch = colorScoreMap[outfit.colorTone] || 0.4;
       const popularityScore = Math.min(outfit.rentalCount / 60, 1.0);
 
       const finalScore = availabilityScore * genderMatch * (
         (0.35 * bodyMatch) + 
         (0.20 * styleMatch) + 
-        (0.15 * occasionMatch) + 
-        (0.10 * budgetMatch) + 
+        (0.25 * occasionMatch) + 
         (0.10 * seasonMatch) + 
-        (0.05 * popularityScore) + 
-        (0.05 * colorMatch)
+        (0.10 * popularityScore)
       );
 
       return { outfit, finalScore };
@@ -325,7 +377,6 @@ export default function AIStylistHub() {
 
     setRecommendedResultList(top3);
     setActiveIndex(0);
-    setIsAnalyzing(false);
     setShowResult(true);
   };
 
@@ -375,7 +426,7 @@ export default function AIStylistHub() {
     return (
       <div className="min-h-screen bg-[#FAF8F3] flex flex-col items-center justify-center gap-3">
         <Loader2 size={36} className="animate-spin text-[#183A2D]" />
-        <p className="text-xs font-body font-bold text-gray-400 uppercase tracking-widest">Đang đồng bộ mạng lưới tủ đồ thực tế từ Supabase...</p>
+        <p className="text-xs font-body font-bold text-gray-400 uppercase tracking-widest">Đang kết nối kho dữ liệu AI Stylist...</p>
       </div>
     );
   }
@@ -385,170 +436,119 @@ export default function AIStylistHub() {
       
       <div className="max-w-[1400px] mx-auto mb-6">
         <button type="button" onClick={() => { if (currentStep !== "input") setCurrentStep("input"); }} className="inline-flex items-center gap-2 font-body text-xs font-bold text-gray-400 hover:text-[#183A2D] transition uppercase tracking-wider">
-          <ChevronLeft size={14} /> {currentStep === "input" ? "Quay lại trang chủ" : "Quay lại bảng chọn AI"}
+          <ChevronLeft size={14} /> {currentStep === "input" ? "Quay lại trang chủ" : "Về khung Chat AI"}
         </button>
       </div>
 
       <div className="max-w-[1400px] mx-auto mb-12 flex items-center justify-center gap-4 sm:gap-8 text-center text-xs font-bold uppercase tracking-wider text-gray-400">
         <div className={`flex items-center gap-2 ${currentStep === "input" ? "text-[#183A2D]" : "text-gray-400"}`}>
           <span className={`w-5 h-5 rounded-full flex items-center justify-center border text-[10px] ${currentStep === "input" ? "bg-[#183A2D] text-white border-[#183A2D]" : "border-gray-300"}`}>1</span>
-          <span>Thiết lập bộ não AI</span>
+          <span>Trò chuyện cùng AI</span>
         </div>
         <div className="w-12 h-[1px] bg-gray-200" />
         <div className={`flex items-center gap-2 ${currentStep === "checkout" ? "text-[#183A2D]" : "text-gray-400"}`}>
           <span className={`w-5 h-5 rounded-full flex items-center justify-center border text-[10px] ${currentStep === "checkout" ? "bg-[#183A2D] text-white border-[#183A2D]" : "border-gray-300"}`}>2</span>
-          <span>Chọn lịch & Thanh toán</span>
+          <span>Chọn lịch & Đặt đồ</span>
         </div>
         <div className="w-12 h-[1px] bg-gray-200" />
         <div className={`flex items-center gap-2 ${currentStep === "success" ? "text-[#183A2D]" : "text-gray-400"}`}>
           <span className={`w-5 h-5 rounded-full flex items-center justify-center border text-[10px] ${currentStep === "success" ? "bg-[#183A2D] text-white border-[#183A2D]" : "border-gray-300"}`}>3</span>
-          <span>Hóa đơn xanh sinh thái</span>
+          <span>Hóa đơn sinh thái</span>
         </div>
       </div>
 
       <AnimatePresence mode="wait">
         {currentStep === "input" && (
-          <motion.div key="input-step" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          <motion.div key="input-step" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative">
             
-            <div className="lg:col-span-5 bg-white border border border-[#E9E2D8] p-8 rounded-[2.5rem] shadow-sm space-y-5">
-              <div className="flex items-center gap-2 pb-3 border-b border-gray-100">
-                <Sliders size={16} className="text-[#6BA37A]" />
-                <h3 className="text-xs font-bold uppercase tracking-wider">Ma Trận Đầu Vào</h3>
+            {/* 🟢 KHU VỰC KHUNG CHAT AI (THAY THẾ FORM CỨNG NHẮC CŨ) */}
+            <div className="lg:col-span-5 bg-white border border-[#E9E2D8] rounded-[2.5rem] shadow-sm flex flex-col overflow-hidden" style={{ height: "640px" }}>
+              <div className="bg-[#183A2D] px-6 py-5 flex items-center gap-3 text-white shadow-sm z-10">
+                <div className="w-10 h-10 rounded-full bg-emerald-700 flex items-center justify-center border-2 border-emerald-500 shadow-sm relative">
+                  <Bot size={20} />
+                  <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 border-2 border-[#183A2D] rounded-full"></span>
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm tracking-wide">CLOOP AI Stylist</h3>
+                  <p className="text-[10px] text-emerald-200 font-medium tracking-widest uppercase">Trợ lý Phối đồ Cá nhân</p>
+                </div>
               </div>
 
-              {/* 🟢 KHỐI NÂNG CẤP: PHÂN HỆ TẢI ẢNH NGUYÊN LIỆU VẢI TÁI CHẾ / LOOKBOOK THỰC TẾ */}
-              <div className="space-y-1.5 text-left">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1">
-                  <Camera size={12} /> Ảnh chụp nguyên liệu / Vải vụn tái chế
-                </label>
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  onChange={handleImageChange} 
-                  accept="image/*" 
-                  className="hidden" 
-                />
-                
-                <div 
-                  onClick={handleTriggerUpload} 
-                  className="w-full h-32 border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center p-4 bg-[#FAF8F3] hover:border-[#183A2D] transition cursor-pointer relative overflow-hidden group"
-                >
-                  {isScanningImage && (
-                    <div className="absolute inset-0 bg-[#183A2D]/10 backdrop-blur-[1px] flex flex-col items-center justify-center z-10">
-                      <RefreshCw size={20} className="animate-spin text-[#183A2D] mb-1" />
-                      <span className="text-[9px] font-bold uppercase text-[#183A2D] tracking-widest animate-pulse">AI Đang quét phân tích vân vải...</span>
-                    </div>
-                  )}
-
-                  {uploadedImage ? (
-                    <div className="w-full h-full relative">
-                      <img src={uploadedImage} alt="Raw Material" className="w-full h-full object-cover rounded-xl" />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center rounded-xl text-white text-[10px] font-bold uppercase tracking-widest">
-                        Thay đổi ảnh khác
+              {/* Chat History */}
+              <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-6 space-y-5 bg-[#FCFCFB] scroll-smooth" style={{ scrollbarWidth: 'none' }}>
+                {chatHistory.map((msg) => (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }} 
+                    animate={{ opacity: 1, y: 0 }} 
+                    key={msg.id} 
+                    className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} items-end gap-2`}
+                  >
+                    {msg.role === "ai" && (
+                      <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mb-1">
+                        <Sparkle size={12} className="text-emerald-700" />
                       </div>
-                    </div>
-                  ) : (
-                    <div className="text-center space-y-1">
-                      <Upload size={20} className="text-gray-400 mx-auto group-hover:text-[#183A2D] transition" />
-                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Tải ảnh chất liệu / Quần áo cũ</p>
-                      <p className="text-[9px] text-gray-400">AI tự động nhận diện điền ma trận thông minh</p>
-                    </div>
-                  )}
-                </div>
+                    )}
+                    
+                    {msg.isTyping ? (
+                      <div className="bg-white border border-gray-100 px-4 py-3 rounded-2xl rounded-bl-none shadow-sm flex gap-1 items-center h-[42px]">
+                        <span className="w-1.5 h-1.5 bg-emerald-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                        <span className="w-1.5 h-1.5 bg-emerald-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                        <span className="w-1.5 h-1.5 bg-emerald-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                      </div>
+                    ) : (
+                      <div className={`px-5 py-3.5 rounded-2xl max-w-[85%] text-[13px] leading-relaxed shadow-sm font-medium ${
+                        msg.role === "user" 
+                          ? "bg-[#183A2D] text-white rounded-br-none" 
+                          : "bg-white border border-gray-100 text-stone-700 rounded-bl-none"
+                      }`}>
+                        {msg.text}
+                      </div>
+                    )}
+                  </motion.div>
+                ))}
               </div>
 
-              <div className="space-y-1.5 text-left">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1"><User size={12} /> Giới tính trải nghiệm</label>
-                <div className="flex bg-[#FAF8F3] rounded-xl p-1 border border-gray-100">
-                  {["Nữ", "Nam / Unisex"].map((g) => (
-                    <button key={g} type="button" onClick={() => { setGender(g); if (g === "Nam / Unisex") setBodyType("Nam / Unisex"); else setBodyType("Hourglass (Đồng hồ cát)"); }} className={`flex-1 text-center py-2 rounded-lg text-[11px] font-bold transition ${gender === g ? "bg-[#183A2D] text-white shadow-sm" : "text-gray-400 hover:text-[#183A2D]"}`}>{g}</button>
-                  ))}
-                </div>
+              {/* Tóm tắt Ma Trận (Hiển thị ngầm kết quả AI đã tự bắt) */}
+              <div className="px-5 py-3 bg-[#FAF8F3] border-t border-b border-gray-100 flex gap-2 overflow-x-auto items-center" style={{ scrollbarWidth: 'none' }}>
+                <span className="text-[9px] font-bold uppercase tracking-widest text-emerald-800 bg-emerald-100 px-2 py-1 rounded shrink-0">Tags AI thu thập:</span>
+                <span className="text-[10px] text-gray-500 bg-white border px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap">{occasion}</span>
+                <span className="text-[10px] text-gray-500 bg-white border px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap">{bodyType}</span>
+                <span className="text-[10px] text-gray-500 bg-white border px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap">{targetStyle}</span>
+                <span className="text-[10px] text-gray-500 bg-white border px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap">{season}</span>
               </div>
 
-              {gender === "Nữ" && (
-                <div className="space-y-1.5 text-left">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1"><Smile size={12} /> Khung dáng cơ thể nữ</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {["Hourglass (Đồng hồ cát)", "Apple (Quả táo)", "Pear (Quả lê)", "Rectangle (Thước kẻ)"].map((type) => (
-                      <button key={type} type="button" onClick={() => setBodyType(type)} className={`px-3 py-2.5 rounded-xl border text-[11px] font-medium text-left transition flex items-center justify-between ${bodyType === type ? "border-[#183A2D] bg-[#FAF8F3] font-bold" : "border-gray-100 text-gray-400 hover:border-gray-200"}`}><span className="truncate">{type}</span>{bodyType === type && <CheckCircle2 size={12} className="text-[#183A2D] shrink-0" />}</button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-4 text-left">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1"><Shirt size={12} /> Phong cách gu đồ</label>
-                  <select value={targetStyle} onChange={(e) => setTargetStyle(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-gray-100 bg-[#FAF8F3] text-xs font-medium outline-none cursor-pointer">
-                    <option>Minimalism / Sporty Chic</option>
-                    <option>Street Style / Modern Y2K</option>
-                    <option>Cozy Vintage / Korean Style</option>
-                    <option>Classic Luxury / Quiet Luxury</option>
-                  </select>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1"><Compass size={12} /> Dịp sử dụng phong phú</label>
-                  <select value={occasion} onChange={(e) => setOccasion(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-gray-100 bg-[#FAF8F3] text-xs font-medium outline-none cursor-pointer">
-                    <option>Quán cà phê / Hẹn hò</option>
-                    <option>Dạo phố / Night Out</option>
-                    <option>Du lịch biển / Resort Look</option>
-                    <option>Chụp ảnh Lookbook / Nghệ thuật</option>
-                    <option>Sự kiện / Tiệc tối cao cấp</option>
-                    <option>Đi làm / Công sở thanh lịch</option>
-                    <option>Thể thao / Gym Chic</option>
-                  </select>
+              {/* Input Khu vực */}
+              <div className="p-4 bg-white border-t border-gray-100 flex gap-3 items-end">
+                <input type="file" ref={fileInputRef} onChange={handleImageChange} accept="image/*" className="hidden" />
+                <button onClick={handleTriggerUpload} title="Tải ảnh lên để AI quét" className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center text-gray-400 hover:text-[#183A2D] hover:bg-emerald-50 transition shrink-0 border border-gray-200">
+                  <Camera size={18} />
+                </button>
+                <div className="flex-1 bg-gray-50 rounded-3xl border border-gray-200 p-1 flex items-end focus-within:border-[#183A2D] transition-colors shadow-inner">
+                  <textarea 
+                    value={userInput} 
+                    onChange={(e) => setUserInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
+                    placeholder="Kể cho AI nghe nhu cầu của cậu..." 
+                    className="w-full bg-transparent border-none outline-none resize-none px-4 py-3.5 text-xs text-stone-700 min-h-[48px] max-h-[120px]"
+                    rows={1}
+                  />
+                  <button 
+                    onClick={handleSendMessage}
+                    disabled={!userInput.trim()} 
+                    className="w-10 h-10 bg-[#183A2D] text-white rounded-full flex items-center justify-center shrink-0 mb-1 mr-1 disabled:opacity-50 disabled:cursor-not-allowed transition hover:bg-emerald-900 shadow-md"
+                  >
+                    <Send size={14} className="ml-0.5" />
+                  </button>
                 </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-4 text-left">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1"><Calendar size={12} /> Mùa thời tiết</label>
-                  <div className="flex bg-[#FAF8F3] rounded-xl p-1 border border-gray-100">
-                    {["Xuân Hạ", "Thu Đông"].map((s) => (
-                      <button key={s} type="button" onClick={() => setSeason(s)} className={`flex-1 text-center py-1.5 rounded-lg text-[11px] font-bold transition ${season === s ? "bg-white text-[#183A2D] shadow-sm" : "text-gray-400"}`}>{s}</button>
-                    ))}
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1"><Palette size={12} /> Tone màu chủ đạo</label>
-                  <select value={favColor} onChange={(e) => setFavColor(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-gray-100 bg-[#FAF8F3] text-xs font-medium outline-none cursor-pointer">
-                    <option>Đen mờ (Matte Black)</option>
-                    <option>Trắng kem (Soft Cream)</option>
-                    <option>Be tối giản (Warm Beige)</option>
-                    <option>Xám khói thời thượng</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="space-y-1.5 text-left">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1"><DollarSign size={12} /> Ngân sách trải nghiệm</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {["<300k", "300k - 600k", ">600k"].map((b) => (
-                    <button key={b} type="button" onClick={() => setBudget(b)} className={`py-2 rounded-xl border text-xs font-bold transition ${budget === b ? "border-[#183A2D] bg-[#FAF8F3] text-[#183A2D]" : "border-gray-100 text-gray-400 hover:border-gray-200"}`}>{b}</button>
-                  ))}
-                </div>
-              </div>
-
-              <button type="button" onClick={startAIAnalysis} disabled={isAnalyzing} className="w-full bg-[#183A2D] text-white py-4 rounded-full font-body font-bold uppercase tracking-widest text-xs hover:bg-[#254F3B] transition shadow-md flex items-center justify-center gap-2">
-                {isAnalyzing ? <><RefreshCw size={14} className="animate-spin" /> {scanningTexts[analysisStep]}</> : <><Sparkles size={14} className="animate-pulse" /> Khởi chạy thuật toán AI Stylist</>}
-              </button>
             </div>
 
+            {/* CỘT KẾT QUẢ ĐỒ TỪ SUPABASE */}
             <div className="lg:col-span-7 space-y-6">
               <div className="w-full min-h-[640px] bg-white border border-[#E9E2D8] rounded-[2.5rem] shadow-sm relative flex flex-col items-center justify-center p-8 overflow-hidden">
                 
-                {isAnalyzing && (
-                  <div className="absolute inset-0 bg-[#183A2D]/5 flex flex-col items-center justify-center z-10">
-                    <div className="text-center space-y-2">
-                      <RefreshCw size={24} className="animate-spin text-[#183A2D] mx-auto" />
-                      <p className="text-xs font-bold uppercase tracking-widest text-[#183A2D]">{scanningTexts[analysisStep]}</p>
-                    </div>
-                  </div>
-                )}
-
-                {showResult && !isAnalyzing && activeResult && (
-                  <div className="w-full grid grid-cols-1 md:grid-cols-12 gap-8 items-start relative">
+                {showResult && activeResult ? (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full grid grid-cols-1 md:grid-cols-12 gap-8 items-start relative">
                     {isRecalculating && (
                       <div className="absolute inset-0 bg-white/70 backdrop-blur-[1px] flex items-center justify-center z-20 rounded-2xl">
                         <RefreshCw size={16} className="animate-spin text-[#183A2D]" />
@@ -560,28 +560,28 @@ export default function AIStylistHub() {
                         <Image src={activeResult.Outfit.image} alt={activeResult.Outfit.name} fill className="object-cover object-top" sizes="240px" unoptimized />
                       </div>
                       <div className="text-center">
-                        <span className="text-[9px] uppercase tracking-widest font-bold text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded border border-amber-100">{activeIndex === 0 ? "🏆 AI Gợi Ý Tốt Nhất" : `Gợi ý thay thế #${activeIndex + 1}`}</span>
+                        <span className="text-[9px] uppercase tracking-widest font-bold text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded border border-amber-100">{activeIndex === 0 ? "🏆 AI Đề Cử Chuẩn Nhất" : `Gợi ý thứ #${activeIndex + 1}`}</span>
                         <h5 className="text-xs font-bold text-[#183A2D] line-clamp-1 mt-2">{activeResult.Outfit.name}</h5>
                         <p className="text-[11px] font-bold text-[#6BA37A] mt-0.5">{activeResult.Outfit.priceText}</p>
                       </div>
                     </div>
 
                     <div className="md:col-span-7 space-y-5 text-left">
-                      <div className="bg-[#183A2D] text-white p-5 rounded-2xl shadow-sm">
+                      <div className="bg-gradient-to-br from-[#183A2D] to-emerald-900 text-white p-5 rounded-2xl shadow-md">
                         <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-2">
-                          <span className="text-[10px] uppercase font-bold tracking-widest text-amber-300 flex items-center gap-1"><Sparkles size={12} /> Độ Tương Thích Lõi AI</span>
-                          <span className="text-xs font-bold font-heading text-white">{activeResult.confidence}</span>
+                          <span className="text-[10px] uppercase font-bold tracking-widest text-amber-300 flex items-center gap-1"><Sparkles size={12} /> AI Phân Tích Logic</span>
+                          <span className="text-xs font-bold font-heading text-white">{activeResult.confidence} Match</span>
                         </div>
-                        <p className="text-[11px] text-gray-200 leading-relaxed italic">"{activeResult.Outfit.reasonBase}"</p>
+                        <p className="text-[12px] text-emerald-50 leading-relaxed font-medium">"{activeResult.Outfit.reasonBase}"</p>
                       </div>
 
                       <div className="space-y-3">
-                        <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Tùy biến & Phối lại phụ kiện</h4>
+                        <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Đề xuất Mix & Match phụ kiện đi kèm</h4>
                         <div className="space-y-1">
                           <p className="text-[10px] font-medium text-gray-400">👟 Giày: <strong className="text-[#183A2D]">{activeResult.selectedShoes}</strong></p>
                           <div className="flex gap-1.5 flex-wrap">
                             {activeResult.Outfit.alternatives.shoes.map((s) => (
-                              <button key={s} type="button" onClick={() => swapAccessory("shoes", s)} className={`px-2.5 py-1 rounded-lg text-[10px] font-medium border transition ${activeResult.selectedShoes === s ? "bg-[#183A2D] text-white border-[#183A2D] font-bold" : "bg-gray-50 text-gray-500 border-gray-100"}`}>{s}</button>
+                              <button key={s} type="button" onClick={() => swapAccessory("shoes", s)} className={`px-2.5 py-1 rounded-lg text-[10px] font-medium border transition ${activeResult.selectedShoes === s ? "bg-[#183A2D] text-white border-[#183A2D] font-bold shadow-sm" : "bg-gray-50 text-gray-500 border-gray-100 hover:border-gray-300"}`}>{s}</button>
                             ))}
                           </div>
                         </div>
@@ -589,36 +589,37 @@ export default function AIStylistHub() {
                           <p className="text-[10px] font-medium text-gray-400">👜 Túi xách: <strong className="text-[#183A2D]">{activeResult.selectedBag}</strong></p>
                           <div className="flex gap-1.5 flex-wrap">
                             {activeResult.Outfit.alternatives.bag.map((b) => (
-                              <button key={b} type="button" onClick={() => swapAccessory("bag", b)} className={`px-2.5 py-1 rounded-lg text-[10px] font-medium border transition ${activeResult.selectedBag === b ? "bg-[#183A2D] text-white border-[#183A2D] font-bold" : "bg-gray-50 text-gray-500 border-gray-100"}`}>{b}</button>
+                              <button key={b} type="button" onClick={() => swapAccessory("bag", b)} className={`px-2.5 py-1 rounded-lg text-[10px] font-medium border transition ${activeResult.selectedBag === b ? "bg-[#183A2D] text-white border-[#183A2D] font-bold shadow-sm" : "bg-gray-50 text-gray-500 border-gray-100 hover:border-gray-300"}`}>{b}</button>
                             ))}
                           </div>
                         </div>
                       </div>
 
-                      <button type="button" onClick={() => setCurrentStep("checkout")} className="w-full bg-[#183A2D] text-white py-3.5 rounded-full font-body font-bold uppercase tracking-widest text-[10px] hover:bg-[#254F3B] transition shadow-sm flex items-center justify-center gap-2">
-                        Tiến hành đặt thuê trọn bộ Outfit này <ArrowRight size={12} />
+                      <button type="button" onClick={() => setCurrentStep("checkout")} className="w-full bg-[#183A2D] text-white py-3.5 rounded-full font-body font-bold uppercase tracking-widest text-[10px] hover:bg-[#254F3B] transition shadow-md flex items-center justify-center gap-2">
+                        Xác nhận mượn set đồ này <ArrowRight size={12} />
                       </button>
                     </div>
-                  </div>
-                )}
-
-                {!showResult && !isAnalyzing && (
-                  <div className="text-center space-y-2">
-                    <Sparkles size={32} className="text-[#6BA37A] mx-auto animate-pulse" />
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-                      Tải ảnh nguyên liệu vải vụn bên trái<br/>hoặc thiết lập cấu hình bộ lọc đầu vào<br/>để AI bốc đồ thật tuần hoàn từ Supabase
+                  </motion.div>
+                ) : (
+                  <div className="text-center space-y-3 max-w-[280px]">
+                    <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-2 shadow-inner border border-emerald-100">
+                      <Shirt size={28} className="text-emerald-700" />
+                    </div>
+                    <h4 className="text-sm font-bold text-stone-800 uppercase tracking-widest">Góc Lên Đồ AI</h4>
+                    <p className="text-xs font-medium text-gray-400 leading-relaxed">
+                      Hãy nhắn cho AI biết cậu sắp đi đâu, vóc dáng ra sao ở khung chat bên trái. Cứ viết tự nhiên nha, AI tự bắt từ khóa đỉnh lắm đó! ✨
                     </p>
                   </div>
                 )}
               </div>
 
-              {showResult && !isAnalyzing && recommendedList.length > 1 && (
+              {showResult && recommendedList.length > 1 && (
                 <div className="grid grid-cols-3 gap-4 mt-4">
                   {recommendedList.map((res, index) => (
-                    <div key={index} onClick={() => setActiveIndex(index)} className={`p-3 bg-white border rounded-2xl cursor-pointer transition flex items-center gap-3 shadow-sm ${activeIndex === index ? "border-[#183A2D] border-2" : "border-[#E9E2D8] opacity-80"}`}>
+                    <div key={index} onClick={() => setActiveIndex(index)} className={`p-3 bg-white border rounded-2xl cursor-pointer transition flex items-center gap-3 shadow-sm ${activeIndex === index ? "border-[#183A2D] border-2 bg-emerald-50/30" : "border-[#E9E2D8] opacity-80 hover:opacity-100 hover:border-emerald-300"}`}>
                       <div className="w-10 h-12 relative bg-gray-50 rounded-lg overflow-hidden shrink-0"><Image src={res.Outfit.image} alt="Thumb" fill className="object-cover object-top" sizes="40px" unoptimized /></div>
                       <div className="truncate leading-none text-left">
-                        <p className="text-[9px] font-bold text-amber-600 mb-1">{res.confidence}</p>
+                        <p className="text-[9px] font-bold text-amber-600 mb-1">{res.confidence} Match</p>
                         <h6 className="text-[10px] font-bold text-[#183A2D] truncate">{res.Outfit.name}</h6>
                       </div>
                     </div>
@@ -764,8 +765,8 @@ export default function AIStylistHub() {
             </div>
 
             <div className="mt-8 pt-4 border-t border-gray-100 flex flex-col gap-3">
-              <button type="button" onClick={() => { setCurrentStep("input"); setShowResult(false); }} className="w-full bg-[#183A2D] text-white py-3.5 rounded-full font-body font-bold uppercase tracking-widest text-[10px] hover:bg-[#254F3B] transition shadow-sm">
-                Quản lý phân hệ thử đồ AI
+              <button type="button" onClick={() => { setCurrentStep("input"); setShowResult(false); setChatHistory([{ id: "1", role: "ai", text: "Chào cậu! Cậu cứ kể tự nhiên nhé, ví dụ: 'Cuối tuần mình đi Đà Lạt với người yêu, dáng mình hơi mũm mĩm xíu...' Mình sẽ hiểu và tự mix đồ cho cậu ngay! ✨" }]); setUserInput(""); }} className="w-full bg-[#183A2D] text-white py-3.5 rounded-full font-body font-bold uppercase tracking-widest text-[10px] hover:bg-[#254F3B] transition shadow-sm">
+                Quay lại Chat cùng AI Stylist
               </button>
               <Link href="/" className="font-body text-[11px] font-semibold text-gray-400 hover:text-[#183A2D] transition underline underline-offset-4">
                 Quay về trang chủ mua sắm
