@@ -15,30 +15,30 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 interface UserProfile {
   id: string;
-  full_name?: string;
-  avatar_url?: string;
-  email?: string;
-  role?: string;
+  name?: string;
+  avatar?: string;
+  isVip?: boolean; // Nếu database có cột này thì sẽ hiện mác Ruby
 }
 
 interface BlogWithData {
   id: string;
   title: string;
   content: string;
+  coverImage: string;
   productId: string;
   createdAt: string;
   status: string;
   isPinned?: boolean;
   location?: string;
-  author_id?: string;
+  userId?: string; // SỬA: Khớp bảng BlogPost thật
   
   // Dữ liệu Real-time
   likesCount: number;
-  bookmarksCount: number;
+  savesCount: number;
   hasLiked: boolean;
-  hasBookmarked: boolean;
+  hasSaved: boolean;
   author: UserProfile | null;
-  allImages: string[]; // Chứa TẤT CẢ ảnh từ Cloudinary/Supabase
+  allImages: string[]; 
   products: {
     title: string;
     original_price: number;
@@ -50,28 +50,34 @@ export default function BlogJournalPage() {
   const [posts, setPosts] = useState<BlogWithData[]>([]);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [rubyPost, setRubyPost] = useState<BlogWithData | null>(null);
-  
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"newest" | "loved" | "community">("newest");
   
-  // State User Thật
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
-  const [userStats, setUserStats] = useState({ posts: 0, likes: 0, products: 0 });
+  // ⚡ LẤY USER ID THẬT TỪ LOCAL STORAGE
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [myProfile, setMyProfile] = useState<UserProfile | null>(null);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedId = localStorage.getItem("cloop_user_id");
+      setCurrentUserId(storedId);
+    }
+  }, []);
+
+  // ⚡ FETCH THÔNG TIN PROFILE CỦA NGƯỜI ĐANG ĐĂNG NHẬP
+  useEffect(() => {
+    if (!currentUserId) return;
+    async function fetchMyProfile() {
+      const { data } = await supabase.from("User").select("id, name, avatar, isVip").eq("id", currentUserId).maybeSingle();
+      if (data) setMyProfile(data);
+    }
+    fetchMyProfile();
+  }, [currentUserId]);
+
+  // ⚡ FETCH TOÀN BỘ DATA BẢNG TIN
   useEffect(() => {
     async function fetchRealDataFeed() {
       try {
-        // 1. LẤY USER ĐANG ĐĂNG NHẬP
-        const { data: { user } } = await supabase.auth.getUser();
-        let loggedInUser: UserProfile | null = null;
-        
-        if (user) {
-          const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-          loggedInUser = { id: user.id, email: user.email, ...profile };
-          setCurrentUser(loggedInUser);
-        }
-
-        // 2. LẤY TẤT CẢ BÀI VIẾT PUBLIC
         const { data: blogData, error: blogError } = await supabase
           .from("BlogPost")
           .select("*")
@@ -88,31 +94,29 @@ export default function BlogJournalPage() {
         }
 
         const productIds = publicBlogs.map((b: any) => b.productId).filter(Boolean);
-        const authorIds = publicBlogs.map((b: any) => b.author_id).filter(Boolean);
+        const authorIds = publicBlogs.map((b: any) => b.userId).filter(Boolean); // ĐÃ SỬA: userId
         const blogIds = publicBlogs.map((b: any) => b.id);
 
-        // 3. FETCH SONG SONG TẤT CẢ BẢNG LIÊN QUAN
+        // FETCH SONG SONG CÁC BẢNG (ĐÃ SỬA TÊN BẢNG VÀ CỘT)
         const [
           { data: productsData },
           { data: listingsData },
           { data: imagesData },
-          { data: profilesData },
-          { data: interactionsData }
+          { data: usersData }, // Bảng User thật
+          { data: interactionsData } // Bảng BlogInteraction thật
         ] = await Promise.all([
           supabase.from("products").select("*").in("id", productIds),
           supabase.from("Listing").select("*").in("productId", productIds),
           supabase.from("ProductImage").select("*").in("productId", productIds),
-          supabase.from("profiles").select("*").in("id", authorIds),
-          supabase.from("blog_interactions").select("*").in("blog_id", blogIds)
+          supabase.from("User").select("id, name, avatar, isVip").in("id", authorIds), 
+          supabase.from("BlogInteraction").select("*").in("blogPostId", blogIds) 
         ]);
 
         let authorScores: Record<string, { name: string; avatar: string; score: number }> = {};
-        let myPostCount = 0, myTotalLikes = 0, myProductSet = new Set();
 
         const formattedBlogs = publicBlogs.map((blog: any) => {
-          // --- Xử lý Gộp TẤT CẢ Hình Ảnh ---
           let allUrls: string[] = [];
-          if (blog.coverImage) allUrls.push(blog.coverImage); // Ảnh bìa gốc
+          if (blog.coverImage) allUrls.push(blog.coverImage);
 
           const matchedProduct = (productsData || []).find((p: any) => String(p.id) === String(blog.productId));
           let productInfo = null;
@@ -120,8 +124,6 @@ export default function BlogJournalPage() {
           if (matchedProduct) {
             const matchedListings = (listingsData || []).filter((l: any) => String(l.productId) === String(matchedProduct.id));
             const matchedImages = (imagesData || []).filter((img: any) => String(img.productId) === String(matchedProduct.id));
-            
-            // Bổ sung thêm toàn bộ ảnh của Product vào Album bài đăng
             allUrls = [...allUrls, ...matchedImages.map((img: any) => img.url)];
             
             productInfo = {
@@ -131,61 +133,45 @@ export default function BlogJournalPage() {
             };
           }
 
-          // Lọc trùng ảnh & Xử lý mặc định nếu không có ảnh
           allUrls = Array.from(new Set(allUrls)); 
           if (allUrls.length === 0) allUrls = ["https://images.unsplash.com/photo-1515886657613-9f3515b0c78f"];
 
-          // --- Đếm Lượt Tim/Lưu Thật Tế ---
-          const blogInteractions = (interactionsData || []).filter((i: any) => String(i.blog_id) === String(blog.id));
+          // TÍNH TOÁN LƯỢT TƯƠNG TÁC THẬT
+          const blogInteractions = (interactionsData || []).filter((i: any) => String(i.blogPostId) === String(blog.id));
           const likes = blogInteractions.filter((i: any) => i.type === 'LIKE');
-          const bookmarks = blogInteractions.filter((i: any) => i.type === 'BOOKMARK');
+          const saves = blogInteractions.filter((i: any) => i.type === 'SAVE'); // Đổi BOOKMARK thành SAVE
           
-          const hasLiked = user ? likes.some((i: any) => i.user_id === user.id) : false;
-          const hasBookmarked = user ? bookmarks.some((i: any) => i.user_id === user.id) : false;
+          const hasLiked = currentUserId ? likes.some((i: any) => i.userId === currentUserId) : false;
+          const hasSaved = currentUserId ? saves.some((i: any) => i.userId === currentUserId) : false;
 
-          const author = (profilesData || []).find((p: any) => String(p.id) === String(blog.author_id)) || null;
+          const author = (usersData || []).find((u: any) => String(u.id) === String(blog.userId)) || null;
 
-          // Tính điểm Bảng Vinh Danh (1 Tim = 1 Điểm)
           if (author) {
             if (!authorScores[author.id]) {
-              authorScores[author.id] = { name: author.full_name || author.email?.split('@')[0] || 'Ẩn danh', avatar: author.avatar_url, score: 0 };
+              authorScores[author.id] = { name: author.name || 'Ẩn danh', avatar: author.avatar || "/logo2.png", score: 0 };
             }
             authorScores[author.id].score += likes.length; 
-          }
-
-          // Ghi nhận thống kê cá nhân
-          if (user && String(blog.author_id) === String(user.id)) {
-            myPostCount++;
-            myTotalLikes += likes.length;
-            if (blog.productId) myProductSet.add(blog.productId);
           }
 
           return {
             ...blog,
             location: blog.location || "Việt Nam", 
             likesCount: likes.length,
-            bookmarksCount: bookmarks.length,
+            savesCount: saves.length,
             hasLiked,
-            hasBookmarked,
+            hasSaved,
             author,
-            allImages: allUrls, // Mảng chứa toàn bộ ảnh
+            allImages: allUrls,
             products: productInfo
           };
         });
 
-        // 4. SẮP XẾP LEADERBOARD
         const sortedLeaderboard = Object.values(authorScores).sort((a, b) => b.score - a.score).slice(0, 3);
-        
-        // 5. CHỌN BÀI RUBY TỰ ĐỘNG (Bài có nhiều tim nhất)
         const topTrendingPost = [...formattedBlogs].sort((a, b) => b.likesCount - a.likesCount)[0];
 
         setPosts(formattedBlogs);
         setLeaderboard(sortedLeaderboard);
         setRubyPost(topTrendingPost);
-
-        if (user) {
-          setUserStats({ posts: myPostCount, likes: myTotalLikes, products: myProductSet.size });
-        }
 
       } catch (err) {
         console.error("Lỗi fetch dữ liệu blog:", err);
@@ -195,22 +181,22 @@ export default function BlogJournalPage() {
     }
 
     fetchRealDataFeed();
-  }, []);
+  }, [currentUserId]); // Cập nhật khi lấy được ID user
 
   // ==================== TƯƠNG TÁC BẤM TIM/LƯU NHẢY SỐ TỨC THÌ ====================
-  const handleInteraction = async (blogId: string, type: 'LIKE' | 'BOOKMARK') => {
-    if (!currentUser) {
+  const handleInteraction = async (blogId: string, type: 'LIKE' | 'SAVE') => {
+    if (!currentUserId) {
       alert("Bạn cần đăng nhập để thả tim và lưu bài viết!");
       return;
     }
 
-    // 1. Optimistic UI: Nhảy số ngay lập tức trên màn hình
+    // 1. Optimistic UI
     setPosts(prevPosts => prevPosts.map(post => {
       if (post.id === blogId) {
         const isLiking = type === 'LIKE';
-        const currentValue = isLiking ? post.hasLiked : post.hasBookmarked;
-        const countKey = isLiking ? 'likesCount' : 'bookmarksCount';
-        const hasKey = isLiking ? 'hasLiked' : 'hasBookmarked';
+        const currentValue = isLiking ? post.hasLiked : post.hasSaved;
+        const countKey = isLiking ? 'likesCount' : 'savesCount';
+        const hasKey = isLiking ? 'hasLiked' : 'hasSaved';
 
         return {
           ...post,
@@ -221,12 +207,12 @@ export default function BlogJournalPage() {
       return post;
     }));
 
-    // Cập nhật luôn cho khối Ruby nếu bài đó đang là Ruby
+    // Cập nhật riêng cho thẻ Ruby nổi bật
     if (rubyPost && rubyPost.id === blogId) {
        setRubyPost(prev => {
          if(!prev) return null;
          const isLiking = type === 'LIKE';
-         const currentValue = isLiking ? prev.hasLiked : prev.hasBookmarked;
+         const currentValue = isLiking ? prev.hasLiked : prev.hasSaved;
          return {
            ...prev,
            hasLiked: isLiking ? !currentValue : prev.hasLiked,
@@ -235,23 +221,29 @@ export default function BlogJournalPage() {
        });
     }
 
-    // 2. Đồng bộ ngầm với Database
+    // 2. Gửi Supabase (Đã sửa tên bảng & cột)
     try {
       const isLiking = type === 'LIKE';
       const post = posts.find(p => p.id === blogId);
       if (!post) return;
       
-      const isCurrentlyActive = isLiking ? post.hasLiked : post.hasBookmarked;
+      const isCurrentlyActive = isLiking ? post.hasLiked : post.hasSaved;
 
       if (isCurrentlyActive) {
-        await supabase.from("blog_interactions").delete().match({ blog_id: blogId, user_id: currentUser.id, type });
+        await supabase.from("BlogInteraction").delete().match({ blogPostId: blogId, userId: currentUserId, type });
       } else {
-        await supabase.from("blog_interactions").insert({ blog_id: blogId, user_id: currentUser.id, type });
+        await supabase.from("BlogInteraction").insert({ blogPostId: blogId, userId: currentUserId, type });
       }
     } catch (error) {
       console.error(`Lỗi cập nhật ${type}:`, error);
     }
   };
+
+  // ⚡ TÍNH TOÁN SỐ LIỆU ĐỘNG CỦA CÁ NHÂN TỪ DANH SÁCH POSTS
+  const myPosts = posts.filter(p => p.userId === currentUserId);
+  const myPostCount = myPosts.length;
+  const myTotalLikes = myPosts.reduce((sum, p) => sum + p.likesCount, 0);
+  const myProductCount = new Set(myPosts.map(p => p.productId).filter(Boolean)).size;
 
   // ==================== RENDER ====================
   if (isLoading) {
@@ -265,15 +257,13 @@ export default function BlogJournalPage() {
     );
   }
 
-  // Sắp xếp bài theo Tab
   const displayPosts = [...posts].sort((a, b) => {
-    if (activeTab === "loved") return b.likesCount - a.likesCount; // Nhiều tim nhất lên đầu
-    return 0; // Mặc định Newest (đã sort từ Query)
+    if (activeTab === "loved") return b.likesCount - a.likesCount; 
+    return 0; 
   });
 
   return (
     <main className="min-h-screen bg-[#F4F1EA] py-12 px-4 md:px-8 xl:px-16 relative overflow-hidden font-sans text-[#333]">
-      {/* BACKGROUND ĐÁY */}
       <div className="fixed inset-0 pointer-events-none z-0 bg-[url('/giaynhau.png')] bg-cover bg-center mix-blend-multiply opacity-80" />
 
       <div className="max-w-[1440px] mx-auto relative z-10 space-y-8">
@@ -301,7 +291,7 @@ export default function BlogJournalPage() {
                     <PenTool size={14} /> Viết ký ức
                   </button>
                 </Link>
-                <Link href={currentUser ? "/profile?tab=blog" : "/auth"}>
+                <Link href={currentUserId ? `/closet/${currentUserId}` : "/auth"}>
                   <button className="bg-transparent border border-stone-400 text-stone-800 px-5 py-3 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-2 hover:bg-stone-100 transition">
                     <BookOpen size={14} /> Kho ký ức của tôi
                   </button>
@@ -326,28 +316,37 @@ export default function BlogJournalPage() {
           <div className="xl:col-span-4 bg-[url('/giaynhaurach.png')] bg-cover bg-center p-8 min-h-[380px] flex flex-col justify-center items-center text-center filter drop-shadow-md relative">
             <img src="/vuongmien.png" className="absolute top-6 right-6 w-12 drop-shadow-sm" alt="Crown" />
             
-            {currentUser ? (
+            {currentUserId ? (
               <>
                 <div className="w-24 h-24 p-1 bg-white border border-stone-300 rounded-full shadow-sm mb-4">
-                  <img src={currentUser.avatar_url || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80"} className="w-full h-full object-cover rounded-full" alt="Avatar" />
+                  <img src={myProfile?.avatar || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80"} className="w-full h-full object-cover rounded-full" alt="Avatar" />
                 </div>
                 
                 <h2 className="text-2xl font-serif font-bold text-[#1A3B2E]">
-                  @{currentUser.full_name || currentUser.email?.split('@')[0]} <Sparkles size={16} className="inline text-green-600 mb-2"/>
+                  @{myProfile?.name || "Khách"} <Sparkles size={16} className="inline text-green-600 mb-2"/>
                 </h2>
-                <p className="text-[10px] font-bold text-green-700 bg-green-50 px-3 py-1 rounded-full mt-1 border border-green-200">
-                  Thành viên CLOOP 🌱
-                </p>
+                
+                {/* HIỆN THẺ RUBY NẾU isVip = true trong Supabase */}
+                {myProfile?.isVip ? (
+                  <p className="text-[10px] font-bold text-red-700 bg-red-50 px-3 py-1 rounded-full mt-1 border border-red-200">
+                    Thành viên Ruby ❤️
+                  </p>
+                ) : (
+                  <p className="text-[10px] font-bold text-green-700 bg-green-50 px-3 py-1 rounded-full mt-1 border border-green-200">
+                    Thành viên CLOOP 🌱
+                  </p>
+                )}
 
                 <div className="grid grid-cols-3 w-full gap-2 border-t border-b border-stone-300/50 py-4 mt-6 mb-5">
-                  <div><p className="text-lg font-serif font-bold text-[#1A3B2E]">{userStats.posts}</p><p className="text-[9px] uppercase">Câu chuyện</p></div>
-                  <div><p className="text-lg font-serif font-bold text-[#1A3B2E]">{userStats.likes}</p><p className="text-[9px] uppercase">Được tim</p></div>
-                  <div><p className="text-lg font-serif font-bold text-[#1A3B2E]">{userStats.products}</p><p className="text-[9px] uppercase">Trang phục</p></div>
+                  <div><p className="text-lg font-serif font-bold text-[#1A3B2E]">{myPostCount}</p><p className="text-[9px] uppercase">Câu chuyện</p></div>
+                  <div><p className="text-lg font-serif font-bold text-[#1A3B2E]">{myTotalLikes}</p><p className="text-[9px] uppercase">Đồng cảm</p></div>
+                  <div><p className="text-lg font-serif font-bold text-[#1A3B2E]">{myProductCount}</p><p className="text-[9px] uppercase">Trang phục</p></div>
                 </div>
 
-                <Link href="/profile" className="w-full">
+                {/* SỬA LINK CHỈNH SỬA VỀ ĐÚNG /closet */}
+                <Link href={`/closet/${currentUserId}`} className="w-full">
                   <button className="bg-[#1A3B2E] text-white w-full py-3 rounded-full text-[11px] font-bold uppercase tracking-wider hover:bg-[#122A20] transition shadow-sm">
-                    Quản lý hồ sơ
+                    Chỉnh sửa hồ sơ
                   </button>
                 </Link>
               </>
@@ -408,17 +407,15 @@ export default function BlogJournalPage() {
                       <img src={tapeAsset} className="absolute -top-3 left-1/2 -translate-x-1/2 w-20 z-20 drop-shadow-sm" alt="Tape" />
                       {index === 1 && <img src="/kep-den.png" className="absolute -top-2 -right-4 w-12 z-20 drop-shadow-md" alt="Clip" />}
                       
-                      {/* KHUNG ẢNH CÓ SLIDER NẾU ĐĂNG NHIỀU ẢNH */}
+                      {/* KHUNG ẢNH CÓ SLIDER (HIỂN THỊ TẤT CẢ ẢNH) */}
                       <div className="w-full aspect-[4/5] bg-stone-100 p-2 pb-6 border border-stone-200 relative mb-4 overflow-hidden">
                         
-                        {/* CSS Scroll ngang vuốt mượt */}
                         <div className="flex w-full h-full overflow-x-auto snap-x snap-mandatory hide-scrollbar" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                           {post.allImages.map((img, i) => (
                             <img key={i} src={img} className="w-full h-full object-cover shrink-0 snap-center filter contrast-100 sepia-[0.05]" alt={`${post.title}-${i}`} />
                           ))}
                         </div>
 
-                        {/* Chỉ báo chấm tròn nếu có > 1 ảnh */}
                         {post.allImages.length > 1 && (
                           <div className="absolute bottom-8 w-full left-0 flex justify-center gap-1 z-10 pointer-events-none">
                              {post.allImages.map((_, i) => (
@@ -430,18 +427,13 @@ export default function BlogJournalPage() {
                         <div className="absolute bottom-1 left-2 flex items-center gap-1 text-[9px] font-bold text-stone-500 uppercase tracking-widest bg-[#EADDCE]/80 px-2 py-0.5 rounded-sm">
                           <MapPin size={8} /> {post.location}
                         </div>
-                        {post.isPinned && (
-                          <div className="absolute top-2 right-2 bg-[#D1A775] text-[#3E2723] p-1.5 text-[8px] font-black uppercase text-center w-12 h-14 flex flex-col justify-center border border-dashed border-[#5D4037] transform rotate-6 shadow-sm z-10">
-                            <span>PINNED</span><hr className="border-[#5D4037] my-0.5"/><span>CLOOP</span>
-                          </div>
-                        )}
                       </div>
 
                       <div className="flex-1 flex flex-col justify-between px-1">
                         <div>
                           <div className="flex items-center gap-1.5 mb-1.5">
-                            <img src={post.author?.avatar_url || "/logo2.png"} className="w-4 h-4 rounded-full object-cover" alt="author"/>
-                            <span className="text-[10px] font-bold text-stone-600">@{post.author?.full_name || post.author?.email?.split('@')[0] || "Ẩn danh"}</span>
+                            <img src={post.author?.avatar || "/logo2.png"} className="w-4 h-4 rounded-full object-cover" alt="author"/>
+                            <span className="text-[10px] font-bold text-stone-600">@{post.author?.name || "Ẩn danh"}</span>
                           </div>
                           <h3 className="font-serif text-[15px] font-bold text-[#1A3B2E] mb-2 leading-snug line-clamp-2">{post.title}</h3>
                           <p className="text-[11px] text-stone-600 mb-4 line-clamp-3 leading-relaxed">{post.content}</p>
@@ -452,8 +444,8 @@ export default function BlogJournalPage() {
                             <button onClick={() => handleInteraction(post.id, 'LIKE')} className={`flex items-center gap-1 text-[11px] font-bold transition-colors ${post.hasLiked ? "text-red-500" : "text-stone-500 hover:text-red-400"}`}>
                               <Heart size={14} className={post.hasLiked ? "fill-current" : ""} /> {post.likesCount}
                             </button>
-                            <button onClick={() => handleInteraction(post.id, 'BOOKMARK')} className={`flex items-center gap-1 text-[11px] font-bold transition-colors ${post.hasBookmarked ? "text-blue-600" : "text-stone-500 hover:text-blue-500"}`}>
-                              <Bookmark size={14} className={post.hasBookmarked ? "fill-current" : ""} /> Lưu
+                            <button onClick={() => handleInteraction(post.id, 'SAVE')} className={`flex items-center gap-1 text-[11px] font-bold transition-colors ${post.hasSaved ? "text-blue-600" : "text-stone-500 hover:text-blue-500"}`}>
+                              <Bookmark size={14} className={post.hasSaved ? "fill-current" : ""} /> Lưu
                             </button>
                           </div>
                         </div>
@@ -468,7 +460,6 @@ export default function BlogJournalPage() {
           {/* CỘT PHẢI: VINH DANH & RUBY TOP TRENDING */}
           <div className="xl:col-span-4 flex flex-col gap-8 h-full">
             
-            {/* Box 1: Bảng Vinh Danh Thật */}
             <div className="bg-[url('/giaynhaurach.png')] bg-cover bg-center p-6 filter drop-shadow-md relative">
               <div className="flex justify-between items-center mb-6 border-b border-stone-300/50 pb-3">
                 <h3 className="text-[13px] font-black uppercase tracking-widest text-[#1A3B2E] flex items-center gap-2">
@@ -504,7 +495,6 @@ export default function BlogJournalPage() {
               </div>
             </div>
 
-            {/* Box 2: Ruby Collection (Lấy bài nhiều tim nhất) */}
             <div className="bg-[url('/giaynhaurach.png')] bg-cover bg-center p-6 filter drop-shadow-md flex-1 flex flex-col relative">
               <img src="/logo2.png" className="absolute bottom-2 -right-4 w-20 opacity-40 z-0" alt="Seal"/>
               
@@ -544,7 +534,6 @@ export default function BlogJournalPage() {
         </div>
       </div>
 
-      {/* Ẩn thanh cuộn cho slider */}
       <style dangerouslySetInnerHTML={{ __html: `
         .hide-scrollbar::-webkit-scrollbar { display: none; }
       `}} />
