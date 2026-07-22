@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { 
@@ -10,49 +10,14 @@ import {
   ChevronLeft, ChevronRight
 } from "lucide-react";
 import Link from "next/link";
-import { createClient } from "@supabase/supabase-js";
 import AiStylistChat from "./components/AiStylistChat"; 
 import { useAuthModal } from "./AuthModalContext";
 import KyUcTuanHoanSection from "./components/KyUcTuanHoanSection";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "temporary-placeholder-key";
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Import Hooks & Types từ file vừa tạo
+import { useMarketplaceData, type Product } from "./hooks/useMarketplaceData";
+import { useTopClosets } from "./hooks/useTopClosets";
 
-const PLACEHOLDER_IMG = "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600";
-
-interface Product { 
-  id: string; 
-  image: string; 
-  type: string; 
-  listingTypeRaw: string;
-  title: string; 
-  price: number; 
-  rawPriceText: string;
-  location: string; 
-  rating: string; 
-  condition: string; 
-  size?: string; 
-  brand?: string;
-  ownerName?: string;
-  userId: string;
-  storeRetailPrice: number; 
-  savedPercentage: number;  
-  occasion: string;
-}
-
-interface BlogPreview {
-  id: string;
-  title: string;
-  content: string;
-  coverImage: string;
-  album: string[];
-  createdAt: string;
-  authorName?: string;
-  authorAvatar?: string;
-}
-
-interface OccasionItem { name: string; label: string; img: string; }
 interface ServiceItem { tag: string; icon: any; title: string; desc: string; btn: string; href: string; isModal?: boolean; }
 
 // Nền sáng Xanh Matcha chuẩn vibe Canva sạch sẽ mượt mà
@@ -67,28 +32,20 @@ function MatchaGlowBackground() {
 
 export default function Home() {
   const [darkMode, setDarkMode] = useState<boolean>(false);
+  const [randomPick, setRandomPick] = useState<Product | null>(null);
   const { handleFeatureRequirement } = useAuthModal();
 
-  const [products, setProducts] = useState<Product[]>([]);
-  const [rentalProducts, setRentalProducts] = useState<Product[]>([]);
-  const [saleProducts, setSaleProducts] = useState<Product[]>([]);
-  const [recentBlogs, setRecentStories] = useState<BlogPreview[]>([]);
-  const [productsLoading, setProductsLoading] = useState<boolean>(true);
+  // 👉 GỌI DATA TỪ HOOKS BÊN NGOÀI
+  const { 
+    products, 
+    rentalProducts, 
+    saleProducts, 
+    occasions, 
+    productsLoading, 
+    recentBlogs 
+  } = useMarketplaceData();
 
-  const [randomPick, setRandomPick] = useState<Product | null>(null);
-  const [topClosets, setTopClosets] = useState<any[]>([]);
-
-  const [occasions, setOccasions] = useState<OccasionItem[]>([
-    { name: "All", label: "Tất cả đồ", img: "" },
-    { name: "Tiệc cưới", label: "Tiệc cưới", img: "" },
-    { name: "Dạ hội", label: "Dạ hội", img: "" },
-    { name: "Dạo phố", label: "Dạo phố", img: "" },
-    { name: "Áo dài", label: "Áo dài", img: "" },
-    { name: "Đi biển", label: "Đi biển", img: "" },
-    { name: "Kỷ yếu", label: "Kỷ yếu", img: "" },
-    { name: "Lễ hội", label: "Lễ hội", img: "" },
-    { name: "Công sở", label: "Công sở", img: "" }
-  ]);
+  const { topClosets } = useTopClosets();
 
   const services: ServiceItem[] = [
     { tag: "01", icon: ShoppingBag, title: "THUÊ ĐỒ", desc: "Thuê phục trang theo nhu cầu thực tế, tối ưu ngân sách.", btn: "Khám phá ngay →", href: "/shop?type=rent" },
@@ -104,223 +61,6 @@ export default function Home() {
     { icon: <ShieldCheck size={20} />, title: "Mở Gian Hàng Tự Quản", desc: "Bất kỳ cá nhân nào cũng có thể đăng bài kinh doanh, chia sẻ tủ đồ tăng thu nhập." },
     { icon: <Heart size={20} />, title: "Kết Nối Xưởng Upcycle", desc: "Gửi yêu cầu thiết kế và sửa đổi quần áo cũ trực tiếp đến các đối tác tái chế." }
   ];
-
-  useEffect(() => {
-    async function fetchRealMarketplaceData() {
-      try {
-        setProductsLoading(true);
-        
-        const { data: pData, error: pError } = await supabase.from("products").select("*").order("createdAt", { ascending: false });
-        if (pError) throw pError;
-
-        const { data: listingsData } = await supabase.from("Listing").select("*");
-        const { data: imagesData } = await supabase.from("ProductImage").select("*");
-
-        const productUserIds = [...new Set((pData || []).map((item: any) => item.userId || item.user_id).filter(Boolean))];
-        let usersDataForProducts: any[] = [];
-        
-        if (productUserIds.length > 0) {
-          const [res1, res2] = await Promise.all([
-            supabase.from("User").select("id, name").in("id", productUserIds),
-            supabase.from("users").select("id, name").in("id", productUserIds)
-          ]);
-          usersDataForProducts = [...(res1.data || []), ...(res2.data || [])];
-        }
-
-        if (pData) {
-          const mappedRents: Product[] = [];
-          const mappedSells: Product[] = [];
-
-          pData.forEach((item: any) => {
-            const listingsArr = (listingsData || []).filter((l: any) => l.productId === item.id);
-            const imagesArr = (imagesData || []).filter((img: any) => img.productId === item.id);
-
-            const rentListing = listingsArr.find((l: any) => l.listingType === "RENT" && l.status === "AVAILABLE");
-            const sellListing = listingsArr.find((l: any) => (l.listingType === "SELL" || l.listingType === "SALE") && l.status === "AVAILABLE");
-
-            const rentPrice = rentListing ? Number(rentListing.basePrice) : 0;
-            const sellPrice = sellListing ? Number(sellListing.basePrice) : 0;
-            const effectiveRentPrice = rentPrice || item.rental_price;
-
-            const storeRetailPrice = item.original_price || item.originalPrice || 500000;
-
-            let currentImage = PLACEHOLDER_IMG;
-            if (imagesArr.length > 0) {
-              currentImage = imagesArr[0].url || currentImage;
-            } else if (item.image_url || item.imageUrl) {
-              currentImage = item.image_url || item.imageUrl;
-            }
-
-            const uId = item.userId || item.user_id;
-            const matchedUser = usersDataForProducts.find((u: any) => u.id === uId);
-
-            const baseProduct = {
-              id: item.id,
-              image: currentImage, 
-              title: item.title || item.name || "Trang phục CLOOP",
-              location: item.province || "Nghệ An", 
-              rating: "5.0",   
-              condition: item.condition === "GOOD" ? "Mới 95%" : "Mới 98%",
-              size: item.size || "M",
-              brand: item.brand || "Thiết kế Việt",
-              ownerName: matchedUser?.name || item.owner_name || item.ownerName || "Thành viên CLOOP",
-              userId: uId || "anonymous-user",
-              storeRetailPrice,
-              occasion: item.occasion || "Dạo phố"
-            };
-
-            if (effectiveRentPrice > 0) {
-              mappedRents.push({
-                ...baseProduct,
-                type: "Thuê",
-                listingTypeRaw: "RENT",
-                price: effectiveRentPrice,
-                rawPriceText: `${effectiveRentPrice.toLocaleString()}đ / ngày`,
-                savedPercentage: Math.round(((storeRetailPrice - effectiveRentPrice) / storeRetailPrice) * 100),
-              });
-            }
-
-            if (sellPrice > 0) {
-              mappedSells.push({
-                ...baseProduct,
-                type: "Mua sắm",
-                listingTypeRaw: "SELL",
-                price: sellPrice,
-                rawPriceText: `${sellPrice.toLocaleString()}đ`,
-                savedPercentage: Math.round(((storeRetailPrice - sellPrice) / storeRetailPrice) * 100),
-              });
-            }
-          });
-
-          const allUniqueProducts = [...mappedRents, ...mappedSells].filter((v,i,a)=>a.findIndex(t=>(t.id === v.id))===i);
-
-          setProducts(allUniqueProducts);
-          setRentalProducts(mappedRents);
-          setSaleProducts(mappedSells);
-
-          setOccasions(prev => prev.map(occ => {
-            if (occ.name === "All") return occ;
-            const matchProd = allUniqueProducts.find(p => p.occasion === occ.name);
-            return { ...occ, img: matchProd ? matchProd.image : "" };
-          }));
-        }
-
-        const { data: blogData } = await supabase
-          .from("BlogPost")
-          .select("*")
-          .filter("status", "neq", "HIDDEN")
-          .order("isPinned", { ascending: false })
-          .order("createdAt", { ascending: false })
-          .limit(3);
-
-        const defaultStories: BlogPreview[] = [
-          {
-            id: "story-1",
-            title: "Tà Áo Dài trắng năm 18 tuổi",
-            content: "Chiếc áo dài lụa tơ tằm mình mặc đúng một lần duy nhất vào buổi bế giảng cấp 3 năm ấy. Giữ mãi mùi nắng của ngày hạ cuối cùng...",
-            coverImage: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?q=80&w=600",
-            album: [],
-            createdAt: new Date().toISOString(),
-            authorName: "Trang Hoài",
-            authorAvatar: ""
-          }
-        ];
-
-        if (blogData && blogData.length > 0) {
-          const productIds = blogData.map((b: any) => b.productId).filter(Boolean);
-          const userIds = blogData.map((b: any) => b.userId || b.user_id).filter(Boolean);
-          
-          const { data: imagesData } = await supabase.from("ProductImage").select("*").in("productId", productIds);
-          
-          let allBlogUsers: any[] = [];
-          if (userIds.length > 0) {
-            const [res1, res2] = await Promise.all([
-              supabase.from("User").select("id, name, avatar").in("id", userIds),
-              supabase.from("users").select("id, name, avatar").in("id", userIds)
-            ]);
-            allBlogUsers = [...(res1.data || []), ...(res2.data || [])];
-          }
-
-          const mappedBlogs = blogData.map((b: any) => {
-            const imgs = (imagesData || []).filter((img: any) => img.productId === b.productId).map((img: any) => img.url);
-            const author = allBlogUsers.find((u: any) => u.id === (b.userId || b.user_id));
-            
-            const imgUrl = b.coverImage || b.cover_image;
-            const isTechImage = imgUrl && (imgUrl.includes("screenshot") || imgUrl.includes("notxrjsuukrrxdlboavo") || imgUrl.includes("localhost"));
-
-            return {
-              id: b.id,
-              title: b.title,
-              content: b.content,
-              coverImage: isTechImage || !imgUrl ? "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600" : imgUrl,
-              album: imgs.length > 0 ? imgs : [imgUrl || PLACEHOLDER_IMG],
-              createdAt: b.createdAt,
-              authorName: author?.name || "Thành viên CLOOP",
-              authorAvatar: author?.avatar || ""
-            };
-          });
-          setRecentStories(mappedBlogs);
-        } else {
-          setRecentStories(defaultStories);
-        }
-
-      } catch (err: any) {
-        console.error("❌ LỖI VẬN HÀNH KHO DỮ LIỆU ĐỘNG TRANG CHỦ:", err);
-      } finally {
-        setProductsLoading(false);
-      }
-    }
-    
-    fetchRealMarketplaceData();
-  }, []);
-
-  useEffect(() => {
-    async function fetchTopClosets() {
-      try {
-        const { data: reviewsData } = await supabase.from("Review").select("*").eq("type", "RENTER_TO_OWNER");
-        if (!reviewsData || reviewsData.length === 0) {
-          setTopClosets([]);
-          return;
-        }
-
-        const grouped: Record<string, number[]> = {};
-        reviewsData.forEach((r: any) => {
-          if (!grouped[r.revieweeId]) grouped[r.revieweeId] = [];
-          grouped[r.revieweeId].push(r.rating);
-        });
-
-        const ranked = Object.entries(grouped)
-          .map(([userId, ratings]) => ({
-            userId,
-            avgRating: ratings.reduce((a, b) => a + b, 0) / ratings.length,
-            reviewCount: ratings.length
-          }))
-          .sort((a, b) => b.avgRating - a.avgRating)
-          .slice(0, 8);
-
-        const userIds = ranked.map((r) => r.userId);
-        
-        let allTopUsers: any[] = [];
-        if (userIds.length > 0) {
-          const [res1, res2] = await Promise.all([
-            supabase.from("User").select("id, name, avatar").in("id", userIds),
-            supabase.from("users").select("id, name, avatar").in("id", userIds)
-          ]);
-          allTopUsers = [...(res1.data || []), ...(res2.data || [])];
-        }
-
-        const merged = ranked.map((r) => {
-          const u = allTopUsers.find((u: any) => u.id === r.userId);
-          return { ...r, name: u?.name || "Thành viên CLOOP", avatar: u?.avatar || null };
-        });
-
-        setTopClosets(merged);
-      } catch (err) {
-        console.error("❌ Lỗi tải danh sách Top Tủ Đồ Uy Tín:", err);
-      }
-    }
-    fetchTopClosets();
-  }, []);
 
   const handleShuffle = () => {
     if (products.length === 0) return;
@@ -347,6 +87,16 @@ export default function Home() {
         html { scroll-behavior: smooth; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Đã vá lỗi vòng xoay gradient-xy cho Avatar Top Tủ Đồ */
+        @keyframes gradient-xy { 
+          0%, 100% { background-position: 0% 50%; } 
+          50% { background-position: 100% 50%; } 
+        }
+        .animate-gradient-xy { 
+          background-size: 400% 400%; 
+          animation: gradient-xy 3s ease infinite; 
+        }
       `}</style>
 
       {/* HERO SECTION */}
@@ -399,7 +149,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 🟢 KHẮC PHỤC 1: 5 KHỐI TÍNH NĂNG CHÍNH (ĐIỂM NHẤN CỰC MẠNH) */}
+      {/* KHỐI TÍNH NĂNG CHÍNH */}
       <section className="max-w-[1500px] mx-auto px-6 lg:px-12 py-6 relative z-10">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
           {services.map((srv, i) => {
@@ -408,7 +158,6 @@ export default function Home() {
               <Link href={srv.href} key={i} className="block h-full">
                 <div className="bg-white p-6 xl:p-8 rounded-[2rem] flex flex-col justify-between transition-all duration-500 relative group cursor-pointer text-left h-full shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_10px_40px_rgba(24,58,45,0.08)] border border-stone-100 hover:border-[#183A2D]/30 overflow-hidden hover:-translate-y-2">
                   
-                  {/* Hiệu ứng ánh sáng nền mờ khi Hover */}
                   <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/0 to-emerald-50/0 group-hover:from-emerald-50/50 group-hover:to-transparent transition-colors duration-500" />
                   
                   <span className="absolute top-5 right-6 text-3xl text-stone-100 font-heading font-black italic group-hover:text-emerald-100 transition-colors">{srv.tag}</span>
@@ -418,7 +167,6 @@ export default function Home() {
                       <ServiceIcon size={24} strokeWidth={2} />
                     </div>
                     
-                    {/* KHẮC PHỤC: Tiêu đề To, Đậm, Điểm nhấn gạch chân */}
                     <h3 className="text-base lg:text-lg font-black uppercase tracking-widest mb-3 text-[#183A2D] font-heading drop-shadow-sm">{srv.title}</h3>
                     <div className="w-8 h-1 bg-emerald-400 rounded-full mb-4 transition-all duration-300 group-hover:w-16" />
 
@@ -435,6 +183,7 @@ export default function Home() {
         </div>
       </section>
 
+      {/* TÌM KIẾM DỊP MẶC ĐỒ */}
       <section className="max-w-[1500px] mx-auto px-6 lg:px-12 py-8 space-y-6">
         <div className="text-left space-y-1">
           <h2 className="text-3xl sm:text-4xl font-bold text-stone-900 tracking-tight font-heading">Tìm kiếm theo dịp mặc đồ</h2>
@@ -464,8 +213,10 @@ export default function Home() {
         </div>
       </section>
 
+      {/* DANH SÁCH TỦ ĐỒ (TỔNG HỢP) */}
       <section className="max-w-[1500px] mx-auto px-6 lg:px-12 py-6 space-y-12">
         
+        {/* Top Tủ Đồ Uy Tín */}
         {topClosets.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center gap-1.5 border-b border-stone-200/60 pb-2 text-left">
@@ -494,6 +245,7 @@ export default function Home() {
           </div>
         )}
 
+        {/* Tủ đồ Thuê */}
         <div className="space-y-4">
           <div className="border-b border-stone-200/60 pb-3 text-left">
             <h3 className="text-2xl font-bold text-[#183A2D] flex items-center gap-1.5 mb-1 font-heading">
@@ -544,6 +296,7 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Kệ đồ Bán */}
         <div className="space-y-4">
           <div className="border-b border-stone-200/60 pb-3 text-left">
             <h3 className="text-2xl font-bold text-[#183A2D] flex items-center gap-1.5 mb-1 font-heading">
@@ -597,7 +350,7 @@ export default function Home() {
 
       <KyUcTuanHoanSection recentBlogs={recentBlogs} />
 
-      {/* 🟢 KHẮC PHỤC 2: TRẢ LẠI SỰ TRONG TRẺO CHO FORM ĐĂNG KÝ (BỎ CỤC XANH THẪM) */}
+      {/* FORM ĐĂNG KÝ (Đặc quyền xanh) */}
       <section id="register-privilege" className="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-12 py-12 relative z-10">
         <div className="bg-white/70 backdrop-blur-xl border border-stone-200/60 rounded-[3rem] p-8 lg:p-14 shadow-[0_8px_30px_rgba(24,58,45,0.03)] flex flex-col lg:flex-row items-center justify-between gap-12 relative overflow-hidden">
           <div className="w-full lg:w-[55%] relative z-10">
@@ -638,7 +391,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 🟢 KHẮC PHỤC 3: ĐIỂM NHẤN CLOOP KHỔNG LỒ NẰM Ở ĐÁY CÙNG CỦA TRANG */}
+      {/* ĐIỂM NHẤN CLOOP KHỔNG LỒ */}
       <section className="mt-8 bg-[#0B1E15] rounded-t-[3rem] lg:rounded-t-[4rem] pt-20 pb-16 relative overflow-hidden flex flex-col items-center border-t border-emerald-900/30">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80%] h-[300px] bg-emerald-500/10 blur-[120px] rounded-full pointer-events-none" />
         <h1 className="font-logo text-[18vw] leading-[0.75] font-black text-white/5 select-none tracking-[0.05em] text-center w-full block pointer-events-none drop-shadow-2xl">
@@ -651,6 +404,7 @@ export default function Home() {
         </div>
       </section>
 
+      {/* FLOATING ACTION BUTTON - LẮC TỦ ĐỒ */}
       <button 
         onClick={handleShuffle} 
         className="fixed bottom-24 right-6 z-40 bg-[#183A2D] border border-emerald-400/20 text-white rounded-full px-5 py-3.5 shadow-lg text-xs font-bold uppercase tracking-widest flex items-center gap-1.5 transition active:scale-95 cursor-pointer hover:bg-emerald-950 font-heading"
@@ -659,6 +413,7 @@ export default function Home() {
         <span>🎲 Lắc tủ đồ AI</span>
       </button>
 
+      {/* MODAL LẮC TỦ ĐỒ (Chạy chung state randomPick) */}
       <AnimatePresence>
         {randomPick && (
           <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4" onClick={() => setRandomPick(null)}>
