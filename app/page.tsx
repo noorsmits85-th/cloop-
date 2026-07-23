@@ -10,11 +10,10 @@ import {
   ChevronLeft, ChevronRight
 } from "lucide-react";
 import Link from "next/link";
-import AiStylistChat from "./components/AiStylistChat"; 
 import { useAuthModal } from "./AuthModalContext";
 import KyUcTuanHoanSection from "./components/KyUcTuanHoanSection";
 
-// Import Hooks & Types từ file vừa tạo
+// Import Hooks & Types từ file dữ liệu
 import { useMarketplaceData, type Product } from "./hooks/useMarketplaceData";
 import { useTopClosets } from "./hooks/useTopClosets";
 
@@ -72,8 +71,6 @@ export default function Home() {
     <main className="min-h-screen overflow-x-hidden antialiased relative bg-[#FCFCFB] text-stone-900 selection:bg-[#183A2D] selection:text-white">
       
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700&display=swap');
-        
         body, input, textarea, button, p, span, div {
           font-family: 'Inter', sans-serif !important;
         }
@@ -486,7 +483,6 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      <AiStylistChat darkMode={darkMode} />
     </main>
   );
 }
