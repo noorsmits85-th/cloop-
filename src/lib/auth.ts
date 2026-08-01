@@ -8,7 +8,7 @@ const prisma = new PrismaClient();
  * Lấy User Session hiện tại từ Supabase HTTP-only Cookies
  */
 export async function requireUser() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: { user }, error } = await supabase.auth.getUser();
   
   if (error || !user) {
@@ -48,7 +48,7 @@ export async function requireAdmin() {
  */
 export async function requireAdminOrRedirect() {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {

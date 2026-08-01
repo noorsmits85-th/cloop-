@@ -72,7 +72,7 @@ export async function createPayOSPaymentLink(rentalId: string) {
       cancelUrl: `${YOUR_DOMAIN}/shop`
     };
 
-    const paymentLinkRes = await payos.createPaymentLink(body);
+    const paymentLinkRes = await payos.paymentRequests.create(body);
 
     // 5. Lưu paymentLinkId vào DB
     await prisma.invoice.update({

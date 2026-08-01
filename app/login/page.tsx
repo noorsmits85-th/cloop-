@@ -30,10 +30,11 @@ export default function LoginPage() {
         result = await signup(formData);
       }
 
-      if (result?.error) {
-        setMessage({ type: 'error', text: result.error });
-      } else if (result?.success) {
-        setMessage({ type: 'success', text: result.success });
+      const res = result as any;
+      if (res?.error) {
+        setMessage({ type: 'error', text: res.error });
+      } else if (res?.success) {
+        setMessage({ type: 'success', text: res.success });
         if (mode === 'OTP_REQUEST') setMode('OTP_VERIFY');
       }
     } catch (err) {

@@ -10,7 +10,7 @@ export async function POST(req: Request) {
 
     // 1. Xác thực Webhook chữ ký từ PayOS
     try {
-      const webhookData = payos.verifyPaymentWebhookData(body);
+      const webhookData = (await payos.webhooks.verify(body)) as any;
       
       // Nếu trạng thái Webhook không phải là thanh toán thành công, có thể bỏ qua hoặc lưu log
       if (webhookData.code !== "00") {
