@@ -146,8 +146,9 @@ export default function Home() {
                 Tủ Đồ Nổi Bật
               </h2>
             </div>
-            <Link href="/closets" className="font-ui text-sm font-semibold text-[#0A2517] border-b-2 border-[#0A2517] pb-1 hover:text-stone-500 hover:border-stone-500 uppercase tracking-widest transition-all hidden md:block">
+            <Link href="/closets" className="group font-ui text-[15px] font-semibold text-[#0A2517] border-b-2 border-[#0A2517] pb-1 pr-2 hover:text-stone-500 hover:border-stone-500 uppercase tracking-widest transition-all hidden md:flex items-center gap-2 shrink-0">
               Khám phá tất cả
+              <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
             </Link>
           </div>
 
@@ -268,9 +269,10 @@ export default function Home() {
             {/* Nút Khám Phá Tất Cả */}
             <Link 
               href="/shop" 
-              className="font-ui text-sm font-semibold text-[#0A2517] border-b-2 border-[#0A2517] pb-1 hover:text-stone-500 hover:border-stone-500 uppercase tracking-widest transition-all hidden md:block shrink-0"
+              className="group font-ui text-[15px] font-semibold text-[#0A2517] border-b-2 border-[#0A2517] pb-1 pr-2 hover:text-stone-500 hover:border-stone-500 uppercase tracking-widest transition-all hidden md:flex items-center gap-2 shrink-0"
             >
               Khám Phá Tất Cả
+              <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
             </Link>
           </div>
         </div>
@@ -494,9 +496,10 @@ export default function Home() {
             {/* Nút Khám Phá Tất Cả */}
             <Link 
               href="/shop" 
-              className="font-ui text-sm font-semibold text-[#0A2517] border-b-2 border-[#0A2517] pb-1 hover:text-stone-500 hover:border-stone-500 uppercase tracking-widest transition-all hidden md:block shrink-0"
+              className="group font-ui text-[15px] font-semibold text-[#0A2517] border-b-2 border-[#0A2517] pb-1 pr-2 hover:text-stone-500 hover:border-stone-500 uppercase tracking-widest transition-all hidden md:flex items-center gap-2 shrink-0"
             >
               Khám Phá Tất Cả
+              <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
             </Link>
           </div>
         </div>
