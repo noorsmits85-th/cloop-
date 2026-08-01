@@ -116,7 +116,7 @@ export async function createProductAction({
           data: {
             title: `Kỷ niệm cùng ${newProduct.title}`,
             content: storyText.trim(),
-            coverImage: uploadedImageUrls[0] || null,
+            cover_image: uploadedImageUrls[0] || null,
             productId: newProduct.id, 
             userId: user.id,
             status: "PUBLIC",   
