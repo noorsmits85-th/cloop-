@@ -6,8 +6,8 @@ import Link from "next/link";
 import { ArrowRight, Check, Star, Heart, Bookmark } from "lucide-react";
 
 export default function Home() {
-  const [activeRentalCategory, setActiveRentalCategory] = useState("Tất cả");
-  const rentalCategories = ["Tất cả", "Dạ hội", "Đi tiệc", "Áo dài", "Vintage"];
+  const [activeRentalCategory, setActiveRentalCategory] = useState("Dạ hội");
+  const rentalCategories = ["Dạ hội", "Đi tiệc", "Áo dài", "Vintage"];
 
   const [activeResaleCategory, setActiveResaleCategory] = useState("Tất cả");
   const resaleCategories = ["Tất cả", "Túi xách", "Phụ kiện", "Áo khoác", "Váy thiết kế"];
@@ -244,19 +244,37 @@ export default function Home() {
         
         {/* HEADER */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6 border-b border-stone-200 pb-4">
-          <h2 className="text-4xl lg:text-5xl font-heading font-extrabold text-black tracking-tight">
+          {/* Cột trái */}
+          <h2 className="text-3xl font-serif text-black tracking-wide">
             Trang Phục Cho Thuê
           </h2>
-          <div className="flex items-center gap-6 lg:gap-10 text-base font-bold uppercase tracking-wider text-stone-500 font-ui overflow-x-auto w-full md:w-auto pb-1 md:pb-0 hide-scrollbar">
-            {rentalCategories.map(cat => (
-              <button 
-                key={cat} 
-                onClick={() => setActiveRentalCategory(cat)}
-                className={`pb-1.5 shrink-0 transition-all ${activeRentalCategory === cat ? 'text-black border-b-[2px] border-black' : 'hover:text-black border-b-[2px] border-transparent hover:border-black'}`}
-              >
-                {cat}
-              </button>
-            ))}
+          
+          {/* Cột phải: Tabs & Nút chuyển trang */}
+          <div className="flex items-center gap-6 lg:gap-8 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 hide-scrollbar shrink-0">
+            {/* Nhóm Tabs */}
+            <div className="flex items-center gap-6">
+              {rentalCategories.map(cat => (
+                <button 
+                  key={cat} 
+                  onClick={() => setActiveRentalCategory(cat)}
+                  className={`pb-1 shrink-0 transition-all uppercase tracking-wider text-sm ${activeRentalCategory === cat ? 'text-black border-b-2 border-black font-medium' : 'text-gray-500 border-b-2 border-transparent hover:text-black hover:border-black'}`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            {/* Vạch kẻ dọc chia cách (chỉ hiện trên Desktop) */}
+            <div className="hidden md:block w-px h-5 bg-gray-300"></div>
+
+            {/* Nút Khám Phá Tất Cả */}
+            <Link 
+              href="/shop" 
+              className="group flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-black shrink-0 hover:text-gray-600 transition-colors"
+            >
+              Khám Phá Tất Cả
+              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1.5" />
+            </Link>
           </div>
         </div>
 
