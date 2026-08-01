@@ -150,7 +150,7 @@ export default function RentalBookingBox({
         return;
       }
       
-      window.location.href = payosResult.checkoutUrl;
+      window.location.href = payosResult.checkoutUrl as string;
       
     } catch (err: any) {
       alert(`Lỗi hệ thống: ${err.message}`);
