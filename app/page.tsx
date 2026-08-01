@@ -268,10 +268,9 @@ export default function Home() {
             {/* Nút Khám Phá Tất Cả */}
             <Link 
               href="/shop" 
-              className="group flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-black shrink-0 hover:text-gray-600 transition-colors"
+              className="font-ui text-sm font-semibold text-[#0A2517] border-b-2 border-[#0A2517] pb-1 hover:text-stone-500 hover:border-stone-500 uppercase tracking-widest transition-all hidden md:block shrink-0"
             >
               Khám Phá Tất Cả
-              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1.5" />
             </Link>
           </div>
         </div>
@@ -479,12 +478,26 @@ export default function Home() {
             </h2>
           </div>
           
-          <div className="flex items-center gap-6 lg:gap-10 text-base font-bold uppercase tracking-wider text-stone-500 font-ui overflow-x-auto w-full md:w-auto pb-1 md:pb-0 hide-scrollbar">
-            <button className="text-black border-b-[2px] border-black pb-1.5 shrink-0 transition-all">Tất Cả</button>
-            <button className="hover:text-black border-b-[2px] border-transparent hover:border-black pb-1.5 shrink-0 transition-all">Túi Xách</button>
-            <button className="hover:text-black border-b-[2px] border-transparent hover:border-black pb-1.5 shrink-0 transition-all">Phụ Kiện</button>
-            <button className="hover:text-black border-b-[2px] border-transparent hover:border-black pb-1.5 shrink-0 transition-all">Áo Khoác</button>
-            <button className="hover:text-black border-b-[2px] border-transparent hover:border-black pb-1.5 shrink-0 transition-all">Váy Thiết Kế</button>
+          <div className="flex items-center gap-6 lg:gap-10 text-base font-bold uppercase tracking-wider text-stone-500 font-ui overflow-x-auto w-full md:w-auto pb-1 md:pb-0 hide-scrollbar shrink-0">
+            {/* Nhóm Tabs */}
+            <div className="flex items-center gap-6 lg:gap-10 shrink-0">
+              <button className="text-black border-b-[2px] border-black pb-1.5 shrink-0 transition-all">Tất Cả</button>
+              <button className="hover:text-black border-b-[2px] border-transparent hover:border-black pb-1.5 shrink-0 transition-all">Túi Xách</button>
+              <button className="hover:text-black border-b-[2px] border-transparent hover:border-black pb-1.5 shrink-0 transition-all">Phụ Kiện</button>
+              <button className="hover:text-black border-b-[2px] border-transparent hover:border-black pb-1.5 shrink-0 transition-all">Áo Khoác</button>
+              <button className="hover:text-black border-b-[2px] border-transparent hover:border-black pb-1.5 shrink-0 transition-all">Váy Thiết Kế</button>
+            </div>
+
+            {/* Vạch kẻ dọc chia cách */}
+            <div className="hidden md:block w-px h-5 bg-gray-300"></div>
+
+            {/* Nút Khám Phá Tất Cả */}
+            <Link 
+              href="/shop" 
+              className="font-ui text-sm font-semibold text-[#0A2517] border-b-2 border-[#0A2517] pb-1 hover:text-stone-500 hover:border-stone-500 uppercase tracking-widest transition-all hidden md:block shrink-0"
+            >
+              Khám Phá Tất Cả
+            </Link>
           </div>
         </div>
 
