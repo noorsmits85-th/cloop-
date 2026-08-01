@@ -5,6 +5,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation"; 
 import { createOutfitAction } from "../../src/actions/create-outfit";
 
+interface UploadedImageMeta {
+  url: string;
+  storageProvider: string;
+  publicId: string;
+  width: number;
+  height: number;
+  bytes: number;
+  format: string;
+}
+
 const listingConfigs = {
   RENT: {
     label: "✨ Cấu hình phân hệ: CHIA SẺ TỦ ĐỒ (CHO THUÊ)",
@@ -113,16 +123,16 @@ export default function UploadPage() {
     setIsSubmitting(true);
     setStatusMessage("⚡ Đang tải hình ảnh trực tiếp lên đám mây Cloudinary...");
 
-    let uploadedUrls: string[] = [];
+    const uploadedImages: UploadedImageMeta[] = [];
     setIsUploadingImages(true);
 
     for (const file of imageFiles) {
       try {
         const formData = new FormData();
         formData.append("file", file);
-        formData.append("upload_preset", "cloop_assets"); 
+        formData.append("folder", "cloop_assets"); 
 
-        const res = await fetch("https://api.cloudinary.com/v1_1/dfqbxmgqi/image/upload", {
+        const res = await fetch("/api/upload", {
           method: "POST",
           body: formData,
         });
@@ -132,10 +142,10 @@ export default function UploadPage() {
         
         if (res.ok) {
           const data = JSON.parse(textResponse);
-          if (data.secure_url) uploadedUrls.push(data.secure_url);
+          if (data.url) uploadedImages.push(data);
         } else {
-          console.error("❌ Cloudinary từ chối nhận ảnh:", textResponse);
-          alert(`🚨 LỖI TÀI KHOẢN CLOUDINARY THỰC TẾ:\nStatus: ${res.status}\nMessage: ${textResponse}`);
+          console.error("❌ Server upload từ chối nhận ảnh:", textResponse);
+          alert(`🚨 LỖI TẢI ẢNH:\nStatus: ${res.status}\nMessage: ${textResponse}`);
           setIsSubmitting(false);
           setIsUploadingImages(false);
           return; // Ngắt mạch, không cho chạy xuống Supabase
@@ -150,7 +160,7 @@ export default function UploadPage() {
     setIsUploadingImages(false);
 
     // 🎯 TUYỆT ĐỐI XANH CHÍN: Không có ảnh thật từ Cloudinary là dừng hình ngay lập tức!
-    if (uploadedUrls.length === 0) {
+    if (uploadedImages.length === 0) {
       alert("⛔ HỆ THỐNG ĐÃ CHẶN ĐỨNG:\nKhông bốc được link ảnh chính chủ nào từ Cloudinary. Dừng tiến trình!");
       setIsSubmitting(false);
       return;
@@ -176,7 +186,7 @@ export default function UploadPage() {
         depositFee: Number(depositFee),
         minDuration: Number(minDuration),
         greenPoints: Number(greenPoints),
-        images: uploadedUrls, // Chỉ dùng ảnh thật
+        images: uploadedImages, // Chỉ dùng ảnh thật
         owner_id: currentUserId, 
       };
 

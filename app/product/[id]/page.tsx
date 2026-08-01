@@ -5,13 +5,11 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { MapPin, Star, ArrowLeft, Shirt, ShoppingBag, ChevronLeft, ChevronRight } from "lucide-react";
-import { createClient } from "@supabase/supabase-js";
+
 
 import RentalBookingBox from "../../../components/RentalBookingBox"; 
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "temporary-placeholder-key";
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { supabase } from "@/lib/supabase";
 
 const PLACEHOLDER_IMG = "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600";
 

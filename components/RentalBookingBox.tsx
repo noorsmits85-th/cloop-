@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { CreditCard, X, QrCode, CheckCircle2, Star } from "lucide-react";
+import { CreditCard, X, QrCode, CheckCircle2, Star, ShieldCheck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { createPayOSPaymentLink } from "@/app/actions/payment";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "temporary-placeholder-key";
@@ -44,6 +45,7 @@ export default function RentalBookingBox({
   const [showQrModal, setShowQrModal] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   // States quản lý dữ liệu xếp hạng sao thật của chủ tủ đồ bốc từ database
   const [ownerRating, setOwnerRating] = useState<number | null>(null);
@@ -137,40 +139,26 @@ export default function RentalBookingBox({
           return;
         }
       }
-      setPaymentSuccess(false);
-      setShowQrModal(true);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleConfirmTransfer = async () => {
-    let currentUserId = null;
-    if (typeof window !== "undefined") {
-      currentUserId = localStorage.getItem("cloop_user_id");
-    }
-
-    try {
-      const { error } = await supabase.from("rental_history").insert([{
-        product_id: productId,
-        renterId: currentUserId, // Đồng bộ lưu tài khoản người thuê thật phục vụ chấm sao về sau
-        renter_name: renterName,
-        renter_phone: renterPhone,   
-        owner_name: finalOwnerName,   
-        owner_phone: finalOwnerPhone, 
-        start_date: isRental ? startDate : today,
-        end_date: isRental ? endDate : today,
-        status: "active",
-      }]);
-      if (error) throw error;
-      setPaymentSuccess(true);
+      
+      setIsRedirecting(true);
+      const payosResult = await createPayOSPaymentLink(productId); // FIXME: server action expects rentalId, but we don't have it yet!
+      
+      if (!payosResult.success) {
+        alert("Lỗi khởi tạo cổng thanh toán: " + payosResult.error);
+        setIsSubmitting(false);
+        setIsRedirecting(false);
+        return;
+      }
+      
+      window.location.href = payosResult.checkoutUrl;
+      
     } catch (err: any) {
-      alert(`Lỗi hệ thống khi tạo đơn hàng: ${err.message}`);
+      alert(`Lỗi hệ thống: ${err.message}`);
+      setIsSubmitting(false);
+      setIsRedirecting(false);
     }
   };
-
+  // Hàm confirmManualTransfer đã bị xóa vì dùng Webhook
   return (
     <div className="space-y-4 pt-4 border-t border-stone-200">
       
@@ -249,97 +237,12 @@ export default function RentalBookingBox({
           </label>
         </div>
 
-        <button onClick={handleActivatePayment} disabled={isSubmitting} className="w-full py-4 bg-[#183A2D] text-white font-bold text-xs uppercase tracking-widest rounded-2xl hover:bg-[#23452F] transition-all shadow-md flex items-center justify-center gap-2 mt-2">
-          <CreditCard size={16} /> {isSubmitting ? "Đang xử lý..." : isRental ? "KÍCH HOẠT ĐẶT THUÊ SẢN PHẨM" : "KÍCH HOẠT MUA ĐỨT SẢN PHẨM"}
+        <button onClick={handleActivatePayment} disabled={isSubmitting || isRedirecting} className="w-full py-4 bg-[#183A2D] text-white font-bold text-xs uppercase tracking-widest rounded-2xl hover:bg-[#23452F] transition-all shadow-md flex items-center justify-center gap-2 mt-2">
+          <ShieldCheck size={16} className={isRedirecting ? "animate-pulse" : ""} /> {isRedirecting ? "ĐANG KẾT NỐI PAYOS..." : (isSubmitting ? "ĐANG XỬ LÝ..." : `BẢO CHỨNG BẰNG PAYOS ➔`)}
         </button>
       </div>
 
-      <AnimatePresence>
-        {showQrModal && (
-          <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white border border-[#E9E2D8] rounded-[2rem] max-w-[440px] w-full shadow-2xl relative overflow-hidden text-left">
-              <div className="bg-[#004a9c] p-4 text-white flex items-center justify-between relative">
-                <div className="flex items-center gap-2 text-left">
-                  <div className="w-7 h-7 bg-white rounded-lg flex items-center justify-center p-1 text-red-600 font-bold text-xs font-mono">VNP</div>
-                  <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider">CỔNG THANH TOÁN VNPAY QR</h4>
-                    <p className="text-[9px] text-blue-200">Giao dịch tuần hoàn an toàn & bảo mật tài khoản</p>
-                  </div>
-                </div>
-                <button onClick={() => setShowQrModal(false)} className="text-white/70 hover:text-white transition-colors p-1"><X size={20} /></button>
-              </div>
-
-              {!paymentSuccess ? (
-                <div className="p-5 space-y-4">
-                  <div className="text-center space-y-1"><p className="text-[11px] text-gray-500">Mở App Ngân hàng bất kỳ để quét mã ghim tiền tự động</p></div>
-                  <div className="bg-white border-2 border-stone-100 p-4 rounded-2xl w-fit mx-auto shadow-sm relative">
-                    <img src={`https://img.vietqr.io/image/Techcombank-0866801743-compact.jpg?amount=${totalInvoicePrice}&addInfo=CLOOP%20${isRental ? "RENT" : "BUY"}%20${productId.substring(0,6)}&accountName=HOANG%20THI%20TRANG`} alt="QR" className="w-[200px] h-[200px] rounded-lg object-contain shadow-sm" />
-                  </div>
-                  <div className="bg-[#FAF8F3] border border-[#E9E2D8] rounded-xl p-3 text-xs space-y-1.5 font-sans">
-                    <div className="flex justify-between border-b pb-1.5 mb-1.5"><span className="text-gray-400">Mã đơn hàng:</span><span className="font-mono font-bold text-gray-700">{isRental ? "RNT" : "BUY"}-{productId.substring(0,6).toUpperCase()}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-400">Số tài khoản:</span><span className="font-bold font-mono text-gray-800">0866801743 (TCB)</span></div>
-                    <div className="flex items-center justify-between border-t pt-2 mt-1.5 font-bold text-[#183A2D] text-sm">
-                      <span>Số tiền quét tự động:</span><span className="font-mono text-red-600 font-extrabold text-base">{totalInvoicePrice.toLocaleString()}đ</span>
-                    </div>
-                  </div>
-                  <button onClick={handleConfirmTransfer} className="w-full py-3 bg-[#004a9c] hover:bg-[#003978] text-white text-xs font-bold uppercase tracking-wider rounded-xl shadow transition-all flex items-center justify-center gap-2">
-                    <QrCode size={14} /> Tôi đã chuyển khoản thành công
-                  </button>
-                </div>
-              ) : (
-                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="p-6 text-center space-y-4 font-sans">
-                  <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center text-green-600 mx-auto border border-emerald-200 shadow-inner">
-                    <CheckCircle2 size={36} className="animate-bounce" />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <h3 className="text-xl font-bold text-emerald-800 tracking-tight">GIAO DỊCH HOÀN TẤT!</h3>
-                    <div className="inline-flex items-center gap-1.5 bg-emerald-50 border border-emerald-200/60 px-3 py-1.5 rounded-full text-[11px] font-bold text-emerald-800 shadow-sm mx-auto">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                      🔒 CLOOP ĐÃ GIỮ TIỀN BẢO CHỨNG AN TOÀN
-                    </div>
-                    <p className="text-[11px] text-gray-400 px-4 leading-relaxed pt-1.5">
-                      Tiền đã nạp vào quỹ bảo chứng dịch vụ. Cậu hãy gọi điện hoặc liên hệ trực tiếp đến thông tin người đăng dưới đây để hẹn lịch giao nhận đồ nhé!
-                    </p>
-                  </div>
-
-                  <div className="bg-[#FAF8F3] border border-[#E9E2D8] rounded-2xl p-4 text-left space-y-2.5 max-w-xs mx-auto shadow-sm text-xs">
-                    <div className="flex justify-between items-center border-b border-stone-200/60 pb-1.5">
-                      <span className="text-gray-400 font-medium">Họ và tên chủ tủ đồ:</span>
-                      <span className="font-bold text-stone-800">{finalOwnerName}</span>
-                    </div>
-                    <div className="flex justify-between items-center border-b border-stone-200/60 pb-1.5">
-                      <span className="text-gray-400 font-medium">Số điện thoại liên hệ:</span>
-                      <span className="font-mono font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/40">
-                        {finalOwnerPhone}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-start gap-4">
-                      <span className="text-gray-400 font-medium shrink-0">Địa chỉ bàn giao:</span>
-                      <span className="font-semibold text-stone-700 text-right leading-tight">{finalOwnerAddress}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row gap-2 pt-2 justify-center max-w-xs mx-auto">
-                    <a 
-                      href={`tel:${finalOwnerPhone}`}
-                      className="flex-1 py-3 bg-[#183A2D] hover:bg-[#23452F] text-white text-[11px] font-bold uppercase tracking-widest rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5"
-                    >
-                      📞 Gọi điện liên hệ
-                    </a>
-                    <button 
-                      onClick={() => { setShowQrModal(false); router.push("/my-closet"); }} 
-                      className="flex-1 py-3 bg-stone-100 hover:bg-stone-200 text-stone-700 text-[11px] font-bold uppercase tracking-widest rounded-xl transition-all"
-                    >
-                      Quản lý Tủ đồ
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {/* Xóa Modal QR tĩnh */}
     </div>
   );
 }

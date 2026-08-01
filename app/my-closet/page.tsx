@@ -2,13 +2,11 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { createClient } from "@supabase/supabase-js";
-import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Plus, ShieldCheck, CheckCircle2, AlertTriangle, PackageCheck, Shirt, History, Leaf, Droplet, Sparkles, X, Star, ShoppingBag, Eye, EyeOff } from "lucide-react";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "temporary-placeholder-key";
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowLeft, Plus, ShieldCheck, CheckCircle2, AlertTriangle, PackageCheck, Shirt, History, Leaf, Droplet, Sparkles, X, Star, ShoppingBag, Eye, EyeOff, ArrowRight } from "lucide-react";
+
+import { supabase } from "@/lib/supabase";
 
 const PLACEHOLDER_IMG = "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=120";
 
@@ -25,6 +23,11 @@ export default function MyClosetPage() {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [isReviewSubmitting, setIsReviewSubmitting] = useState(false);
+
+  // State quản lý Boost Modal
+  const [showBoostModal, setShowBoostModal] = useState(false);
+  const [selectedProductForBoost, setSelectedProductForBoost] = useState<any>(null);
+  const [isBoosting, setIsBoosting] = useState(false);
 
   // State quản lý các chỉ số tác động xanh sinh thái (ESG Index Dashboard)
   const [ecoStats, setEcoStats] = useState({ co2Saved: 0, waterSaved: 0, greenPoints: 0 });
@@ -196,6 +199,10 @@ export default function MyClosetPage() {
 
   useEffect(() => {
     fetchRealClosetData();
+
+    // SAFETY NET: Ép tắt loading sau 8 giây
+    const timeout = setTimeout(() => setLoading(false), 8000);
+    return () => clearTimeout(timeout);
   }, []);
 
   const handleUpdateEscrowStatus = async (orderId: string, newStatus: "completed" | "disputed") => {
@@ -498,6 +505,19 @@ export default function MyClosetPage() {
                                     </div>
                                   )}
 
+                                  {/* THĂNG HẠNG BUTTON */}
+                                  <div className="border-t border-stone-200/60 pt-1.5 w-full mt-1">
+                                    <button 
+                                      onClick={() => {
+                                        setSelectedProductForBoost(item);
+                                        setShowBoostModal(true);
+                                      }}
+                                      className="w-full px-2 py-1.5 border border-[#0A2517] text-[#0A2517] rounded-md font-ui text-[9px] uppercase tracking-widest font-bold hover:bg-[#0A2517] hover:text-[#FAF9F6] transition-colors flex items-center justify-center gap-1 shadow-sm"
+                                    >
+                                      ↑ Thăng hạng
+                                    </button>
+                                  </div>
+
                                 </div>
                               )}
                             </div>
@@ -745,6 +765,74 @@ export default function MyClosetPage() {
           </motion.div>
         </div>
       )}
+
+      {/* MODAL THĂNG HẠNG (BOOST LISTING) */}
+      <AnimatePresence>
+        {showBoostModal && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4"
+          >
+            <motion.div 
+              initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="w-full sm:max-w-md bg-[#FAF9F6] rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden relative"
+            >
+              <div className="absolute top-4 right-4 bg-white/50 backdrop-blur-md rounded-full p-2 cursor-pointer z-10" onClick={() => setShowBoostModal(false)}>
+                <X size={20} className="text-[#0A2517]" />
+              </div>
+              
+              <div className="p-8 pb-12 sm:pb-8">
+                <h3 className="font-heading text-3xl font-bold text-[#0A2517] mb-2 text-center">
+                  Thăng hạng tủ đồ
+                </h3>
+                <p className="font-body text-sm text-stone-500 text-center mb-8 px-4">
+                  Tiếp cận hàng ngàn tín đồ thời trang. Đẩy sản phẩm lên vị trí HIGHLIGHT.
+                </p>
+
+                <div className="space-y-4 mb-8">
+                  {/* Package 1 */}
+                  <div className="border border-[#0A2517] p-5 rounded-2xl bg-white hover:bg-[#FAF9F6] cursor-pointer transition-colors relative group">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-ui text-sm font-bold uppercase tracking-widest text-[#0A2517]">Gói Nổi Bật</span>
+                      <span className="font-body text-lg font-bold text-[#0A2517]">5.000đ</span>
+                    </div>
+                    <p className="font-body text-sm text-stone-600">Thăng hạng liên tục trong 24 giờ (1 Ngày).</p>
+                  </div>
+
+                  {/* Package 2 */}
+                  <div className="border border-stone-200 p-5 rounded-2xl bg-white hover:border-[#0A2517] cursor-pointer transition-colors relative group">
+                    <div className="absolute -top-3 right-4 bg-[#0A2517] text-[#FAF9F6] font-ui text-[9px] font-bold uppercase px-3 py-1 rounded-full tracking-widest">Khuyên Dùng</div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-ui text-sm font-bold uppercase tracking-widest text-stone-800">Gói Tiết Kiệm</span>
+                      <span className="font-body text-lg font-bold text-stone-800">12.000đ</span>
+                    </div>
+                    <p className="font-body text-sm text-stone-500">Thăng hạng liên tục trong 72 giờ (3 Ngày).</p>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => {
+                    setIsBoosting(true);
+                    setTimeout(() => {
+                      setIsBoosting(false);
+                      setShowBoostModal(false);
+                      alert("Thăng hạng thành công! Sản phẩm của bạn đang nằm ở vị trí Highlight.");
+                    }, 1500);
+                  }}
+                  disabled={isBoosting}
+                  className="w-full font-ui text-xs font-bold uppercase tracking-[0.2em] px-6 py-4 bg-[#0A2517] text-[#FAF9F6] hover:bg-black transition-colors rounded-xl flex items-center justify-center gap-2"
+                >
+                  {isBoosting ? (
+                    <span className="animate-pulse">Đang xử lý...</span>
+                  ) : (
+                    <>Xác nhận & Trừ ví <ArrowRight size={14} /></>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

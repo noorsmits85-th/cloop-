@@ -3,15 +3,13 @@
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
+
 import Cropper from "react-easy-crop";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image"; // 🟢 Đã fix: Trả lại thẻ Image cho Next.js
 import { Heart, Sparkles, Shirt, Info, MapPin, BadgePercent, ShieldAlert, Camera, Feather, Quote, ArrowLeft, Leaf } from "lucide-react"; // 🟢 Đã fix: Thêm ArrowLeft và Leaf
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "temporary-placeholder-key";
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { supabase } from "@/lib/supabase";
 
 const PLACEHOLDER_IMG = "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600";
 const PAPER_BG = "https://www.transparenttextures.com/patterns/cream-paper.png";
@@ -35,6 +33,15 @@ interface ListingConfig {
 }
 
 interface ImageItem { file: File; previewUrl: string; }
+interface UploadedImageMeta {
+  url: string;
+  storageProvider: string;
+  publicId: string;
+  width: number;
+  height: number;
+  bytes: number;
+  format: string;
+}
 
 async function getCroppedImageBlob(imageSrc: string, cropPixels: any, maxSize = 1200, quality = 0.75): Promise<Blob> {
   const image = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -191,18 +198,22 @@ export default function CreateProductListingPage() {
       const uploadPromises = images.map(async (imgItem) => {
         const formData = new FormData();
         formData.append("file", imgItem.file);
-        formData.append("upload_preset", "cloop_uploads");
+        formData.append("folder", "cloop_products");
 
-        const response = await fetch("https://api.cloudinary.com/v1_1/dfqbxmgqi/image/upload", { 
+        const response = await fetch("/api/upload", { 
           method: "POST", 
           body: formData 
         });
-        if (!response.ok) throw new Error("Ảnh bị lỗi khi dán vào trang rồi, cậu thử lại nhé.");
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => null);
+          throw new Error(errorData?.error || "Ảnh bị lỗi khi dán vào trang rồi, cậu thử lại nhé.");
+        }
         const imageData = await response.json();
-        return imageData.secure_url;
+        return imageData as UploadedImageMeta;
       });
 
-      const uploadedImageUrls = await Promise.all(uploadPromises);
+      const uploadedImages = await Promise.all(uploadPromises);
+      const uploadedImageUrls = uploadedImages.map((image) => image.url);
       const formattedCondition = product.condition.includes("95") ? "GOOD" : "EXCELLENT";
 
       const { data: insertedProduct, error: productError } = await supabase
@@ -240,10 +251,18 @@ export default function CreateProductListingPage() {
 
       if (insertedProduct) {
         if (uploadedImageUrls.length > 0) {
-          const imagePayload = uploadedImageUrls.map((url) => ({
+          const imagePayload = uploadedImages.map((image, index) => ({
             id: crypto.randomUUID(), 
             productId: insertedProduct.id, 
-            url: url
+            url: image.url,
+            storageProvider: image.storageProvider,
+            publicId: image.publicId,
+            width: image.width,
+            height: image.height,
+            bytes: image.bytes,
+            format: image.format,
+            isPrimary: index === 0,
+            sortOrder: index
           }));
           try {
             await supabase.from("ProductImage").insert(imagePayload);
@@ -336,9 +355,11 @@ export default function CreateProductListingPage() {
             background-color: rgba(220, 205, 175, 0.85);
             box-shadow: 0 1px 2px rgba(0,0,0,0.05);
             backdrop-filter: blur(2px);
-            mix-blend-mode: multiply;
             z-index: 20;
             clip-path: polygon(1% 5%, 100% 0%, 98% 95%, 0% 100%);
+        }
+        @media (min-width: 768px) {
+            .washi-tape { mix-blend-mode: multiply; }
         }
 
         .polaroid-frame {
@@ -366,8 +387,10 @@ export default function CreateProductListingPage() {
         }
 
         .blend-multiply {
-            mix-blend-mode: multiply;
             filter: grayscale(20%) sepia(30%) contrast(1.1); 
+        }
+        @media (min-width: 768px) {
+            .blend-multiply { mix-blend-mode: multiply; }
         }
       `}</style>
 

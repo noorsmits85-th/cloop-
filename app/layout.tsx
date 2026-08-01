@@ -51,7 +51,7 @@ function HeaderNavbar({ darkMode, setDarkMode, handleFeatureRequirement, current
 
   return (
     <header className={`sticky top-0 z-50 border-b px-4 lg:px-6 transition-all duration-500 backdrop-blur-md ${darkMode ? "bg-[#141E28]/90 border-[#2B3946]" : "bg-white border-[#ece7dc]"}`}>
-      <div className="max-w-[1500px] mx-auto h-[88px] grid grid-cols-[auto_1fr_auto] items-center gap-4">
+      <div className="max-w-[1280px] mx-auto h-[88px] grid grid-cols-[auto_1fr_auto] items-center gap-4">
         
         <Link href="/" className="flex items-center gap-3 shrink-0 cursor-pointer group">
           <Image src="/loogo.png" alt="CLOOP Brand Logo" width={46} height={46} className="mix-blend-multiply" />
@@ -62,23 +62,23 @@ function HeaderNavbar({ darkMode, setDarkMode, handleFeatureRequirement, current
         </Link>
 
         <div className="flex items-center gap-4 xl:gap-5 min-w-0">
-          <div className={`hidden md:flex items-center w-[120px] xl:w-[150px] h-[40px] rounded-full px-4 shrink-0 transition-all ${darkMode ? "bg-[#1C2834] border border-[#2B3946]" : "bg-[#FAF8F3] border border-[#E9E2D8] focus-within:bg-white focus-within:border-[#183A2D]"}`}>
-            <Search size={13} className="text-gray-400 shrink-0" />
-            <input className="ml-2 flex-1 bg-transparent text-[11px] font-body outline-none placeholder:text-gray-400 text-[#183A2D]" placeholder={placeholders[placeholderIndex]} readOnly onClick={() => window.location.href = '/shop'} />
+          <div className={`hidden md:flex items-center w-[120px] xl:w-[150px] h-[40px] rounded-full px-4 shrink-0 transition-all ${darkMode ? "bg-[#1C2834] border border-[#2B3946]" : "bg-stone-100 border border-stone-200 focus-within:bg-white focus-within:border-[#183A2D]"}`}>
+            <Search size={13} className="text-gray-500 shrink-0" />
+            <input className="ml-2 flex-1 bg-transparent text-[11px] font-search outline-none placeholder:text-gray-500 text-[#183A2D]" placeholder={placeholders[placeholderIndex]} readOnly onClick={() => window.location.href = '/shop'} />
           </div>
 
-          <nav className="hidden lg:flex items-center gap-3.5 xl:gap-5 font-body text-[11px] xl:text-[12px] uppercase tracking-wide whitespace-nowrap font-bold min-w-0 overflow-x-auto no-scrollbar">
+          <nav className="hidden lg:flex items-center gap-3.5 xl:gap-5 font-ui text-[11px] xl:text-[12px] uppercase tracking-wide whitespace-nowrap font-bold min-w-0 overflow-x-auto no-scrollbar">
             <Link href="/" className={getNavbarClass("/", null, null)}>Trang chủ</Link>
             <Link href="/shop?type=rent" className={getNavbarClass("/shop", "rent", null)}>Thuê đồ</Link>
             <Link href="/my-closet/create?mode=rent" className={getNavbarClass("/my-closet/create", null, "rent")}>Cho thuê đồ</Link>
-            <Link href="/shop?type=sell" className={getNavbarClass("/shop", "sell", null)}>Mua sắm</Link>
-            <Link href="/my-closet/create?mode=consign" className={getNavbarClass("/my-closet/create", null, "consign")}>Chuyển nhượng & Ký gửi</Link>
+            <Link href="/shop?type=sell" className={getNavbarClass("/shop", "sell", null)}>Sở hữu</Link>
+            <Link href="/my-closet/create?mode=consign" className={getNavbarClass("/my-closet/create", null, "consign")}>Bán & Ký gửi</Link>
             <button onClick={() => handleFeatureRequirement("Tái chế")} className="text-gray-400 hover:text-[#183A2D] transition-colors uppercase shrink-0 whitespace-nowrap bg-transparent border-none cursor-pointer font-bold">Tái chế</button>
             <Link href="/blog" className={getNavbarClass("/blog", null, null)}>Blog</Link>
           </nav>
         </div>
 
-        <div className="flex items-center gap-4 shrink-0 whitespace-nowrap font-body text-[11px] font-bold uppercase tracking-widest">
+        <div className="flex items-center gap-4 shrink-0 whitespace-nowrap font-ui text-[11px] font-bold uppercase tracking-widest">
           <motion.button
             whileTap={{ scale: 0.9 }}
             type="button"
@@ -156,13 +156,16 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   }, [setCurrentUser]);
 
   return (
-    <body className={`min-h-screen overflow-x-hidden antialiased relative transition-colors duration-500 font-body selection:bg-[#183A2D] selection:text-white ${darkMode ? "bg-[#0F1720] text-[#F5F5F5]" : "bg-[#FAF8F3] text-[#183A2D]"}`}>
+    <body className={`min-h-screen overflow-x-hidden antialiased relative transition-colors duration-500 font-body selection:bg-[#0A2517] selection:text-[#FAF9F6] ${darkMode ? "bg-[#0F1720] text-[#F5F5F5]" : "bg-[#FAF9F6] text-[#0A2517]"}`}>
       
       <style>{`
         html { scroll-behavior: smooth; }
-        .font-logo { font-family: 'Cinzel', serif; }
-        .font-heading { font-family: 'Cormorant Garamond', serif; }
-        .font-body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .font-logo { font-family: 'Fraunces', serif; font-weight: 800; letter-spacing: -0.02em; }
+        .font-heading { font-family: 'Fraunces', serif; }
+        .font-body { font-family: 'Lora', serif; }
+        .font-slogan { font-family: 'Fraunces', serif; font-style: italic; }
+        .font-ui { font-family: 'Inter', sans-serif; }
+        .font-search { font-family: 'Inter', sans-serif; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
@@ -181,58 +184,78 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         {children}
       </div>
 
-      <footer className={`transition-colors duration-500 pt-16 pb-12 relative z-10 text-left ${darkMode ? "bg-[#0A1118] border-t border-[#2B3946]" : "bg-[#183A2D] text-[#FAF8F3]"}`}>
-        <div className={`max-w-[1500px] mx-auto px-6 lg:px-12 grid grid-cols-2 md:grid-cols-5 gap-10 border-b pb-12 ${darkMode ? "border-slate-800" : "border-[#FAF8F3]/10"}`}>
-          <div className="col-span-2 space-y-4">
-            <div className="font-logo text-2xl font-bold tracking-wider text-white">CLOOP</div>
-            <p className="font-body text-xs text-gray-300 max-w-[320px] leading-relaxed">
-              CLOOP - Nền tảng kết nối thời trang tuần hoàn đầu tiên tại Việt Nam ứng dụng trí tuệ nhân tạo nâng cao trải nghiệm tiêu dùng xanh.
-            </p>
+      <footer className="w-full bg-[#0A2517] text-white pt-16 pb-8 border-t border-white/10">
+        <div className="max-w-[1536px] mx-auto px-4 md:px-8 lg:px-12">
+          
+          {/* Phần Trên: Cột Thông tin & Link */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-12 lg:gap-8 mb-16">
             
-            <div className="mt-6 flex items-center gap-3">
-              <motion.a whileHover={{ scale: 1.12 }} href="https://facebook.com" target="_blank" className="w-8 h-8 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 flex items-center justify-center text-white transition-all shadow-sm">
-                <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
-                  <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c4.56-.93 8-4.96 8-9.8z"/>
-                </svg>
-              </motion.a>
-              <motion.a whileHover={{ scale: 1.12 }} href="https://instagram.com" target="_blank" className="w-8 h-8 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 flex items-center justify-center text-white transition-all shadow-sm">
-                <svg className="w-3.5 h-3.5 stroke-current fill-none stroke-2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-                  <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
-                  <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
-                </svg>
-              </motion.a>
-              <motion.a whileHover={{ scale: 1.12 }} href="https://tiktok.com" target="_blank" className="w-8 h-8 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 flex items-center justify-center text-white transition-all shadow-sm">
-                <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
-                  <path d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.17-2.89-.6-4.13-1.46-.77-.53-1.43-1.23-1.93-2.05V15.7c.02 2.32-.89 4.67-2.62 6.16-2.12 1.83-5.32 2.14-7.77.77-2.82-1.56-3.89-5.18-2.42-8.02 1.11-2.16 3.56-3.49 5.97-3.32v4.13c-1.23-.15-2.52.3-3.29 1.25-.97 1.19-.85 3.1.28 4.14 1.12 1.04 3.02 1.01 4.1-.07.64-.64.91-1.56.89-2.47V.02z"/>
-                </svg>
-              </motion.a>
+            {/* CỘT 1: Logo & Thông tin thương hiệu */}
+            <div className="md:col-span-12 lg:col-span-4 flex flex-col">
+              <h2 className="text-3xl lg:text-4xl font-logo text-white tracking-widest mb-5">CLOOP.</h2>
+              <p className="font-body text-sm text-gray-300 leading-relaxed font-light mb-8 max-w-sm">
+                Hệ sinh thái thời trang dệt nên từ những kết nối chân thật. Nơi những món đồ đi qua tìm thấy thanh xuân mới, và những người đồng điệu tìm thấy nhau. CLOOP trao cho bạn đặc quyền thay đổi phong cách mỗi ngày — Mặc đẹp, sống nhẹ nhàng và không bận tâm sở hữu.
+              </p>
+              
+              {/* Dàn Icon Mạng Xã Hội */}
+              <div className="flex items-center gap-6 text-gray-400">
+                <button className="hover:text-white transition-colors" title="Facebook">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"></path></svg>
+                </button>
+                <button className="hover:text-white transition-colors" title="Instagram">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect width="20" height="20" x="2" y="2" rx="5" ry="5" strokeWidth="1.5"></rect><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37zm1.5-4.87h.01"></path></svg>
+                </button>
+                <button className="hover:text-white transition-colors" title="TikTok">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 19c-4.3 1.4-4.3-2.5-4.3-2.5 0-18 4.2-12 4.2-12 2.5 0 5.4 3 5.4 3v4.6c0 0-2.8-3.1-5.3-3.1v10.3c0 2-3.4 3.7-5.5 2.1-2.1-1.6-1.5-5.2.9-6.3V12c-4.4 2-5 7.8-2 10.3 3.1 2.5 8 1.4 8-3.8V4.5c2.3.9 4 3 4 3v-3s-2.1-2.4-4.7-3v18.5z"></path></svg>
+                </button>
+              </div>
+            </div>
+
+            {/* CỘT MENU */}
+            <div className="md:col-span-12 lg:col-span-8 grid grid-cols-2 md:grid-cols-3 gap-8 pt-2">
+              
+              {/* Cột Khám Phá */}
+              <div className="flex flex-col">
+                <h3 className="font-ui text-[10px] font-bold uppercase tracking-[0.2em] mb-6 text-gray-200">Khám Phá</h3>
+                <ul className="font-ui flex flex-col gap-3.5 text-sm text-gray-400 font-light">
+                  <li><button className="hover:text-white transition-colors">Trang phục cho thuê</button></li>
+                  <li><button className="hover:text-white transition-colors">Đồ chuyển nhượng</button></li>
+                  <li><button className="hover:text-white transition-colors">Chợ Xanh Upcycle</button></li>
+                  <li><button className="hover:text-white transition-colors">Bảo tàng ký ức</button></li>
+                </ul>
+              </div>
+
+              {/* Cột Về Chúng Tôi */}
+              <div className="flex flex-col">
+                <h3 className="font-ui text-[10px] font-bold uppercase tracking-[0.2em] mb-6 text-gray-200">Về CLOOP</h3>
+                <ul className="font-ui flex flex-col gap-3.5 text-sm text-gray-400 font-light">
+                  <li><button className="hover:text-white transition-colors">Câu chuyện thương hiệu</button></li>
+                  <li><button className="hover:text-white transition-colors">Sứ mệnh bền vững</button></li>
+                  <li><button className="hover:text-white transition-colors">Cộng đồng xanh</button></li>
+                  <li><button className="hover:text-white transition-colors">Sự kiện & Workshop</button></li>
+                </ul>
+              </div>
+
+              {/* Cột Hỗ Trợ */}
+              <div className="flex flex-col">
+                <h3 className="font-ui text-[10px] font-bold uppercase tracking-[0.2em] mb-6 text-gray-200">Hỗ Trợ</h3>
+                <ul className="font-ui flex flex-col gap-3.5 text-sm text-gray-400 font-light">
+                  <li><button className="hover:text-white transition-colors">Trung tâm trợ giúp</button></li>
+                  <li><button className="hover:text-white transition-colors">Chính sách bảo vệ</button></li>
+                  <li><button className="hover:text-white transition-colors">Điều khoản & Bảo mật</button></li>
+                  <li><button className="hover:text-white transition-colors">Gửi khiếu nại</button></li>
+                </ul>
+              </div>
+
             </div>
           </div>
 
-          {[
-            { title: "Về chúng tôi", links: [{name: "Giới thiệu đề tài", path: "/about"}, {name: "Sứ mệnh cốt lõi", path: "/about/mission"}, {name: "Tầm nhìn công nghệ", path: "/about/tech"}, {name: "Tin tức dự án", path: "/blog"}] },
-            { title: "Hỗ trợ kỹ thuật", links: [{name: "Trung tâm trợ giúp", path: "/support"}, {name: "Hướng dẫn sử dụng", path: "/support/guide"}, {name: "Điều khoản bảo mật", path: "/support/privacy"}, {name: "Giải quyết khiếu nại", path: "/support/report"}] },
-            { title: "Cộng đồng xanh", links: [{name: "Chuyên mục Blog", path: "/blog"}, {name: "Sự kiện Techfest", path: "/events"}, {name: "Cộng tác viên Upcycle", path: "/partners"}, {name: "Đối tác liên kết", path: "/partners/list"}] }
-          ].map((col, idx) => (
-            <div key={idx} className="col-span-1">
-              <h4 className="font-body text-xs font-bold uppercase tracking-wider text-white mb-5">{col.title}</h4>
-              <ul className="space-y-3">
-                {col.links.map((link, lIdx) => (
-                  <li key={lIdx}>
-                    <Link href={link.path} className="font-body text-xs text-gray-300 hover:text-white transition-colors text-left block">
-                      {link.name}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
+          {/* Phần Dưới Đáy: Copyright */}
+          <div className="flex flex-col md:flex-row justify-between items-center pt-8 border-t border-white/10 text-[11px] font-body text-gray-400 font-light gap-4">
+            <p>&copy; 2026 CLOOP PROJECT. All rights reserved.</p>
+            <p className="font-ui tracking-widest uppercase text-[9px] text-gray-500">Fashion in a loop</p>
+          </div>
 
-        <div className="max-w-[1500px] mx-auto px-6 lg:px-12 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 font-body text-[11px] text-gray-400 tracking-wider">
-          <div>© 2026 CLOOP PROJECT • NỀN TẢNG THỜI TRANG TUẦN HOÀN THÔNG MINH.</div>
-          <div className="font-semibold uppercase tracking-widest text-[#6BA37A]">Powered by Next.js & Supabase Engine</div>
         </div>
       </footer>
 
@@ -356,7 +379,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="vi">
       <head>
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cormorant+Garamond:ital,wght=0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght=300;400;500;600;700&display=swap" />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&family=Lora:ital,wght@0,400..700;1,400..700&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" />
+        <meta name="theme-color" content="#0A2517" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="CLOOP" />
+        <link rel="apple-touch-icon" href="/loogo.png" />
       </head>
       <AuthModalProvider>
         <LayoutContent>{children}</LayoutContent>

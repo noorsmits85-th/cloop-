@@ -202,8 +202,8 @@ export function useMarketplaceData() {
             const author = allBlogUsers.find((u: any) => u.id === (b.userId || b.user_id));
             
             const imgUrl = b.coverImage || b.cover_image;
-            // Giữ nguyên điều kiện nhận diện ảnh kỹ thuật
-            const isTechImage = imgUrl && (imgUrl.includes("screenshot") || imgUrl.includes("notxrjsuukrrxdlboavo") || imgUrl.includes("localhost"));
+            // Đã sửa điều kiện nhận diện ảnh kỹ thuật: KHÔNG chặn ảnh từ Supabase (notxrjsuukrrxdlboavo)
+            const isTechImage = imgUrl && (imgUrl.includes("screenshot") || imgUrl.includes("localhost"));
 
             return {
               id: b.id,

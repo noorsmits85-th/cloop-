@@ -6,11 +6,9 @@ import Image from "next/image";
 import Link from "next/link";
 // Đã bảo chứng import đầy đủ tất cả icon hệ thống chống lỗi ts(2304)
 import { MapPin, Star, Filter, ArrowUpDown, ArrowLeft, Search, SlidersHorizontal, Shirt } from "lucide-react";
-import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "temporary-placeholder-key";
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+import { supabase } from "@/lib/supabase";
 
 const PLACEHOLDER_IMG = "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600";
 

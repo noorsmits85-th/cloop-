@@ -35,7 +35,7 @@ export default function ClosetProductGrid({
     return (
       <div className="relative overflow-hidden text-center py-20 px-8 bg-white rounded-3xl border border-stone-200/80 shadow-[0_12px_40px_rgba(24,58,45,0.04)] w-full col-span-full flex flex-col items-center justify-center space-y-6">
         
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-72 h-72 bg-gradient-to-b from-emerald-50/30 to-transparent rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-72 h-72 bg-gradient-to-b from-emerald-50/30 to-transparent rounded-full blur-3xl pointer-events-none hidden md:block" />
 
         {/* Icon hộp chứa gọn gàng, nghiêm túc */}
         <div className="relative w-20 h-20 bg-[#183A2D] text-[#FDFBF7] rounded-2xl flex items-center justify-center shadow-md">

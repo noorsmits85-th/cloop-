@@ -27,7 +27,15 @@ interface OutfitPayload {
   depositFee: number;
   minDuration: number;
   greenPoints?: number;
-  images: string[];
+  images: Array<string | {
+    url: string;
+    storageProvider?: string;
+    publicId?: string;
+    width?: number;
+    height?: number;
+    bytes?: number;
+    format?: string;
+  }>;
   owner_id: string; 
 }
 
@@ -37,7 +45,9 @@ export async function createOutfitAction(payload: OutfitPayload) {
       return { success: false, message: "🚨 Lỗi xác thực: Phiên đăng nhập hợp lệ không tồn tại. Vui lòng đăng nhập lại!" };
     }
 
-    if (!payload.name.trim() || payload.images.length === 0) {
+    const images = payload.images.map((image) => typeof image === "string" ? { url: image } : image);
+
+    if (!payload.name.trim() || images.length === 0) {
       return { success: false, message: "❌ Dữ liệu phục trang trống hoặc thiếu tệp tin lookbook." };
     }
 
@@ -67,8 +77,14 @@ export async function createOutfitAction(payload: OutfitPayload) {
         userId: payload.owner_id, 
         condition: "GOOD",       
         images: {
-          create: payload.images.map((url, index) => ({
-            url: url,
+          create: images.map((image, index) => ({
+            url: image.url,
+            storageProvider: image.storageProvider || "cloudinary",
+            publicId: image.publicId || null,
+            width: image.width || null,
+            height: image.height || null,
+            bytes: image.bytes || null,
+            format: image.format || null,
             isPrimary: index === 0,
             sortOrder: index,
           })),

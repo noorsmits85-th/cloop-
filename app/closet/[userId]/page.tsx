@@ -103,17 +103,21 @@ export default function ClosetProfilePage() {
     setUploadingField(field);
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("upload_preset", "cloop_preset"); 
+    formData.append("folder", field === "avatar" ? "cloop_profiles" : "cloop_profile_covers"); 
 
     try {
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dfqbxmgqi'}/image/upload`, {
+      const res = await fetch("/api/upload", {
         method: "POST",
         body: formData,
       });
       const data = await res.json();
       
-      if (data.secure_url) {
-        setEditForm(prev => ({ ...prev, [field]: data.secure_url }));
+      if (!res.ok) {
+        throw new Error(data?.error || "Upload failed");
+      }
+
+      if (data.url) {
+        setEditForm(prev => ({ ...prev, [field]: data.url }));
       }
     } catch (error) {
       console.error("Lỗi upload ảnh:", error);

@@ -1,345 +1,396 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, X, Send, Bot, CheckCircle2, ShoppingBag, MapPin, CloudSun } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Bot, CheckCircle2, CloudSun, MapPin, Send, ShoppingBag, Sparkles, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "temporary-placeholder-key";
+type ProductMini = {
+  id: string;
+  title: string;
+  image: string;
+  priceText: string;
+  province: string;
+  category: string;
+  size: string;
+  color: string;
+  listingType: string;
+};
 
-// ✅ KHÔI PHỤC MẠCH THẲNG: Supabase luôn có giá trị đóng thế, xóa sổ hoàn toàn lỗi 'possibly null'
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+type Message = {
+  id: string;
+  role: "user" | "ai";
+  text: string;
+  isStreaming?: boolean;
+  suggestions?: string[];
+  isWeatherButton?: boolean;
+};
 
-interface StructuredOutfitCard {
-  intro: string;
-  realProduct: {
-    id: string;
-    name: string;
-    image: string;
-    price: string;
-    location: string;
-    isRental: boolean;
-  };
-  suitability: string[];
+const INITIAL_MESSAGES: Message[] = [
+  {
+    id: "welcome",
+    role: "ai",
+    text: "Chào bạn, mình là CLOOP AI Stylist. Bạn cứ nói tự nhiên dịp sắp đi, gu màu, vóc dáng hoặc ngân sách, mình sẽ quét kho đồ thật của CLOOP và gợi ý món phù hợp nhất.",
+    suggestions: ["Đi tiệc cưới ở Nghệ An", "Đi biển cần váy nhẹ", "Kỷ yếu phong cách thanh lịch"],
+  },
+  {
+    id: "weather",
+    role: "ai",
+    text: "",
+    isWeatherButton: true,
+  },
+];
+
+function decodeCatalogChunk(chunk: string): ProductMini[] {
+  try {
+    // Giải mã Base64 hỗ trợ UTF-8 (tiếng Việt) thay vì atob() gốc của trình duyệt
+    const binaryString = atob(chunk);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    const decoded = new TextDecoder("utf-8").decode(bytes);
+    return JSON.parse(decoded);
+  } catch (error) {
+    console.error("Không đọc được catalog AI Stylist:", error);
+    return [];
+  }
 }
 
-interface Message {
-  id: number;
-  role: "user" | "ai";
-  text?: string;
-  isCard?: boolean;
-  cardData?: StructuredOutfitCard;
-  isWeatherButton?: boolean;
-  suggestions?: string[]; // 🌟 Thêm mảng gợi ý nhanh để mớm lời cho khách
+function ProductCardMini({ product }: { product: ProductMini }) {
+  const listingLabel = product.listingType === "SELL" ? "Mua" : "Thuê";
+
+  return (
+    <Link
+      href={`/product/${product.id}`}
+      className="my-2 flex gap-3 rounded-2xl border border-[#E9E2D8] bg-white p-2 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-[#2B3946] dark:bg-[#0F1720]"
+    >
+      <div className="relative h-[104px] w-20 shrink-0 overflow-hidden rounded-xl bg-stone-100">
+        <Image src={product.image} alt={product.title} fill unoptimized className="object-cover object-top" sizes="80px" />
+        <span className="absolute left-1 top-1 rounded bg-[#183A2D] px-1.5 py-0.5 text-[7px] font-bold uppercase text-white shadow-sm">
+          {listingLabel}
+        </span>
+      </div>
+
+      <div className="flex min-w-0 flex-1 flex-col justify-between py-1 text-left">
+        <div className="space-y-1">
+          <h4 className="line-clamp-2 text-xs font-bold text-[#183A2D] dark:text-white">{product.title}</h4>
+          <p className="text-xs font-bold text-[#6BA37A]">{product.priceText}</p>
+          <p className="line-clamp-1 text-[9px] font-semibold text-stone-400">
+            {product.category}
+            {product.size ? ` • Size ${product.size}` : ""}
+            {product.color ? ` • ${product.color}` : ""}
+          </p>
+        </div>
+
+        <div className="flex items-center justify-between gap-2">
+          <span className="flex min-w-0 items-center gap-1 truncate text-[9px] font-semibold text-stone-400">
+            <MapPin size={10} /> {product.province || "CLOOP"}
+          </span>
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#183A2D] px-2 py-1 text-[8px] font-bold uppercase tracking-wider text-white">
+            <ShoppingBag size={9} /> Xem
+          </span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function MessageContent({ text, products }: { text: string; products: Record<string, ProductMini> }) {
+  const nodes = useMemo(() => {
+    const parts: Array<{ type: "text"; value: string } | { type: "product"; value: string }> = [];
+    const regex = /\[PRODUCT:([^\]]+)\]/g;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = regex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push({ type: "text", value: text.slice(lastIndex, match.index) });
+      }
+      parts.push({ type: "product", value: match[1] });
+      lastIndex = regex.lastIndex;
+    }
+
+    if (lastIndex < text.length) {
+      parts.push({ type: "text", value: text.slice(lastIndex) });
+    }
+
+    return parts;
+  }, [text]);
+
+  return (
+    <>
+      {nodes.map((part, index) => {
+        if (part.type === "product") {
+          const product = products[part.value];
+          return product ? <ProductCardMini key={`${part.value}-${index}`} product={product} /> : null;
+        }
+
+        return (
+          <span key={index} className="whitespace-pre-wrap">
+            {part.value}
+          </span>
+        );
+      })}
+    </>
+  );
 }
 
 export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
-  const [showChat, setShowChat] = useState<boolean>(false);
-  const [chatInput, setChatInput] = useState<string>("");
-  const [isTyping, setIsTyping] = useState<boolean>(false);
-  const [currentWeatherInfo, setCurrentWeatherInfo] = useState<string>("");
+  const [showChat, setShowChat] = useState(false);
+  const [chatInput, setChatInput] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [weatherContext, setWeatherContext] = useState("");
+  const [productsById, setProductsById] = useState<Record<string, ProductMini>>({});
+  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
+  const abortRef = useRef<AbortController | null>(null);
 
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      role: "ai",
-      text: "Chào cậu! Tớ là CLOOP AI Stylist. Để tớ lùng sục kho dữ liệu bóc đúng outfit có sẵn quanh khu vực của cậu, cậu ấn nút định vị dưới đây để tớ quét nhanh tình hình thời tiết thực tế nhé! 🌟"
-    },
-    {
-      id: 2,
-      role: "ai",
-      isWeatherButton: true
-    }
-  ]);
+  const mergeCatalog = (catalog: ProductMini[]) => {
+    setProductsById((prev) => {
+      const next = { ...prev };
+      catalog.forEach((product) => {
+        next[product.id] = product;
+      });
+      return next;
+    });
+  };
+
+  const updateStreamingMessage = (id: string, text: string, done = false) => {
+    setMessages((prev) =>
+      prev.map((message) =>
+        message.id === id
+          ? {
+              ...message,
+              text,
+              isStreaming: !done,
+            }
+          : message
+      )
+    );
+  };
 
   const handleFetchGpsAndWeather = () => {
     if (!navigator.geolocation) {
-      alert("Trình duyệt không hỗ trợ định vị tọa độ.");
+      setMessages((prev) => [
+        ...prev.filter((message) => !message.isWeatherButton),
+        {
+          id: crypto.randomUUID(),
+          role: "ai",
+          text: "Trình duyệt chưa hỗ trợ định vị. Bạn cứ nói rõ khu vực hoặc thời tiết trong tin nhắn, mình vẫn tư vấn được.",
+        },
+      ]);
       return;
     }
 
     setIsTyping(true);
-    setMessages(prev => prev.filter(m => !m.isWeatherButton));
+    setMessages((prev) => prev.filter((message) => !message.isWeatherButton));
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
-        const { latitude, longitude } = position.coords;
-        
         try {
-          const res = await fetch(
+          const { latitude, longitude } = position.coords;
+          const response = await fetch(
             `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code`
           );
-          const data = await res.json();
-          
+          const data = await response.json();
           const temp = Math.round(data.current.temperature_2m);
           const code = data.current.weather_code;
+          let weatherText = "trời nắng";
 
-          let weatherEmoji = "☀️";
-          let weatherText = "nắng rực rỡ";
-          if (code >= 1 && code <= 3) { weatherText = "trời nhiều mây mát mẻ"; weatherEmoji = "☁️"; }
-          else if (code >= 51 && code <= 67) { weatherText = "trời đang có mưa ẩm"; weatherEmoji = "🌧️"; }
-          else if (code >= 71) { weatherText = "trời lạnh buốt"; weatherEmoji = "❄️"; }
+          if (code >= 1 && code <= 3) weatherText = "trời nhiều mây";
+          else if (code >= 51 && code <= 67) weatherText = "trời đang mưa";
+          else if (code >= 71) weatherText = "trời lạnh";
 
-          const finalWeatherString = `${weatherEmoji} ${weatherText} ${temp}°C`;
-          setCurrentWeatherInfo(finalWeatherString);
-
-          setMessages(prev => [...prev, {
-            id: Date.now(),
-            role: "ai",
-            text: `🎯 Định vị thành công! Tớ check thấy khu vực của cậu hiện tại ${finalWeatherString}. Với thời tiết này, cậu đang cần lên đồ đi đâu thế ?`,
-            suggestions: ["Đi tiệc Nghệ An 🥂", "Đi làm công sở 💼", "Hẹn hò lãng mạn 🌹"] // Mớm lời ngay sau khi check thời tiết
-          }]);
-
-        } catch (err) {
-          console.error(err);
-          setMessages(prev => [...prev, { id: Date.now(), role: "ai", text: "Tớ đã kết nối được GPS nhưng trạm thời tiết đang bận. Cậu cứ gõ trực tiếp nhu cầu phối đồ bên dưới nhé!" }]);
+          const context = `${weatherText}, khoảng ${temp}°C`;
+          setWeatherContext(context);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: crypto.randomUUID(),
+              role: "ai",
+              text: `Mình đã ghi nhận thời tiết hiện tại: ${context}. Bạn định mặc cho dịp nào để mình phối sát hơn?`,
+              suggestions: ["Đi tiệc tối nay", "Đi làm công sở", "Đi chơi ngoài trời"],
+            },
+          ]);
+        } catch (error) {
+          console.error(error);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: crypto.randomUUID(),
+              role: "ai",
+              text: "Mình lấy được vị trí nhưng chưa đọc được thời tiết. Bạn nhắn trực tiếp dịp, tỉnh thành và gu mặc nhé.",
+            },
+          ]);
         } finally {
           setIsTyping(false);
         }
       },
       () => {
-        setMessages(prev => [...prev, { 
-          id: Date.now(), 
-          role: "ai", 
-          text: "Môi trường bảo mật tạm đóng quyền định vị tự động. Không sao hết nè, cậu chạm nhanh gợi ý hoặc gõ trực tiếp sự kiện + tỉnh thành nha nhé! 🌿",
-          suggestions: ["Đi tiệc ở Nghệ An ✨", "Đi làm ở Vinh 👔", "Đi quẩy Hà Nội 💃"]
-        }]);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            role: "ai",
+            text: "Bạn chưa bật quyền định vị. Không sao, chỉ cần nhắn kiểu: 'đi tiệc ở Vinh, thích màu đen, size M' là mình quét kho được.",
+            suggestions: ["Đi tiệc ở Vinh", "Đi biển Nha Trang", "Kỷ yếu màu trắng"],
+          },
+        ]);
         setIsTyping(false);
       },
       { enableHighAccuracy: true, timeout: 6000 }
     );
   };
 
-  const handleProcessWorkflow = async (userText: string) => {
-    if (!userText.trim()) return;
+  const handleProcessWorkflow = async (rawText: string) => {
+    const userText = rawText.trim();
+    if (!userText || isTyping) return;
 
-    const userMsg: Message = { id: Date.now(), role: "user", text: userText };
-    setMessages((prev) => [...prev, userMsg]);
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
+
+    const userMessage: Message = { id: crypto.randomUUID(), role: "user", text: userText };
+    const aiMessageId = crypto.randomUUID();
+    const aiMessage: Message = { id: aiMessageId, role: "ai", text: "", isStreaming: true };
+
+    setMessages((prev) => [...prev, userMessage, aiMessage]);
     setChatInput("");
     setIsTyping(true);
 
-    const textLower = userText.toLowerCase();
-
-    // 📡 MA TRẬN TỪ ĐIỂN VỊ TRÍ "VI BỘ": Quét từ viết tắt, từ ngắn
-    let targetLocation = "";
-    const locationMatrix = [
-      { name: "Tuyên Quang", keys: ["tuyên quang", "tuyen quang", "tq"] },
-      { name: "Lào Cai", keys: ["lào cai", "lao cai", "lc"] },
-      { name: "Thái Nguyên", keys: ["thái nguyên", "thai nguyen", "tn"] },
-      { name: "Phú Thọ", keys: ["phú thọ", "phu tho", "pt"] },
-      { name: "Bắc Ninh", keys: ["bắc ninh", "bac ninh", "bn"] },
-      { name: "Hưng Yên", keys: ["hưng yên", "hung yen", "hy"] },
-      { name: "Hải Phòng", keys: ["hải phòng", "hai phong", "hp"] },
-      { name: "Ninh Bình", keys: ["ninh bình", "ninh binh", "nb"] },
-      { name: "Quảng Trị", keys: ["quảng trị", "quang tri", "qt"] },
-      { name: "Đà Nẵng", keys: ["đà nẵng", "da nang", "đn", "dn"] },
-      { name: "Quảng Ngãi", keys: ["quảng ngãi", "quang ngai", "qn"] },
-      { name: "Gia Lai", keys: ["gia lai", "gl"] },
-      { name: "Khánh Hòa", keys: ["khánh hòa", "khanh hoa", "nha trang", "kh"] },
-      { name: "Điện Biên", keys: ["điện biên", "dien bien", "db"] },
-      { name: "Thành phố Hà Nội", keys: ["hà nội", "hn", "ha noi"] },
-      { name: "Hà Tĩnh", keys: ["hà tĩnh", "ha tinh", "ht"] },
-      { name: "Lạng Sơn", keys: ["lạng sơn", "lang son", "ls"] },
-      { name: "Lai Châu", keys: ["lai châu", "lai chau"] },
-      { name: "Nghệ An", keys: ["nghệ an", "vinh", "nghe an", "na"] },
-      { name: "Quảng Ninh", keys: ["quảng ninh", "quang ninh", "qn"] },
-      { name: "Sơn La", keys: ["sơn la", "son la", "sl"] },
-      { name: "Thanh Hóa", keys: ["thanh hóa", "thanh hoa", "th"] },
-      { name: "Cao Bằng", keys: ["cao bằng", "cao bang", "cb"] },
-      { name: "Thành phố Huế", keys: ["huế", "hue", "thừa thiên huế", "tth"] },
-      { name: "Lâm Đồng", keys: ["lâm đồng", "lam dong", "đà lạt", "da lat", "ld"] },
-      { name: "Đắk Lắk", keys: ["đắk lắk", "dak lak", "bmt"] },
-      { name: "Thành phố Hồ Chí Minh", keys: ["hồ chí minh", "hcm", "sài gòn", "sg", "tp hcm"] },
-      { name: "Đồng Nai", keys: ["đồng nai", "dong nai", "biên hòa"] },
-      { name: "Tây Ninh", keys: ["tây ninh", "tay ninh"] },
-      { name: "Cần Thơ", keys: ["cần thơ", "can tho", "ct"] },
-      { name: "Vĩnh Long", keys: ["vĩnh long", "vinh long", "vl"] },
-      { name: "Đồng Tháp", keys: ["đồng tháp", "dong thap", "đt"] },
-      { name: "Cà Mau", keys: ["cà mau", "ca mau", "cm"] },
-      { name: "An Giang", keys: ["an giang", "an giang", "ag"] }
-    ];
-
-    const foundLoc = locationMatrix.find(loc => loc.keys.some(k => textLower.includes(k)));
-    if (foundLoc) targetLocation = foundLoc.name;
-
-    // 📡 MA TRẬN TỪ ĐIỂN SỰ KIỆN CẢM XÚC: Quét từ đồng nghĩa, từ lóng
-    let targetCategory: string[] = [];
-    let eventName = "dạo phố, hẹn hò";
-
-    const weddingKeywords = ["tiệc", "cưới", "sự kiện", "quẩy", "bar", "sinh nhật", "date", "hẹn hò", "gặp người yêu", "prom"];
-    const officeKeywords = ["làm", "công sở", "văn phòng", "phỏng vấn", "sếp", "đi học", "giảng đường", "vest", "sơ mi"];
-
-    if (weddingKeywords.some(k => textLower.includes(k))) {
-      targetCategory = ["DRESSES", "VÁY", "ĐẦM"];
-      eventName = "đi sự kiện, tiệc tùng sang chảnh";
-    } else if (officeKeywords.some(k => textLower.includes(k))) {
-      targetCategory = ["TOPS", "BOTTOMS", "OUTERWEAR", "ÁO", "QUẦN", "VEST"];
-      eventName = "thanh lịch chỉn chu";
-    }
-
     try {
-      let query = supabase.from("products").select("*").order("created_at", { ascending: false });
-      
-      if (targetLocation) query = query.ilike("location", `%${targetLocation}%`);
-      if (targetCategory.length > 0) query = query.in("category", targetCategory);
+      const response = await fetch("/api/stylist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: weatherContext ? `${userText}\nNgữ cảnh thời tiết: ${weatherContext}` : userText,
+          history: messages
+            .filter((message) => !message.isWeatherButton && message.text)
+            .slice(-8)
+            .map((message) => ({ role: message.role, text: message.text })),
+        }),
+        signal: abortRef.current.signal,
+      });
 
-      const { data, error } = await query.limit(1);
-
-      let responseCard: StructuredOutfitCard | null = null;
-      let aiTextResponse = "";
-
-      if (error || !data || data.length === 0) {
-        aiTextResponse = `Tủ đồ tuần hoàn CLOOP hiện tại vừa mới hết sạch mẫu khớp với gu này rồi. Cậu thử đổi một từ khóa khác xem sao nhé! 🥺`;
-      } else {
-        const item = data[0];
-        const isRental = Number(item.price_per_day || 0) > 0;
-        
-        responseCard = {
-          intro: `Nhận diện từ khóa cậu gõ, tớ bóc ngay siêu phẩm cực hợp gu ${eventName} tại khu vực ${targetLocation || 'quanh cậu'} này nhé:`,
-          realProduct: {
-            id: item.id,
-            name: item.name || item.title || "Trang phục CLOOP",
-            image: item.images && item.images.length > 0 ? item.images[0] : "/1.1.jpg",
-            price: isRental 
-              ? `${Number(item.price_per_day).toLocaleString()}đ / ngày` 
-              : `${Number(item.deposit_fee || 0).toLocaleString()}đ (Mua đứt)`,
-            location: item.location?.split("—")[0]?.replace("Tỉnh ", "") || "Nghệ An",
-            isRental: isRental
-          },
-          suitability: [
-            `✔ Thiết kế tôn dáng, xử lý chất liệu chuẩn gu cậu cần`,
-            `✔ Sẵn sàng điều phối ngay tại trạm ${item.location?.split("—")[0] || "Nghệ An"}`,
-            "✔ Đã tiệt trùng, bọc túi sinh học sẵn sàng lên kệ"
-          ]
-        };
+      if (!response.ok || !response.body) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Không gọi được AI Stylist.");
       }
 
-      const aiMsg: Message = {
-        id: Date.now() + 1,
-        role: "ai",
-        text: aiTextResponse || undefined,
-        isCard: !!responseCard,
-        cardData: responseCard || undefined,
-        // Nếu không tìm thấy đồ, chủ động gợi ý từ khóa khác cho khách bấm liền
-        suggestions: !responseCard ? ["Đi tiệc Nghệ An 🥂", "Đi làm công sở 💼"] : undefined
-      };
-      
-      setMessages((prev) => [...prev, aiMsg]);
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let visibleText = "";
+      let catalogParsed = false;
 
-    } catch (err) {
-      console.error(err);
-      setMessages((prev) => [...prev, { id: Date.now() + 1, role: "ai", text: "Đường truyền tủ đồ đám mây bị nghẽn mạch, cậu gõ lại giúp tớ nhé! 🔄" }]);
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        if (!catalogParsed) {
+          const match = buffer.match(/^\[\[CATALOG:([A-Za-z0-9+/=]+)\]\]\n?/);
+          if (match) {
+            mergeCatalog(decodeCatalogChunk(match[1]));
+            buffer = buffer.slice(match[0].length);
+            catalogParsed = true;
+          } else {
+            continue;
+          }
+        }
+
+        visibleText += buffer;
+        buffer = "";
+        updateStreamingMessage(aiMessageId, visibleText);
+      }
+
+      visibleText += decoder.decode();
+      updateStreamingMessage(
+        aiMessageId,
+        visibleText || "Mình chưa tìm được món thật sự khớp. Bạn thử nói rõ hơn về dịp, màu sắc hoặc size nhé.",
+        true
+      );
+    } catch (error: unknown) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      console.error(error);
+      updateStreamingMessage(
+        aiMessageId,
+        "Mình chưa kết nối được bộ não AI Stylist. Bạn kiểm tra GEMINI_API_KEY rồi thử lại giúp mình nhé.",
+        true
+      );
     } finally {
       setIsTyping(false);
     }
   };
 
   const handleInputSendButton = () => {
-    if (!chatInput.trim()) return;
     handleProcessWorkflow(chatInput);
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4 font-body">
+    <div className="fixed bottom-24 right-4 z-50 flex flex-col items-end gap-4 font-body md:bottom-6 md:right-6">
       <AnimatePresence>
         {showChat && (
           <motion.div
             initial={{ opacity: 0, y: 40, scale: 0.92 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 30, scale: 0.95 }}
-            className={`w-[360px] md:w-[380px] h-[580px] rounded-[2.5rem] shadow-2xl border flex flex-col overflow-hidden backdrop-blur-md transition-colors duration-500 ${darkMode ? "bg-[#0F1720]/95 border-[#2B3946] text-white" : "bg-white/95 border-[#E9E2D8] text-[#183A2D]"}`}
+            className={`flex h-[580px] w-[360px] flex-col overflow-hidden rounded-[2rem] border shadow-2xl backdrop-blur-md transition-colors duration-500 md:w-[390px] ${
+              darkMode ? "border-[#2B3946] bg-[#0F1720]/95 text-white" : "border-[#E9E2D8] bg-white/95 text-[#183A2D]"
+            }`}
           >
-            {/* Header */}
-            <div className={`p-5 flex items-center justify-between border-b ${darkMode ? "border-[#2B3946] bg-[#14202A]" : "border-gray-100 bg-[#FAF8F3]"}`}>
+            <div className={`flex items-center justify-between border-b p-5 ${darkMode ? "border-[#2B3946] bg-[#14202A]" : "border-gray-100 bg-[#FAF8F3]"}`}>
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 bg-[#183A2D] dark:bg-emerald-600 rounded-full flex items-center justify-center shadow-md text-white">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#183A2D] text-white shadow-md dark:bg-emerald-600">
                   <Sparkles size={16} className="animate-pulse" />
                 </div>
                 <div className="text-left">
                   <h3 className="text-xs font-bold uppercase tracking-wider">CLOOP AI Stylist</h3>
-                  <p className="text-[10px] text-emerald-500 dark:text-emerald-400 font-semibold flex items-center gap-1">🟢 Smart Matching Active</p>
+                  <p className="flex items-center gap-1 text-[10px] font-semibold text-emerald-500 dark:text-emerald-400">
+                    <CheckCircle2 size={10} /> RAG kho đồ thật
+                  </p>
                 </div>
               </div>
-              <button type="button" onClick={() => setShowChat(false)} className={`p-1.5 rounded-full transition-colors ${darkMode ? "hover:bg-gray-800" : "hover:bg-gray-100"}`}><X size={16} /></button>
+              <button type="button" onClick={() => setShowChat(false)} className={`rounded-full p-1.5 transition-colors ${darkMode ? "hover:bg-gray-800" : "hover:bg-gray-100"}`}>
+                <X size={16} />
+              </button>
             </div>
 
-            {/* Nội Dung Cuộc Hội Thoại */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-4 scrollbar-thin text-left">
-              {messages.map((m) => (
-                <div key={m.id} className="space-y-2">
-                  <div className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                    {m.isWeatherButton ? (
+            <div className="flex-1 space-y-4 overflow-y-auto p-4 text-left scrollbar-thin">
+              {messages.map((message) => (
+                <div key={message.id} className="space-y-2">
+                  <div className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+                    {message.isWeatherButton ? (
                       <button
                         type="button"
                         onClick={handleFetchGpsAndWeather}
-                        className="inline-flex items-center gap-2 bg-[#183A2D] text-white font-bold text-[10px] uppercase tracking-widest px-5 py-3 rounded-2xl shadow-sm hover:bg-[#254F3B] transition mx-auto cursor-pointer"
+                        className="mx-auto inline-flex cursor-pointer items-center gap-2 rounded-2xl bg-[#183A2D] px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-white shadow-sm transition hover:bg-[#254F3B]"
                       >
-                        <CloudSun size={14} className="animate-pulse" /> 🎯 Xác thực thời tiết vị trí thực tế
+                        <CloudSun size={14} className="animate-pulse" /> Thêm ngữ cảnh thời tiết
                       </button>
-                    ) : m.role === "user" ? (
-                      <div className="max-w-[80%] bg-[#183A2D] dark:bg-emerald-600 text-white px-4 py-2.5 rounded-[1.25rem] rounded-tr-none text-xs font-medium shadow-sm">
-                        {m.text}
-                      </div>
-                    ) : m.isCard && m.cardData ? (
-                      <div className={`w-full max-w-[95%] p-4 rounded-[1.8rem] border shadow-md flex flex-col gap-3 ${darkMode ? "bg-[#14202A] border-[#2B3946]" : "bg-[#FAF8F3] border-[#E9E2D8]"}`}>
-                        <p className="text-[11px] font-bold leading-relaxed text-[#183A2D] dark:text-emerald-400 flex items-start gap-1.5">
-                          <Sparkles size={14} className="shrink-0 mt-0.5 text-amber-500" />
-                          {m.cardData.intro}
-                        </p>
-                        
-                        <Link href={`/product/${m.cardData.realProduct.id}`} className={`flex gap-3 p-2 rounded-2xl border group hover:shadow-md transition-all ${darkMode ? "bg-[#0F1720] border-[#2B3946]" : "bg-white border-gray-100"}`}>
-                          <div className="relative w-20 h-[100px] rounded-xl overflow-hidden bg-gray-100 shrink-0">
-                            <Image src={m.cardData.realProduct.image} alt="Sản phẩm thật" fill unoptimized className="object-cover object-top group-hover:scale-105 transition duration-500" />
-                            <span className="absolute top-1 left-1 bg-[#183A2D] text-white text-[7px] font-bold uppercase px-1.5 py-0.5 rounded shadow-sm">
-                              {m.cardData.realProduct.isRental ? "Thuê" : "Mua"}
-                            </span>
-                          </div>
-                          <div className="py-1 flex flex-col justify-between">
-                            <div>
-                              <h4 className={`text-xs font-bold line-clamp-2 ${darkMode ? "text-white" : "text-[#183A2D]"}`}>{m.cardData.realProduct.name}</h4>
-                              <p className="text-xs font-bold text-[#6BA37A] mt-1">{m.cardData.realProduct.price}</p>
-                            </div>
-                            <div className="flex items-center gap-1 text-[9px] text-gray-400 font-semibold">
-                              <MapPin size={10} /> {m.cardData.realProduct.location}
-                            </div>
-                          </div>
-                        </Link>
-
-                        <div className="space-y-1 pt-1">
-                          {m.cardData.suitability.map((suit, idx) => (
-                            <p key={idx} className="text-[10px] text-gray-400 font-semibold flex items-center gap-1.5">
-                              <CheckCircle2 size={11} className="text-emerald-500 shrink-0" /> {suit}
-                            </p>
-                          ))}
-                        </div>
-
-                        <Link href={`/product/${m.cardData.realProduct.id}`}>
-                          <button type="button" className="mt-1 w-full h-[36px] bg-[#183A2D] dark:bg-emerald-600 text-white rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-1.5 hover:bg-[#254F3B] dark:hover:bg-emerald-500 transition shadow-sm">
-                            <ShoppingBag size={12} /> Thuê Outfit Này Ngay
-                          </button>
-                        </Link>
+                    ) : message.role === "user" ? (
+                      <div className="max-w-[80%] rounded-[1.25rem] rounded-tr-none bg-[#183A2D] px-4 py-2.5 text-xs font-medium text-white shadow-sm dark:bg-emerald-600">
+                        {message.text}
                       </div>
                     ) : (
-                      <div className={`max-w-[85%] px-4 py-2.5 rounded-[1.25rem] rounded-tl-none text-xs font-medium border shadow-sm ${darkMode ? "bg-[#14202A] border-[#2B3946]" : "bg-white border-gray-100"}`}>
-                        {m.text}
+                      <div className={`max-w-[92%] rounded-[1.25rem] rounded-tl-none border px-4 py-2.5 text-xs font-medium leading-relaxed shadow-sm ${darkMode ? "border-[#2B3946] bg-[#14202A]" : "border-gray-100 bg-white"}`}>
+                        {message.text ? <MessageContent text={message.text} products={productsById} /> : null}
+                        {message.isStreaming && <span className="ml-1 inline-block h-3 w-1 animate-pulse rounded bg-emerald-500 align-middle" />}
                       </div>
                     )}
                   </div>
 
-                  {/* 🎨 HIỂN THỊ CÁC CHIPS GỢI Ý NHANH (QUICK REPLIES) */}
-                  {m.suggestions && m.role === "ai" && (
-                    <div className="flex flex-wrap gap-2 pt-1 justify-start pl-2">
-                      {m.suggestions.map((sug, sIdx) => (
+                  {message.suggestions && message.role === "ai" && (
+                    <div className="flex flex-wrap justify-start gap-2 pl-2 pt-1">
+                      {message.suggestions.map((suggestion) => (
                         <button
-                          key={sIdx}
+                          key={suggestion}
                           type="button"
-                          onClick={() => handleProcessWorkflow(sug.replace(/[🥂💼🌹✨👔💃🍾]/g, "").trim())}
-                          className="text-[10px] font-bold px-3 py-1.5 rounded-full border border-emerald-600/30 bg-emerald-50 dark:bg-emerald-950/40 text-[#183A2D] dark:text-emerald-400 hover:bg-[#183A2D] hover:text-white transition shadow-sm cursor-pointer"
+                          onClick={() => handleProcessWorkflow(suggestion)}
+                          className="cursor-pointer rounded-full border border-emerald-600/30 bg-emerald-50 px-3 py-1.5 text-[10px] font-bold text-[#183A2D] shadow-sm transition hover:bg-[#183A2D] hover:text-white dark:bg-emerald-950/40 dark:text-emerald-400"
                         >
-                          {sug}
+                          {suggestion}
                         </button>
                       ))}
                     </div>
@@ -347,31 +398,33 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
                 </div>
               ))}
 
-              {isTyping && (
+              {isTyping && !messages.some((message) => message.isStreaming) && (
                 <div className="flex justify-start">
-                  <div className={`px-4 py-3 rounded-[1.25rem] rounded-tl-none flex items-center gap-1 ${darkMode ? "bg-[#14202A]" : "bg-white border border-gray-100"}`}>
-                    <span className="w-1.5 h-1.5 bg-[#183A2D] dark:bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></span>
-                    <span className="w-1.5 h-1.5 bg-[#183A2D] dark:bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></span>
-                    <span className="w-1.5 h-1.5 bg-[#183A2D] dark:bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></span>
+                  <div className={`flex items-center gap-1 rounded-[1.25rem] rounded-tl-none px-4 py-3 ${darkMode ? "bg-[#14202A]" : "border border-gray-100 bg-white"}`}>
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#183A2D] dark:bg-emerald-500" />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#183A2D] dark:bg-emerald-500" style={{ animationDelay: "150ms" }} />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#183A2D] dark:bg-emerald-500" style={{ animationDelay: "300ms" }} />
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Hộp Nhập Liệu */}
-            <div className={`p-4 border-t flex items-center gap-2 transition-colors ${darkMode ? "border-[#2B3946] bg-[#14202A]" : "border-gray-100 bg-white"}`}>
-              <input 
-                type="text" 
-                value={chatInput} 
-                onChange={(e) => setChatInput(e.target.value)} 
-                onKeyDown={(e) => e.key === "Enter" && handleInputSendButton()} 
-                placeholder="Gõ 'quẩy', 'đi date', 'an' xem sao nhé..." 
-                className={`flex-1 px-4 py-2.5 border rounded-full text-xs font-semibold outline-none transition-all ${darkMode ? "bg-[#0F1720] border-[#2B3946] text-white focus:border-emerald-500" : "bg-[#FAF8F3] border-[#E9E2D8] text-[#183A2D] focus:border-[#183A2D]"}`} 
+            <div className={`flex items-center gap-2 border-t p-4 transition-colors ${darkMode ? "border-[#2B3946] bg-[#14202A]" : "border-gray-100 bg-white"}`}>
+              <input
+                type="text"
+                value={chatInput}
+                onChange={(event) => setChatInput(event.target.value)}
+                onKeyDown={(event) => event.key === "Enter" && handleInputSendButton()}
+                placeholder="Ví dụ: đi tiệc, size M, thích màu đen..."
+                className={`min-w-0 flex-1 rounded-full border px-4 py-2.5 text-xs font-semibold outline-none transition-all ${
+                  darkMode ? "border-[#2B3946] bg-[#0F1720] text-white focus:border-emerald-500" : "border-[#E9E2D8] bg-[#FAF8F3] text-[#183A2D] focus:border-[#183A2D]"
+                }`}
               />
-              <button 
-                type="button" 
-                onClick={handleInputSendButton} 
-                className="w-9 h-9 bg-[#183A2D] dark:bg-emerald-600 text-white rounded-full flex items-center justify-center hover:bg-[#254F3B] dark:hover:bg-emerald-500 transition shadow-md shrink-0"
+              <button
+                type="button"
+                onClick={handleInputSendButton}
+                disabled={isTyping || !chatInput.trim()}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#183A2D] text-white shadow-md transition hover:bg-[#254F3B] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-600 dark:hover:bg-emerald-500"
               >
                 <Send size={14} />
               </button>
@@ -381,13 +434,16 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
       </AnimatePresence>
 
       <motion.button
+        type="button"
         onClick={() => setShowChat(!showChat)}
         whileHover={{ scale: 1.08 }}
         whileTap={{ scale: 0.95 }}
-        className={`w-14 h-14 rounded-full flex flex-col items-center justify-center shadow-2xl cursor-pointer border border-white/10 group transition-colors duration-500 ${darkMode ? "bg-emerald-600 text-white" : "bg-[#183A2D] text-white"}`}
+        className={`flex h-14 w-14 cursor-pointer flex-col items-center justify-center rounded-full border border-white/10 shadow-2xl transition-colors duration-500 ${
+          darkMode ? "bg-emerald-600 text-white" : "bg-[#183A2D] text-white"
+        }`}
       >
-        <Bot size={22} className="group-hover:rotate-12 transition-transform duration-300" />
-        <span className="text-[8px] font-bold uppercase tracking-widest mt-0.5 text-amber-300">AI Stylist</span>
+        <Bot size={22} className="transition-transform duration-300 group-hover:rotate-12" />
+        <span className="mt-0.5 text-[8px] font-bold uppercase tracking-widest text-amber-300">AI Stylist</span>
       </motion.button>
     </div>
   );

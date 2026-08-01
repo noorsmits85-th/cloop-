@@ -3,13 +3,19 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ==========================================
 // 🌟 PHÂN HỆ ENUMS (RÀO CHẮN BẢO MẬT LOGIC)
 // ==========================================
+
+enum UserRole {
+  ADMIN
+  USER
+}
 
 enum ListingType {
   RENT
@@ -42,9 +48,46 @@ enum GenderCategory {
 
 enum ItemCondition {
   NEW_WITH_TAGS
-  EXCELLENT      
-  GOOD           
-  FAIR           
+  EXCELLENT
+  GOOD
+  FAIR
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+enum DisputeStatus {
+  PENDING_REVIEW
+  DISPUTED
+  APPROVED_DEDUCTION
+  REJECTED
+  RESOLVED
+}
+
+enum DamageSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum LedgerType {
+  DEPOSIT_IN // Khách nạp tiền ký cược + tiền thuê
+  REFUND_OUT // Hoàn trả cọc cho người thuê
+  PAYOUT_OUT // Trả tiền thuê cho chủ đồ
+  FEE_RETAINED // Phí nền tảng CLOOP giữ lại
+  COMPENSATION_OUT // Tiền bồi thường rủi ro trả cho chủ đồ
+  PENALTY_FEE_RETAINED // Phí xử lý tranh chấp của nền tảng
+  MONTHLY_CLOSING_REVENUE // Bút toán kết chuyển Doanh thu cuối tháng
+  MONTHLY_CLOSING_EXPENSE // Bút toán kết chuyển Chi phí cuối tháng
+  YEARLY_RETAINED_EARNINGS // Bút toán kết chuyển Lợi nhuận cuối năm
+}
+
+enum AccountingPeriodStatus {
+  CLOSED
+  REOPENED
 }
 
 // ==========================================
@@ -52,19 +95,27 @@ enum ItemCondition {
 // ==========================================
 
 model User {
-  id              String             @id @default(uuid()) // Đổi sang dùng mã chuỗi bảo mật UUID
-  email           String             @unique // Giữ lại phân hệ đăng nhập cũ của cậu
+  id              String   @id @default(uuid()) // Đổi sang dùng mã chuỗi bảo mật UUID
+  email           String   @unique // Giữ lại phân hệ đăng nhập cũ của cậu
   password        String // Giữ lại mật khẩu để không gãy mạch Auth
+  role            UserRole @default(USER) // Phục vụ server-side admin check
   name            String?
   avatar          String?
-  rating          Float              @default(5.0)
-  isVerified      Boolean            @default(false)
-  totalListings   Int                @default(0)
-  completedOrders Int                @default(0)
-  
-  products        Product[]
-  lifecycles      ProductLifecycle[]
-  createdAt       DateTime           @default(now())
+  rating          Float    @default(5.0)
+  isVerified      Boolean  @default(false)
+  totalListings   Int      @default(0)
+  completedOrders Int      @default(0)
+
+  products      Product[]
+  lifecycles    ProductLifecycle[]
+  rentalHistory RentalHistory[]
+  blogs         BlogPost[]
+  interactions  BlogInteraction[]
+
+  reviewsGiven    Review[] @relation("Reviewer")
+  reviewsReceived Review[] @relation("Reviewee")
+
+  createdAt DateTime @default(now())
 }
 
 // ==========================================
@@ -72,43 +123,47 @@ model User {
 // ==========================================
 
 model Product {
-  id              String             @id @default(uuid())
-  title           String             // Giữ nguyên chữ title quen thuộc của cậu nhé
-  description     String?
-  
+  id          String  @id @default(uuid())
+  title       String // Giữ nguyên chữ title quen thuộc của cậu nhé
+  description String?
+
   // 📏 Bộ thông số kích cỡ chuyên sâu phục vụ AI Stylist
-  size            String             // S, M, L, XL, FreeSize
-  bust            Int?               // Vòng ngực (cm)
-  waist           Int?               // Vòng eo (cm)
-  hips            Int?               // Vòng mông (cm)
-  
+  size  String // S, M, L, XL, FreeSize
+  bust  Int? // Vòng ngực (cm)
+  waist Int? // Vòng eo (cm)
+  hips  Int? // Vòng mông (cm)
+
   // 🔍 Bộ lọc tìm kiếm & Metadata phân loại cho AI
-  gender          GenderCategory     @default(UNISEX)
-  condition       ItemCondition
-  category        String             // Đầm, Vest, Áo dài...
-  brand           String?            // Local Brand, Zara, Gucci...
-  color           String?
-  material        String?
-  style           String?            // Vintage, Streetwear, Elegant...
-  occasion        String?            // Dự tiệc, Đi biển, Công sở...
-  season          String?            // Xuân Hè, Thu Đông...
+  gender    GenderCategory @default(UNISEX)
+  condition ItemCondition
+  category  String // Đầm, Vest, Áo dài...
+  brand     String? // Local Brand, Zara, Gucci...
+  color     String?
+  material  String?
+  style     String? // Vintage, Streetwear, Elegant...
+  occasion  String? // Dự tiệc, Đi biển, Công sở...
+  season    String? // Xuân Hè, Thu Đông...
 
   // 📍 Định vị Không gian phục vụ tính năng "Tìm quanh tôi"
   province        String
   specificAddress String
-  latitude        Float?             
-  longitude       Float?             
+  latitude        Float?
+  longitude       Float?
 
   // 🔗 Mạch nối các mối quan hệ
-  userId          String?
-  user            User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  images          ProductImage[]     // Kho ảnh động từ Cloudinary
-  listings        Listing[]          // Các chiến dịch giao dịch
-  lifecycles      ProductLifecycle[] // Nhật ký vòng đời tuần hoàn
+  userId        String?
+  user          User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  images        ProductImage[] // Kho ảnh động từ Cloudinary
+  listings      Listing[] // Các chiến dịch giao dịch
+  lifecycles    ProductLifecycle[] // Nhật ký vòng đời tuần hoàn
+  rentalHistory RentalHistory[]
+  reviews       Review[]
+  blogs         BlogPost[]
 
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
-  @@map("products")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("products") // Map với bảng products hiện tại
 }
 
 // ==========================================
@@ -116,13 +171,19 @@ model Product {
 // ==========================================
 
 model ProductImage {
-  id          String   @id @default(uuid())
-  productId   String
-  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  url         String   // Đường link CDN từ Cloudinary sau khi AI crop xong
-  isPrimary   Boolean  @default(false) // Ảnh đại diện hiển thị ở Thumbnail
-  sortOrder   Int      @default(0)     // Thứ tự hiển thị trong Carousel
-  createdAt   DateTime @default(now())
+  id              String   @id @default(uuid())
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url             String // Đường link CDN từ Cloudinary sau khi AI crop xong
+  storageProvider String   @default("cloudinary")
+  publicId        String?
+  width           Int?
+  height          Int?
+  bytes           Int?
+  format          String?
+  isPrimary       Boolean  @default(false) // Ảnh đại diện hiển thị ở Thumbnail
+  sortOrder       Int      @default(0) // Thứ tự hiển thị trong Carousel
+  createdAt       DateTime @default(now())
 }
 
 // ==========================================
@@ -130,21 +191,210 @@ model ProductImage {
 // ==========================================
 
 model Listing {
-  id              String        @id @default(uuid())
-  productId       String
-  product         Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
-  listingType     ListingType
-  status          ListingStatus @default(AVAILABLE)
+  id          String        @id @default(uuid())
+  productId   String
+  product     Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  listingType ListingType
+  status      ListingStatus @default(AVAILABLE)
 
-  // 💵 Chi phí linh hoạt theo nghiệp vụ
-  basePrice       Float?        // Giá thuê gốc / Giá bán gốc
-  salePrice       Float?        // Giá sau khi áp dụng chiến dịch giảm giá
-  deposit         Float?        // Tiền cọc an toàn (Chỉ dùng cho RENT)
-  minDays         Int?          // Số ngày thuê tối thiểu (Chỉ dùng cho RENT)
-  greenPoints     Int?          // Điểm xanh tích lũy (Chỉ dùng cho RECYCLE)
+  // 💵 Chi phí linh hoạt theo nghiệp vụ (Chuẩn hóa thành VNĐ)
+  basePrice   Int? // Giá thuê gốc / Giá bán gốc (VND)
+  salePrice   Int? // Giá sau khi áp dụng chiến dịch giảm giá (VND)
+  deposit     Int? // Tiền cọc an toàn (VND)
+  minDays     Int? // Số ngày thuê tối thiểu (Chỉ dùng cho RENT)
+  greenPoints Int? // Điểm xanh tích lũy (Chỉ dùng cho RECYCLE)
 
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==========================================
+// 📦 PHÂN HỆ LỊCH SỬ THUÊ ĐỒ & THANH TOÁN (RENTAL HISTORY & INVOICE)
+// ==========================================
+
+model RentalHistory {
+  id         String  @id @default(uuid())
+  product_id String
+  product    Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  renterId String
+  renter   User   @relation(fields: [renterId], references: [id], onDelete: Cascade)
+
+  renter_name  String?
+  renter_phone String?
+  owner_name   String?
+  owner_phone  String?
+
+  start_date DateTime
+  end_date   DateTime
+
+  status String @default("pending_payment") // "pending_payment", "active", "completed", "cancelled"
+
+  invoice  Invoice? // Hóa đơn thanh toán
+  disputes Dispute[] // Hồ sơ tranh chấp liên quan đến hợp đồng này
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("rental_history")
+}
+
+model Invoice {
+  id       String        @id @default(uuid())
+  rentalId String        @unique
+  rental   RentalHistory @relation(fields: [rentalId], references: [id], onDelete: Cascade)
+
+  amount Int // Tổng số tiền thanh toán (VNĐ)
+  status PaymentStatus @default(PENDING) // Mock Webhook sẽ update thành PAID
+
+  // PayOS fields
+  orderCode     BigInt? @unique // ID số nguyên duy nhất cho PayOS
+  paymentLinkId String? @unique
+  payosStatus   String?
+
+  ledgerEntries LedgerTransaction[] // Các giao dịch liên quan đến hóa đơn này
+  disputes      Dispute[] // Tranh chấp liên quan
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==========================================
+// 📚 PHÂN HỆ SỔ CÁI ĐỐI SOÁT (LEDGER SYSTEM)
+// ==========================================
+
+model LedgerTransaction {
+  id        String   @id @default(uuid())
+  invoiceId String?
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  type        LedgerType
+  amount      Int // Số tiền (VNĐ)
+  description String? // Ghi chú đối soát
+
+  adminId String? // ID của Admin thực hiện đối soát
+  status  String  @default("COMPLETED") // PENDING, COMPLETED
+
+  createdAt DateTime @default(now())
+}
+
+// ==========================================
+// 🚨 PHÂN HỆ QUẢN TRỊ RỦI RO (DISPUTE MANAGEMENT)
+// ==========================================
+
+model Dispute {
+  id        String        @id @default(uuid())
+  rentalId  String
+  rental    RentalHistory @relation(fields: [rentalId], references: [id], onDelete: Cascade)
+  invoiceId String?
+  invoice   Invoice?      @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  description        String // Mô tả hư hỏng
+  images             String[] // Mảng link ảnh chứng minh
+  severity           DamageSeverity // Mức độ
+  suggestedDeduction Int // Đề xuất trừ cọc
+  finalDeduction     Int? // Mức trừ cọc chốt cuối cùng bởi Admin
+  status             DisputeStatus  @default(PENDING_REVIEW)
+  adminNotes         String? // Ghi chú duyệt của Admin
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==========================================
+// 🛡️ PHÂN HỆ KIỂM TOÁN QUẢN TRỊ (AUDIT LOGS)
+// ==========================================
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  adminId      String // ID của admin thực hiện
+  action       String // Tên hành động (vd: CREATE_DISPUTE, REFUND)
+  targetType   String // Loại đối tượng (vd: INVOICE, DISPUTE)
+  targetId     String // ID đối tượng bị tác động
+  beforeStatus String? // Trạng thái cũ
+  afterStatus  String? // Trạng thái mới
+  metadata     String? // Thông tin thêm (JSON lưu chi tiết giao dịch)
+  createdAt    DateTime @default(now())
+}
+
+// ==========================================
+// 📈 PHÂN HỆ CHỐT SỔ KẾ TOÁN (ACCOUNTING)
+// ==========================================
+model AccountingPeriod {
+  id              String                 @id @default(uuid())
+  month           Int
+  year            Int
+  periodStart     DateTime // Ngày bắt đầu kỳ (vd: mùng 1)
+  nextPeriodStart DateTime // Ngày bắt đầu kỳ tiếp theo (exclusive upper bound)
+  status          AccountingPeriodStatus @default(CLOSED)
+  revenueTotal    Int // Tổng doanh thu (FEE_RETAINED + PENALTY)
+  expenseTotal    Int                    @default(0) // Chi phí (demo)
+  netProfit       Int // Lợi nhuận gộp
+  closedAt        DateTime               @default(now())
+  closedByAdminId String
+  metadata        String?
+
+  @@unique([month, year])
+}
+
+// ==========================================
+// ⭐️ PHÂN HỆ ĐÁNH GIÁ (REVIEWS)
+// ==========================================
+
+model Review {
+  id         String @id @default(uuid())
+  reviewerId String
+  reviewer   User   @relation("Reviewer", fields: [reviewerId], references: [id], onDelete: Cascade)
+  revieweeId String
+  reviewee   User   @relation("Reviewee", fields: [revieweeId], references: [id], onDelete: Cascade)
+
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  rating  Float // 1.0 - 5.0
+  comment String?
+  type    String // "RENTER_TO_OWNER" hoặc "OWNER_TO_RENTER"
+
+  createdAt DateTime @default(now())
+}
+
+// ==========================================
+// 📝 PHÂN HỆ BLOG & CỘNG ĐỒNG (BLOG POSTS)
+// ==========================================
+
+model BlogPost {
+  id          String  @id @default(uuid())
+  title       String
+  content     String
+  cover_image String?
+
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  status   String  @default("PUBLIC") // "PUBLIC", "HIDDEN"
+  isPinned Boolean @default(false)
+
+  interactions BlogInteraction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BlogInteraction {
+  id     String   @id @default(uuid())
+  blogId String
+  blog   BlogPost @relation(fields: [blogId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type    String // "LIKE", "COMMENT"
+  content String? // Dùng cho COMMENT
+
+  createdAt DateTime @default(now())
 }
 
 // ==========================================
@@ -152,15 +402,15 @@ model Listing {
 // ==========================================
 
 model ProductLifecycle {
-  id          String             @id @default(uuid())
-  productId   String
-  product     Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
-  eventType   LifecycleEventType
-  userId      String             
-  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  co2Saved    Float              @default(0.0) // Số kg CO2 giảm thiểu được
-  notes       String?            // Ghi chú lịch sử (Ví dụ: "Được thuê bởi Trang")
-  
-  createdAt   DateTime           @default(now())
+  id        String             @id @default(uuid())
+  productId String
+  product   Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
+  eventType LifecycleEventType
+  userId    String
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  co2Saved Float   @default(0.0) // Số kg CO2 giảm thiểu được
+  notes    String? // Ghi chú lịch sử (Ví dụ: "Được thuê bởi Trang")
+
+  createdAt DateTime @default(now())
 }

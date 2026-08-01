@@ -8,9 +8,14 @@
     "start": "next start",
     "lint": "eslint"
   },
+  "prisma": {
+    "seed": "npx tsx prisma/seed.ts"
+  },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@payos/node": "^2.0.5",
     "@prisma/client": "^6.19.3",
+    "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.110.0",
     "class-variance-authority": "^0.7.1",
     "cloudinary": "^2.10.0",
@@ -34,6 +39,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
     "tailwindcss": "^4",
+    "tsx": "^4.23.1",
     "typescript": "^5"
   }
 }

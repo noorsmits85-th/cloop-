@@ -5,5 +5,6 @@ export default defineConfig({
   engine: 'classic', // ✨ THÊM DÒNG NÀY VÀO ĐỂ SỬA LỖI HIỆN TẠI NÈ TRANG
   datasource: {
     url: process.env.DATABASE_URL || '',
+    directUrl: process.env.DIRECT_URL || '',
   },
 });

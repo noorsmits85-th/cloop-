@@ -2,16 +2,13 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { createClient } from "@supabase/supabase-js";
+
 import { 
   Heart, Bookmark, MapPin, PenTool, 
   BookOpen, Trophy, Sparkles, User, ChevronRight
 } from "lucide-react";
 
-// 🔧 KẾT NỐI SUPABASE
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "temporary-placeholder-key";
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { supabase } from "@/lib/supabase";
 
 interface UserProfile {
   id: string;
@@ -97,19 +94,19 @@ export default function BlogJournalPage() {
         const authorIds = publicBlogs.map((b: any) => b.userId).filter(Boolean); // ĐÃ SỬA: userId
         const blogIds = publicBlogs.map((b: any) => b.id);
 
-        // FETCH SONG SONG CÁC BẢNG (ĐÃ SỬA TÊN BẢNG VÀ CỘT)
+        // BẢO VỆ: Nếu mảng rỗng thì trả về mảng rỗng luôn thay vì gọi query in() gây lỗi PostgREST
         const [
           { data: productsData },
           { data: listingsData },
           { data: imagesData },
-          { data: usersData }, // Bảng User thật
-          { data: interactionsData } // Bảng BlogInteraction thật
+          { data: usersData }, 
+          { data: interactionsData } 
         ] = await Promise.all([
-          supabase.from("products").select("*").in("id", productIds),
-          supabase.from("Listing").select("*").in("productId", productIds),
-          supabase.from("ProductImage").select("*").in("productId", productIds),
-          supabase.from("User").select("id, name, avatar, isVip").in("id", authorIds), 
-          supabase.from("BlogInteraction").select("*").in("blogPostId", blogIds) 
+          productIds.length > 0 ? supabase.from("products").select("*").in("id", productIds) : Promise.resolve({ data: [] }),
+          productIds.length > 0 ? supabase.from("Listing").select("*").in("productId", productIds) : Promise.resolve({ data: [] }),
+          productIds.length > 0 ? supabase.from("ProductImage").select("*").in("productId", productIds) : Promise.resolve({ data: [] }),
+          authorIds.length > 0 ? supabase.from("User").select("id, name, avatar, isVip").in("id", authorIds) : Promise.resolve({ data: [] }), 
+          blogIds.length > 0 ? supabase.from("BlogInteraction").select("*").in("blogPostId", blogIds) : Promise.resolve({ data: [] }) 
         ]);
 
         let authorScores: Record<string, { name: string; avatar: string; score: number }> = {};
@@ -181,6 +178,12 @@ export default function BlogJournalPage() {
     }
 
     fetchRealDataFeed();
+
+    // SAFETY NET: Ép buộc tắt loading sau 8 giây nếu Supabase bị kẹt mạng trên điện thoại
+    const timeout = setTimeout(() => {
+      setIsLoading(false);
+    }, 8000);
+    return () => clearTimeout(timeout);
   }, [currentUserId]); // Cập nhật khi lấy được ID user
 
   // ==================== TƯƠNG TÁC BẤM TIM/LƯU NHẢY SỐ TỨC THÌ ====================
@@ -264,7 +267,7 @@ export default function BlogJournalPage() {
 
   return (
     <main className="min-h-screen bg-[#F4F1EA] py-12 px-4 md:px-8 xl:px-16 relative overflow-hidden font-sans text-[#333]">
-      <div className="fixed inset-0 pointer-events-none z-0 bg-[url('/giaynhau.png')] bg-cover bg-center mix-blend-multiply opacity-80" />
+      <div className="fixed inset-0 pointer-events-none z-0 bg-[url('/giaynhau.png')] bg-cover bg-center opacity-40 md:mix-blend-multiply md:opacity-80" />
 
       <div className="max-w-[1440px] mx-auto relative z-10 space-y-8">
         
