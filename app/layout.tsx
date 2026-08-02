@@ -6,7 +6,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation"; 
 import { 
-  Search, ShoppingBag, Sun, Moon, Shirt, Users, Leaf, Star, X, Shield, BookOpen
+  Search, ShoppingBag, Sun, Moon, Shirt, Users, Leaf, Star, X, Shield, BookOpen,
+  Home, PlusCircle, User
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js"; 
 import "./globals.css";
@@ -138,6 +139,53 @@ function HeaderNavbar({ darkMode, setDarkMode, handleFeatureRequirement, current
   );
 }
 
+function MobileBottomNavbar({ darkMode, currentUser, handleFeatureRequirement }: any) {
+  const pathname = usePathname();
+  
+  const getNavClass = (targetPath: string) => {
+    const isActive = pathname === targetPath || (targetPath !== "/" && pathname.startsWith(targetPath));
+    return `flex flex-col items-center justify-center gap-1 w-full h-full transition-colors cursor-pointer ${
+      isActive 
+        ? "text-[#183A2D] dark:text-emerald-400 font-bold" 
+        : "text-gray-400 hover:text-[#183A2D]"
+    }`;
+  };
+
+  return (
+    <div className={`flex md:hidden fixed bottom-0 left-0 w-full h-[65px] pt-1 z-[90] border-t backdrop-blur-xl transition-colors duration-500 ${darkMode ? "bg-[#141E28]/95 border-[#2B3946]" : "bg-white/95 border-[#ece7dc]"}`}>
+      <div className="flex items-center justify-around w-full h-full px-2">
+        <Link href="/" className={getNavClass("/")}>
+          <Home size={22} strokeWidth={pathname === "/" ? 2.5 : 2} />
+          <span className="text-[9px] font-ui uppercase tracking-widest mt-0.5">Trang chủ</span>
+        </Link>
+        <Link href="/shop" className={getNavClass("/shop")}>
+          <ShoppingBag size={22} strokeWidth={pathname.startsWith("/shop") ? 2.5 : 2} />
+          <span className="text-[9px] font-ui uppercase tracking-widest mt-0.5">Khám phá</span>
+        </Link>
+        <Link href="/my-closet/create?mode=consign" className="flex flex-col items-center justify-center gap-1 w-full h-full text-gray-400 hover:text-[#183A2D] relative group">
+          <div className={`absolute -top-7 w-12 h-12 rounded-full bg-[#183A2D] text-white flex items-center justify-center shadow-lg border-4 transition-colors duration-500 group-hover:bg-[#112a20] ${darkMode ? 'border-[#141E28]' : 'border-white'}`}>
+            <PlusCircle size={22} strokeWidth={2} />
+          </div>
+          <span className="text-[9px] font-ui uppercase tracking-widest mt-6">Đăng bán</span>
+        </Link>
+        <div 
+          onClick={() => {
+            if (currentUser) {
+              window.location.href = '/my-closet';
+            } else {
+              handleFeatureRequirement("Tủ đồ");
+            }
+          }}
+          className={getNavClass("/my-closet")}
+        >
+          <User size={22} strokeWidth={pathname.startsWith("/my-closet") ? 2.5 : 2} />
+          <span className="text-[9px] font-ui uppercase tracking-widest mt-0.5">Tủ đồ</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function LayoutContent({ children }: { children: React.ReactNode }) {
   const { showAuthModal, setShowAuthModal, activeFeatureName, handleFeatureRequirement, currentUser, setCurrentUser } = useAuthModal();
   const [darkMode, setDarkMode] = useState<boolean>(false);
@@ -258,6 +306,15 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 
         </div>
       </footer>
+
+      {/* Khoảng trống để Footer không bị che bởi Mobile Bar */}
+      <div className="h-[65px] block md:hidden w-full bg-[#0A2517]"></div>
+
+      <MobileBottomNavbar 
+        darkMode={darkMode} 
+        currentUser={currentUser} 
+        handleFeatureRequirement={handleFeatureRequirement} 
+      />
 
       <AiStylistChat darkMode={darkMode} />
 
