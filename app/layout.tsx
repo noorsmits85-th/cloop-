@@ -186,6 +186,14 @@ function MobileBottomNavbar({ darkMode, currentUser, handleFeatureRequirement }:
 function LayoutContent({ children }: { children: React.ReactNode }) {
   const { showAuthModal, setShowAuthModal, activeFeatureName, handleFeatureRequirement, currentUser, setCurrentUser } = useAuthModal();
   const [darkMode, setDarkMode] = useState<boolean>(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot'>('login');
+
+  useEffect(() => {
+    if (showAuthModal) {
+      if (activeFeatureName === "Đăng ký") setAuthMode('register');
+      else setAuthMode('login');
+    }
+  }, [showAuthModal, activeFeatureName]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -333,19 +341,31 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
               </div>
               
               <div className="text-center space-y-1">
-                <h3 className="font-heading text-2xl font-bold uppercase tracking-wide">Kích hoạt ID Xanh CLOOP</h3>
-                <p className="text-[11px] text-gray-400">Đăng ký tài khoản bảo mật để đồng bộ hóa và quản lý kệ đồ cá nhân.</p>
+                <h3 className="font-heading text-2xl font-bold uppercase tracking-wide">
+                  {authMode === 'login' ? 'Đăng nhập CLOOP' : authMode === 'register' ? 'Kích hoạt ID Xanh' : 'Quên mật khẩu'}
+                </h3>
+                <p className="text-[11px] text-gray-400">
+                  {authMode === 'login' ? 'Chào mừng bạn quay trở lại với thời trang tuần hoàn.' : authMode === 'register' ? 'Đăng ký tài khoản bảo mật để đồng bộ hóa và quản lý kệ đồ cá nhân.' : 'Nhập email để nhận liên kết khôi phục mật khẩu.'}
+                </p>
               </div>
 
               <form 
                 onSubmit={async (e) => {
                   e.preventDefault();
                   const fData = new FormData(e.currentTarget);
-                  const name = fData.get("username") as string;
                   const email = fData.get("email") as string;
-                  const password = fData.get("password") as string;
                   
-                  if (!name.trim() || !email.trim() || !password.trim()) return;
+                  if (authMode === 'forgot') {
+                    if (!email.trim()) return;
+                    alert("Tính năng gửi email khôi phục đang được phát triển. Vui lòng liên hệ Admin CLOOP!");
+                    setAuthMode('login');
+                    return;
+                  }
+
+                  const password = fData.get("password") as string;
+                  const name = fData.get("username") as string || ""; 
+                  
+                  if (!email.trim() || !password.trim() || (authMode === 'register' && !name.trim())) return;
 
                   try {
                     const { data: existingUser, error: checkError } = await supabase
@@ -359,17 +379,26 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                       return;
                     }
 
-                    let finalUserId: string;
-                    let finalName = name.trim();
-
-                    if (existingUser) {
-                      if (existingUser.password !== password) {
-                        alert("Mật khẩu không chính xác cho tài khoản Email này. Vui lòng kiểm tra lại nhé! 🔑");
+                    if (authMode === 'login') {
+                      if (!existingUser) {
+                        alert("Không tìm thấy tài khoản với Email này. Vui lòng đăng ký!");
                         return;
                       }
-                      finalUserId = existingUser.id;
-                      finalName = existingUser.name || name.trim();
-                    } else {
+                      if (existingUser.password !== password) {
+                        alert("Mật khẩu không chính xác. Vui lòng kiểm tra lại nhé! 🔑");
+                        return;
+                      }
+                      localStorage.setItem("cloop_user_id", existingUser.id);
+                      const userSession = { name: existingUser.name || "Member", email: email.trim(), isLoggedIn: true };
+                      localStorage.setItem("cloop_user", JSON.stringify(userSession));
+                      setCurrentUser(userSession);
+                      setShowAuthModal(false);
+                    } else if (authMode === 'register') {
+                      if (existingUser) {
+                        alert("Email này đã được đăng ký. Vui lòng đăng nhập!");
+                        setAuthMode('login');
+                        return;
+                      }
                       const newUserId = crypto.randomUUID();
                       const { error: userInsertError } = await supabase
                         .from("User")
@@ -384,42 +413,61 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                         alert(`Lỗi khởi tạo tài khoản: ${userInsertError.message}`);
                         return;
                       }
-                      finalUserId = newUserId;
+                      
+                      localStorage.setItem("cloop_user_id", newUserId);
+                      const userSession = { name: name.trim(), email: email.trim(), isLoggedIn: true };
+                      localStorage.setItem("cloop_user", JSON.stringify(userSession));
+                      setCurrentUser(userSession);
+                      setShowAuthModal(false);
                     }
-
-                    localStorage.setItem("cloop_user_id", finalUserId);
-
-                    const userSession = { name: finalName, email: email.trim(), isLoggedIn: true };
-                    localStorage.setItem("cloop_user", JSON.stringify(userSession));
-                    
-                    setCurrentUser(userSession);
-                    setShowAuthModal(false);
-
                   } catch (err: any) {
-                    alert(`Hệ thống gặp sự cố bất tuần hoàn: ${err.message || err}`);
+                    alert(`Hệ thống gặp sự cố: ${err.message || err}`);
                   }
                 }}
                 className="space-y-4 pt-2 text-left"
               >
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Biệt danh công khai</label>
-                  <input type="text" name="username" required placeholder="Ví dụ: abc..." className={`w-full px-4 py-2.5 border rounded-xl text-xs font-medium outline-none ${darkMode ? "bg-[#0F1720] border-[#2B3946] text-white" : "bg-[#FAF8F3] border-[#E9E2D8] text-[#183A2D]"}`} />
-                </div>
+                {authMode === 'register' && (
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Biệt danh công khai</label>
+                    <input type="text" name="username" required placeholder="Ví dụ: abc..." className={`w-full px-4 py-2.5 border rounded-xl text-xs font-medium outline-none ${darkMode ? "bg-[#0F1720] border-[#2B3946] text-white" : "bg-[#FAF8F3] border-[#E9E2D8] text-[#183A2D]"}`} />
+                  </div>
+                )}
 
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Địa chỉ Email</label>
                   <input type="email" name="email" required placeholder="member@cloop.vn" className={`w-full px-4 py-2.5 border rounded-xl text-xs font-medium outline-none ${darkMode ? "bg-[#0F1720] border-[#2B3946] text-white" : "bg-[#FAF8F3] border-[#E9E2D8] text-[#183A2D]"}`} />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Mật khẩu bảo mật</label>
-                  <input type="password" name="password" required placeholder="••••••••" className={`w-full px-4 py-2.5 border rounded-xl text-xs font-medium outline-none ${darkMode ? "bg-[#0F1720] border-[#2B3946] text-white" : "bg-[#FAF8F3] border-[#E9E2D8] text-[#183A2D]"}`} />
-                </div>
+                {authMode !== 'forgot' && (
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Mật khẩu bảo mật</label>
+                    <input type="password" name="password" required placeholder="••••••••" className={`w-full px-4 py-2.5 border rounded-xl text-xs font-medium outline-none ${darkMode ? "bg-[#0F1720] border-[#2B3946] text-white" : "bg-[#FAF8F3] border-[#E9E2D8] text-[#183A2D]"}`} />
+                  </div>
+                )}
 
                 <button type="submit" className="w-full font-body text-xs font-bold uppercase tracking-widest bg-[#183A2D] text-white py-3.5 rounded-full shadow-md text-center hover:bg-[#254F3B] transition mt-2">
-                  Kích hoạt tài khoản ngay
+                  {authMode === 'login' ? 'Đăng nhập ngay' : authMode === 'register' ? 'Kích hoạt tài khoản' : 'Gửi liên kết khôi phục'}
                 </button>
               </form> 
+
+              <div className="flex flex-col gap-2 mt-4 text-[11px] font-medium text-gray-500">
+                {authMode === 'login' && (
+                  <>
+                    <button onClick={() => setAuthMode('forgot')} className="hover:text-[#183A2D] transition hover:underline">Quên mật khẩu?</button>
+                    <div className="mt-2 text-gray-400">
+                      Chưa có tài khoản? <button onClick={() => setAuthMode('register')} className="text-[#183A2D] font-bold hover:underline">Đăng ký ngay</button>
+                    </div>
+                  </>
+                )}
+                {authMode === 'register' && (
+                  <div className="mt-2 text-gray-400">
+                    Đã có tài khoản? <button onClick={() => setAuthMode('login')} className="text-[#183A2D] font-bold hover:underline">Đăng nhập</button>
+                  </div>
+                )}
+                {authMode === 'forgot' && (
+                  <button onClick={() => setAuthMode('login')} className="hover:text-[#183A2D] transition font-bold mt-2">Quay lại đăng nhập</button>
+                )}
+              </div>
             </motion.div>
           </div>
         )}
