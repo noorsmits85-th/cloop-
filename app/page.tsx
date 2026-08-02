@@ -111,7 +111,7 @@ export default function Home() {
                 Có những món đồ cất trong tủ kính mang theo cả một thời tuổi trẻ. Thay vì để chúng ngủ quên, hãy gửi gắm vào tủ đồ CLOOP. Chút hoài niệm của bạn hôm nay sẽ là sự rạng rỡ của một người khác ngày mai.
               </p>
 
-              <div className="flex flex-row items-center gap-4 animate-fade-up-3">
+              <div className="flex flex-col sm:flex-row w-full sm:w-auto items-stretch sm:items-center gap-4 animate-fade-up-3">
                 <Link href="/shop" className="group font-ui font-semibold text-sm md:text-base px-8 h-[54px] bg-[#0A2517] text-white rounded hover:bg-[#113a25] transition-colors duration-300 tracking-wide flex items-center justify-center gap-2">
                   KHÁM PHÁ TỦ ĐỒ <ArrowRight size={16} className="opacity-0 -ml-4 group-hover:opacity-100 group-hover:ml-0 transition-all duration-300" />
                 </Link>
@@ -139,21 +139,21 @@ export default function Home() {
         {/* Mở rộng không gian để bằng với Trang Phục Cho Thuê */}
         <div className="w-full px-4 md:px-8 lg:px-12 xl:px-20">
           {/* Header Section */}
-          <div className="flex justify-between items-end mb-10">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 md:gap-0 mb-10">
             <div>
               <p className="font-ui text-xs text-stone-500 uppercase tracking-[0.3em] mb-2">Discovery</p>
               <h2 className="font-heading text-4xl lg:text-5xl text-[#0A2517] tracking-tight font-extrabold">
                 Tủ Đồ Nổi Bật
               </h2>
             </div>
-            <Link href="/closets" className="group font-ui text-[15px] font-semibold text-[#0A2517] border-b-2 border-[#0A2517] pb-1 pr-2 hover:text-stone-500 hover:border-stone-500 uppercase tracking-widest transition-all hidden md:flex items-center gap-2 shrink-0">
+            <Link href="/closets" className="group font-ui text-[15px] font-semibold text-[#0A2517] border-b-2 border-[#0A2517] pb-1 pr-2 hover:text-stone-500 hover:border-stone-500 uppercase tracking-widest transition-all flex items-center gap-2 shrink-0 self-start md:self-auto">
               Khám phá tất cả
               <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
             </Link>
           </div>
 
           {/* KHỐI ACCORDION - Chiều cao chuẩn 500px, không bị khổng lồ */}
-          <div className="flex flex-col md:flex-row w-full h-[500px] gap-3 lg:gap-4">
+          <div className="flex flex-col md:flex-row w-full h-[600px] md:h-[500px] gap-3 lg:gap-4">
             
             {featuredClosets.map((closet, index) => {
               const isActive = activeCard === index;
@@ -269,7 +269,7 @@ export default function Home() {
             {/* Nút Khám Phá Tất Cả */}
             <Link 
               href="/shop" 
-              className="group font-ui text-[15px] font-semibold text-[#0A2517] border-b-2 border-[#0A2517] pb-1 pr-2 hover:text-stone-500 hover:border-stone-500 uppercase tracking-widest transition-all hidden md:flex items-center gap-2 shrink-0"
+              className="group font-ui text-[15px] font-semibold text-[#0A2517] border-b-2 border-[#0A2517] pb-1 pr-2 hover:text-stone-500 hover:border-stone-500 uppercase tracking-widest transition-all flex items-center gap-2 shrink-0"
             >
               Khám Phá Tất Cả
               <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
@@ -333,7 +333,7 @@ export default function Home() {
 
           {/* ===== RIGHT: GRID 4 MÓN ĐỒ (50%) ===== */}
           {/* Ép h-fit để cột này tự quyết định chiều cao dựa trên content, cột trái sẽ nương theo chiều cao này */}
-          <div className="w-full lg:w-1/2 grid grid-cols-2 gap-x-4 gap-y-12 h-fit">
+          <div className="w-full lg:w-1/2 grid grid-cols-2 gap-x-3 md:gap-x-4 gap-y-8 md:gap-y-12 h-fit">
             
             {/* ITEM 1 */}
             <div className="group flex flex-col cursor-pointer">
@@ -496,7 +496,7 @@ export default function Home() {
             {/* Nút Khám Phá Tất Cả */}
             <Link 
               href="/shop" 
-              className="group font-ui text-[15px] font-semibold text-[#0A2517] border-b-2 border-[#0A2517] pb-1 pr-2 hover:text-stone-500 hover:border-stone-500 uppercase tracking-widest transition-all hidden md:flex items-center gap-2 shrink-0"
+              className="group font-ui text-[15px] font-semibold text-[#0A2517] border-b-2 border-[#0A2517] pb-1 pr-2 hover:text-stone-500 hover:border-stone-500 uppercase tracking-widest transition-all flex items-center gap-2 shrink-0"
             >
               Khám Phá Tất Cả
               <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
@@ -505,7 +505,7 @@ export default function Home() {
         </div>
 
         {/* ===== LƯỚI SẢN PHẨM (TRÀN VIỀN, SẮC CẠNH) ===== */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-12">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-3 md:gap-x-4 gap-y-8 md:gap-y-12">
           
           {/* SẢN PHẨM 1 */}
           <div className="group flex flex-col cursor-pointer">
