@@ -186,7 +186,8 @@ function MobileBottomNavbar({ darkMode, currentUser, handleFeatureRequirement }:
 function LayoutContent({ children }: { children: React.ReactNode }) {
   const { showAuthModal, setShowAuthModal, activeFeatureName, handleFeatureRequirement, currentUser, setCurrentUser } = useAuthModal();
   const [darkMode, setDarkMode] = useState<boolean>(false);
-  const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot' | 'forgot_otp'>('login');
+  const [resetEmail, setResetEmail] = useState('');
 
   useEffect(() => {
     if (showAuthModal) {
@@ -342,10 +343,10 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
               
               <div className="text-center space-y-1">
                 <h3 className="font-heading text-2xl font-bold uppercase tracking-wide">
-                  {authMode === 'login' ? 'Đăng nhập CLOOP' : authMode === 'register' ? 'Kích hoạt ID Xanh' : 'Quên mật khẩu'}
+                  {authMode === 'login' ? 'Đăng nhập CLOOP' : authMode === 'register' ? 'Kích hoạt ID Xanh' : authMode === 'forgot' ? 'Quên mật khẩu' : 'Nhập mã khôi phục'}
                 </h3>
                 <p className="text-[11px] text-gray-400">
-                  {authMode === 'login' ? 'Chào mừng bạn quay trở lại với thời trang tuần hoàn.' : authMode === 'register' ? 'Đăng ký tài khoản bảo mật để đồng bộ hóa và quản lý kệ đồ cá nhân.' : 'Nhập email để nhận liên kết khôi phục mật khẩu.'}
+                  {authMode === 'login' ? 'Chào mừng bạn quay trở lại với thời trang tuần hoàn.' : authMode === 'register' ? 'Đăng ký tài khoản bảo mật để đồng bộ hóa và quản lý kệ đồ cá nhân.' : authMode === 'forgot' ? 'Nhập email để nhận mã OTP khôi phục mật khẩu.' : `Mã 6 số đã được gửi tới ${resetEmail}. Nhập mã và mật khẩu mới.`}
                 </p>
               </div>
 
@@ -357,65 +358,92 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                   
                   if (authMode === 'forgot') {
                     if (!email.trim()) return;
-                    alert("Tính năng gửi email khôi phục đang được phát triển. Vui lòng liên hệ Admin CLOOP!");
-                    setAuthMode('login');
+                    const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+                    if (error) {
+                      alert(`Lỗi gửi mã khôi phục: ${error.message}`);
+                      return;
+                    }
+                    setResetEmail(email.trim());
+                    setAuthMode('forgot_otp');
                     return;
                   }
 
                   const password = fData.get("password") as string;
+
+                  if (authMode === 'forgot_otp') {
+                    const otp = fData.get("otp") as string;
+                    if (!otp || !password) return;
+                    
+                    const { error } = await supabase.auth.verifyOtp({
+                      email: resetEmail,
+                      token: otp.trim(),
+                      type: 'recovery'
+                    });
+                    
+                    if (error) {
+                      alert(`Mã xác thực không hợp lệ: ${error.message}`);
+                      return;
+                    }
+
+                    const { error: updateError } = await supabase.auth.updateUser({ password });
+                    if (updateError) {
+                      alert(`Lỗi cập nhật mật khẩu: ${updateError.message}`);
+                      return;
+                    }
+                    
+                    alert("Cập nhật mật khẩu thành công! Vui lòng đăng nhập lại.");
+                    setAuthMode('login');
+                    return;
+                  }
+
                   const name = fData.get("username") as string || ""; 
                   
                   if (!email.trim() || !password.trim() || (authMode === 'register' && !name.trim())) return;
 
                   try {
-                    const { data: existingUser, error: checkError } = await supabase
-                      .from("User")
-                      .select("id, password, name")
-                      .eq("email", email.trim())
-                      .maybeSingle();
-
-                    if (checkError) {
-                      alert(`Lỗi đối soát danh tính: ${checkError.message}`);
-                      return;
-                    }
-
                     if (authMode === 'login') {
-                      if (!existingUser) {
-                        alert("Không tìm thấy tài khoản với Email này. Vui lòng đăng ký!");
-                        return;
-                      }
-                      if (existingUser.password !== password) {
-                        alert("Mật khẩu không chính xác. Vui lòng kiểm tra lại nhé! 🔑");
-                        return;
-                      }
-                      localStorage.setItem("cloop_user_id", existingUser.id);
-                      const userSession = { name: existingUser.name || "Member", email: email.trim(), isLoggedIn: true };
-                      localStorage.setItem("cloop_user", JSON.stringify(userSession));
-                      setCurrentUser(userSession);
-                      setShowAuthModal(false);
-                    } else if (authMode === 'register') {
-                      if (existingUser) {
-                        alert("Email này đã được đăng ký. Vui lòng đăng nhập!");
-                        setAuthMode('login');
-                        return;
-                      }
-                      const newUserId = crypto.randomUUID();
-                      const { error: userInsertError } = await supabase
-                        .from("User")
-                        .insert([{
-                          id: newUserId,
-                          email: email.trim(),
-                          password: password,
-                          name: name.trim(),
-                        }]);
+                      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                        email: email.trim(),
+                        password: password
+                      });
 
-                      if (userInsertError) {
-                        alert(`Lỗi khởi tạo tài khoản: ${userInsertError.message}`);
+                      if (authError) {
+                        alert(`Đăng nhập thất bại: Mật khẩu hoặc Email không chính xác.`);
                         return;
                       }
                       
-                      localStorage.setItem("cloop_user_id", newUserId);
+                      const userSession = { name: authData.user?.user_metadata?.name || "Member", email: email.trim(), isLoggedIn: true };
+                      localStorage.setItem("cloop_user_id", authData.user?.id || "");
+                      localStorage.setItem("cloop_user", JSON.stringify(userSession));
+                      setCurrentUser(userSession);
+                      setShowAuthModal(false);
+                      
+                    } else if (authMode === 'register') {
+                      const { data: authData, error: authError } = await supabase.auth.signUp({
+                        email: email.trim(),
+                        password: password,
+                        options: {
+                          data: { name: name.trim() }
+                        }
+                      });
+                      
+                      if (authError) {
+                        alert(`Đăng ký thất bại: ${authError.message}`);
+                        return;
+                      }
+                      
+                      if (!authData.user) return;
+                      
+                      // Lưu vào DB Prisma cho tương thích ngược
+                      await supabase.from("User").upsert({
+                        id: authData.user.id,
+                        email: email.trim(),
+                        password: password, 
+                        name: name.trim()
+                      }, { onConflict: 'email' });
+
                       const userSession = { name: name.trim(), email: email.trim(), isLoggedIn: true };
+                      localStorage.setItem("cloop_user_id", authData.user.id);
                       localStorage.setItem("cloop_user", JSON.stringify(userSession));
                       setCurrentUser(userSession);
                       setShowAuthModal(false);
@@ -433,20 +461,29 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                   </div>
                 )}
 
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Địa chỉ Email</label>
-                  <input type="email" name="email" required placeholder="member@cloop.vn" className={`w-full px-4 py-2.5 border rounded-xl text-xs font-medium outline-none ${darkMode ? "bg-[#0F1720] border-[#2B3946] text-white" : "bg-[#FAF8F3] border-[#E9E2D8] text-[#183A2D]"}`} />
-                </div>
+                {authMode !== 'forgot_otp' && (
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Địa chỉ Email</label>
+                    <input type="email" name="email" required placeholder="member@cloop.vn" className={`w-full px-4 py-2.5 border rounded-xl text-xs font-medium outline-none ${darkMode ? "bg-[#0F1720] border-[#2B3946] text-white" : "bg-[#FAF8F3] border-[#E9E2D8] text-[#183A2D]"}`} />
+                  </div>
+                )}
+
+                {authMode === 'forgot_otp' && (
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Mã OTP (6 Số)</label>
+                    <input type="text" name="otp" required placeholder="123456" maxLength={6} className={`w-full px-4 py-2.5 border rounded-xl text-xs font-medium outline-none tracking-widest ${darkMode ? "bg-[#0F1720] border-[#2B3946] text-white" : "bg-[#FAF8F3] border-[#E9E2D8] text-[#183A2D]"}`} />
+                  </div>
+                )}
 
                 {authMode !== 'forgot' && (
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Mật khẩu bảo mật</label>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{authMode === 'forgot_otp' ? 'Mật khẩu mới' : 'Mật khẩu bảo mật'}</label>
                     <input type="password" name="password" required placeholder="••••••••" className={`w-full px-4 py-2.5 border rounded-xl text-xs font-medium outline-none ${darkMode ? "bg-[#0F1720] border-[#2B3946] text-white" : "bg-[#FAF8F3] border-[#E9E2D8] text-[#183A2D]"}`} />
                   </div>
                 )}
 
                 <button type="submit" className="w-full font-body text-xs font-bold uppercase tracking-widest bg-[#183A2D] text-white py-3.5 rounded-full shadow-md text-center hover:bg-[#254F3B] transition mt-2">
-                  {authMode === 'login' ? 'Đăng nhập ngay' : authMode === 'register' ? 'Kích hoạt tài khoản' : 'Gửi liên kết khôi phục'}
+                  {authMode === 'login' ? 'Đăng nhập ngay' : authMode === 'register' ? 'Kích hoạt tài khoản' : authMode === 'forgot' ? 'Gửi mã OTP khôi phục' : 'Đổi mật khẩu'}
                 </button>
               </form> 
 
@@ -464,7 +501,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                     Đã có tài khoản? <button onClick={() => setAuthMode('login')} className="text-[#183A2D] font-bold hover:underline">Đăng nhập</button>
                   </div>
                 )}
-                {authMode === 'forgot' && (
+                {(authMode === 'forgot' || authMode === 'forgot_otp') && (
                   <button onClick={() => setAuthMode('login')} className="hover:text-[#183A2D] transition font-bold mt-2">Quay lại đăng nhập</button>
                 )}
               </div>
