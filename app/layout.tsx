@@ -53,13 +53,13 @@ function HeaderNavbar({ darkMode, setDarkMode, handleFeatureRequirement, current
 
   return (
     <header className={`sticky top-0 z-50 border-b px-4 lg:px-6 transition-all duration-500 backdrop-blur-md ${darkMode ? "bg-[#141E28]/90 border-[#2B3946]" : "bg-white border-[#ece7dc]"}`}>
-      <div className="max-w-[1280px] mx-auto h-[88px] grid grid-cols-[auto_1fr_auto] items-center gap-2 md:gap-4">
+      <div className="max-w-[1280px] mx-auto h-[88px] grid grid-cols-[auto_1fr_auto] items-center gap-4">
         
-        <Link href="/" className="flex items-center gap-2 md:gap-3 shrink-0 cursor-pointer group">
-          <Image src="/loogo.png" alt="CLOOP Brand Logo" width={46} height={46} className="mix-blend-multiply w-9 h-9 md:w-[46px] md:h-[46px]" />
+        <Link href="/" className="flex items-center gap-3 shrink-0 cursor-pointer group">
+          <Image src="/loogo.png" alt="CLOOP Brand Logo" width={46} height={46} className="mix-blend-multiply" />
           <div className="leading-none mt-0.5 text-left">
-            <div className={`font-logo text-[22px] md:text-[28px] font-semibold tracking-[0.18em] transition-colors ${darkMode ? "text-[#F5F5F5]" : "text-[#183A2D]"}`}>CLOOP</div>
-            <p className="hidden sm:block font-body text-[8px] font-bold tracking-[0.3em] uppercase text-[#6BA37A] mt-1">Fashion In A Loop</p>
+            <div className={`font-logo text-[28px] font-semibold tracking-[0.18em] transition-colors ${darkMode ? "text-[#F5F5F5]" : "text-[#183A2D]"}`}>CLOOP</div>
+            <p className="font-body text-[8px] font-bold tracking-[0.3em] uppercase text-[#6BA37A] mt-1">Fashion In A Loop</p>
           </div>
         </Link>
 
@@ -80,15 +80,7 @@ function HeaderNavbar({ darkMode, setDarkMode, handleFeatureRequirement, current
           </nav>
         </div>
 
-        <div className="flex items-center gap-2 md:gap-4 shrink-0 whitespace-nowrap font-ui text-[11px] font-bold uppercase tracking-widest">
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            type="button"
-            onClick={() => setDarkMode(!darkMode)}
-            className={`p-1.5 md:p-2.5 rounded-full transition-colors ${darkMode ? "bg-[#1C2834] text-amber-400 hover:bg-[#253946]" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
-          >
-            {darkMode ? <Sun size={16} /> : <Moon size={16} />}
-          </motion.button>
+        <div className="flex items-center gap-4 shrink-0 whitespace-nowrap font-ui text-[11px] font-bold uppercase tracking-widest">
 
           {currentUser ? (
             <div className="flex items-center gap-2 xl:gap-3">
