@@ -74,7 +74,7 @@ function HeaderNavbar({ darkMode, setDarkMode, handleFeatureRequirement, current
             <Link href="/shop?type=rent" className={getNavbarClass("/shop", "rent", null)}>Thuê đồ</Link>
             <Link href="/my-closet/create?mode=rent" className={getNavbarClass("/my-closet/create", null, "rent")}>Cho thuê đồ</Link>
             <Link href="/shop?type=sell" className={getNavbarClass("/shop", "sell", null)}>Sở hữu</Link>
-            <Link href="/my-closet/create?mode=consign" className={getNavbarClass("/my-closet/create", null, "consign")}>Bán & Ký gửi</Link>
+            <Link href="/my-closet/create?mode=consign" className={getNavbarClass("/my-closet/create", null, "consign")}>Chuyển nhượng</Link>
             <button onClick={() => handleFeatureRequirement("Tái chế")} className="text-gray-400 hover:text-[#183A2D] transition-colors uppercase shrink-0 whitespace-nowrap bg-transparent border-none cursor-pointer font-bold">Tái chế</button>
             <Link href="/blog" className={getNavbarClass("/blog", null, null)}>Blog</Link>
           </nav>
