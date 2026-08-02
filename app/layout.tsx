@@ -168,6 +168,10 @@ function MobileBottomNavbar({ darkMode, currentUser, handleFeatureRequirement }:
           </div>
           <span className="text-[9px] font-ui uppercase tracking-widest mt-6">Đăng bán</span>
         </Link>
+        <Link href="/blog" className={getNavClass("/blog")}>
+          <BookOpen size={22} strokeWidth={pathname.startsWith("/blog") ? 2.5 : 2} />
+          <span className="text-[9px] font-ui uppercase tracking-widest mt-0.5">Blog</span>
+        </Link>
         <div 
           onClick={() => {
             if (currentUser) {
