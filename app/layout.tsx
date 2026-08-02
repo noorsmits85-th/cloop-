@@ -439,7 +439,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="CLOOP" />
-        <link rel="apple-touch-icon" href="/loogo.png" />
+        <link rel="apple-touch-icon" href="/app-icon.jpg" />
       </head>
       <AuthModalProvider>
         <LayoutContent>{children}</LayoutContent>
