@@ -12,6 +12,7 @@ import {
 import { createClient } from "@supabase/supabase-js"; 
 import "./globals.css";
 import AiStylistChat from "./components/AiStylistChat"; 
+import PwaInstallPrompt from "./components/PwaInstallPrompt";
 import { AuthModalProvider, useAuthModal } from "./AuthModalContext";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
@@ -431,7 +432,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
           </div>
         )}
       </AnimatePresence>
-
+      <PwaInstallPrompt />
     </body>
   );
 }
@@ -440,6 +441,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="vi">
       <head>
+        <link rel="manifest" href="/manifest.json" />
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&family=Lora:ital,wght@0,400..700;1,400..700&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" />
         <meta name="theme-color" content="#0A2517" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
