@@ -101,7 +101,7 @@ export default function Home() {
         {/* Left: Text & CTAs */}
         <div className="w-full lg:w-1/2 flex flex-col justify-center items-start px-4 md:px-12 lg:px-20 xl:px-32 py-16 lg:py-0 z-10 relative lg:-translate-y-8 xl:-translate-y-10">
           <div className="flex flex-col items-start justify-start w-full text-left max-w-2xl">
-              <h1 className="font-heading text-4xl sm:text-5xl md:text-[56px] lg:text-6xl font-extrabold text-[#0A2517] leading-snug md:leading-snug lg:leading-snug mb-6 tracking-wide animate-fade-up-1">
+              <h1 className="font-heading text-[32px] sm:text-4xl md:text-[56px] lg:text-6xl font-extrabold text-[#0A2517] leading-snug md:leading-snug lg:leading-snug mb-6 tracking-wide animate-fade-up-1 whitespace-nowrap">
                 Thuê & Sở Hữu <br/>
                 Thời Trang <br/>
                 Tuần Hoàn
