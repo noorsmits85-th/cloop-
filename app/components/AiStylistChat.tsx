@@ -438,12 +438,12 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
         onClick={() => setShowChat(!showChat)}
         whileHover={{ scale: 1.08 }}
         whileTap={{ scale: 0.95 }}
-        className={`flex h-14 w-14 cursor-pointer flex-col items-center justify-center rounded-full border border-white/10 shadow-2xl transition-colors duration-500 ${
-          darkMode ? "bg-emerald-600 text-white" : "bg-[#183A2D] text-white"
+        className={`flex h-12 w-12 md:h-14 md:w-14 cursor-pointer flex-col items-center justify-center rounded-full border border-white/10 shadow-2xl transition-all duration-500 opacity-80 md:opacity-100 backdrop-blur-md max-w-[15vw] md:max-w-none ${
+          darkMode ? "bg-emerald-600/90 md:bg-emerald-600 text-white" : "bg-[#183A2D]/90 md:bg-[#183A2D] text-white"
         }`}
       >
-        <Bot size={22} className="transition-transform duration-300 group-hover:rotate-12" />
-        <span className="mt-0.5 text-[8px] font-bold uppercase tracking-widest text-amber-300">AI Stylist</span>
+        <Bot className="w-5 h-5 md:w-[22px] md:h-[22px] transition-transform duration-300 group-hover:rotate-12" />
+        <span className="hidden md:block mt-0.5 text-[8px] font-bold uppercase tracking-widest text-amber-300">AI Stylist</span>
       </motion.button>
     </div>
   );

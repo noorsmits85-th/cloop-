@@ -70,7 +70,7 @@ export default function Home() {
   ];
 
   return (
-    <main className="min-h-screen overflow-x-hidden antialiased bg-white text-[#0A2517]">
+    <main className="min-h-screen overflow-x-hidden antialiased bg-white text-[#0A2517] pb-28 md:pb-0">
       <style>{`
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(20px); }
@@ -142,7 +142,7 @@ export default function Home() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 md:gap-0 mb-10">
             <div>
               <p className="font-ui text-xs text-stone-500 uppercase tracking-[0.3em] mb-2">Discovery</p>
-              <h2 className="font-heading text-4xl lg:text-5xl text-[#0A2517] tracking-tight font-extrabold">
+              <h2 className="font-heading text-2xl md:text-4xl lg:text-5xl text-[#0A2517] tracking-tight font-extrabold">
                 Tủ Đồ Nổi Bật
               </h2>
             </div>
@@ -219,11 +219,11 @@ export default function Home() {
                     {/* Mini Thumbnails */}
                     <div className="flex gap-2">
                       {closet.items.map((itemImg, idx) => (
-                        <div key={idx} className="relative w-14 h-20 border border-white/20 bg-black/20 backdrop-blur-sm p-0.5 overflow-hidden rounded-sm">
+                        <div key={idx} className="relative w-14 aspect-square md:aspect-[7/10] h-auto border border-white/20 bg-black/20 backdrop-blur-sm p-0.5 overflow-hidden rounded-sm">
                           <Image src={itemImg} fill unoptimized className="object-cover hover:scale-110 transition-transform duration-500" alt="item" />
                         </div>
                       ))}
-                      <div className="w-14 h-20 border border-white/20 bg-white/10 backdrop-blur-md flex flex-col items-center justify-center text-white cursor-pointer hover:bg-white/20 transition-all rounded-sm">
+                      <div className="w-14 aspect-square md:aspect-[7/10] h-auto border border-white/20 bg-white/10 backdrop-blur-md flex flex-col items-center justify-center text-white cursor-pointer hover:bg-white/20 transition-all rounded-sm">
                         <span className="font-heading text-sm font-light">+12</span>
                         <span className="font-ui text-[7px] uppercase tracking-widest mt-1">Món</span>
                       </div>
@@ -245,7 +245,7 @@ export default function Home() {
         
         {/* HEADER */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6 border-b border-stone-200 pb-4">
-          <h2 className="text-4xl lg:text-5xl font-heading font-extrabold text-black tracking-tight">
+          <h2 className="text-2xl md:text-4xl lg:text-5xl font-heading font-extrabold text-black tracking-tight">
             Trang Phục Cho Thuê
           </h2>
           
@@ -283,7 +283,7 @@ export default function Home() {
           
           {/* ===== LEFT: HERO POSTER (50%) ===== */}
           {/* FIX LỖI BỐC HƠI: Thêm lg:min-h-[700px] để nó luôn có điểm tựa chiều cao, không bao giờ bị xẹp về 0px nữa */}
-          <div className="w-full lg:w-1/2 group relative bg-stone-100 cursor-pointer overflow-hidden aspect-[3/4] lg:aspect-auto lg:min-h-[700px]">
+          <div className="w-full lg:w-1/2 group relative bg-stone-100 cursor-pointer overflow-hidden aspect-square md:aspect-[3/4] lg:aspect-auto lg:min-h-[700px]">
             
             <Image src="/1.1.jpg" alt="Váy Dạ Hội" fill className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 opacity-100 group-hover:opacity-0" unoptimized />
             <Image src="/1.1 (1).jpg" alt="Váy Dạ Hội Hover" fill className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 scale-105 opacity-0 group-hover:opacity-100 group-hover:scale-100" unoptimized />
@@ -309,7 +309,7 @@ export default function Home() {
                   </button>
                 </div>
               </div>
-              <h3 className="text-4xl lg:text-5xl font-heading leading-tight mb-6 font-extrabold">Váy Dạ Hội Xẻ Tà <br/> Lụa Satin</h3>
+              <h3 className="text-2xl md:text-4xl lg:text-5xl font-heading leading-tight mb-6 font-extrabold">Váy Dạ Hội Xẻ Tà <br/> Lụa Satin</h3>
               
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-3">
@@ -337,7 +337,7 @@ export default function Home() {
             
             {/* ITEM 1 */}
             <div className="group flex flex-col cursor-pointer">
-              <div className="relative w-full aspect-[3/4] bg-stone-100 overflow-hidden mb-4">
+              <div className="relative w-full aspect-[4/5] md:aspect-[3/4] bg-stone-100 overflow-hidden mb-4">
                 {/* Ảnh chính - Mờ đi khi hover */}
                 <Image src="/1.2.jpeg" alt="Item" fill className="absolute inset-0 w-full h-full object-cover transition-all duration-700 opacity-100 group-hover:opacity-0" unoptimized />
                 {/* Ảnh phụ (Góc khác) - Hiện ra khi hover */}
@@ -357,7 +357,7 @@ export default function Home() {
                   </div>
                 </div>
                 {/* Đổi Tên Sản Phẩm sang font Serif để nhìn đắt tiền hơn */}
-                <h3 className="text-base font-heading text-black mb-2 line-clamp-1 font-semibold">Set Tweed Dạ Cổ Điển</h3>
+                <h3 className="text-xs md:text-base font-heading text-black mb-2 line-clamp-1 font-semibold">Set Tweed Dạ Cổ Điển</h3>
                 
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-xs text-stone-400 line-through font-ui">1.800.000đ</span>
@@ -370,7 +370,7 @@ export default function Home() {
 
             {/* ITEM 2 */}
             <div className="group flex flex-col cursor-pointer">
-              <div className="relative w-full aspect-[3/4] bg-stone-100 overflow-hidden mb-4">
+              <div className="relative w-full aspect-[4/5] md:aspect-[3/4] bg-stone-100 overflow-hidden mb-4">
                 <Image src="/2.1.jpg" alt="Item" fill className="absolute inset-0 w-full h-full object-cover transition-all duration-700 opacity-100 group-hover:opacity-0" unoptimized />
                 <Image src="/2.1 (1).jpg" alt="Item Hover" fill className="absolute inset-0 w-full h-full object-cover transition-all duration-700 scale-105 opacity-0 group-hover:opacity-100 group-hover:scale-100" unoptimized />
               </div>
@@ -387,7 +387,7 @@ export default function Home() {
                     </button>
                   </div>
                 </div>
-                <h3 className="text-base font-heading text-black mb-2 line-clamp-1 font-semibold">Blazer Linen Trắng</h3>
+                <h3 className="text-xs md:text-base font-heading text-black mb-2 line-clamp-1 font-semibold">Blazer Linen Trắng</h3>
                 
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-xs text-stone-400 line-through font-ui">1.200.000đ</span>
@@ -399,7 +399,7 @@ export default function Home() {
 
             {/* ITEM 3 */}
             <div className="group flex flex-col cursor-pointer">
-              <div className="relative w-full aspect-[3/4] bg-stone-100 overflow-hidden mb-4">
+              <div className="relative w-full aspect-[4/5] md:aspect-[3/4] bg-stone-100 overflow-hidden mb-4">
                 <Image src="/2.2.jpg" alt="Item" fill className="absolute inset-0 w-full h-full object-cover transition-all duration-700 opacity-100 group-hover:opacity-0" unoptimized />
                 <Image src="/2.2 (1).jpg" alt="Item Hover" fill className="absolute inset-0 w-full h-full object-cover transition-all duration-700 scale-105 opacity-0 group-hover:opacity-100 group-hover:scale-100" unoptimized />
               </div>
@@ -416,7 +416,7 @@ export default function Home() {
                     </button>
                   </div>
                 </div>
-                <h3 className="text-base font-heading text-black mb-2 line-clamp-1 font-semibold">Đầm Lụa Đỏ Burgundy</h3>
+                <h3 className="text-xs md:text-base font-heading text-black mb-2 line-clamp-1 font-semibold">Đầm Lụa Đỏ Burgundy</h3>
                 
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-xs text-stone-400 line-through font-ui">2.000.000đ</span>
@@ -428,7 +428,7 @@ export default function Home() {
 
             {/* ITEM 4 */}
             <div className="group flex flex-col cursor-pointer">
-              <div className="relative w-full aspect-[3/4] bg-stone-100 overflow-hidden mb-4">
+              <div className="relative w-full aspect-[4/5] md:aspect-[3/4] bg-stone-100 overflow-hidden mb-4">
                 <Image src="/3.1.jpg" alt="Item" fill className="absolute inset-0 w-full h-full object-cover transition-all duration-700 opacity-100 group-hover:opacity-0" unoptimized />
                 <Image src="/3.1 (1).jpg" alt="Item Hover" fill className="absolute inset-0 w-full h-full object-cover transition-all duration-700 scale-105 opacity-0 group-hover:opacity-100 group-hover:scale-100" unoptimized />
                 <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-700 z-10">
@@ -448,7 +448,7 @@ export default function Home() {
                     </button>
                   </div>
                 </div>
-                <h3 className="text-base font-heading text-black mb-2 line-clamp-1 font-semibold">Túi Cầm Tay Da Thật</h3>
+                <h3 className="text-xs md:text-base font-heading text-black mb-2 line-clamp-1 font-semibold">Túi Cầm Tay Da Thật</h3>
                 
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-xs text-stone-400 line-through font-ui">2.500.000đ</span>
@@ -475,7 +475,7 @@ export default function Home() {
               <polyline points="3.29 7 12 12 20.71 7"></polyline>
               <line x1="12" y1="22" x2="12" y2="12"></line>
             </svg>
-            <h2 className="text-4xl lg:text-5xl font-heading font-extrabold text-black tracking-tight">
+            <h2 className="text-2xl md:text-4xl lg:text-5xl font-heading font-extrabold text-black tracking-tight">
               Chuyển Nhượng & Ký Gửi
             </h2>
           </div>
@@ -512,7 +512,7 @@ export default function Home() {
             <div className="relative w-full aspect-[3/4] bg-gray-200 overflow-hidden mb-4">
               <Image src="/vintage_coat.jpg" alt="Túi xách Gucci" fill className="object-cover transition-all duration-700 opacity-100 group-hover:opacity-0" unoptimized />
               <Image src="/macro_fabric.jpg" alt="Túi xách Gucci Hover" fill className="absolute inset-0 w-full h-full object-cover transition-all duration-700 scale-105 opacity-0 group-hover:opacity-100 group-hover:scale-100" unoptimized />
-              <div className="absolute top-3 right-3 bg-black text-white px-2.5 py-1 text-[9px] uppercase tracking-widest font-bold z-10">
+              <div className="absolute top-2 right-2 px-1.5 py-0.5 text-[8px] md:text-[10px] md:px-3 md:py-1.5 md:top-3 md:right-3 tracking-widest font-medium bg-black text-white uppercase z-10">
                 Sở Hữu
               </div>
             </div>
@@ -529,7 +529,7 @@ export default function Home() {
                 <span className="text-xs text-stone-400 line-through font-ui">5.000.000đ</span>
                 <span className="text-[10px] text-red-700 font-medium tracking-wider font-ui">-50%</span>
               </div>
-              <p className="text-sm font-bold text-black font-ui">2.500.000đ</p>
+              <p className="text-xs md:text-sm font-bold text-black font-ui">2.500.000đ</p>
             </div>
           </div>
 
@@ -538,7 +538,7 @@ export default function Home() {
             <div className="relative w-full aspect-[3/4] bg-gray-200 overflow-hidden mb-4">
               <Image src="/kinhgucci.webp" alt="Kính râm" fill className="object-cover transition-all duration-700 opacity-100 group-hover:opacity-0" unoptimized />
               <Image src="/anhbia.png" alt="Kính râm Hover" fill className="absolute inset-0 w-full h-full object-cover transition-all duration-700 scale-105 opacity-0 group-hover:opacity-100 group-hover:scale-100" unoptimized />
-              <div className="absolute top-3 right-3 bg-black text-white px-2.5 py-1 text-[9px] uppercase tracking-widest font-bold z-10">
+              <div className="absolute top-2 right-2 px-1.5 py-0.5 text-[8px] md:text-[10px] md:px-3 md:py-1.5 md:top-3 md:right-3 tracking-widest font-medium bg-black text-white uppercase z-10">
                 Sở Hữu
               </div>
             </div>
@@ -555,7 +555,7 @@ export default function Home() {
                 <span className="text-xs text-stone-400 line-through font-ui">1.000.000đ</span>
                 <span className="text-[10px] text-red-700 font-medium tracking-wider font-ui">-70%</span>
               </div>
-              <p className="text-sm font-bold text-black font-ui">300.000đ</p>
+              <p className="text-xs md:text-sm font-bold text-black font-ui">300.000đ</p>
             </div>
           </div>
 
@@ -564,7 +564,7 @@ export default function Home() {
             <div className="relative w-full aspect-[3/4] bg-gray-200 overflow-hidden mb-4">
               <Image src="/bootvanlentino.webp" alt="Boots" fill className="object-cover transition-all duration-700 opacity-100 group-hover:opacity-0" unoptimized />
               <Image src="/hero_warm.jpg" alt="Boots Hover" fill className="absolute inset-0 w-full h-full object-cover transition-all duration-700 scale-105 opacity-0 group-hover:opacity-100 group-hover:scale-100" unoptimized />
-              <div className="absolute top-3 right-3 bg-black text-white px-2.5 py-1 text-[9px] uppercase tracking-widest font-bold z-10">
+              <div className="absolute top-2 right-2 px-1.5 py-0.5 text-[8px] md:text-[10px] md:px-3 md:py-1.5 md:top-3 md:right-3 tracking-widest font-medium bg-black text-white uppercase z-10">
                 Sở Hữu
               </div>
             </div>
@@ -581,7 +581,7 @@ export default function Home() {
                 <span className="text-xs text-stone-400 line-through font-ui">3.000.000đ</span>
                 <span className="text-[10px] text-red-700 font-medium tracking-wider font-ui">-60%</span>
               </div>
-              <p className="text-sm font-bold text-black font-ui">1.200.000đ</p>
+              <p className="text-xs md:text-sm font-bold text-black font-ui">1.200.000đ</p>
             </div>
           </div>
 
@@ -590,7 +590,7 @@ export default function Home() {
             <div className="relative w-full aspect-[3/4] bg-gray-200 overflow-hidden mb-4">
               <Image src="/evening_dress.jpg" alt="Jacket" fill className="object-cover transition-all duration-700 opacity-100 group-hover:opacity-0" unoptimized />
               <Image src="/step3_party.jpg" alt="Jacket Hover" fill className="absolute inset-0 w-full h-full object-cover transition-all duration-700 scale-105 opacity-0 group-hover:opacity-100 group-hover:scale-100" unoptimized />
-              <div className="absolute top-3 right-3 bg-black text-white px-2.5 py-1 text-[9px] uppercase tracking-widest font-bold z-10">
+              <div className="absolute top-2 right-2 px-1.5 py-0.5 text-[8px] md:text-[10px] md:px-3 md:py-1.5 md:top-3 md:right-3 tracking-widest font-medium bg-black text-white uppercase z-10">
                 Sở Hữu
               </div>
             </div>
@@ -607,7 +607,7 @@ export default function Home() {
                 <span className="text-xs text-stone-400 line-through font-ui">4.500.000đ</span>
                 <span className="text-[10px] text-red-700 font-medium tracking-wider font-ui">-60%</span>
               </div>
-              <p className="text-sm font-bold text-black font-ui">1.800.000đ</p>
+              <p className="text-xs md:text-sm font-bold text-black font-ui">1.800.000đ</p>
             </div>
           </div>
 
