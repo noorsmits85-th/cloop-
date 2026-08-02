@@ -346,7 +346,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                   {authMode === 'login' ? 'Đăng nhập CLOOP' : authMode === 'register' ? 'Kích hoạt ID Xanh' : authMode === 'forgot' ? 'Quên mật khẩu' : 'Nhập mã khôi phục'}
                 </h3>
                 <p className="text-[11px] text-gray-400">
-                  {authMode === 'login' ? 'Chào mừng bạn quay trở lại với thời trang tuần hoàn.' : authMode === 'register' ? 'Đăng ký tài khoản bảo mật để đồng bộ hóa và quản lý kệ đồ cá nhân.' : authMode === 'forgot' ? 'Nhập email để nhận mã OTP khôi phục mật khẩu.' : `Mã 6 số đã được gửi tới ${resetEmail}. Nhập mã và mật khẩu mới.`}
+                  {authMode === 'login' ? 'Chào mừng bạn quay trở lại với thời trang tuần hoàn.' : authMode === 'register' ? 'Đăng ký tài khoản bảo mật để đồng bộ hóa và quản lý kệ đồ cá nhân.' : authMode === 'forgot' ? 'Nhập email để nhận mã OTP khôi phục mật khẩu.' : `Mã bảo mật đã được gửi tới ${resetEmail}. Nhập mã và mật khẩu mới.`}
                 </p>
               </div>
 
@@ -482,8 +482,8 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 
                 {authMode === 'forgot_otp' && (
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Mã OTP (6 Số)</label>
-                    <input type="text" name="otp" required placeholder="123456" maxLength={6} className={`w-full px-4 py-2.5 border rounded-xl text-xs font-medium outline-none tracking-widest ${darkMode ? "bg-[#0F1720] border-[#2B3946] text-white" : "bg-[#FAF8F3] border-[#E9E2D8] text-[#183A2D]"}`} />
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Mã Xác Thực (OTP)</label>
+                    <input type="text" name="otp" required placeholder="Nhập mã từ email..." className={`w-full px-4 py-2.5 border rounded-xl text-xs font-medium outline-none tracking-widest ${darkMode ? "bg-[#0F1720] border-[#2B3946] text-white" : "bg-[#FAF8F3] border-[#E9E2D8] text-[#183A2D]"}`} />
                   </div>
                 )}
 
