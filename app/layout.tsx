@@ -471,8 +471,23 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                         alert(`Đăng nhập thất bại: Mật khẩu hoặc Email không chính xác.`);
                         return;
                       }
+
+                      let userName = authData.user?.user_metadata?.name;
+                      if (!userName && authData.user?.id) {
+                        const { data: dbUser } = await supabase
+                          .from("User")
+                          .select("name")
+                          .eq("id", authData.user.id)
+                          .maybeSingle();
+                        
+                        if (dbUser?.name) {
+                          userName = dbUser.name;
+                          // Cập nhật lại vào Auth để lần sau khỏi query
+                          await supabase.auth.updateUser({ data: { name: userName } });
+                        }
+                      }
                       
-                      const userSession = { name: authData.user?.user_metadata?.name || "Member", email: email.trim(), isLoggedIn: true };
+                      const userSession = { name: userName || "Member", email: email.trim(), isLoggedIn: true };
                       localStorage.setItem("cloop_user_id", authData.user?.id || "");
                       localStorage.setItem("cloop_user", JSON.stringify(userSession));
                       setCurrentUser(userSession);
