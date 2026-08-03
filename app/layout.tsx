@@ -210,13 +210,23 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   ];
 
   const handleOtpChange = (index: number, value: string) => {
-    const cleanValue = value.replace(/[^0-9a-zA-Z]/g, '');
-    const char = cleanValue.slice(-1);
+    const digits = value.replace(/\D/g, '');
+    if (!digits) {
+      const newOtp = [...otpValues];
+      newOtp[index] = '';
+      setOtpValues(newOtp);
+      return;
+    }
+
     const newOtp = [...otpValues];
-    newOtp[index] = char;
+    digits.slice(0, 6 - index).split('').forEach((digit, offset) => {
+      newOtp[index + offset] = digit;
+    });
     setOtpValues(newOtp);
-    if (char && index < 5) {
-      otpRefs[index + 1].current?.focus();
+
+    const nextIndex = Math.min(index + digits.length, 5);
+    if (index < 5) {
+      otpRefs[nextIndex].current?.focus();
     }
   };
 
@@ -235,7 +245,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 
   const handleOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault();
-    const pastedData = e.clipboardData.getData('text').slice(0, 6).split('');
+    const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6).split('');
     const newOtp = [...otpValues];
     pastedData.forEach((char, i) => {
       if (i < 6) newOtp[i] = char;
@@ -445,23 +455,16 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                       }
                       
                       const cleanOtp = otp.trim();
-                      const isNumeric = /^\d+$/.test(cleanOtp);
-                      let verifyError;
-
-                      if (isNumeric) {
-                        const { error } = await supabase.auth.verifyOtp({
-                          email: resetEmail,
-                          token: cleanOtp,
-                          type: 'recovery'
-                        });
-                        verifyError = error;
-                      } else {
-                        const { error } = await supabase.auth.verifyOtp({
-                          token_hash: cleanOtp,
-                          type: 'recovery'
-                        });
-                        verifyError = error;
+                      if (!/^\d{6}$/.test(cleanOtp)) {
+                        alert("Ma OTP phai gom dung 6 chu so.");
+                        return;
                       }
+
+                      const { error: verifyError } = await supabase.auth.verifyOtp({
+                        email: resetEmail,
+                        token: cleanOtp,
+                        type: 'recovery'
+                      });
                       
                       if (verifyError) {
                         alert(`Mã xác thực không hợp lệ: ${verifyError.message}`);
@@ -509,7 +512,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                         }
                       }
                       
-                      const userSession = { name: userName || "Member", email: email.trim(), isLoggedIn: true };
+                      const userSession = { name: userName || email.trim().split('@')[0], email: email.trim(), isLoggedIn: true };
                       localStorage.setItem("cloop_user_id", authData.user?.id || "");
                       localStorage.setItem("cloop_user", JSON.stringify(userSession));
                       setCurrentUser(userSession);
@@ -590,8 +593,10 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                           key={index}
                           ref={otpRefs[index]}
                           type="text"
-                          inputMode="text"
-                          maxLength={2}
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          autoComplete={index === 0 ? "one-time-code" : "off"}
+                          maxLength={1}
                           value={digit}
                           onFocus={(e) => e.target.select()}
                           onChange={(e) => handleOtpChange(index, e.target.value)}
