@@ -579,8 +579,9 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                           key={index}
                           ref={otpRefs[index]}
                           type="text"
-                          maxLength={1}
+                          maxLength={2}
                           value={digit}
+                          onFocus={(e) => e.target.select()}
                           onChange={(e) => handleOtpChange(index, e.target.value)}
                           onKeyDown={(e) => handleOtpKeyDown(index, e)}
                           disabled={isLoading}
