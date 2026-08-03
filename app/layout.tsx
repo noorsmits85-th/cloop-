@@ -190,6 +190,14 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   const [resetEmail, setResetEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [otpValues, setOtpValues] = useState(['', '', '', '', '', '']);
+  const [otpCooldown, setOtpCooldown] = useState(0);
+
+  useEffect(() => {
+    if (otpCooldown > 0) {
+      const timer = setTimeout(() => setOtpCooldown(otpCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [otpCooldown]);
   
   // Create refs array for the 6 OTP input boxes
   const otpRefs = [
@@ -402,6 +410,11 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                     
                     if (authMode === 'forgot') {
                       if (!email.trim()) return;
+                      if (otpCooldown > 0) {
+                        alert(`Vui lòng đợi ${otpCooldown} giây trước khi yêu cầu lại mã OTP.`);
+                        return;
+                      }
+                      
                       const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
                       if (error) {
                         alert(`Lỗi gửi mã khôi phục: ${error.message}`);
@@ -409,6 +422,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                       }
                       setResetEmail(email.trim());
                       setOtpValues(['', '', '', '', '', '']); // Reset OTP fields
+                      setOtpCooldown(60); // Set 60s cooldown
                       setAuthMode('forgot_otp');
                       return;
                     }
@@ -586,9 +600,17 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                   </div>
                 )}
 
-                <button disabled={isLoading} type="submit" className="w-full font-body flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest bg-[#183A2D] text-white py-3.5 rounded-full shadow-md text-center hover:bg-[#254F3B] transition mt-2 disabled:opacity-70 disabled:cursor-not-allowed">
+                               <button 
+                  disabled={isLoading || (authMode === 'forgot' && otpCooldown > 0)} 
+                  type="submit" 
+                  className="w-full font-body flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest bg-[#183A2D] text-white py-3.5 rounded-full shadow-md text-center hover:bg-[#254F3B] transition mt-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                >
                   {isLoading && <Loader2 size={16} className="animate-spin" />}
-                  {isLoading ? 'Đang xử lý...' : authMode === 'login' ? 'Đăng nhập ngay' : authMode === 'register' ? 'Kích hoạt tài khoản' : authMode === 'forgot' ? 'Gửi mã OTP khôi phục' : 'Đổi mật khẩu'}
+                  {isLoading ? 'Đang xử lý...' : 
+                    authMode === 'login' ? 'Đăng nhập ngay' : 
+                    authMode === 'register' ? 'Kích hoạt tài khoản' : 
+                    authMode === 'forgot' ? (otpCooldown > 0 ? `Đang gửi mã... (${otpCooldown}s)` : 'Gửi mã OTP khôi phục') : 
+                    'Đổi mật khẩu'}
                 </button>
               </form> 
 
@@ -596,18 +618,34 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                 {authMode === 'login' && (
                   <>
                     <button onClick={() => setAuthMode('forgot')} className="hover:text-[#183A2D] transition hover:underline">Quên mật khẩu?</button>
-                    <div className="mt-2 text-gray-400">
-                      Chưa có tài khoản? <button onClick={() => setAuthMode('register')} className="text-[#183A2D] font-bold hover:underline">Đăng ký ngay</button>
-                    </div>
+                    <button onClick={() => setAuthMode('register')} className="hover:text-[#183A2D] transition hover:underline">Chưa có ID Xanh? Tạo ngay</button>
                   </>
                 )}
                 {authMode === 'register' && (
-                  <div className="mt-2 text-gray-400">
-                    Đã có tài khoản? <button onClick={() => setAuthMode('login')} className="text-[#183A2D] font-bold hover:underline">Đăng nhập</button>
-                  </div>
+                  <button onClick={() => setAuthMode('login')} className="hover:text-[#183A2D] transition hover:underline">Đã có ID Xanh? Đăng nhập</button>
                 )}
                 {(authMode === 'forgot' || authMode === 'forgot_otp') && (
-                  <button onClick={() => setAuthMode('login')} className="hover:text-[#183A2D] transition font-bold mt-2">Quay lại đăng nhập</button>
+                  <button onClick={() => setAuthMode('login')} className="hover:text-[#183A2D] transition hover:underline">Quay lại đăng nhập</button>
+                )}
+                {authMode === 'forgot_otp' && otpCooldown === 0 && (
+                  <button 
+                    onClick={async () => {
+                      setIsLoading(true);
+                      try {
+                        const { error } = await supabase.auth.resetPasswordForEmail(resetEmail);
+                        if (error) throw error;
+                        setOtpCooldown(60);
+                        alert("Mã khôi phục mới đã được gửi!");
+                      } catch (err: any) {
+                        alert(`Lỗi gửi mã: ${err.message}`);
+                      } finally {
+                        setIsLoading(false);
+                      }
+                    }} 
+                    className="hover:text-[#183A2D] transition hover:underline mt-2"
+                  >
+                    Chưa nhận được mã? Gửi lại
+                  </button>
                 )}
               </div>
             </motion.div>
