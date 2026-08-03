@@ -374,14 +374,29 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                     const otp = fData.get("otp") as string;
                     if (!otp || !password) return;
                     
-                    const { error } = await supabase.auth.verifyOtp({
-                      email: resetEmail,
-                      token: otp.trim(),
-                      type: 'recovery'
-                    });
+                    const cleanOtp = otp.trim();
+                    const isNumeric = /^\d+$/.test(cleanOtp);
+                    let verifyError;
+
+                    // Nếu mã toàn số -> Verify như OTP thông thường
+                    if (isNumeric) {
+                      const { error } = await supabase.auth.verifyOtp({
+                        email: resetEmail,
+                        token: cleanOtp,
+                        type: 'recovery'
+                      });
+                      verifyError = error;
+                    } else {
+                      // Nếu mã chứa chữ cái -> Verify như Token Hash (PKCE/MagicLink token)
+                      const { error } = await supabase.auth.verifyOtp({
+                        token_hash: cleanOtp,
+                        type: 'recovery'
+                      });
+                      verifyError = error;
+                    }
                     
-                    if (error) {
-                      alert(`Mã xác thực không hợp lệ: ${error.message}`);
+                    if (verifyError) {
+                      alert(`Mã xác thực không hợp lệ: ${verifyError.message}`);
                       return;
                     }
 
