@@ -7,7 +7,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation"; 
 import { 
   Search, ShoppingBag, Sun, Moon, Shirt, Users, Leaf, Star, X, Shield, BookOpen,
-  Home, PlusCircle, User
+  Home, PlusCircle, User, Loader2
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js"; 
 import "./globals.css";
@@ -188,6 +188,48 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   const [darkMode, setDarkMode] = useState<boolean>(false);
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot' | 'forgot_otp'>('login');
   const [resetEmail, setResetEmail] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [otpValues, setOtpValues] = useState(['', '', '', '', '', '']);
+  
+  // Create refs array for the 6 OTP input boxes
+  const otpRefs = [
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+  ];
+
+  const handleOtpChange = (index: number, value: string) => {
+    // Only accept numeric values (or allow alphanumeric if pkce is used, let's allow alphanumeric just in case)
+    const newOtp = [...otpValues];
+    newOtp[index] = value.slice(-1); // Take only the last character typed
+    setOtpValues(newOtp);
+    if (value && index < 5) {
+      otpRefs[index + 1].current?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !otpValues[index] && index > 0) {
+      otpRefs[index - 1].current?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text').slice(0, 6).split('');
+    const newOtp = [...otpValues];
+    pastedData.forEach((char, i) => {
+      if (i < 6) newOtp[i] = char;
+    });
+    setOtpValues(newOtp);
+    if (pastedData.length > 0) {
+      const focusIndex = Math.min(pastedData.length, 5);
+      otpRefs[focusIndex].current?.focus();
+    }
+  };
 
   useEffect(() => {
     if (showAuthModal) {
@@ -353,69 +395,72 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
               <form 
                 onSubmit={async (e) => {
                   e.preventDefault();
-                  const fData = new FormData(e.currentTarget);
-                  const email = fData.get("email") as string;
-                  
-                  if (authMode === 'forgot') {
-                    if (!email.trim()) return;
-                    const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
-                    if (error) {
-                      alert(`Lỗi gửi mã khôi phục: ${error.message}`);
-                      return;
-                    }
-                    setResetEmail(email.trim());
-                    setAuthMode('forgot_otp');
-                    return;
-                  }
-
-                  const password = fData.get("password") as string;
-
-                  if (authMode === 'forgot_otp') {
-                    const otp = fData.get("otp") as string;
-                    if (!otp || !password) return;
-                    
-                    const cleanOtp = otp.trim();
-                    const isNumeric = /^\d+$/.test(cleanOtp);
-                    let verifyError;
-
-                    // Nếu mã toàn số -> Verify như OTP thông thường
-                    if (isNumeric) {
-                      const { error } = await supabase.auth.verifyOtp({
-                        email: resetEmail,
-                        token: cleanOtp,
-                        type: 'recovery'
-                      });
-                      verifyError = error;
-                    } else {
-                      // Nếu mã chứa chữ cái -> Verify như Token Hash (PKCE/MagicLink token)
-                      const { error } = await supabase.auth.verifyOtp({
-                        token_hash: cleanOtp,
-                        type: 'recovery'
-                      });
-                      verifyError = error;
-                    }
-                    
-                    if (verifyError) {
-                      alert(`Mã xác thực không hợp lệ: ${verifyError.message}`);
-                      return;
-                    }
-
-                    const { error: updateError } = await supabase.auth.updateUser({ password });
-                    if (updateError) {
-                      alert(`Lỗi cập nhật mật khẩu: ${updateError.message}`);
-                      return;
-                    }
-                    
-                    alert("Cập nhật mật khẩu thành công! Vui lòng đăng nhập lại.");
-                    setAuthMode('login');
-                    return;
-                  }
-
-                  const name = fData.get("username") as string || ""; 
-                  
-                  if (!email.trim() || !password.trim() || (authMode === 'register' && !name.trim())) return;
-
+                  setIsLoading(true);
                   try {
+                    const fData = new FormData(e.currentTarget);
+                    const email = fData.get("email") as string;
+                    
+                    if (authMode === 'forgot') {
+                      if (!email.trim()) return;
+                      const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+                      if (error) {
+                        alert(`Lỗi gửi mã khôi phục: ${error.message}`);
+                        return;
+                      }
+                      setResetEmail(email.trim());
+                      setOtpValues(['', '', '', '', '', '']); // Reset OTP fields
+                      setAuthMode('forgot_otp');
+                      return;
+                    }
+
+                    const password = fData.get("password") as string;
+
+                    if (authMode === 'forgot_otp') {
+                      const otp = otpValues.join('');
+                      if (otp.length < 6 || !password) {
+                        alert("Vui lòng nhập đủ 6 ký tự mã xác thực và mật khẩu mới.");
+                        return;
+                      }
+                      
+                      const cleanOtp = otp.trim();
+                      const isNumeric = /^\d+$/.test(cleanOtp);
+                      let verifyError;
+
+                      if (isNumeric) {
+                        const { error } = await supabase.auth.verifyOtp({
+                          email: resetEmail,
+                          token: cleanOtp,
+                          type: 'recovery'
+                        });
+                        verifyError = error;
+                      } else {
+                        const { error } = await supabase.auth.verifyOtp({
+                          token_hash: cleanOtp,
+                          type: 'recovery'
+                        });
+                        verifyError = error;
+                      }
+                      
+                      if (verifyError) {
+                        alert(`Mã xác thực không hợp lệ: ${verifyError.message}`);
+                        return;
+                      }
+
+                      const { error: updateError } = await supabase.auth.updateUser({ password });
+                      if (updateError) {
+                        alert(`Lỗi cập nhật mật khẩu: ${updateError.message}`);
+                        return;
+                      }
+                      
+                      alert("Cập nhật mật khẩu thành công! Vui lòng đăng nhập lại.");
+                      setAuthMode('login');
+                      return;
+                    }
+
+                    const name = fData.get("username") as string || ""; 
+                    
+                    if (!email.trim() || !password.trim() || (authMode === 'register' && !name.trim())) return;
+
                     if (authMode === 'login') {
                       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
                         email: email.trim(),
@@ -461,7 +506,6 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                       
                       if (!authData.user) return;
                       
-                      // Lưu vào DB Prisma cho tương thích ngược
                       await supabase.from("User").upsert({
                         id: authData.user.id,
                         email: email.trim(),
@@ -477,6 +521,8 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                     }
                   } catch (err: any) {
                     alert(`Hệ thống gặp sự cố: ${err.message || err}`);
+                  } finally {
+                    setIsLoading(false);
                   }
                 }}
                 className="space-y-4 pt-2 text-left"
@@ -496,9 +542,25 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                 )}
 
                 {authMode === 'forgot_otp' && (
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Mã Xác Thực (OTP)</label>
-                    <input type="text" name="otp" required placeholder="Nhập mã từ email..." className={`w-full px-4 py-2.5 border rounded-xl text-xs font-medium outline-none tracking-widest ${darkMode ? "bg-[#0F1720] border-[#2B3946] text-white" : "bg-[#FAF8F3] border-[#E9E2D8] text-[#183A2D]"}`} />
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Mã Xác Thực (OTP 6 số)</label>
+                    <div className="flex justify-between gap-2" onPaste={handleOtpPaste}>
+                      {otpValues.map((digit, index) => (
+                        <input
+                          key={index}
+                          ref={otpRefs[index]}
+                          type="text"
+                          maxLength={1}
+                          value={digit}
+                          onChange={(e) => handleOtpChange(index, e.target.value)}
+                          onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                          disabled={isLoading}
+                          className={`w-12 h-12 text-center text-lg font-bold border rounded-xl outline-none transition-all focus:border-[#183A2D] focus:ring-1 focus:ring-[#183A2D] ${
+                            darkMode ? "bg-[#0F1720] border-[#2B3946] text-white" : "bg-[#FAF8F3] border-[#E9E2D8] text-[#183A2D]"
+                          }`}
+                        />
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -509,8 +571,9 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                   </div>
                 )}
 
-                <button type="submit" className="w-full font-body text-xs font-bold uppercase tracking-widest bg-[#183A2D] text-white py-3.5 rounded-full shadow-md text-center hover:bg-[#254F3B] transition mt-2">
-                  {authMode === 'login' ? 'Đăng nhập ngay' : authMode === 'register' ? 'Kích hoạt tài khoản' : authMode === 'forgot' ? 'Gửi mã OTP khôi phục' : 'Đổi mật khẩu'}
+                <button disabled={isLoading} type="submit" className="w-full font-body flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest bg-[#183A2D] text-white py-3.5 rounded-full shadow-md text-center hover:bg-[#254F3B] transition mt-2 disabled:opacity-70 disabled:cursor-not-allowed">
+                  {isLoading && <Loader2 size={16} className="animate-spin" />}
+                  {isLoading ? 'Đang xử lý...' : authMode === 'login' ? 'Đăng nhập ngay' : authMode === 'register' ? 'Kích hoạt tài khoản' : authMode === 'forgot' ? 'Gửi mã OTP khôi phục' : 'Đổi mật khẩu'}
                 </button>
               </form> 
 
