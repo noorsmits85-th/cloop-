@@ -37,4 +37,23 @@ Bất cứ khi nào bạn viết một khối try/catch quan trọng, đừng ch
 Khi thay đổi các logic cốt lõi (như tính tiền, trừ tồn kho), hãy cố gắng không sửa hỏng các phần code đang chạy ngầm khác.
 
 Tóm lại: Hãy code với tư duy "Mọi user đều là hacker". Nếu bạn vi phạm các quy tắc này, dự án CLOOP sẽ gặp rủi ro pháp lý và tài chính nghiêm trọng.
+
+---
+
+### CÁC LỚP BẢO VỆ NÂNG CAO (ADVANCED SECURITY LOCKS):
+
+- **RLS ở database**: Bật Row Level Security cho các bảng nhạy cảm (profiles, orders, wardrobe, messages, payments, addresses) nếu dùng Supabase/Postgres. Đây là lớp chặn cuối nếu API bị lỗi.
+- **Rate limit và chống spam**: Áp dụng rate limit cho login, register, forgot password, checkout, upload ảnh, chat/message, search. Đặc biệt chống brute-force OTP/password.
+- **Validation schema bắt buộc**: Mọi API nên dùng schema validation (zod, yup...). Không chỉ check type, mà check cả enum, min/max, format, length, file size, MIME type.
+- **Upload file an toàn**: Không tin Content-Type từ client. Check MIME thật, giới hạn dung lượng, đổi tên file server-side, không cho upload SVG/HTML nếu không sanitize, lưu file ở bucket private khi cần.
+- **Webhook phải idempotent**: Payment webhook có thể gửi lại nhiều lần. Cần có event_id, trạng thái xử lý, transaction log để tránh cộng/trừ tiền sai lệch.
+- **CSRF/CORS/Cookie security**: Cookie auth cần CSRF protection. Cookie phải có HttpOnly, Secure, SameSite=Lax/Strict. CORS không được để wildcard bừa bãi.
+- **Audit log**: Ghi log cho hành động quan trọng (đổi giá, cập nhật đơn, hoàn tiền, khóa tài khoản...). Log cần có actor_id, target_id, IP, user-agent, thời gian.
+- **Không để role đến từ client**: Không bao giờ tin role từ frontend (vd: "admin"). Role phải lấy server-side từ DB/session đã xác thực.
+- **Inventory cần transaction**: Khi checkout/trừ tồn kho, phải dùng transaction hoặc atomic update để tránh oversell.
+- **Security headers**: Thêm CSP, HSTS, X-Frame-Options, Referrer-Policy, Permissions-Policy để giảm rủi ro XSS.
+- **Secrets hygiene**: Rotate ngay lập tức nếu lỡ leak key, không chỉ xóa khỏi git.
+- **Admin phải có MFA**: Admin dashboard bắt buộc MFA, session ngắn hơn user thường và có audit log đầy đủ.
+
+> **LUẬT THÉP BỔ SUNG**: Mọi hành động thay đổi tiền, quyền, trạng thái đơn hàng, tồn kho, hoặc dữ liệu cá nhân phải được xác thực, phân quyền, validate server-side, ghi audit log, và nếu có nhiều bước thì chạy trong transaction/idempotent flow.
 <!-- END:cloop-security-rules -->
