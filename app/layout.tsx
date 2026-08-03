@@ -210,19 +210,27 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   ];
 
   const handleOtpChange = (index: number, value: string) => {
-    // Only accept numeric values (or allow alphanumeric if pkce is used, let's allow alphanumeric just in case)
+    const cleanValue = value.replace(/[^0-9a-zA-Z]/g, '');
+    const char = cleanValue.slice(-1);
     const newOtp = [...otpValues];
-    newOtp[index] = value.slice(-1); // Take only the last character typed
+    newOtp[index] = char;
     setOtpValues(newOtp);
-    if (value && index < 5) {
+    if (char && index < 5) {
       otpRefs[index + 1].current?.focus();
     }
   };
 
   const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !otpValues[index] && index > 0) {
-      otpRefs[index - 1].current?.focus();
+    if (e.key === 'Backspace') {
+      if (!otpValues[index] && index > 0) {
+        otpRefs[index - 1].current?.focus();
+      }
     }
+  };
+
+  const clearOtp = () => {
+    setOtpValues(['', '', '', '', '', '']);
+    otpRefs[0].current?.focus();
   };
 
   const handleOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
@@ -572,13 +580,17 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 
                 {authMode === 'forgot_otp' && (
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Mã Xác Thực (OTP 6 số)</label>
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Mã Xác Thực (OTP 6 số)</label>
+                      <button type="button" onClick={clearOtp} className="text-[10px] font-bold text-red-400 hover:text-red-500 hover:underline">XÓA TRẮNG</button>
+                    </div>
                     <div className="flex justify-between gap-2" onPaste={handleOtpPaste}>
                       {otpValues.map((digit, index) => (
                         <input
                           key={index}
                           ref={otpRefs[index]}
                           type="text"
+                          inputMode="text"
                           maxLength={2}
                           value={digit}
                           onFocus={(e) => e.target.select()}
