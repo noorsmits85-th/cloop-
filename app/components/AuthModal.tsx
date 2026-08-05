@@ -56,7 +56,7 @@ export default function AuthModal({
              id: data.user.id,
              email: email,
              name: name,
-             password: password // Legacy
+             password: "managed_by_supabase_auth"
            });
         }
         setSuccessMsg('Đăng ký thành công! Vui lòng kiểm tra Email để xác nhận.');

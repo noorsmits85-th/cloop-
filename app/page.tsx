@@ -359,12 +359,14 @@ export default function Home() {
                 {/* Đổi Tên Sản Phẩm sang font Serif để nhìn đắt tiền hơn */}
                 <h3 className="text-xs md:text-base font-heading text-black mb-2 line-clamp-1 font-semibold">Set Tweed Dạ Cổ Điển</h3>
                 
-                <div className="flex items-center gap-2 mb-1">
+                <div className="hidden md:flex items-center gap-2 mb-1">
                   <span className="text-xs text-stone-400 line-through font-ui">1.800.000đ</span>
-                  {/* XÓA NỀN XANH: Dùng chữ đỏ đô tối giản để báo giảm giá */}
                   <span className="text-[10px] text-red-700 font-medium tracking-wider font-ui">-90%</span>
                 </div>
-                <p className="text-sm font-bold text-black font-ui">180.000đ <span className="text-[10px] text-stone-500 font-normal">/ngày</span></p>
+                <p className="text-sm font-bold text-black font-ui">
+                  180.000đ <span className="text-[10px] text-stone-500 font-normal">/ngày</span>
+                  <span className="md:hidden text-[10px] text-red-700 font-medium ml-1">· -90%</span>
+                </p>
               </div>
             </div>
 
@@ -389,11 +391,14 @@ export default function Home() {
                 </div>
                 <h3 className="text-xs md:text-base font-heading text-black mb-2 line-clamp-1 font-semibold">Blazer Linen Trắng</h3>
                 
-                <div className="flex items-center gap-2 mb-1">
+                <div className="hidden md:flex items-center gap-2 mb-1">
                   <span className="text-xs text-stone-400 line-through font-ui">1.200.000đ</span>
                   <span className="text-[10px] text-red-700 font-medium tracking-wider font-ui">-90%</span>
                 </div>
-                <p className="text-sm font-bold text-black font-ui">120.000đ <span className="text-[10px] text-stone-500 font-normal">/ngày</span></p>
+                <p className="text-sm font-bold text-black font-ui">
+                  120.000đ <span className="text-[10px] text-stone-500 font-normal">/ngày</span>
+                  <span className="md:hidden text-[10px] text-red-700 font-medium ml-1">· -90%</span>
+                </p>
               </div>
             </div>
 
@@ -418,11 +423,14 @@ export default function Home() {
                 </div>
                 <h3 className="text-xs md:text-base font-heading text-black mb-2 line-clamp-1 font-semibold">Đầm Lụa Đỏ Burgundy</h3>
                 
-                <div className="flex items-center gap-2 mb-1">
+                <div className="hidden md:flex items-center gap-2 mb-1">
                   <span className="text-xs text-stone-400 line-through font-ui">2.000.000đ</span>
                   <span className="text-[10px] text-red-700 font-medium tracking-wider font-ui">-90%</span>
                 </div>
-                <p className="text-sm font-bold text-black font-ui">200.000đ <span className="text-[10px] text-stone-500 font-normal">/ngày</span></p>
+                <p className="text-sm font-bold text-black font-ui">
+                  200.000đ <span className="text-[10px] text-stone-500 font-normal">/ngày</span>
+                  <span className="md:hidden text-[10px] text-red-700 font-medium ml-1">· -90%</span>
+                </p>
               </div>
             </div>
 
@@ -450,11 +458,14 @@ export default function Home() {
                 </div>
                 <h3 className="text-xs md:text-base font-heading text-black mb-2 line-clamp-1 font-semibold">Túi Cầm Tay Da Thật</h3>
                 
-                <div className="flex items-center gap-2 mb-1">
+                <div className="hidden md:flex items-center gap-2 mb-1">
                   <span className="text-xs text-stone-400 line-through font-ui">2.500.000đ</span>
                   <span className="text-[10px] text-red-700 font-medium tracking-wider font-ui">-90%</span>
                 </div>
-                <p className="text-sm font-bold text-black font-ui">250.000đ <span className="text-[10px] text-stone-500 font-normal">/ngày</span></p>
+                <p className="text-sm font-bold text-black font-ui">
+                  250.000đ <span className="text-[10px] text-stone-500 font-normal">/ngày</span>
+                  <span className="md:hidden text-[10px] text-red-700 font-medium ml-1">· -90%</span>
+                </p>
               </div>
             </div>
 
@@ -519,11 +530,14 @@ export default function Home() {
                 </div>
               </div>
               <h3 className="text-base font-heading font-semibold text-black mb-1 line-clamp-1">Túi xách Gucci (Pass nhanh)</h3>
-              <div className="flex items-center gap-2 mb-0.5">
+              <div className="hidden md:flex items-center gap-2 mb-0.5">
                 <span className="text-xs text-stone-400 line-through font-ui">5.000.000đ</span>
                 <span className="text-[10px] text-red-700 font-medium tracking-wider font-ui">-50%</span>
               </div>
-              <p className="text-xs md:text-sm font-bold text-black font-ui">2.500.000đ</p>
+              <p className="text-xs md:text-sm font-bold text-black font-ui">
+                2.500.000đ
+                <span className="md:hidden text-[10px] text-red-700 font-medium ml-1">· -50%</span>
+              </p>
             </div>
           </div>
 
@@ -545,11 +559,14 @@ export default function Home() {
                 </div>
               </div>
               <h3 className="text-base font-heading font-semibold text-black mb-1 line-clamp-1">Kính râm Cat-eye</h3>
-              <div className="flex items-center gap-2 mb-0.5">
+              <div className="hidden md:flex items-center gap-2 mb-0.5">
                 <span className="text-xs text-stone-400 line-through font-ui">1.000.000đ</span>
                 <span className="text-[10px] text-red-700 font-medium tracking-wider font-ui">-70%</span>
               </div>
-              <p className="text-xs md:text-sm font-bold text-black font-ui">300.000đ</p>
+              <p className="text-xs md:text-sm font-bold text-black font-ui">
+                300.000đ
+                <span className="md:hidden text-[10px] text-red-700 font-medium ml-1">· -70%</span>
+              </p>
             </div>
           </div>
 
@@ -571,11 +588,14 @@ export default function Home() {
                 </div>
               </div>
               <h3 className="text-base font-heading font-semibold text-black mb-1 line-clamp-1">Boots cổ cao da thật</h3>
-              <div className="flex items-center gap-2 mb-0.5">
+              <div className="hidden md:flex items-center gap-2 mb-0.5">
                 <span className="text-xs text-stone-400 line-through font-ui">3.000.000đ</span>
                 <span className="text-[10px] text-red-700 font-medium tracking-wider font-ui">-60%</span>
               </div>
-              <p className="text-xs md:text-sm font-bold text-black font-ui">1.200.000đ</p>
+              <p className="text-xs md:text-sm font-bold text-black font-ui">
+                1.200.000đ
+                <span className="md:hidden text-[10px] text-red-700 font-medium ml-1">· -60%</span>
+              </p>
             </div>
           </div>
 
@@ -597,11 +617,14 @@ export default function Home() {
                 </div>
               </div>
               <h3 className="text-base font-heading font-semibold text-black mb-1 line-clamp-1">Jacket da thật</h3>
-              <div className="flex items-center gap-2 mb-0.5">
+              <div className="hidden md:flex items-center gap-2 mb-0.5">
                 <span className="text-xs text-stone-400 line-through font-ui">4.500.000đ</span>
                 <span className="text-[10px] text-red-700 font-medium tracking-wider font-ui">-60%</span>
               </div>
-              <p className="text-xs md:text-sm font-bold text-black font-ui">1.800.000đ</p>
+              <p className="text-xs md:text-sm font-bold text-black font-ui">
+                1.800.000đ
+                <span className="md:hidden text-[10px] text-red-700 font-medium ml-1">· -60%</span>
+              </p>
             </div>
           </div>
 

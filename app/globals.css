@@ -1,1 +1,9 @@
 @import "tailwindcss";
+
+/* Fix scale UI Desktop as requested by user */
+@media (min-width: 1024px) {
+  body {
+    /* Sử dụng zoom để thu nhỏ toàn bộ web tương đương 80% trên Chrome/Edge/Safari */
+    zoom: 0.8;
+  }
+}

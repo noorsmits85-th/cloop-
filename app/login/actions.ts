@@ -4,11 +4,25 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/src/utils/supabase/server';
 
+const MIN_PASSWORD_LENGTH = 8;
+
+function getEmail(formData: FormData) {
+  return String(formData.get('email') || '').trim().toLowerCase();
+}
+
+function getPassword(formData: FormData) {
+  return String(formData.get('password') || '');
+}
+
 export async function login(formData: FormData) {
   const supabase = await createClient();
 
-  const email = formData.get('email') as string;
-  const password = formData.get('password') as string;
+  const email = getEmail(formData);
+  const password = getPassword(formData);
+
+  if (!email || !password) {
+    return { error: 'Email va mat khau la bat buoc.' };
+  }
 
   const { error } = await supabase.auth.signInWithPassword({
     email,
@@ -25,7 +39,11 @@ export async function login(formData: FormData) {
 
 export async function loginWithOtp(formData: FormData) {
   const supabase = await createClient();
-  const email = formData.get('email') as string;
+  const email = getEmail(formData);
+
+  if (!email) {
+    return { error: 'Email la bat buoc.' };
+  }
 
   const { error } = await supabase.auth.signInWithOtp({
     email,
@@ -43,8 +61,12 @@ export async function loginWithOtp(formData: FormData) {
 
 export async function verifyOtp(formData: FormData) {
   const supabase = await createClient();
-  const email = formData.get('email') as string;
-  const token = formData.get('token') as string;
+  const email = getEmail(formData);
+  const token = String(formData.get('token') || '').trim();
+
+  if (!email || !/^\d{6}$/.test(token)) {
+    return { error: 'Ma OTP khong hop le.' };
+  }
 
   const { error } = await supabase.auth.verifyOtp({
     email,
@@ -62,7 +84,11 @@ export async function verifyOtp(formData: FormData) {
 
 export async function resetPasswordForEmail(formData: FormData) {
   const supabase = await createClient();
-  const email = formData.get('email') as string;
+  const email = getEmail(formData);
+
+  if (!email) {
+    return { error: 'Email la bat buoc.' };
+  }
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback?next=/reset-password`,
@@ -77,8 +103,12 @@ export async function resetPasswordForEmail(formData: FormData) {
 
 export async function signup(formData: FormData) {
   const supabase = await createClient();
-  const email = formData.get('email') as string;
-  const password = formData.get('password') as string;
+  const email = getEmail(formData);
+  const password = getPassword(formData);
+
+  if (!email || password.length < MIN_PASSWORD_LENGTH) {
+    return { error: `Mat khau phai co it nhat ${MIN_PASSWORD_LENGTH} ky tu.` };
+  }
 
   const { error } = await supabase.auth.signUp({
     email,

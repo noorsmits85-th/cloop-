@@ -161,10 +161,6 @@ function MobileBottomNavbar({ darkMode, currentUser, handleFeatureRequirement }:
           </div>
           <span className="text-[9px] font-ui uppercase tracking-widest mt-6">Đăng bán</span>
         </Link>
-        <Link href="/blog" className={getNavClass("/blog")}>
-          <BookOpen size={22} strokeWidth={pathname.startsWith("/blog") ? 2.5 : 2} />
-          <span className="text-[9px] font-ui uppercase tracking-widest mt-0.5">Blog</span>
-        </Link>
         <div 
           onClick={() => {
             if (currentUser) {
@@ -175,8 +171,21 @@ function MobileBottomNavbar({ darkMode, currentUser, handleFeatureRequirement }:
           }}
           className={getNavClass("/my-closet")}
         >
-          <User size={22} strokeWidth={pathname.startsWith("/my-closet") ? 2.5 : 2} />
+          <Shirt size={22} strokeWidth={pathname.startsWith("/my-closet") ? 2.5 : 2} />
           <span className="text-[9px] font-ui uppercase tracking-widest mt-0.5">Tủ đồ</span>
+        </div>
+        <div 
+          onClick={() => {
+            if (currentUser) {
+              window.location.href = '/profile';
+            } else {
+              handleFeatureRequirement("Hồ sơ");
+            }
+          }}
+          className={getNavClass("/profile")}
+        >
+          <User size={22} strokeWidth={pathname.startsWith("/profile") ? 2.5 : 2} />
+          <span className="text-[9px] font-ui uppercase tracking-widest mt-0.5">Hồ sơ</span>
         </div>
       </div>
     </div>
