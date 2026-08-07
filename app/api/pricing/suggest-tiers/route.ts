@@ -14,7 +14,7 @@ export async function GET(request: Request) {
 
     if (!parseResult.success) {
       return NextResponse.json(
-        { error: "Invalid basePrice", details: parseResult.error.errors },
+        { error: "Invalid basePrice", details: parseResult.error.issues },
         { status: 400 }
       );
     }
