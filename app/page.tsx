@@ -99,10 +99,10 @@ export default function Home() {
       `}</style>
 
       {/* SECTION 1: HERO - TRỰC DIỆN THƯƠNG MẠI */}
-      <section className="relative w-full bg-[#FAF9F6] overflow-hidden flex flex-col lg:block min-h-[80vh]">
-        <div className="max-w-[1280px] mx-auto px-4 lg:px-6 w-full flex flex-col lg:flex-row items-stretch lg:min-h-[80vh] relative z-10">
-          {/* Left: Text & CTAs */}
-          <div className="w-full lg:w-1/2 flex flex-col justify-start items-start py-16 lg:pt-[15vh] lg:pb-20 mt-16 lg:mt-0 pr-0 lg:pr-8">
+      <section className="relative w-full flex flex-col lg:flex-row items-stretch min-h-[80vh] bg-[#FAF9F6] overflow-hidden">
+        {/* Left: Text & CTAs */}
+        <div className="w-full lg:w-1/2 flex lg:justify-end z-10 relative mt-16 lg:mt-0">
+          <div className="w-full max-w-[640px] flex flex-col justify-start items-start px-4 lg:px-6 xl:pr-12 py-16 lg:pt-[15vh] lg:pb-20">
           <div className="flex flex-col items-start justify-start w-full text-left max-w-2xl">
               <motion.h1 
                 initial="hidden"
@@ -184,10 +184,9 @@ export default function Home() {
               </motion.div>
             </div>
           </div>
-          <div className="hidden lg:block w-full lg:w-1/2"></div>
         </div>
         {/* Right: Tràn viền (Full-bleed) Image */}
-        <div className="w-full lg:w-1/2 relative lg:absolute lg:top-0 lg:right-0 h-[50vh] lg:h-full z-0 overflow-hidden lg:pl-4 xl:pl-8">
+        <div className="w-full lg:w-1/2 relative min-h-[50vh] lg:min-h-auto z-0 overflow-hidden lg:pl-4 xl:pl-8">
           <Image 
             src="/anhbia.png" 
             alt="CLOOP Fashion Community" 
