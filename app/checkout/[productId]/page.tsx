@@ -35,6 +35,19 @@ export default async function CheckoutPage({ params }: { params: { productId: st
   const weight = 500; 
   const fromProvince = product.province; // Điểm lấy hàng
 
+  // Tính toán Tiers
+  let pricingTiers = listing.pricing_tiers as any[];
+  if (!pricingTiers || pricingTiers.length === 0) {
+    // Tự động generate nếu DB cũ chưa có
+    const base = listing.basePrice || 0;
+    const roundToThousand = (num: number) => Math.round(num / 1000) * 1000;
+    pricingTiers = [
+      { days: 1, price: base, name: "Gói Hỏa Tốc", description: "Dành cho nhu cầu sử dụng ngay lập tức." },
+      { days: 3, price: roundToThousand(base * 3 * 0.85), name: "Gói Cuối Tuần / Đi Tiệc", description: "Thong thả nhận, mặc tiệc, giặt giũ và trả đồ." },
+      { days: 7, price: roundToThousand(base * 7 * 0.70), name: "Gói Nghỉ Dưỡng", description: "Hoàn hảo cho những chuyến du lịch xa." },
+    ];
+  }
+
   return (
     <div className="min-h-screen bg-[#FAF9F6] py-12 px-4 md:px-8">
       <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -89,8 +102,9 @@ export default async function CheckoutPage({ params }: { params: { productId: st
           productId={product.id} 
           fromProvince={fromProvince} 
           weight={weight} 
-          itemPrice={(listing.salePrice || listing.basePrice || 0)}
           depositPrice={listing.deposit || 0}
+          pricingTiers={pricingTiers}
+          turnaroundDays={listing.turnaround_days || 2}
         />
 
       </div>

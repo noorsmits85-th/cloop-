@@ -197,8 +197,10 @@ model Listing {
   listingType ListingType
   status      ListingStatus @default(AVAILABLE)
 
-  // 💵 Chi phí linh hoạt theo nghiệp vụ (Chuẩn hóa thành VNĐ)
-  basePrice   Int? // Giá thuê gốc / Giá bán gốc (VND)
+  basePrice   Int? // Giá thuê gốc 1 ngày / Giá bán gốc (VND)
+  pricing_tiers Json? // Bảng giá linh động [{ "days": 1, "price": 200000 }, { "days": 3, "price": 500000 }]
+  turnaround_days Int @default(2) // Số ngày chuẩn bị/giặt giũ của chủ đồ
+  
   salePrice   Int? // Giá sau khi áp dụng chiến dịch giảm giá (VND)
   deposit     Int? // Tiền cọc an toàn (VND)
   minDays     Int? // Số ngày thuê tối thiểu (Chỉ dùng cho RENT)
@@ -227,6 +229,7 @@ model RentalHistory {
 
   start_date DateTime
   end_date   DateTime
+  actual_return_date DateTime? // Dùng để mở khóa lịch sớm khi khách hàng xác nhận đã gửi trả hàng
 
   status String @default("pending_payment") // "pending_payment", "active", "completed", "cancelled"
 

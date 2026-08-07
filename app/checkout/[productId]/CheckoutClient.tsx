@@ -9,14 +9,16 @@ export default function CheckoutClient({
   productId,
   fromProvince,
   weight,
-  itemPrice,
-  depositPrice
+  depositPrice,
+  pricingTiers,
+  turnaroundDays,
 }: {
   productId: string;
   fromProvince: string;
   weight: number;
-  itemPrice: number;
   depositPrice: number;
+  pricingTiers: any[];
+  turnaroundDays: number;
 }) {
   const router = useRouter();
   const [toProvince, setToProvince] = useState("");
@@ -25,6 +27,11 @@ export default function CheckoutClient({
   
   const [shippingQuotes, setShippingQuotes] = useState<SignedShippingQuote[]>([]);
   const [selectedQuote, setSelectedQuote] = useState<SignedShippingQuote | null>(null);
+  
+  // States cho Smart Pricing & Date
+  const [selectedTier, setSelectedTier] = useState<any>(pricingTiers[1] || pricingTiers[0]); // Mặc định gói 3 ngày
+  const [startDate, setStartDate] = useState<string>("");
+
   const [isLoadingShipping, setIsLoadingShipping] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [error, setError] = useState("");
@@ -85,7 +92,9 @@ export default function CheckoutClient({
           userId,
           shippingToken: selectedQuote.token,
           buyerAddress: `${addressDetail}, ${toProvince}`,
-          buyerPhone: phone
+          buyerPhone: phone,
+          startDate: startDate,
+          packageDays: selectedTier.days
         }),
       });
 
@@ -105,12 +114,61 @@ export default function CheckoutClient({
     }
   };
 
-  const totalAmount = itemPrice + depositPrice + (selectedQuote?.quote.fee || 0);
+  const totalAmount = (selectedTier?.price || 0) + depositPrice + (selectedQuote?.quote.fee || 0);
+
+  // Tính endDate tạm thời cho UI
+  const calculateEndDate = () => {
+    if (!startDate || !selectedTier) return "";
+    const start = new Date(startDate);
+    const end = new Date(start.getTime() + selectedTier.days * 86400000);
+    return end.toLocaleDateString('vi-VN');
+  };
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm border border-stone-100 flex flex-col h-fit">
-      <h2 className="font-heading text-2xl text-[#0A2517] font-bold mb-6">Thông tin nhận hàng</h2>
+      <h2 className="font-heading text-2xl text-[#0A2517] font-bold mb-6">Thông tin nhận hàng & Lịch thuê</h2>
       
+      {/* Smart Pricing Tiers */}
+      <div className="mb-6 space-y-3">
+        <label className="block text-sm font-ui text-stone-600 font-bold mb-2">Chọn gói thuê</label>
+        <div className="grid grid-cols-1 gap-3">
+          {pricingTiers.map((tier, idx) => (
+            <div 
+              key={idx}
+              onClick={() => setSelectedTier(tier)}
+              className={`p-4 border rounded cursor-pointer transition-all ${
+                selectedTier.days === tier.days 
+                  ? 'border-[#0A2517] bg-emerald-50 ring-1 ring-[#0A2517]' 
+                  : 'border-stone-200 hover:border-stone-300'
+              }`}
+            >
+              <div className="flex justify-between items-start mb-1">
+                <span className="font-ui font-bold text-[#0A2517]">{tier.name} ({tier.days} ngày)</span>
+                <span className="font-heading font-bold text-emerald-600">{tier.price.toLocaleString('vi-VN')}đ</span>
+              </div>
+              <p className="text-xs text-stone-500">{tier.description}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Date Picker */}
+      <div className="mb-6 p-4 bg-stone-50 rounded border border-stone-100">
+        <label className="block text-sm font-ui text-stone-600 font-bold mb-2">Ngày dự kiến nhận đồ (Start Date)</label>
+        <input 
+          type="date" 
+          value={startDate}
+          onChange={(e) => setStartDate(e.target.value)}
+          className="w-full px-3 py-2 border border-stone-200 rounded font-ui focus:outline-none focus:border-[#0A2517] mb-2"
+          min={new Date().toISOString().split('T')[0]} // Không cho phép chọn ngày quá khứ
+        />
+        {startDate && (
+          <p className="text-sm text-stone-600 mt-2">
+            Ngày trả đồ dự kiến: <span className="font-bold text-[#0A2517]">{calculateEndDate()}</span>
+          </p>
+        )}
+      </div>
+
       <div className="space-y-4 mb-6">
         <div>
           <label className="block text-sm font-ui text-stone-600 mb-1">Tỉnh/Thành phố</label>
