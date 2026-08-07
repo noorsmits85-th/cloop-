@@ -99,9 +99,10 @@ export default function Home() {
       `}</style>
 
       {/* SECTION 1: HERO - TRỰC DIỆN THƯƠNG MẠI */}
-      <section className="relative w-full flex flex-col lg:flex-row items-stretch min-h-[80vh] bg-[#FAF9F6] overflow-hidden">
-        {/* Left: Text & CTAs */}
-        <div className="w-full lg:w-1/2 flex flex-col justify-start items-start px-4 md:px-12 lg:px-20 xl:px-32 py-16 lg:pt-[15vh] lg:pb-20 z-10 relative mt-16 lg:mt-0">
+      <section className="relative w-full bg-[#FAF9F6] overflow-hidden flex flex-col lg:block min-h-[80vh]">
+        <div className="max-w-[1280px] mx-auto px-4 lg:px-6 w-full flex flex-col lg:flex-row items-stretch lg:min-h-[80vh] relative z-10">
+          {/* Left: Text & CTAs */}
+          <div className="w-full lg:w-1/2 flex flex-col justify-start items-start py-16 lg:pt-[15vh] lg:pb-20 mt-16 lg:mt-0 pr-0 lg:pr-8">
           <div className="flex flex-col items-start justify-start w-full text-left max-w-2xl">
               <motion.h1 
                 initial="hidden"
@@ -183,8 +184,10 @@ export default function Home() {
               </motion.div>
             </div>
           </div>
+          <div className="hidden lg:block w-full lg:w-1/2"></div>
+        </div>
         {/* Right: Tràn viền (Full-bleed) Image */}
-        <div className="w-full lg:w-1/2 relative min-h-[50vh] lg:min-h-auto z-0 overflow-hidden lg:pl-4 xl:pl-8">
+        <div className="w-full lg:w-1/2 relative lg:absolute lg:top-0 lg:right-0 h-[50vh] lg:h-full z-0 overflow-hidden lg:pl-4 xl:pl-8">
           <Image 
             src="/anhbia.png" 
             alt="CLOOP Fashion Community" 
@@ -198,7 +201,7 @@ export default function Home() {
       {/* SECTION 2: TỦ ĐỒ UY TÍN (TRUSTED CLOSETS) - Accordion Thần Thánh */}
       <section className="w-full py-16 bg-[#F9F9F9]">
         {/* Mở rộng không gian để bằng với Trang Phục Cho Thuê */}
-        <div className="w-full px-4 md:px-8 lg:px-12 xl:px-20">
+        <div className="max-w-[1280px] mx-auto px-4 lg:px-6 w-full">
           {/* Header Section */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 md:gap-0 mb-10">
             <div>
@@ -302,7 +305,8 @@ export default function Home() {
 
       {/* SECTION 3: TRANG PHỤC CHO THUÊ (RENTAL HUB) - 50/50 Split Editorial */}
       {/* Bọc toàn bộ Section */}
-      <section className="w-full px-4 md:px-8 lg:px-12 xl:px-20 py-20 bg-white border-t border-stone-100">
+      <section className="w-full py-20 bg-white border-t border-stone-100">
+        <div className="max-w-[1280px] mx-auto px-4 lg:px-6 w-full">
         
         {/* HEADER */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6 border-b border-stone-200 pb-4">
@@ -537,7 +541,8 @@ export default function Home() {
       </section>
 
       {/* SECTION 4: CHUYỂN NHƯỢNG & KÝ GỬI (RESALE MARKET) */}
-      <section className="w-full px-4 md:px-8 lg:px-12 xl:px-20 py-20 bg-[#F9F9F9]">
+      <section className="w-full py-20 bg-[#F9F9F9]">
+        <div className="max-w-[1280px] mx-auto px-4 lg:px-6 w-full">
         {/* ===== ĐỒNG BỘ HEADER (Giống hệt phần Trang Phục Cho Thuê) ===== */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6 border-b border-gray-200 pb-4">
           <div className="flex items-center gap-3">
@@ -690,10 +695,12 @@ export default function Home() {
           </div>
 
         </div>
+        </div>
       </section>
 
       {/* ===== BẢO TÀNG KÝ ỨC TUẦN HOÀN (Nằm trên mục Chợ Xanh) ===== */}
-      <section className="w-full px-4 md:px-8 lg:px-12 xl:px-20 py-24 bg-[#F7F5F0]">
+      <section className="w-full py-24 bg-[#F7F5F0]">
+        <div className="max-w-[1280px] mx-auto px-4 lg:px-6 w-full">
         
         {/* Header Section */}
         <div className="flex flex-col items-center text-center mb-16">
@@ -773,6 +780,7 @@ export default function Home() {
           <button className="border-b-[2px] border-[#0A2517] pb-1 text-xs uppercase tracking-[0.2em] font-ui font-bold text-[#0A2517] hover:text-stone-500 hover:border-stone-500 transition-all">
             Đọc Thêm Câu Chuyện
           </button>
+        </div>
         </div>
       </section>
 
