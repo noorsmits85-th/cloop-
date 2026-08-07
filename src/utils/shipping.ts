@@ -25,29 +25,39 @@ export async function getShippingQuotes(
   toProvince: string,
   weight: number = 500
 ): Promise<ShippingQuote[]> {
-  // Logic giả lập: 
-  // - Nội thành (cùng tỉnh): 20k
-  // - Khác tỉnh: 35k
-  // - Hỏa tốc nội thành: 40k
-  
   const isSameProvince = fromProvince.trim().toLowerCase() === toProvince.trim().toLowerCase();
-  const baseFee = isSameProvince ? 20000 : 35000;
   
+  // Phát hiện vùng ven / huyện xã xa xôi dựa trên keyword
+  const isRuralArea = /(huyện|xã|thôn|ấp|cần giờ|củ chi|ba vì|sóc sơn)/i.test(toProvince);
+
+  // Logic giá:
+  // Nội tỉnh (Nội thành): 20k
+  // Nội tỉnh (Ngoại thành/Vùng xa): 30k
+  // Khác tỉnh: 35k
+  let baseFee = 35000;
+  let estimatedDays = 3;
+
+  if (isSameProvince) {
+    baseFee = isRuralArea ? 30000 : 20000;
+    estimatedDays = isRuralArea ? 2 : 1;
+  }
+
   const quotes: ShippingQuote[] = [
     {
       provider: "GHN",
       serviceId: "standard",
       name: "Giao Tiêu Chuẩn",
       fee: baseFee + (Math.max(0, weight - 500) * 10), // Trọng lượng lố tính 10đ/gram
-      estimatedDays: isSameProvince ? 1 : 3,
+      estimatedDays: estimatedDays,
     }
   ];
 
-  if (isSameProvince) {
+  // Hỏa tốc chỉ áp dụng cho nội tỉnh & nội thành (không áp dụng vùng xa)
+  if (isSameProvince && !isRuralArea) {
     quotes.push({
       provider: "GHN",
       serviceId: "express",
-      name: "Giao Hỏa Tốc",
+      name: "Giao Hỏa Tốc (Trong ngày)",
       fee: 40000 + (Math.max(0, weight - 500) * 15),
       estimatedDays: 0,
     });

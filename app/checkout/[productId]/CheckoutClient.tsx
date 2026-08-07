@@ -70,8 +70,19 @@ export default function CheckoutClient({
       setError("Vui lòng chọn phương thức giao hàng");
       return;
     }
-    if (!phone.trim() || !addressDetail.trim()) {
-      setError("Vui lòng nhập đủ SĐT và chi tiết địa chỉ");
+    if (!phone.trim() || !addressDetail.trim() || !startDate) {
+      setError("Vui lòng nhập đủ Ngày, SĐT và chi tiết địa chỉ");
+      return;
+    }
+    
+    // Validate Regex cơ bản ở Client
+    const phoneRegex = /(84|0[3|5|7|8|9])+([0-9]{8})\b/;
+    if (!phoneRegex.test(phone)) {
+      setError("Số điện thoại không đúng định dạng (Ví dụ: 0987654321)");
+      return;
+    }
+    if (addressDetail.length < 5) {
+      setError("Địa chỉ nhận hàng quá ngắn, vui lòng nhập rõ số nhà, tên đường.");
       return;
     }
 

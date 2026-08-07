@@ -4,8 +4,8 @@ import CheckoutClient from "./CheckoutClient";
 
 const prisma = new PrismaClient();
 
-export default async function CheckoutPage({ params }: { params: { productId: string } }) {
-  const { productId } = params;
+export default async function CheckoutPage({ params }: { params: Promise<{ productId: string }> }) {
+  const { productId } = await params;
 
   // 1. Fetch Product Data
   const product = await prisma.product.findUnique({

@@ -3,17 +3,34 @@ import { PrismaClient } from "@prisma/client";
 import { verifyShippingQuoteToken } from "@/src/utils/shipping";
 import { payos } from "@/src/utils/payos";
 import { startOfDay, endOfDay, addDays, subDays } from "date-fns";
+import { z } from "zod";
 
 const prisma = new PrismaClient();
+
+// Schema Validate dữ liệu đầu vào chuẩn 2027
+const CheckoutSchema = z.object({
+  productId: z.string().uuid("ID Sản phẩm không hợp lệ"),
+  userId: z.string().uuid("ID Người dùng không hợp lệ").or(z.string()),
+  shippingToken: z.string().min(10, "Thiếu Token Vận Chuyển"),
+  buyerAddress: z.string().min(10, "Địa chỉ nhận hàng quá ngắn, vui lòng nhập rõ số nhà, tên đường."),
+  buyerPhone: z.string().regex(/(84|0[3|5|7|8|9])+([0-9]{8})\b/, "Số điện thoại không đúng định dạng (Ví dụ: 0987654321)"),
+  startDate: z.string().datetime().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Ngày không hợp lệ")),
+  packageDays: z.number().int().positive().refine(val => [1, 3, 7].includes(val), "Gói thuê không hợp lệ (Chỉ chấp nhận 1, 3, 7 ngày)"),
+});
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { productId, userId, shippingToken, buyerAddress, buyerPhone, startDate, packageDays } = body;
-
-    if (!productId || !userId || !shippingToken || !startDate || !packageDays) {
-      return NextResponse.json({ error: "Thiếu thông tin thanh toán hoặc lịch thuê" }, { status: 400 });
+    
+    // 1. Zod Validation (Bức tường thép Server-side)
+    const parseResult = CheckoutSchema.safeParse(body);
+    if (!parseResult.success) {
+      // Lấy lỗi đầu tiên để báo về cho Client
+      const firstError = parseResult.error.errors[0].message;
+      return NextResponse.json({ error: firstError, details: parseResult.error.issues }, { status: 400 });
     }
+
+    const { productId, userId, shippingToken, buyerAddress, buyerPhone, startDate, packageDays } = parseResult.data;
 
     // 1. Fetch Product và Listing
     const product = await prisma.product.findUnique({
