@@ -538,6 +538,7 @@ export default function Home() {
           {/* ===== END RIGHT ===== */}
 
         </div>
+        </div>
       </section>
 
       {/* SECTION 4: CHUYỂN NHƯỢNG & KÝ GỬI (RESALE MARKET) */}
