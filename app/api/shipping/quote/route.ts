@@ -13,7 +13,7 @@ export async function POST(req: Request) {
     const GHN_TOKEN = process.env.GHN_API_TOKEN;
     const GHN_FEE_URL = "https://dev-online-gateway.ghn.vn/shiip/public-api/v2/shipping-order/fee";
     
-    let quotes = [];
+    let quotes: any[] = [];
 
     // NẾU CÓ TOKEN GHN THẬT -> GỌI API GHN
     if (GHN_TOKEN) {

@@ -62,7 +62,7 @@ export async function GET(req: Request) {
     const res = await fetch(endpoint, {
       method: "GET",
       headers: {
-        "Token": GHN_TOKEN,
+        "Token": GHN_TOKEN as string,
         "Content-Type": "application/json"
       }
     });

@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     const parseResult = CheckoutSchema.safeParse(body);
     if (!parseResult.success) {
       // Lấy lỗi đầu tiên để báo về cho Client
-      const firstError = parseResult.error.errors[0].message;
+      const firstError = parseResult.error.issues[0].message;
       return NextResponse.json({ error: firstError, details: parseResult.error.issues }, { status: 400 });
     }
 
