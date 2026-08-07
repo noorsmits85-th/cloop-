@@ -144,8 +144,10 @@ model Product {
   occasion  String? // Dự tiệc, Đi biển, Công sở...
   season    String? // Xuân Hè, Thu Đông...
 
-  // 📍 Định vị Không gian phục vụ tính năng "Tìm quanh tôi"
+  // 📍 Định vị Không gian phục vụ tính năng "Tìm quanh tôi" & GHN
   province        String
+  districtId      Int? // Mã Quận/Huyện của GHN
+  wardCode        String? // Mã Phường/Xã của GHN
   specificAddress String
   latitude        Float?
   longitude       Float?
@@ -232,6 +234,7 @@ model RentalHistory {
   actual_return_date DateTime? // Dùng để mở khóa lịch sớm khi khách hàng xác nhận đã gửi trả hàng
 
   status String @default("pending_payment") // "pending_payment", "active", "completed", "cancelled"
+  shippingCode String? // Mã vận đơn GHN
 
   invoice  Invoice? // Hóa đơn thanh toán
   disputes Dispute[] // Hồ sơ tranh chấp liên quan đến hợp đồng này

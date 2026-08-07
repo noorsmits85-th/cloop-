@@ -21,10 +21,18 @@ export default function CheckoutClient({
   turnaroundDays: number;
 }) {
   const router = useRouter();
-  const [toProvince, setToProvince] = useState("");
   const [addressDetail, setAddressDetail] = useState("");
   const [phone, setPhone] = useState("");
   
+  // GHN Address States
+  const [provinces, setProvinces] = useState<any[]>([]);
+  const [districts, setDistricts] = useState<any[]>([]);
+  const [wards, setWards] = useState<any[]>([]);
+  
+  const [selectedProvince, setSelectedProvince] = useState<{ id: string; name: string } | null>(null);
+  const [selectedDistrict, setSelectedDistrict] = useState<{ id: string; name: string } | null>(null);
+  const [selectedWard, setSelectedWard] = useState<{ id: string; name: string } | null>(null);
+
   const [shippingQuotes, setShippingQuotes] = useState<SignedShippingQuote[]>([]);
   const [selectedQuote, setSelectedQuote] = useState<SignedShippingQuote | null>(null);
   
@@ -36,19 +44,65 @@ export default function CheckoutClient({
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [error, setError] = useState("");
 
-  const handleFetchShipping = async () => {
-    if (!toProvince.trim()) {
-      setError("Vui lòng nhập Tỉnh/Thành phố nhận hàng");
-      return;
+  // Fetch Provinces on Mount
+  useEffect(() => {
+    fetch("/api/shipping/address?type=province")
+      .then(res => res.json())
+      .then(data => {
+        if (data.data) setProvinces(data.data);
+      })
+      .catch(console.error);
+  }, []);
+
+  // Fetch Districts when Province changes
+  useEffect(() => {
+    if (!selectedProvince) return;
+    setDistricts([]);
+    setWards([]);
+    setSelectedDistrict(null);
+    setSelectedWard(null);
+    fetch(`/api/shipping/address?type=district&province_id=${selectedProvince.id}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.data) setDistricts(data.data);
+      })
+      .catch(console.error);
+  }, [selectedProvince]);
+
+  // Fetch Wards when District changes
+  useEffect(() => {
+    if (!selectedDistrict) return;
+    setWards([]);
+    setSelectedWard(null);
+    fetch(`/api/shipping/address?type=ward&district_id=${selectedDistrict.id}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.data) setWards(data.data);
+      })
+      .catch(console.error);
+  }, [selectedDistrict]);
+
+  // Auto Fetch Shipping when Ward is selected
+  useEffect(() => {
+    if (selectedProvince && selectedDistrict && selectedWard) {
+      handleFetchShipping();
     }
+  }, [selectedWard]);
+
+  const handleFetchShipping = async () => {
+    if (!selectedProvince || !selectedDistrict || !selectedWard) return;
+    
     setError("");
     setIsLoadingShipping(true);
     
+    // Ghép chuỗi để tương thích với mock logic kiểm tra vùng ven hiện tại
+    const fullToProvinceStr = `${selectedWard.name}, ${selectedDistrict.name}, ${selectedProvince.name}`;
+
     try {
       const res = await fetch("/api/shipping/quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fromProvince, toProvince, weight }),
+        body: JSON.stringify({ fromProvince, toProvince: fullToProvinceStr, weight }),
       });
       
       const data = await res.json();
@@ -95,18 +149,21 @@ export default function CheckoutClient({
         throw new Error("Vui lòng đăng nhập để tiếp tục thanh toán");
       }
 
+      const fullToProvinceStr = `${selectedWard.name}, ${selectedDistrict.name}, ${selectedProvince.name}`;
+      const payload = {
+        productId,
+        userId,
+        shippingToken: selectedQuote.token,
+        buyerAddress: `${addressDetail}, ${fullToProvinceStr}`,
+        buyerPhone: phone,
+        startDate: startDate,
+        packageDays: selectedTier.days
+      };
+
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          productId,
-          userId,
-          shippingToken: selectedQuote.token,
-          buyerAddress: `${addressDetail}, ${toProvince}`,
-          buyerPhone: phone,
-          startDate: startDate,
-          packageDays: selectedTier.days
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -182,23 +239,53 @@ export default function CheckoutClient({
 
       <div className="space-y-4 mb-6">
         <div>
-          <label className="block text-sm font-ui text-stone-600 mb-1">Tỉnh/Thành phố</label>
-          <div className="flex gap-2">
-            <input 
-              type="text" 
-              value={toProvince}
-              onChange={(e) => setToProvince(e.target.value)}
-              placeholder="VD: Hà Nội, Hồ Chí Minh"
-              className="flex-1 px-3 py-2 border border-stone-200 rounded font-ui focus:outline-none focus:border-[#0A2517]"
-            />
-            <button 
-              onClick={handleFetchShipping}
-              disabled={isLoadingShipping || !toProvince.trim()}
-              className="px-4 py-2 bg-[#0A2517] text-white rounded font-ui text-sm hover:bg-[#113a25] disabled:opacity-50 flex items-center justify-center min-w-[100px]"
+          <label className="block text-sm font-ui text-stone-600 mb-1">Khu vực giao hàng (Tỉnh - Huyện - Xã)</label>
+          <div className="flex flex-col gap-2">
+            <select
+              value={selectedProvince?.id || ""}
+              onChange={(e) => {
+                const p = provinces.find((x) => x.ProvinceID == e.target.value);
+                setSelectedProvince(p ? { id: p.ProvinceID, name: p.ProvinceName } : null);
+              }}
+              className="w-full px-3 py-2 border border-stone-200 rounded font-ui focus:outline-none focus:border-[#0A2517] bg-white"
             >
-              {isLoadingShipping ? <Loader2 size={16} className="animate-spin" /> : "Tính phí"}
-            </button>
+              <option value="">-- Chọn Tỉnh/Thành phố --</option>
+              {provinces.map((p) => (
+                <option key={p.ProvinceID} value={p.ProvinceID}>{p.ProvinceName}</option>
+              ))}
+            </select>
+
+            <select
+              value={selectedDistrict?.id || ""}
+              onChange={(e) => {
+                const d = districts.find((x) => x.DistrictID == e.target.value);
+                setSelectedDistrict(d ? { id: d.DistrictID, name: d.DistrictName } : null);
+              }}
+              disabled={!selectedProvince}
+              className="w-full px-3 py-2 border border-stone-200 rounded font-ui focus:outline-none focus:border-[#0A2517] bg-white disabled:bg-stone-50"
+            >
+              <option value="">-- Chọn Quận/Huyện --</option>
+              {districts.map((d) => (
+                <option key={d.DistrictID} value={d.DistrictID}>{d.DistrictName}</option>
+              ))}
+            </select>
+
+            <select
+              value={selectedWard?.id || ""}
+              onChange={(e) => {
+                const w = wards.find((x) => x.WardCode == e.target.value);
+                setSelectedWard(w ? { id: w.WardCode, name: w.WardName } : null);
+              }}
+              disabled={!selectedDistrict}
+              className="w-full px-3 py-2 border border-stone-200 rounded font-ui focus:outline-none focus:border-[#0A2517] bg-white disabled:bg-stone-50"
+            >
+              <option value="">-- Chọn Phường/Xã --</option>
+              {wards.map((w) => (
+                <option key={w.WardCode} value={w.WardCode}>{w.WardName}</option>
+              ))}
+            </select>
           </div>
+          {isLoadingShipping && <div className="mt-2 text-sm text-[#0A2517] flex items-center gap-2"><Loader2 size={14} className="animate-spin" /> Đang tính phí ship...</div>}
         </div>
 
         <div>
