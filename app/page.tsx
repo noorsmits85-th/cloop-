@@ -3,7 +3,9 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Check, Star, Heart, Bookmark } from "lucide-react";
+import { ArrowRight, Check, Star, Heart, Bookmark, Sparkles, Search } from "lucide-react";
+import { motion } from "framer-motion";
+import MagneticButton from "./components/MagneticButton";
 
 export default function Home() {
   const [activeRentalCategory, setActiveRentalCategory] = useState("Tất cả");
@@ -101,25 +103,84 @@ export default function Home() {
         {/* Left: Text & CTAs */}
         <div className="w-full lg:w-1/2 flex flex-col justify-start items-start px-4 md:px-12 lg:px-20 xl:px-32 py-16 lg:pt-[15vh] lg:pb-20 z-10 relative mt-16 lg:mt-0">
           <div className="flex flex-col items-start justify-start w-full text-left max-w-2xl">
-              <h1 className="font-heading text-[32px] sm:text-4xl md:text-[56px] lg:text-6xl font-extrabold text-[#0A2517] leading-snug md:leading-snug lg:leading-snug mb-6 tracking-wide animate-fade-up-1 whitespace-nowrap">
-                Thuê & Sở Hữu <br/>
-                Thời Trang <br/>
-                Tuần Hoàn
-              </h1>
+              <motion.h1 
+                initial="hidden"
+                animate="visible"
+                variants={{
+                  hidden: {},
+                  visible: {
+                    transition: { staggerChildren: 0.1 }
+                  }
+                }}
+                className="font-heading text-[28px] sm:text-3xl md:text-[48px] lg:text-5xl font-extrabold text-[#0A2517] leading-snug md:leading-snug lg:leading-snug mb-5 tracking-wide whitespace-nowrap"
+              >
+                {["Thuê", "&", "Sở", "Hữu"].map((word, i) => (
+                  <motion.span key={i} className="inline-block mr-3" variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } } }}>
+                    {word}
+                  </motion.span>
+                ))}
+                <br/>
+                {["Thời", "Trang"].map((word, i) => (
+                  <motion.span key={i+10} className="inline-block mr-3" variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } } }}>
+                    {word}
+                  </motion.span>
+                ))}
+                <br/>
+                {["Tuần", "Hoàn"].map((word, i) => (
+                  <motion.span key={i+20} className="inline-block mr-3" variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } } }}>
+                    {word}
+                  </motion.span>
+                ))}
+              </motion.h1>
 
-              <p className="font-body text-lg md:text-xl text-stone-700 leading-loose mb-10 animate-fade-up-2 w-full lg:pr-4">
+              <motion.p 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.8, duration: 0.8 }}
+                className="font-body text-base md:text-lg text-stone-700 leading-relaxed md:leading-loose mb-8 w-full lg:pr-4"
+              >
                 Có những món đồ cất trong tủ kính mang theo cả một thời tuổi trẻ. Thay vì để chúng ngủ quên, hãy gửi gắm vào tủ đồ CLOOP. Chút hoài niệm của bạn hôm nay sẽ là sự rạng rỡ của một người khác ngày mai.
-              </p>
+              </motion.p>
 
-              <div className="flex flex-col sm:flex-row w-full sm:w-auto items-stretch sm:items-center gap-4 animate-fade-up-3">
-                <Link href="/shop" className="group font-ui font-semibold text-sm md:text-base px-8 h-[54px] bg-[#0A2517] text-white rounded hover:bg-[#113a25] transition-colors duration-300 tracking-wide flex items-center justify-center gap-2">
-                  KHÁM PHÁ TỦ ĐỒ <ArrowRight size={16} className="opacity-0 -ml-4 group-hover:opacity-100 group-hover:ml-0 transition-all duration-300" />
-                </Link>
+              {/* Generative UI Vibe: Smart Search Bar */}
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 1, duration: 0.5 }}
+                className="w-full max-w-lg mb-10 relative group"
+              >
+                <div className="absolute -inset-1 bg-gradient-to-r from-emerald-200 to-teal-100 rounded-lg blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
+                <div className="relative flex items-center bg-white border border-stone-200 rounded-lg p-2 shadow-sm focus-within:ring-2 focus-within:ring-[#0A2517]/20 transition-all">
+                  <Search size={18} className="text-stone-400 ml-2 mr-3" />
+                  <input 
+                    type="text" 
+                    placeholder="Bạn đang tìm chiếc Blazer cho tiệc cuối tuần?" 
+                    className="flex-1 bg-transparent border-none outline-none font-ui text-sm text-[#0A2517] placeholder:text-stone-400"
+                  />
+                  <button className="px-4 py-2 bg-[#0A2517] text-white rounded-md text-xs font-bold uppercase tracking-wider hover:bg-[#113a25] transition-colors">
+                    Tìm kiếm
+                  </button>
+                </div>
+              </motion.div>
+
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1.2 }}
+                className="flex flex-col sm:flex-row w-full sm:w-auto items-stretch sm:items-center gap-4"
+              >
+                <MagneticButton>
+                  <Link href="/shop" className="group font-ui font-semibold text-xs md:text-sm px-6 h-[48px] bg-[#0A2517] text-white rounded hover:bg-[#113a25] transition-colors duration-300 tracking-wide flex items-center justify-center gap-2 relative z-10 w-full sm:w-auto">
+                    KHÁM PHÁ TỦ ĐỒ <ArrowRight size={16} className="opacity-0 -ml-4 group-hover:opacity-100 group-hover:ml-0 transition-all duration-300" />
+                  </Link>
+                </MagneticButton>
                 
-                <Link href="/my-closet" className="font-ui font-semibold text-sm md:text-base px-8 h-[54px] bg-transparent text-[#0A2517] border-2 border-[#0A2517] rounded hover:bg-[#0A2517] hover:text-white transition-colors duration-300 tracking-wide flex items-center justify-center">
-                  CHIA SẺ TỦ ĐỒ
-                </Link>
-              </div>
+                <MagneticButton>
+                  <Link href="/my-closet" className="font-ui font-semibold text-xs md:text-sm px-6 h-[48px] bg-transparent text-[#0A2517] border-2 border-[#0A2517] rounded hover:bg-[#0A2517] hover:text-white transition-colors duration-300 tracking-wide flex items-center justify-center relative z-10 w-full sm:w-auto bg-white/50 backdrop-blur-sm">
+                    CHIA SẺ TỦ ĐỒ
+                  </Link>
+                </MagneticButton>
+              </motion.div>
             </div>
           </div>
         {/* Right: Tràn viền (Full-bleed) Image */}
@@ -245,7 +306,7 @@ export default function Home() {
         
         {/* HEADER */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6 border-b border-stone-200 pb-4">
-          <h2 className="text-2xl md:text-4xl lg:text-5xl font-heading font-extrabold text-black tracking-tight">
+          <h2 className="text-2xl md:text-4xl lg:text-5xl font-heading font-extrabold text-[#0A2517] tracking-tight">
             Trang Phục Cho Thuê
           </h2>
           
@@ -480,8 +541,8 @@ export default function Home() {
         {/* ===== ĐỒNG BỘ HEADER (Giống hệt phần Trang Phục Cho Thuê) ===== */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6 border-b border-gray-200 pb-4">
           <div className="flex items-center gap-3">
-            <h2 className="text-2xl md:text-4xl lg:text-5xl font-heading font-extrabold text-black tracking-tight">
-              Chuyển Nhượng Sản Phẩm
+            <h2 className="text-2xl md:text-4xl lg:text-5xl font-heading font-extrabold text-[#0A2517] tracking-tight">
+              Trang Phục Thanh Lý
             </h2>
           </div>
           

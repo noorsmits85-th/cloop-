@@ -4,8 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation"; 
 import Image from "next/image";
 import Link from "next/link";
-import { MapPin, Star, ArrowLeft, Shirt, ShoppingBag, ChevronLeft, ChevronRight } from "lucide-react";
-
+import { MapPin, Star, ArrowLeft, Shirt, ShoppingBag, ChevronLeft, ChevronRight, Ruler, Scissors, Scale, User } from "lucide-react";
 
 import RentalBookingBox from "../../../components/RentalBookingBox"; 
 
@@ -198,22 +197,27 @@ function ProductDetailContent() {
               <span className="text-gray-400 font-medium font-mono translate-y-[1px]">(ĐỘ UY TÍN CAO)</span>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white border border-[#E9E2D8] rounded-2xl p-4 shadow-sm">
-                <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">KÍCH CỠ</div>
-                <div className="text-sm font-bold text-[#183A2D]">{product.size} (Độ mới: {product.condition})</div>
+            <div className="bg-white border border-[#E9E2D8] rounded-3xl p-6 shadow-sm space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1">
+                  <span className="flex items-center gap-1.5 text-[9px] font-bold text-gray-400 uppercase tracking-wider"><Ruler size={12} /> KÍCH CỠ</span>
+                  <span className="text-sm font-bold text-[#183A2D]">{product.size} <span className="text-xs font-normal text-gray-500">(Độ mới: {product.condition})</span></span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="flex items-center gap-1.5 text-[9px] font-bold text-gray-400 uppercase tracking-wider"><Scissors size={12} /> CHẤT LIỆU</span>
+                  <span className="text-sm font-bold text-[#183A2D]">{product.material}</span>
+                </div>
               </div>
-              <div className="bg-white border border-[#E9E2D8] rounded-2xl p-4 shadow-sm">
-                <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">CHẤT LIỆU</div>
-                <div className="text-sm font-bold text-[#183A2D]">{product.material}</div>
-              </div>
-              <div className="bg-white border border-[#E9E2D8] rounded-2xl p-4 shadow-sm">
-                <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">CHIỀU CAO KHUYẾN NGHỊ</div>
-                <div className="text-sm font-bold text-green-800 font-mono">{product.targetHeight} cm</div>
-              </div>
-              <div className="bg-white border border-[#E9E2D8] rounded-2xl p-4 shadow-sm">
-                <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">CÂN NẶNG KHUYẾN NGHỊ</div>
-                <div className="text-sm font-bold text-green-800 font-mono">{product.targetWeight} kg</div>
+              <div className="w-full h-px bg-stone-100" />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1">
+                  <span className="flex items-center gap-1.5 text-[9px] font-bold text-gray-400 uppercase tracking-wider"><User size={12} /> CHIỀU CAO KHUYẾN NGHỊ</span>
+                  <span className="text-sm font-bold text-green-800 font-mono">{product.targetHeight} cm</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="flex items-center gap-1.5 text-[9px] font-bold text-gray-400 uppercase tracking-wider"><Scale size={12} /> CÂN NẶNG KHUYẾN NGHỊ</span>
+                  <span className="text-sm font-bold text-green-800 font-mono">{product.targetWeight} kg</span>
+                </div>
               </div>
             </div>
 

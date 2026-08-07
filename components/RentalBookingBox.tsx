@@ -35,17 +35,21 @@ export default function RentalBookingBox({
   ownerAddress
 }: RentalBookingBoxProps) {
   const router = useRouter();
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
+  const [rentalPackage, setRentalPackage] = useState<1 | 3 | 7>(3);
   
   const [renterName, setRenterName] = useState("");
   const [renterPhone, setRenterPhone] = useState(""); 
   
   const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const [showQrModal, setShowQrModal] = useState(false);
-  const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isRedirecting, setIsRedirecting] = useState(false);
+  
+  // Mock Payment Flow States
+  const [showMockPayment, setShowMockPayment] = useState(false);
+  const [mockPaymentStatus, setMockPaymentStatus] = useState<"IDLE" | "SCANNING" | "SUCCESS">("IDLE");
+
+  // Tự động tính ngày kết thúc
+  const endDate = new Date(new Date(startDate).getTime() + (rentalPackage - 1) * 86400000).toISOString().slice(0, 10);
 
   // States quản lý dữ liệu xếp hạng sao thật của chủ tủ đồ bốc từ database
   const [ownerRating, setOwnerRating] = useState<number | null>(null);
@@ -67,8 +71,17 @@ export default function RentalBookingBox({
   const finalListingType = listingType ?? activeType;
   const isRental = finalListingType === "RENT";
   
-  const days = isRental && startDate && endDate ? Math.max(1, Math.round((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000) + 1) : 0;
-  const subTotal = isRental ? (days > 0 ? days * activePrice : 0) : activePrice; 
+  const days = isRental && startDate ? rentalPackage : 0;
+  
+  // LOGIC GIẢM GIÁ GÓI THUÊ
+  let discountPercent = 0;
+  if (days === 3) discountPercent = 0.10; // Giảm 10%
+  if (days === 7) discountPercent = 0.25; // Giảm 25%
+  
+  const baseSubTotal = isRental ? (days > 0 ? days * activePrice : 0) : activePrice; 
+  const discountAmount = baseSubTotal * discountPercent;
+  const subTotal = baseSubTotal - discountAmount;
+  
   const depositAmount = isRental && days > 0 ? Number(depositPercent) : 0;
   
   const totalInvoicePrice = isRental 
@@ -122,41 +135,25 @@ export default function RentalBookingBox({
     if (!renterPhone.trim()) { alert(`Vui lòng nhập số điện thoại người ${isRental ? "thuê" : "mua"} nhé!`); return; }
     
     if (isRental) {
-      if (!startDate || !endDate) { alert("Vui lòng chọn ngày bắt đầu và kết thúc thuê."); return; }
-      if (new Date(endDate) < new Date(startDate)) { alert("Ngày kết thúc phải sau ngày bắt đầu."); return; }
+      if (!startDate) { alert("Vui lòng chọn ngày bắt đầu thuê."); return; }
     }
     if (!agreedToTerms) { alert(`Bạn ơi, vui lòng tích chọn đồng ý với Điều khoản và cam kết bảo chứng của CLOOP nhé! 😊`); return; }
 
-    setIsSubmitting(true);
-    try {
-      if (isRental) {
-        const { data: overlapping } = await supabase.from("rental_history").select("start_date, end_date").eq("product_id", productId).eq("status", "active");
-        const hasConflict = (overlapping || []).some((r: any) => startDate <= r.end_date && endDate >= r.start_date);
-        
-        if (hasConflict) {
-          alert("Rất tiếc, sản phẩm đã có người đặt thuê trong khoảng thời gian này. Vui lòng chọn ngày khác!");
-          setIsSubmitting(false);
-          return;
-        }
-      }
-      
-      setIsRedirecting(true);
-      const payosResult = await createPayOSPaymentLink(productId); // FIXME: server action expects rentalId, but we don't have it yet!
-      
-      if (!payosResult.success) {
-        alert("Lỗi khởi tạo cổng thanh toán: " + payosResult.error);
-        setIsSubmitting(false);
-        setIsRedirecting(false);
-        return;
-      }
-      
-      window.location.href = payosResult.checkoutUrl as string;
-      
-    } catch (err: any) {
-      alert(`Lỗi hệ thống: ${err.message}`);
-      setIsSubmitting(false);
-      setIsRedirecting(false);
-    }
+    // Kích hoạt Mock Payment Flow thay vì gọi API thật
+    setShowMockPayment(true);
+    setMockPaymentStatus("SCANNING");
+    
+    // Giả lập thời gian quét mã QR 3 giây
+    setTimeout(() => {
+      setMockPaymentStatus("SUCCESS");
+      // Sau khi thành công 2 giây thì tắt modal và reload
+      setTimeout(() => {
+        setShowMockPayment(false);
+        setMockPaymentStatus("IDLE");
+        alert("🎉 Đặt đồ thành công! Cảm ơn bạn đã đồng hành cùng thời trang tuần hoàn.");
+        // Chuyển về trang chủ hoặc tủ đồ
+      }, 2000);
+    }, 3000);
   };
   // Hàm confirmManualTransfer đã bị xóa vì dùng Webhook
   return (
@@ -187,14 +184,37 @@ export default function RentalBookingBox({
         </div>
         
         {isRental && (
-          <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-4 pt-2">
             <div>
-              <label className="block text-[11px] font-bold text-[#183A2D] uppercase tracking-wider mb-1.5">Từ ngày</label>
-              <input type="date" min={today} value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full px-3 py-3 rounded-2xl border border-[#E9E2D8] text-xs focus:outline-none focus:border-green-800 bg-white" />
+              <label className="block text-[11px] font-bold text-[#183A2D] uppercase tracking-wider mb-2">Gói Thuê Siêu Tiết Kiệm</label>
+              <div className="grid grid-cols-3 gap-2">
+                {[1, 3, 7].map((pkg) => (
+                  <button
+                    key={pkg}
+                    onClick={() => setRentalPackage(pkg as 1|3|7)}
+                    className={`relative p-2 rounded-xl border text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all ${
+                      rentalPackage === pkg 
+                        ? "bg-[#183A2D] text-white border-[#183A2D] shadow-md" 
+                        : "bg-white text-stone-600 border-stone-200 hover:border-stone-400"
+                    }`}
+                  >
+                    <span>{pkg} Ngày</span>
+                    {pkg === 3 && <span className="absolute -top-2 -right-2 bg-amber-400 text-amber-950 text-[9px] px-1.5 py-0.5 rounded-full">-10%</span>}
+                    {pkg === 7 && <span className="absolute -top-2 -right-2 bg-emerald-400 text-emerald-950 text-[9px] px-1.5 py-0.5 rounded-full">-25%</span>}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div>
-              <label className="block text-[11px] font-bold text-[#183A2D] uppercase tracking-wider mb-1.5">Đến ngày</label>
-              <input type="date" min={startDate || today} value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full px-3 py-3 rounded-2xl border border-[#E9E2D8] text-xs focus:outline-none focus:border-green-800 bg-white" />
+            
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-[11px] font-bold text-[#183A2D] uppercase tracking-wider mb-1.5">Từ ngày</label>
+                <input type="date" min={today} value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full px-3 py-3 rounded-2xl border border-[#E9E2D8] text-xs focus:outline-none focus:border-green-800 bg-white" />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Đến ngày (Tự động)</label>
+                <input type="date" value={endDate} readOnly className="w-full px-3 py-3 rounded-2xl border border-stone-100 text-xs text-gray-400 bg-stone-50 cursor-not-allowed" />
+              </div>
             </div>
           </div>
         )}
@@ -203,7 +223,10 @@ export default function RentalBookingBox({
       <div className="bg-white/50 p-4 rounded-2xl border border-[#E9E2D8] space-y-3">
         <div className="flex justify-between text-xs text-gray-500">
           <span>{isRental ? `Chi phí thuê (${days} ngày):` : "Giá sản phẩm:"}</span>
-          <span className="font-mono font-semibold text-stone-900">{subTotal.toLocaleString()}đ</span>
+          <div className="flex items-center gap-2 font-mono">
+            {discountAmount > 0 && <span className="text-stone-400 line-through">{baseSubTotal.toLocaleString()}đ</span>}
+            <span className="font-semibold text-stone-900">{subTotal.toLocaleString()}đ</span>
+          </div>
         </div>
         
         {isRental && (
@@ -237,10 +260,52 @@ export default function RentalBookingBox({
           </label>
         </div>
 
-        <button onClick={handleActivatePayment} disabled={isSubmitting || isRedirecting} className="w-full py-4 bg-[#183A2D] text-white font-bold text-xs uppercase tracking-widest rounded-2xl hover:bg-[#23452F] transition-all shadow-md flex items-center justify-center gap-2 mt-2">
-          <ShieldCheck size={16} className={isRedirecting ? "animate-pulse" : ""} /> {isRedirecting ? "ĐANG KẾT NỐI PAYOS..." : (isSubmitting ? "ĐANG XỬ LÝ..." : `BẢO CHỨNG BẰNG PAYOS ➔`)}
+        <button onClick={handleActivatePayment} className="w-full py-4 bg-[#183A2D] text-white font-bold text-xs uppercase tracking-widest rounded-2xl hover:bg-[#23452F] transition-all shadow-md flex items-center justify-center gap-2 mt-2">
+          <ShieldCheck size={16} /> BẢO CHỨNG GIAO DỊCH ➔
         </button>
       </div>
+
+      {/* MOCK PAYMENT MODAL THAY CHO PAYOS THẬT */}
+      <AnimatePresence>
+        {showMockPayment && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => { if(mockPaymentStatus !== "SCANNING") setShowMockPayment(false) }}
+              className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl text-center flex flex-col items-center justify-center space-y-6 overflow-hidden"
+            >
+              {mockPaymentStatus === "SCANNING" ? (
+                <>
+                  <div className="relative w-48 h-48 bg-stone-100 rounded-2xl flex items-center justify-center border-2 border-dashed border-stone-300 overflow-hidden">
+                    <QrCode size={100} className="text-stone-300" />
+                    {/* Fake Scanning Line */}
+                    <motion.div 
+                      animate={{ y: [-100, 100] }} transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                      className="absolute top-1/2 left-0 w-full h-1 bg-green-500 shadow-[0_0_15px_rgba(34,197,94,0.6)]"
+                    />
+                  </div>
+                  <h3 className="text-lg font-bold text-[#183A2D] font-heading">Đang chờ thanh toán...</h3>
+                  <p className="text-xs text-stone-500 max-w-[250px]">Vui lòng mở app ngân hàng và quét mã QR để bảo chứng giao dịch.</p>
+                </>
+              ) : (
+                <>
+                  <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", bounce: 0.5 }}>
+                    <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-2">
+                      <CheckCircle2 size={50} className="text-green-600" />
+                    </div>
+                  </motion.div>
+                  <h3 className="text-xl font-bold text-green-700 font-heading">Bảo Chứng Thành Công!</h3>
+                  <p className="text-xs text-stone-500 max-w-[250px]">Giao dịch đã được hệ thống lưu lại an toàn. Bạn có thể liên hệ với chủ đồ ngay bây giờ.</p>
+                </>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Xóa Modal QR tĩnh */}
     </div>

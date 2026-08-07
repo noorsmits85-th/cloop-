@@ -21,7 +21,7 @@ const VINTAGE_PAPER = "https://images.unsplash.com/photo-1586075010923-2dd4570fb
 interface ProductSpecifications {
   name: string; size: "S" | "M" | "L" | "XL"; targetHeight: string; targetWeight: string;
   bust?: string; waist?: string; hips?: string; color: string; material: string;
-  condition: string; province: string; ward: string;
+  condition: string; province: string; district: string; ward: string; address: string;
   originalPrice: number; 
   ownerPhone: string;
   occasion: string; 
@@ -75,7 +75,7 @@ export default function CreateProductListingPage() {
   const [product, setProduct] = useState<ProductSpecifications>({
     name: "", size: "M", targetHeight: "", targetWeight: "",
     bust: "", waist: "", hips: "", color: "", material: "",
-    condition: "Mới 95%", province: "Nghệ An", ward: "Phường Bến Thủy",
+    condition: "Mới 95%", province: "Hà Nội", district: "Quận Hoàn Kiếm", ward: "Phường Hàng Đào", address: "",
     originalPrice: 500000, 
     ownerPhone: "",
     occasion: "Dạo phố",
@@ -341,7 +341,7 @@ export default function CreateProductListingPage() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=Caveat:wght@400;500;600;700&display=swap');
         h1, h2, h3, .font-heading { font-family: 'Cormorant Garamond', serif !important; }
-        .font-handwriting { font-family: 'Caveat', cursive !important; }
+        .font-handwriting { font-family: 'Dancing Script', cursive !important; }
         
         .torn-paper {
             background: #FFFDF9;
@@ -432,7 +432,7 @@ export default function CreateProductListingPage() {
             <section>
               <div className="flex items-center gap-3 mb-5">
                 <span className="font-heading italic text-2xl text-amber-700/60">01.</span>
-                <h2 className="text-[13px] font-bold uppercase tracking-widest text-stone-700">Chân dung món đồ</h2>
+                <h2 className="font-heading text-lg md:text-xl font-bold tracking-wider text-[#183A2D] uppercase">Chân dung món đồ</h2>
               </div>
               
               <div 
@@ -470,7 +470,7 @@ export default function CreateProductListingPage() {
             <section>
               <div className="flex items-center gap-3 mb-5">
                 <span className="font-heading italic text-2xl text-amber-700/60">02.</span>
-                <h2 className="text-[13px] font-bold uppercase tracking-widest text-stone-700">Giới thiệu đôi nét</h2>
+                <h2 className="font-heading text-lg md:text-xl font-bold tracking-wider text-[#183A2D] uppercase">Giới thiệu đôi nét</h2>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -515,7 +515,7 @@ export default function CreateProductListingPage() {
             <section>
               <div className="flex items-center gap-3 mb-5">
                 <span className="font-heading italic text-2xl text-amber-700/60">03.</span>
-                <h2 className="text-[13px] font-bold uppercase tracking-widest text-stone-700">Vừa vặn hoàn hảo</h2>
+                <h2 className="font-heading text-lg md:text-xl font-bold tracking-wider text-[#183A2D] uppercase">Vừa vặn hoàn hảo</h2>
               </div>
               <div className="bg-[#FAF9F5] p-6 border border-[#E9E2D5] rounded-sm relative">
                 <div className="absolute top-3 right-3 opacity-20"><Shirt size={40} /></div>
@@ -541,11 +541,13 @@ export default function CreateProductListingPage() {
             <section>
               <div className="flex items-center gap-3 mb-5">
                 <span className="font-heading italic text-2xl text-amber-700/60">04.</span>
-                <h2 className="text-[13px] font-bold uppercase tracking-widest text-stone-700">Tọa độ & Trạm gửi</h2>
+                <h2 className="font-heading text-lg md:text-xl font-bold tracking-wider text-[#183A2D] uppercase">Tọa độ & Trạm gửi</h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div><label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-2">Tỉnh / Thành phố</label><input type="text" required className="scrapbook-input" value={product.province} onChange={(e) => setProduct({...product, province: e.target.value})} /></div>
-                <div><label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-2">Quận / Phường hiển thị</label><input type="text" required className="scrapbook-input" value={product.ward} onChange={(e) => setProduct({...product, ward: e.target.value})} /></div>
+                <div><label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-2">Tỉnh / Thành phố</label><input type="text" required placeholder="VD: Hà Nội..." className="scrapbook-input font-bold text-stone-700" value={product.province} onChange={(e) => setProduct({...product, province: e.target.value})} /></div>
+                <div><label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-2">Quận / Huyện</label><input type="text" required placeholder="VD: Quận Hoàn Kiếm..." className="scrapbook-input font-bold text-stone-700" value={product.district} onChange={(e) => setProduct({...product, district: e.target.value})} /></div>
+                <div><label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-2">Phường / Xã</label><input type="text" required placeholder="VD: Phường Hàng Đào..." className="scrapbook-input font-bold text-stone-700" value={product.ward} onChange={(e) => setProduct({...product, ward: e.target.value})} /></div>
+                <div><label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-2">Địa chỉ cụ thể (Tên đường, số nhà)</label><input type="text" required placeholder="VD: Số 123 Đường XYZ..." className="scrapbook-input font-bold text-stone-700" value={product.address} onChange={(e) => setProduct({...product, address: e.target.value})} /></div>
 
                 <div className="md:col-span-2">
                   <label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-2">Số điện thoại của cậu *</label>
@@ -566,7 +568,7 @@ export default function CreateProductListingPage() {
             <section>
               <div className="flex items-center gap-3 mb-5">
                 <span className="font-heading italic text-2xl text-amber-700/60">05.</span>
-                <h2 className="text-[13px] font-bold uppercase tracking-widest text-stone-700">Hành trình tiếp theo</h2>
+                <h2 className="font-heading text-lg md:text-xl font-bold tracking-wider text-[#183A2D] uppercase">Hành trình tiếp theo</h2>
               </div>
               
               <div className="space-y-4 font-sans">
@@ -588,7 +590,7 @@ export default function CreateProductListingPage() {
                 <div className={`p-6 rounded-sm border transition-all ${listings.isSale ? "bg-[#F5F8FA] border-blue-800/20 shadow-sm" : "bg-[#FFFDF9] border-[#E9E2D5]"}`}>
                   <div className="flex items-center gap-3">
                     <input type="checkbox" id="sale" className="w-4 h-4 accent-blue-700 cursor-pointer" checked={listings.isSale} onChange={(e) => setListings({...listings, isSale: e.target.checked})} />
-                    <label htmlFor="sale" className="font-bold text-stone-800 text-[13px] uppercase tracking-wider cursor-pointer">Thanh lý luôn</label>
+                    <label htmlFor="sale" className="font-bold text-stone-800 text-[13px] uppercase tracking-wider cursor-pointer">Nhượng lại món đồ này (Thanh lý)</label>
                   </div>
                   {listings.isSale && (
                     <div className="mt-4 ml-7 w-full sm:w-1/2 animate-fadeIn">
@@ -617,7 +619,7 @@ export default function CreateProductListingPage() {
             <section>
               <div className="flex items-center gap-3 mb-5">
                 <span className="font-heading italic text-2xl text-amber-700/60">06.</span>
-                <h2 className="text-[13px] font-bold uppercase tracking-widest text-stone-700">Ký ức bỏ túi (Tùy chọn)</h2>
+                <h2 className="font-heading text-lg md:text-xl font-bold tracking-wider text-[#183A2D] uppercase">Ký ức bỏ túi (Tùy chọn)</h2>
               </div>
               <div className="bg-[#FFFDF9] p-6 border border-[#E9E2D5] rounded-sm relative">
                 <div className="flex items-center gap-3 mb-4">

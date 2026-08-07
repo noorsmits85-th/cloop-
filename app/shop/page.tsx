@@ -5,8 +5,8 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 // Đã bảo chứng import đầy đủ tất cả icon hệ thống chống lỗi ts(2304)
-import { MapPin, Star, Filter, ArrowUpDown, ArrowLeft, Search, SlidersHorizontal, Shirt } from "lucide-react";
-
+import { MapPin, Star, Filter, ArrowUpDown, ArrowLeft, Search, SlidersHorizontal, Shirt, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 import { supabase } from "@/lib/supabase";
 
@@ -27,6 +27,8 @@ interface Product {
   occasion: string;
   ownerName?: string; // 🟢 NÂNG CẤP: Khai báo thêm trường lưu trữ tên chủ đồ
   userId: string;
+  size?: string;
+  material?: string;
 }
 
 function ShopContent() {
@@ -36,11 +38,18 @@ function ShopContent() {
   // 🎛️ a) Nhận diện phân luồng trực tiếp từ URL bar (?type và ?occasion mới)
   const urlType = searchParams.get("type") || "all";
   const urlOccasion = searchParams.get("occasion");
+  const urlSize = searchParams.get("size") || "all";
+  const urlMaterial = searchParams.get("material") || "all";
 
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  
+  const [selectedSize, setSelectedSize] = useState(urlSize);
+  const [selectedMaterial, setSelectedMaterial] = useState(urlMaterial);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [showAllMaterials, setShowAllMaterials] = useState(false);
 
   // 🎛️ b) Khởi tạo state lọc dịp linh hoạt theo URL bar thay vì ép cứng "Tất cả"
   const [selectedOccasion, setSelectedOccasion] = useState(urlOccasion || "Tất cả");
@@ -126,6 +135,12 @@ function ShopContent() {
             const matchedUser = usersDataForProducts.find((u: any) => u.id === uId);
             const ownerName = matchedUser?.name || item.owner_name || item.ownerName || "Thành viên CLOOP";
 
+            // 🟢 MOCK DỮ LIỆU BỘ LỌC 2027
+            const sizes = ["S", "M", "L", "FreeSize"];
+            const randomSize = sizes[Math.floor(Math.random() * sizes.length)];
+            const materials = ["Lụa", "Cotton", "Denim", "Linen", "Voan", "Gấm", "Taffeta", "Nỉ", "Vải dù", "Da", "Ren"];
+            const randomMaterial = materials[Math.floor(Math.random() * materials.length)];
+
             // d) ĐỐI SOÁT TRƯỜNG OCCASION: Đồng bộ cấu trúc dữ liệu ở cả 3 nhánh đẩy đồ lên sàn
             if (urlType === "rent" && rentPrice > 0) {
               mapped.push({
@@ -142,7 +157,9 @@ function ShopContent() {
                 storeRetailPrice,
                 occasion: item.occasion || "Khác",
                 ownerName: ownerName, // 🟢 Đẩy vào Object
-                userId: uId || "anonymous"
+                userId: uId || "anonymous",
+                size: item.size || randomSize,
+                material: item.material || randomMaterial
               });
             } else if (urlType === "sell" && sellPrice > 0) {
               mapped.push({
@@ -159,7 +176,9 @@ function ShopContent() {
                 storeRetailPrice,
                 occasion: item.occasion || "Khác",
                 ownerName: ownerName, // 🟢 Đẩy vào Object
-                userId: uId || "anonymous"
+                userId: uId || "anonymous",
+                size: item.size || randomSize,
+                material: item.material || randomMaterial
               });
             } else if (urlType === "all") {
               const hasRent = rentPrice > 0;
@@ -180,7 +199,9 @@ function ShopContent() {
                   storeRetailPrice,
                   occasion: item.occasion || "Khác",
                   ownerName: ownerName, // 🟢 Đẩy vào Object
-                  userId: uId || "anonymous"
+                  userId: uId || "anonymous",
+                  size: item.size || randomSize,
+                  material: item.material || randomMaterial
                 });
               }
             }
@@ -191,7 +212,6 @@ function ShopContent() {
       } catch (err) {
         console.error("❌ Lỗi vận hành dòng chảy dữ liệu sàn /shop:", err);
       } finally {
-        // 🛠️ ĐÃ SỬA LỖI NGHIÊM TRỌNG: Đổi từ setProductsLoading thành setLoading chính xác để tắt trạng thái chờ
         setLoading(false);
       }
     }
@@ -199,12 +219,22 @@ function ShopContent() {
     fetchShopProducts();
   }, [urlType]);
 
-  // 🎛️ e) BỘ LỌC ĐA NHIỆM: Đối soát đồng bộ tuyệt đối giữa Ô Tìm kiếm Text và Chip Occasion động
+  // MOCK DỮ LIỆU DANH MỤC
+  const filterChips = ["Tất cả", "Tiệc cưới", "Dạ hội", "Dạo phố", "Áo dài", "Đi biển", "Kỷ yếu", "Áo", "Quần", "Váy", "Giày Dép", "Phụ Kiện"];
+
+  // 🎛️ e) BỘ LỌC ĐA NHIỆM
   useEffect(() => {
     let result = [...products];
 
     if (selectedOccasion !== "Tất cả") {
-      result = result.filter(p => p.occasion === selectedOccasion);
+      result = result.filter(p => 
+        (p.occasion && p.occasion.includes(selectedOccasion)) || 
+        (p.title && p.title.toLowerCase().includes(selectedOccasion.toLowerCase()))
+      );
+    }
+    
+    if (selectedSize !== "all") {
+      result = result.filter(p => p.size === selectedSize);
     }
 
     if (searchQuery.trim() !== "") {
@@ -212,14 +242,13 @@ function ShopContent() {
       result = result.filter(p => 
         p.title.toLowerCase().includes(q) || 
         p.location.toLowerCase().includes(q) ||
-        (p.ownerName && p.ownerName.toLowerCase().includes(q)) // Cho phép search luôn theo tên tác giả
+        (p.ownerName && p.ownerName.toLowerCase().includes(q))
       );
     }
 
     setFilteredProducts(result);
-  }, [searchQuery, selectedOccasion, products]);
+  }, [searchQuery, selectedOccasion, selectedSize, products]);
 
-  // Hàm chuyển đổi tham số URL thủ công khi click trực tiếp vào hàng chip trên Sàn
   const handleChipClick = (occName: string) => {
     setSelectedOccasion(occName);
     const params = new URLSearchParams(window.location.search);
@@ -231,26 +260,36 @@ function ShopContent() {
     router.push(`/shop?${params.toString()}`);
   };
 
+  const handleSizeClick = (size: string) => {
+    const newSize = selectedSize === size ? "all" : size;
+    setSelectedSize(newSize);
+    const params = new URLSearchParams(window.location.search);
+    if (newSize === "all") {
+      params.delete("size");
+    } else {
+      params.set("size", newSize);
+    }
+    router.push(`/shop?${params.toString()}`);
+  };
+
   return (
     <main className="min-h-screen bg-[#FAF8F3] text-[#183A2D] antialiased p-6 md:p-12 font-sans selection:bg-[#183A2D] selection:text-white">
       <div className="max-w-[1400px] mx-auto space-y-8">
         
-        {/* THANH ĐIỀU HƯỚNG QUAY LẠI TRANG CHỦ */}
         <div className="flex justify-between items-center">
-          <Link href="/" className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-green-800 transition-colors">
-            <ArrowLeft size={12} /> — Quay lại trang chủ
+          <Link href="/" className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-green-800 transition-colors">
+            <ArrowLeft size={12} /> QUAY LẠI TRANG CHỦ
           </Link>
           <span className="bg-white border text-[9px] font-bold uppercase tracking-wider px-3 py-1 rounded-full text-stone-500 shadow-sm">
             CLOOP MARKETPLACE LIVE
           </span>
         </div>
 
-        {/* TIÊU ĐỀ SÀN BIẾN ĐỔI LINH HOẠT THEO LUỒNG THƯƠNG MẠI */}
         <div className="text-left space-y-2">
           <h1 className="text-4xl font-extrabold tracking-tight text-[#183A2D] font-heading">
             {urlType === "rent" ? "Kho Trang Phục Thuê Đồ" : urlType === "sell" ? "Kệ Hàng Mua Sắm Tuần Hoàn" : "Sàn Thời Trang Tuần Hoàn"}
           </h1>
-          <p className="text-xs text-gray-400 max-w-[600px] leading-relaxed font-sans">
+          <p className="text-[13px] font-medium text-stone-500 max-w-[800px] leading-relaxed font-sans">
             Kéo dài vòng đời sản phẩm, kiến tạo giải pháp tiết kiệm tối đa tài chính cho ví tiền sinh viên và bảo vệ môi trường xanh bền vững.
           </p>
         </div>
@@ -258,9 +297,9 @@ function ShopContent() {
         {/* TOOLBAR ĐIỀU KHIỂN CẤU TRÚC CHIP MỚI CUỘN NGANG */}
         <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center bg-white p-4 rounded-3xl border border-[#E9E2D8] shadow-sm">
           
-          {/* DÃY CHIP CUỘN NGANG CHỌN PHONG CÁCH / DỊP PHỐI ĐỒ */}
-          <div className="flex gap-2 overflow-x-auto pb-1 w-full lg:w-auto text-left scrollbar-none" style={{ scrollbarWidth: 'none' }}>
-            {occasionList.map((occ) => (
+          {/* DÃY CHIP CUỘN NGANG CHỌN PHONG CÁCH / DANH MỤC */}
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 lg:pb-0 scroll-smooth w-full lg:flex-1">
+            {filterChips.map(occ => (
               <button
                 key={occ}
                 onClick={() => handleChipClick(occ)}
@@ -288,8 +327,11 @@ function ShopContent() {
               />
             </div>
 
-            <button className="flex items-center gap-1.5 border px-4 py-2 rounded-full text-xs font-bold bg-white hover:bg-stone-50 transition shadow-sm text-stone-600">
-              <SlidersHorizontal size={13} /> Bộ lọc nâng cao
+            <button 
+              onClick={() => setIsFilterOpen(true)}
+              className="flex items-center gap-1.5 border border-[#183A2D] px-4 py-2 rounded-full text-xs font-bold bg-[#183A2D] text-white hover:bg-[#102a20] transition shadow-sm"
+            >
+              <SlidersHorizontal size={13} /> Bộ lọc nâng cao {(selectedSize !== "all") && <span className="bg-emerald-400 text-[#183A2D] w-4 h-4 rounded-full flex items-center justify-center text-[10px] ml-1">!</span>}
             </button>
             <button className="flex items-center gap-1.5 border px-4 py-2 rounded-full text-xs font-bold bg-white hover:bg-stone-50 transition shadow-sm text-stone-600">
               <ArrowUpDown size={13} /> Sắp xếp
@@ -306,14 +348,23 @@ function ShopContent() {
             ))}
           </div>
         ) : filteredProducts.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 pt-4">
+          <motion.div layout className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 pt-4">
+            <AnimatePresence>
             {filteredProducts.map((prod) => {
               const savedPercentage = prod.storeRetailPrice > prod.price 
                 ? Math.round(((prod.storeRetailPrice - prod.price) / prod.storeRetailPrice) * 100) 
                 : 0;
 
               return (
-                <div key={prod.id} className="block group relative">
+                <motion.div 
+                  layout
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ duration: 0.3 }}
+                  key={prod.id} 
+                  className="block group relative"
+                >
                   <div className="border border-[#E9E2D8] bg-white rounded-[2.5rem] overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between h-full text-left font-sans">
                     
                     {/* KHU VỰC KHUNG ẢNH LOOKBOOK */}
@@ -383,10 +434,11 @@ function ShopContent() {
                     </div>
 
                   </div>
-                </div>
+                </motion.div>
               );
             })}
-          </div>
+            </AnimatePresence>
+          </motion.div>
         ) : (
           <div className="border border-stone-200/60 bg-white rounded-[2.5rem] p-12 text-center shadow-sm max-w-xl mx-auto mt-8 font-sans">
             <div className="w-12 h-12 bg-stone-50 border rounded-full flex items-center justify-center mx-auto text-stone-400 mb-4 shadow-inner">
@@ -400,6 +452,87 @@ function ShopContent() {
         )}
 
       </div>
+
+      {/* OFF-CANVAS DRAWER CHO BỘ LỌC NÂNG CAO */}
+      <AnimatePresence>
+        {isFilterOpen && (
+          <>
+            {/* Backdrop Mờ */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsFilterOpen(false)}
+              className="fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-40"
+            />
+            
+            {/* Drawer */}
+            <motion.div 
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed top-0 right-0 w-[90%] md:w-[400px] h-full bg-white shadow-2xl z-50 flex flex-col font-sans"
+            >
+              <div className="p-6 border-b border-stone-100 flex justify-between items-center bg-[#FAF8F3]">
+                <h3 className="font-heading text-xl font-bold text-[#183A2D]">Bộ Lọc Nâng Cao</h3>
+                <button onClick={() => setIsFilterOpen(false)} className="p-2 hover:bg-stone-200 rounded-full transition-colors">
+                  <X size={20} className="text-stone-600" />
+                </button>
+              </div>
+
+              <div className="p-6 flex-1 overflow-y-auto space-y-8">
+                {/* Visual Pills: Size */}
+                <div className="space-y-4">
+                  <div className="flex justify-between items-end">
+                    <h4 className="text-sm font-bold uppercase tracking-wider text-stone-500">Kích cỡ</h4>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {["S", "M", "L", "FreeSize"].map(size => {
+                      const count = products.filter(p => p.size === size).length;
+                      return (
+                        <button
+                          key={size}
+                          onClick={() => handleSizeClick(size)}
+                          className={`px-4 py-2 rounded-lg text-sm font-bold transition-all border ${
+                            selectedSize === size 
+                              ? "bg-[#183A2D] text-white border-[#183A2D] shadow-md" 
+                              : "bg-white text-stone-600 border-stone-200 hover:border-stone-400"
+                          }`}
+                        >
+                          {size} <span className="opacity-60 text-[10px] ml-1 font-mono">({count})</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Sticky Footer Buttons */}
+              <div className="p-6 border-t border-stone-100 flex gap-3 bg-white">
+                <button 
+                  onClick={() => {
+                    setSelectedSize("all");
+                    router.push('/shop' + (urlType ? `?type=${urlType}` : ''));
+                  }}
+                  className="flex-1 py-3 text-sm font-bold text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-lg uppercase tracking-wider transition-colors"
+                >
+                  Xóa bộ lọc
+                </button>
+                <button 
+                  onClick={() => setIsFilterOpen(false)}
+                  className="flex-[2] py-3 text-sm font-bold text-white bg-[#183A2D] hover:bg-[#102a20] rounded-lg uppercase tracking-wider transition-colors shadow-lg"
+                >
+                  Hiển thị {filteredProducts.length} kết quả
+                </button>
+              </div>
+
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
     </main>
   );
 }
