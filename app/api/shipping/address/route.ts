@@ -12,17 +12,31 @@ export async function GET(req: Request) {
   // XỬ LÝ MOCK DATA (Khi chưa có Token GHN)
   if (!GHN_TOKEN) {
     if (type === "province") {
+      // Cập nhật theo Nghị quyết 125/NQ-CP năm 2025: 34 Tỉnh/Thành phố mới
+      const newProvinces = [
+        "Hà Nội", "Hải Phòng", "Huế", "Đà Nẵng", "Cần Thơ", "TPHCM",
+        "Lai Châu", "Điện Biên", "Sơn La", "Lạng Sơn", "Cao Bằng", "Tuyên Quang", "Lào Cai", 
+        "Thái Nguyên", "Phú Thọ", "Bắc Ninh", "Hưng Yên", "Ninh Bình", "Quảng Ninh", 
+        "Thanh Hóa", "Nghệ An", "Hà Tĩnh", "Quảng Trị", "Quảng Ngãi", "Gia Lai", 
+        "Khánh Hòa", "Lâm Đồng", "Đắk Lắk", "Đồng Nai", "Tây Ninh", "Vĩnh Long", 
+        "Đồng Tháp", "Cà Mau", "An Giang"
+      ];
+      
+      const provinceData = newProvinces.map((name, index) => ({
+        ProvinceID: 201 + index,
+        ProvinceName: name
+      }));
+
       return NextResponse.json({
         code: 200,
-        data: [
-          { ProvinceID: 201, ProvinceName: "Hà Nội" },
-          { ProvinceID: 202, ProvinceName: "Hồ Chí Minh" }
-        ]
+        data: provinceData
       });
     }
     if (type === "district") {
+      // 201 = Hà Nội
       if (province_id === "201") return NextResponse.json({ code: 200, data: [{ DistrictID: 1442, DistrictName: "Quận Hoàn Kiếm" }, { DistrictID: 1443, DistrictName: "Quận Ba Đình" }, { DistrictID: 1444, DistrictName: "Huyện Ba Vì" }] });
-      if (province_id === "202") return NextResponse.json({ code: 200, data: [{ DistrictID: 1445, DistrictName: "Quận 1" }, { DistrictID: 1446, DistrictName: "Quận 3" }, { DistrictID: 1447, DistrictName: "Huyện Cần Giờ" }] });
+      // 206 = TPHCM
+      if (province_id === "206") return NextResponse.json({ code: 200, data: [{ DistrictID: 1445, DistrictName: "Quận 1" }, { DistrictID: 1446, DistrictName: "Quận 3" }, { DistrictID: 1447, DistrictName: "Huyện Cần Giờ" }] });
       return NextResponse.json({ code: 200, data: [] });
     }
     if (type === "ward") {
