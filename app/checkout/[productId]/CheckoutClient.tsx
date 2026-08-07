@@ -149,6 +149,10 @@ export default function CheckoutClient({
         throw new Error("Vui lòng đăng nhập để tiếp tục thanh toán");
       }
 
+      if (!selectedProvince || !selectedDistrict || !selectedWard) {
+        throw new Error("Vui lòng chọn đầy đủ Tỉnh/Thành, Quận/Huyện, Phường/Xã");
+      }
+
       const fullToProvinceStr = `${selectedWard.name}, ${selectedDistrict.name}, ${selectedProvince.name}`;
       const payload = {
         productId,
