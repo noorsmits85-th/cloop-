@@ -16,7 +16,7 @@ const CheckoutSchema = z.object({
   buyerPhone: z.string().regex(/(84|0[3|5|7|8|9])+([0-9]{8})\b/, "Số điện thoại không đúng định dạng (Ví dụ: 0987654321)"),
   startDate: z.string().datetime().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Ngày không hợp lệ")),
   packageDays: z.number().int().positive().refine(val => [1, 3, 7].includes(val), "Gói thuê không hợp lệ (Chỉ chấp nhận 1, 3, 7 ngày)"),
-});
+}).strict();
 
 export async function POST(req: Request) {
   try {

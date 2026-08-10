@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "../../../lib/supabase";
+import { supabase } from "@/src/lib/supabase";
 import { CheckCircle, Clock, User, CreditCard } from "lucide-react";
 
 export default function AdminPaymentDashboard() {

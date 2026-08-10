@@ -6,6 +6,7 @@ import { CreditCard, X, QrCode, CheckCircle2, Star, ShieldCheck } from "lucide-r
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { createPayOSPaymentLink } from "@/app/actions/payment";
+import { createBooking } from "@/app/actions/booking";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "temporary-placeholder-key";
@@ -121,13 +122,11 @@ export default function RentalBookingBox({
   }, [ownerId]);
 
   const handleActivatePayment = async () => {
-    let currentUserId = null;
-    if (typeof window !== "undefined") {
-      currentUserId = localStorage.getItem("cloop_user_id");
-    }
+    // 1. Kiểm tra đăng nhập bằng Supabase thay vì localStorage (Thông mạch UX & Security)
+    const { data: { session } } = await supabase.auth.getSession();
 
-    if (!currentUserId) {
-      alert("Yêu cầu hệ thống: Bạn ơi, vui lòng đăng nhập tài khoản thông qua cổng ID Xanh trước để thực hiện ký quỹ bảo chứng giao dịch nhé! 😊");
+    if (!session) {
+      router.push(`/login?next=/product/${productId}`);
       return;
     }
 
@@ -139,23 +138,44 @@ export default function RentalBookingBox({
     }
     if (!agreedToTerms) { alert(`Bạn ơi, vui lòng tích chọn đồng ý với Điều khoản và cam kết bảo chứng của CLOOP nhé! 😊`); return; }
 
-    // Kích hoạt Mock Payment Flow thay vì gọi API thật
-    setShowMockPayment(true);
-    setMockPaymentStatus("SCANNING");
-    
-    // Giả lập thời gian quét mã QR 3 giây
-    setTimeout(() => {
-      setMockPaymentStatus("SUCCESS");
-      // Sau khi thành công 2 giây thì tắt modal và reload
-      setTimeout(() => {
-        setShowMockPayment(false);
-        setMockPaymentStatus("IDLE");
-        alert("🎉 Đặt đồ thành công! Cảm ơn bạn đã đồng hành cùng thời trang tuần hoàn.");
-        // Chuyển về trang chủ hoặc tủ đồ
-      }, 2000);
-    }, 3000);
+    setIsSubmitting(true);
+    try {
+      // 2. Gọi Server Action để tạo Booking
+      const bookingRes = await createBooking({
+        productId,
+        startDate,
+        endDate,
+        renterName,
+        renterPhone,
+        ownerName: finalOwnerName,
+        ownerPhone: finalOwnerPhone,
+        isRental
+      });
+
+      if (!bookingRes.success || !(bookingRes as any).rentalId) {
+        alert((bookingRes as any).error || "Có lỗi xảy ra khi tạo đơn hàng.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 3. Gọi Server Action để tạo PayOS link
+      const payosRes = await createPayOSPaymentLink((bookingRes as any).rentalId);
+
+      if (!payosRes.success || !payosRes.checkoutUrl) {
+        alert(payosRes.error || "Không thể khởi tạo cổng thanh toán.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 4. Chuyển hướng người dùng thẳng sang cổng thanh toán (Làm thật ăn thật)
+      window.location.href = payosRes.checkoutUrl;
+      
+    } catch (error) {
+      console.error(error);
+      alert("Lỗi kết nối. Vui lòng thử lại!");
+      setIsSubmitting(false);
+    }
   };
-  // Hàm confirmManualTransfer đã bị xóa vì dùng Webhook
   return (
     <div className="space-y-4 pt-4 border-t border-stone-200">
       
@@ -260,8 +280,8 @@ export default function RentalBookingBox({
           </label>
         </div>
 
-        <button onClick={handleActivatePayment} className="w-full py-4 bg-[#183A2D] text-white font-bold text-xs uppercase tracking-widest rounded-2xl hover:bg-[#23452F] transition-all shadow-md flex items-center justify-center gap-2 mt-2">
-          <ShieldCheck size={16} /> BẢO CHỨNG GIAO DỊCH ➔
+        <button disabled={isSubmitting} onClick={handleActivatePayment} className="w-full py-4 bg-[#183A2D] text-white font-bold text-xs uppercase tracking-widest rounded-2xl hover:bg-[#23452F] transition-all shadow-md flex items-center justify-center gap-2 mt-2 disabled:opacity-50">
+          {isSubmitting ? "ĐANG CHUYỂN HƯỚNG..." : <><ShieldCheck size={16} /> BẢO CHỨNG GIAO DỊCH ➔</>}
         </button>
       </div>
 

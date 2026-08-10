@@ -57,3 +57,20 @@ TÃ³m láº¡i: HÃ£y code vá»›i tÆ° duy "Má»i user Ä‘á»u lÃ  hacker". Náº¿u báº¡n 
 
 > **LUáº¬T THÃ‰P Bá»” SUNG**: Má»i hÃ nh Ä‘á»™ng thay Ä‘á»•i tiá»n, quyá»n, tráº¡ng thÃ¡i Ä‘Æ¡n hÃ ng, tá»“n kho, hoáº·c dá»¯ liá»‡u cÃ¡ nhÃ¢n pháº£i Ä‘Æ°á»£c xÃ¡c thá»±c, phÃ¢n quyá»n, validate server-side, ghi audit log, vÃ  náº¿u cÃ³ nhiá»u bÆ°á»›c thÃ¬ cháº¡y trong transaction/idempotent flow.
 <!-- END:cloop-security-rules -->
+
+7. PH?N 5: CÁI B?Y "LOCALSTORAGE"
+- Tuy?t d?i không dùng LocalStorage d? luu tr? d? li?u nh?y c?m ho?c tr?ng thái dang nh?p chính (Session).
+- Ph?i s? d?ng Backend và Database d? luu tr? d?ng b?, an toàn.
+
+8. PH?N 6: 7 CÂU H?I TRU?C KHI "SHIP" APP (PRODUCTION-READY)
+- Ğua toàn b? Secret/API Key v? Server, không d? l?t ra Frontend.
+- B?t bu?c dùng RLS/Middleware d? check quy?n t?ng request, ch?ng l?i IDOR (xem tr?m d? li?u qua URL).
+- Validate toàn b? d? li?u (Zod) ? server, không tin client.
+- Thi?t l?p Rate Limiting b?o v? server kh?i spam/DDoS.
+- C?u hình Logging an toàn (Sentry): không ném th?ng l?i chi ti?t ra UI làm l? token.
+- Quét các package d? xóa code th?a, ch?ng Supply Chain Attack (Dependabot).
+- B?t Auto backup và test quá trình restore database d?nh k?.
+
+9. QUY TRÌNH T?I UU HÓA (CH?NG S?P APP DO VIBE CODING)
+- Thêm Indexes cho Database, tránh query SELECT * b?a bãi.
+- Chuy?n sang Stateless Architecture (Không luu session tr?c ti?p trên RAM server).

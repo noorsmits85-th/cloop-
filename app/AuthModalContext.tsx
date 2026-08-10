@@ -1,6 +1,11 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, ReactNode, useEffect } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "temporary-placeholder-key";
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 interface CurrentUser {
   name: string;
@@ -23,12 +28,10 @@ export function AuthModalProvider({ children }: { children: ReactNode }) {
   const [activeFeatureName, setActiveFeatureName] = useState("");
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
-  const handleFeatureRequirement = (featureName: string) => {
-    // 🟢 SỬA LỖI CỨNG CODE: Kiểm tra sự tồn tại của cloop_user_id trong localStorage cục bộ
-    let isLoggedIn = false;
-    if (typeof window !== "undefined") {
-      isLoggedIn = !!localStorage.getItem("cloop_user_id");
-    }
+  const handleFeatureRequirement = async (featureName: string) => {
+    // Thay thế LocalStorage bằng Supabase Session
+    const { data: { session } } = await supabase.auth.getSession();
+    let isLoggedIn = !!session;
 
     if (isLoggedIn) {
       // Nếu đã có ID Xanh, xử lý phản hồi tính năng động tương ứng thay vì ép đăng nhập tiếp

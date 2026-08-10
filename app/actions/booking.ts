@@ -128,7 +128,7 @@ export async function confirmManualTransfer(rentalId: string) {
     // Fake confirmation for Pilot (changes status to active upon click "Tôi đã chuyển khoản")
     // This allows the demo UI to work while retaining security (we know WHO clicked it).
     await prisma.rentalHistory.update({
-      where: { id: rentalId },
+      where: { id: rentalId, renterId: user.id },
       data: { status: "active" } // In reality, an Admin should do this or PayOS Webhook
     });
 

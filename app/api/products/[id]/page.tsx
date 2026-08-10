@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import CheckoutModal from "../../../components/CheckoutModal";
+import CheckoutModal from "@/app/components/CheckoutModal";
 export default function ProductDetailPage() {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [successOrder, setSuccessOrder] = useState<any>(null); // Nơi lưu trữ kết quả đơn hàng trả về

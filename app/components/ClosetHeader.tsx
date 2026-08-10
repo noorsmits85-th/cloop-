@@ -20,14 +20,9 @@ export default function ClosetHeader({ onOpenUpload }: ClosetHeaderProps) {
   useEffect(() => {
     // Tự động nhận diện ID của người dùng đang đăng nhập
     const fetchUser = async () => {
-      let loggedInId = localStorage.getItem("cloop_user_id");
-      if (loggedInId) {
-        setUserId(loggedInId);
-      } else {
-        const { data } = await supabase.auth.getUser();
-        if (data?.user?.id) {
-          setUserId(data.user.id);
-        }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setUserId(session.user.id);
       }
     };
     fetchUser();

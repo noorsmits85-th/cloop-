@@ -105,6 +105,7 @@ model User {
   isVerified      Boolean  @default(false)
   totalListings   Int      @default(0)
   completedOrders Int      @default(0)
+  cloopCoins      Int      @default(1500) // Hệ thống tài sản Lá CLOOP (Ads/Boost)
 
   products      Product[]
   lifecycles    ProductLifecycle[]
@@ -152,6 +153,10 @@ model Product {
   latitude        Float?
   longitude       Float?
 
+  // 💎 HỆ THỐNG QUẢNG CÁO & THĂNG HẠNG (CLOOP COINS)
+  isHighlighted   Boolean  @default(false) // Gói Viền Hào Quang
+  boostExpiresAt  DateTime? // Thời hạn hết hiệu lực của các gói Ads (Gói Đẩy Tín - Top 1)
+
   // 🔗 Mạch nối các mối quan hệ
   userId        String?
   user          User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -165,6 +170,12 @@ model Product {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([userId])
+  @@index([category])
+  @@index([gender])
+  @@index([province])
+  @@index([condition])
+  @@index([createdAt(sort: Desc)])
   @@map("products") // Map với bảng products hiện tại
 }
 
@@ -186,6 +197,9 @@ model ProductImage {
   isPrimary       Boolean  @default(false) // Ảnh đại diện hiển thị ở Thumbnail
   sortOrder       Int      @default(0) // Thứ tự hiển thị trong Carousel
   createdAt       DateTime @default(now())
+
+  @@index([productId])
+  @@index([productId, isPrimary])
 }
 
 // ==========================================
@@ -210,6 +224,13 @@ model Listing {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([productId])
+  @@index([status])
+  @@index([listingType])
+  @@index([basePrice])
+  @@index([salePrice])
+  @@index([createdAt(sort: Desc)])
 }
 
 // ==========================================
@@ -242,6 +263,10 @@ model RentalHistory {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([renterId])
+  @@index([product_id])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
   @@map("rental_history")
 }
 
@@ -263,6 +288,9 @@ model Invoice {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([rentalId])
+  @@index([status])
 }
 
 // ==========================================
@@ -282,6 +310,11 @@ model LedgerTransaction {
   status  String  @default("COMPLETED") // PENDING, COMPLETED
 
   createdAt DateTime @default(now())
+
+  @@index([invoiceId])
+  @@index([adminId])
+  @@index([type])
+  @@index([createdAt(sort: Desc)])
 }
 
 // ==========================================
@@ -305,6 +338,10 @@ model Dispute {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([rentalId])
+  @@index([invoiceId])
+  @@index([status])
 }
 
 // ==========================================
@@ -321,6 +358,11 @@ model AuditLog {
   afterStatus  String? // Trạng thái mới
   metadata     String? // Thông tin thêm (JSON lưu chi tiết giao dịch)
   createdAt    DateTime @default(now())
+
+  @@index([adminId])
+  @@index([targetId])
+  @@index([action])
+  @@index([createdAt(sort: Desc)])
 }
 
 // ==========================================
@@ -362,6 +404,10 @@ model Review {
   type    String // "RENTER_TO_OWNER" hoặc "OWNER_TO_RENTER"
 
   createdAt DateTime @default(now())
+
+  @@index([reviewerId])
+  @@index([revieweeId])
+  @@index([productId])
 }
 
 // ==========================================
@@ -387,6 +433,11 @@ model BlogPost {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([productId])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
 }
 
 model BlogInteraction {
@@ -401,6 +452,9 @@ model BlogInteraction {
   content String? // Dùng cho COMMENT
 
   createdAt DateTime @default(now())
+
+  @@index([blogId])
+  @@index([userId])
 }
 
 // ==========================================
@@ -419,4 +473,8 @@ model ProductLifecycle {
   notes    String? // Ghi chú lịch sử (Ví dụ: "Được thuê bởi Trang")
 
   createdAt DateTime @default(now())
+
+  @@index([productId])
+  @@index([userId])
+  @@index([eventType])
 }

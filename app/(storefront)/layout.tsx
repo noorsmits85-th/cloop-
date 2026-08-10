@@ -10,11 +10,11 @@ import {
   Home, PlusCircle, User, Loader2
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js"; 
-import "./globals.css";
-import AiStylistChat from "./components/AiStylistChat"; 
-import PwaInstallPrompt from "./components/PwaInstallPrompt";
-import { AuthModalProvider, useAuthModal } from "./AuthModalContext";
-import SmoothScroll from "./components/SmoothScroll";
+import "../globals.css";
+import AiStylistChat from "@/app/components/AiStylistChat"; 
+import PwaInstallPrompt from "@/app/components/PwaInstallPrompt";
+import { AuthModalProvider, useAuthModal } from "../AuthModalContext";
+import SmoothScroll from "@/app/components/SmoothScroll";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "temporary-placeholder-key";
@@ -288,7 +288,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   }, [setCurrentUser]);
 
   return (
-    <body className={`min-h-screen overflow-x-hidden antialiased relative transition-colors duration-500 font-body selection:bg-[#0A2517] selection:text-[#FAF9F6] ${darkMode ? "bg-[#0F1720] text-[#F5F5F5]" : "bg-[#FAF9F6] text-[#0A2517]"}`}>
+    <div className={`min-h-screen overflow-x-hidden antialiased relative transition-colors duration-500 font-body selection:bg-[#0A2517] selection:text-[#FAF9F6] ${darkMode ? "bg-[#0F1720] text-[#F5F5F5] dark" : "bg-[#FAF9F6] text-[#0A2517]"}`}>
       
       <style>{`
         html { scroll-behavior: smooth; }
@@ -302,11 +302,105 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
-      <div className="relative z-10 min-h-screen">
+      <Suspense fallback={<div className="p-4 text-center text-xs text-stone-400 font-bold uppercase tracking-widest">Đang kết nối cổng điều phối CLOOP...</div>}>
+        <HeaderNavbar 
+          darkMode={darkMode} 
+          setDarkMode={setDarkMode} 
+          handleFeatureRequirement={handleFeatureRequirement} 
+          currentUser={currentUser} 
+          setCurrentUser={setCurrentUser}
+        />
+      </Suspense>
+
+      <div className="relative z-10">
         {children}
       </div>
 
+      <footer className="w-full bg-[#0A2517] text-white pt-16 pb-8 border-t border-white/10">
+        <div className="max-w-[1536px] mx-auto px-4 md:px-8 lg:px-12">
+          
+          {/* Phần Trên: Cột Thông tin & Link */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-12 lg:gap-8 mb-16">
+            
+            {/* CỘT 1: Logo & Thông tin thương hiệu */}
+            <div className="md:col-span-12 lg:col-span-4 flex flex-col">
+              <h2 className="text-3xl lg:text-4xl font-logo text-white tracking-widest mb-5">CLOOP.</h2>
+              <p className="font-body text-sm text-gray-300 leading-relaxed font-light mb-8 max-w-sm">
+                Hệ sinh thái thời trang dệt nên từ những kết nối chân thật. Nơi những món đồ đi qua tìm thấy thanh xuân mới và những người đồng điệu tìm thấy nhau. CLOOP trao cho bạn đặc quyền thay đổi phong cách mỗi ngày — Mặc đẹp, sống nhẹ nhàng và không bận tâm sở hữu.
+              </p>
+              
+              {/* Dàn Icon Mạng Xã Hội */}
+              <div className="flex items-center gap-6 text-gray-400">
+                <button className="hover:text-white transition-colors" title="Facebook">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"></path></svg>
+                </button>
+                <button className="hover:text-white transition-colors" title="Instagram">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect width="20" height="20" x="2" y="2" rx="5" ry="5" strokeWidth="1.5"></rect><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37zm1.5-4.87h.01"></path></svg>
+                </button>
+                <button className="hover:text-white transition-colors" title="TikTok">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 19c-4.3 1.4-4.3-2.5-4.3-2.5 0-18 4.2-12 4.2-12 2.5 0 5.4 3 5.4 3v4.6c0 0-2.8-3.1-5.3-3.1v10.3c0 2-3.4 3.7-5.5 2.1-2.1-1.6-1.5-5.2.9-6.3V12c-4.4 2-5 7.8-2 10.3 3.1 2.5 8 1.4 8-3.8V4.5c2.3.9 4 3 4 3v-3s-2.1-2.4-4.7-3v18.5z"></path></svg>
+                </button>
+              </div>
+            </div>
 
+            {/* CỘT MENU */}
+            <div className="md:col-span-12 lg:col-span-8 grid grid-cols-2 md:grid-cols-3 gap-8 pt-2">
+              
+              {/* Cột Khám Phá */}
+              <div className="flex flex-col">
+                <h3 className="font-ui text-[10px] font-bold uppercase tracking-[0.2em] mb-6 text-gray-200">Khám Phá</h3>
+                <ul className="font-ui flex flex-col gap-3.5 text-sm text-gray-400 font-light">
+                  <li><button className="hover:text-white transition-colors">Trang phục cho thuê</button></li>
+                  <li><button className="hover:text-white transition-colors">Đồ chuyển nhượng</button></li>
+                  <li><button className="hover:text-white transition-colors">Chợ Xanh Upcycle</button></li>
+                  <li><button className="hover:text-white transition-colors">Bảo tàng ký ức</button></li>
+                </ul>
+              </div>
+
+              {/* Cột Về Chúng Tôi */}
+              <div className="flex flex-col">
+                <h3 className="font-ui text-[10px] font-bold uppercase tracking-[0.2em] mb-6 text-gray-200">Về CLOOP</h3>
+                <ul className="font-ui flex flex-col gap-3.5 text-sm text-gray-400 font-light">
+                  <li><button className="hover:text-white transition-colors">Câu chuyện thương hiệu</button></li>
+                  <li><button className="hover:text-white transition-colors">Sứ mệnh bền vững</button></li>
+                  <li><button className="hover:text-white transition-colors">Cộng đồng xanh</button></li>
+                  <li><button className="hover:text-white transition-colors">Sự kiện & Workshop</button></li>
+                </ul>
+              </div>
+
+              {/* Cột Hỗ Trợ */}
+              <div className="flex flex-col">
+                <h3 className="font-ui text-[10px] font-bold uppercase tracking-[0.2em] mb-6 text-gray-200">Hỗ Trợ</h3>
+                <ul className="font-ui flex flex-col gap-3.5 text-sm text-gray-400 font-light">
+                  <li><button className="hover:text-white transition-colors">Trung tâm trợ giúp</button></li>
+                  <li><button className="hover:text-white transition-colors">Chính sách bảo vệ</button></li>
+                  <li><button className="hover:text-white transition-colors">Điều khoản & Bảo mật</button></li>
+                  <li><button className="hover:text-white transition-colors">Gửi khiếu nại</button></li>
+                </ul>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Phần Dưới Đáy: Copyright */}
+          <div className="flex flex-col md:flex-row justify-between items-center pt-8 border-t border-white/10 text-[11px] font-body text-gray-400 font-light gap-4">
+            <p>&copy; 2026 CLOOP PROJECT. All rights reserved.</p>
+            <p className="font-ui tracking-widest uppercase text-[9px] text-gray-500">Fashion in a loop</p>
+          </div>
+
+        </div>
+      </footer>
+
+      {/* Khoảng trống để Footer không bị che bởi Mobile Bar */}
+      <div className="h-[65px] block md:hidden w-full bg-[#0A2517]"></div>
+
+      <MobileBottomNavbar 
+        darkMode={darkMode} 
+        currentUser={currentUser} 
+        handleFeatureRequirement={handleFeatureRequirement} 
+      />
+
+      <AiStylistChat darkMode={darkMode} />
 
       <AnimatePresence>
         {showAuthModal && (
@@ -587,27 +681,8 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         )}
       </AnimatePresence>
       <PwaInstallPrompt />
-    </body>
+    </div>
   );
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="vi">
-      <head>
-        <link rel="manifest" href="/manifest.json" />
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&family=Patrick+Hand&family=Dancing+Script:wght@400..700&family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&family=Lora:ital,wght@0,400..700;1,400..700&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" />
-        <meta name="theme-color" content="#0A2517" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="CLOOP" />
-        <link rel="apple-touch-icon" href="/app-icon.jpg" />
-      </head>
-      <SmoothScroll>
-        <AuthModalProvider>
-          <LayoutContent>{children}</LayoutContent>
-        </AuthModalProvider>
-      </SmoothScroll>
-    </html>
-  );
-}
+export default function StorefrontLayout({ children }: { children: React.ReactNode }) { return <LayoutContent>{children}</LayoutContent>; }

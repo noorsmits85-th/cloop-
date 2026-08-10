@@ -5,11 +5,20 @@ import { payos } from "@/src/utils/payos";
 
 const prisma = new PrismaClient();
 
+import { createClient } from "@/src/utils/supabase/server";
+
 export async function createPayOSPaymentLink(rentalId: string) {
   try {
-    // 1. Lấy thông tin Hợp đồng thuê
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return { success: false, error: "Bạn cần đăng nhập để thanh toán." };
+    }
+
+    // 1. Lấy thông tin Hợp đồng thuê (Bảo vệ IDOR)
     const rental = await prisma.rentalHistory.findUnique({
-      where: { id: rentalId },
+      where: { id: rentalId, renterId: user.id },
       include: {
         product: {
           include: {
