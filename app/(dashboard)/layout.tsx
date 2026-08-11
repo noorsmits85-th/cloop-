@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import Image from "next/image";
 import {
   LayoutDashboard,
+  ArrowLeft,
   Shirt,
   ShoppingBag,
   Archive,
@@ -122,7 +123,7 @@ export default function DashboardLayout({
         <div className="flex-1 overflow-y-auto py-6 px-4 space-y-8 no-scrollbar">
           {navGroups.map((group, index) => (
             <div key={index}>
-              <h3 className="px-4 text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3 font-ui">
+              <h3 className="px-4 text-xs font-bold uppercase tracking-[0.15em] text-[#0A2517] mb-3 font-ui">
                 {group.title}
               </h3>
               <nav className="space-y-1 font-ui">
@@ -142,8 +143,9 @@ export default function DashboardLayout({
           ))}
         </div>
 
-        <div className="p-4 border-t border-[#E9E2D8] shrink-0">
-          <Link href="/" className="flex items-center justify-center gap-2 w-full py-3 text-sm font-bold text-stone-500 hover:text-[#183A2D] transition-colors rounded-xl hover:bg-stone-100 font-ui">
+        <div className="p-5 border-t border-[#E9E2D8] shrink-0 bg-stone-50/50">
+          <Link href="/" className="flex items-center justify-center gap-2.5 w-full py-3.5 text-sm font-bold text-white bg-[#183A2D] hover:bg-[#112a20] transition-all rounded-xl shadow-md hover:shadow-lg font-ui group">
+            <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
             Quay lại Mua Sắm
           </Link>
         </div>
