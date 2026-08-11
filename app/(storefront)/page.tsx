@@ -27,12 +27,13 @@ export default function Home() {
       const { data, error } = await supabase
         .from("products")
         .select(`
-          *,
+          id, title, name, province, condition, size, brand, owner_name, ownerName, userId, user_id, original_price, originalPrice, rental_price, occasion, image_url, imageUrl, boostExpiresAt, isHighlighted,
           user:User(name, avatar),
           images:ProductImage(url, isPrimary)
         `)
         .or(`boostExpiresAt.gt.${now},isHighlighted.eq.true`)
-        .order("boostExpiresAt", { ascending: false, nullsFirst: false });
+        .order("boostExpiresAt", { ascending: false, nullsFirst: false })
+        .limit(20);
         
       if (!error && data) {
         setBoostedProducts(data);

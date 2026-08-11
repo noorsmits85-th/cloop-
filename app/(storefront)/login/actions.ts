@@ -100,7 +100,31 @@ export async function resetPasswordForEmail(formData: FormData) {
     return { error: error.message };
   }
 
-  return { success: 'Đã gửi link khôi phục mật khẩu vào Email của bạn!' };
+  return { success: 'Đã gửi mã OTP khôi phục mật khẩu vào Email của bạn!' };
+}
+
+export async function verifyRecoveryOtp(formData: FormData) {
+  const supabase = await createClient();
+  const email = getEmail(formData);
+  const token = String(formData.get('token') || '').trim();
+
+  if (!email || !/^\d{6}$/.test(token)) {
+    return { error: 'Ma OTP khong hop le.' };
+  }
+
+  const { error } = await supabase.auth.verifyOtp({
+    email,
+    token,
+    type: 'recovery',
+  });
+
+  if (error) {
+    return { error: 'Mã OTP không hợp lệ hoặc đã hết hạn.' };
+  }
+
+  const nextUrl = formData.get('nextUrl') as string;
+  revalidatePath(nextUrl || '/reset-password', 'layout');
+  redirect(nextUrl || '/reset-password');
 }
 
 export async function signup(formData: FormData) {

@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { login, loginWithOtp, verifyOtp, signup, resetPasswordForEmail } from './actions';
-import { Mail, Lock, KeyRound, ArrowRight, Loader2, Sparkles } from 'lucide-react';
+import { login, loginWithOtp, verifyOtp, signup, resetPasswordForEmail, verifyRecoveryOtp } from './actions';
+import { Mail, Lock, KeyRound, ArrowRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LoginPage() {
-  const [mode, setMode] = useState<'LOGIN' | 'OTP_REQUEST' | 'OTP_VERIFY' | 'FORGOT_PASSWORD' | 'SIGNUP'>('LOGIN');
+  const [mode, setMode] = useState<'LOGIN' | 'OTP_REQUEST' | 'OTP_VERIFY' | 'FORGOT_PASSWORD' | 'FORGOT_PASSWORD_OTP' | 'SIGNUP'>('LOGIN');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
 
@@ -28,6 +28,8 @@ export default function LoginPage() {
         result = await verifyOtp(formData);
       } else if (mode === 'FORGOT_PASSWORD') {
         result = await resetPasswordForEmail(formData);
+      } else if (mode === 'FORGOT_PASSWORD_OTP') {
+        result = await verifyRecoveryOtp(formData);
       } else if (mode === 'SIGNUP') {
         result = await signup(formData);
       }
@@ -38,6 +40,7 @@ export default function LoginPage() {
       } else if (res?.success) {
         setMessage({ type: 'success', text: res.success });
         if (mode === 'OTP_REQUEST') setMode('OTP_VERIFY');
+        if (mode === 'FORGOT_PASSWORD') setMode('FORGOT_PASSWORD_OTP');
       }
     } catch (err) {
       setMessage({ type: 'error', text: 'Có lỗi xảy ra, vui lòng thử lại.' });
@@ -49,15 +52,13 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center text-green-600 mb-6">
-          <Sparkles className="w-12 h-12" />
-        </div>
-        <h2 className="text-center text-3xl font-extrabold text-slate-900">
+        <h2 className="text-center text-3xl font-extrabold text-slate-900 mt-6">
           {mode === 'LOGIN' && 'Đăng nhập CLOOP'}
           {mode === 'SIGNUP' && 'Tạo tài khoản mới'}
           {mode === 'OTP_REQUEST' && 'Đăng nhập không cần mật khẩu'}
           {mode === 'OTP_VERIFY' && 'Nhập mã OTP'}
           {mode === 'FORGOT_PASSWORD' && 'Khôi phục mật khẩu'}
+          {mode === 'FORGOT_PASSWORD_OTP' && 'Xác nhận OTP khôi phục'}
         </h2>
       </div>
 
@@ -66,7 +67,7 @@ export default function LoginPage() {
           <form className="space-y-6" onSubmit={handleSubmit}>
             <input type="hidden" name="nextUrl" value={nextUrl} />
             
-            {(mode === 'LOGIN' || mode === 'OTP_REQUEST' || mode === 'FORGOT_PASSWORD' || mode === 'SIGNUP') && (
+            {(mode === 'LOGIN' || mode === 'OTP_REQUEST' || mode === 'FORGOT_PASSWORD' || mode === 'FORGOT_PASSWORD_OTP' || mode === 'SIGNUP') && (
               <div>
               <label htmlFor="email" className="block text-sm font-medium text-slate-700">
                 Địa chỉ Email
@@ -81,7 +82,7 @@ export default function LoginPage() {
                   type="email"
                   autoComplete="email"
                   required
-                  className="focus:ring-green-500 focus:border-green-500 block w-full pl-10 sm:text-sm border-slate-300 rounded-xl py-3 border bg-slate-50"
+                  className="focus:ring-[#183A2D] focus:border-[#183A2D] block w-full pl-10 sm:text-sm border-slate-300 rounded-xl py-3 border bg-slate-50"
                   placeholder="bạn@example.com"
                 />
               </div>
@@ -104,15 +105,15 @@ export default function LoginPage() {
                     type="password"
                     autoComplete="current-password"
                     required
-                    className="focus:ring-green-500 focus:border-green-500 block w-full pl-10 sm:text-sm border-slate-300 rounded-xl py-3 border bg-slate-50"
+                    className="focus:ring-[#183A2D] focus:border-[#183A2D] block w-full pl-10 sm:text-sm border-slate-300 rounded-xl py-3 border bg-slate-50"
                     placeholder="••••••••"
                   />
                 </div>
               </div>
             )}
 
-            {/* OTP Token Field - Only in OTP_VERIFY */}
-            {mode === 'OTP_VERIFY' && (
+            {/* OTP Token Field - Only in OTP_VERIFY and FORGOT_PASSWORD_OTP */}
+            {(mode === 'OTP_VERIFY' || mode === 'FORGOT_PASSWORD_OTP') && (
               <div>
                 <label htmlFor="token" className="block text-sm font-medium text-slate-700">
                   Mã OTP (6 chữ số)
@@ -126,7 +127,7 @@ export default function LoginPage() {
                     name="token"
                     type="text"
                     required
-                    className="focus:ring-green-500 focus:border-green-500 block w-full pl-10 sm:text-sm border-slate-300 rounded-xl py-3 border bg-slate-50 text-center tracking-widest font-bold text-lg"
+                    className="focus:ring-[#183A2D] focus:border-[#183A2D] block w-full pl-10 sm:text-sm border-slate-300 rounded-xl py-3 border bg-slate-50 text-center tracking-widest font-bold text-lg"
                     placeholder="123456"
                   />
                 </div>
@@ -145,7 +146,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
+                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-[#183A2D] hover:bg-[#112a20] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#183A2D] disabled:opacity-50"
               >
                 {loading ? <Loader2 className="animate-spin h-5 w-5" /> : (
                   <>
@@ -153,7 +154,8 @@ export default function LoginPage() {
                     {mode === 'SIGNUP' && 'Tạo tài khoản'}
                     {mode === 'OTP_REQUEST' && 'Gửi mã OTP'}
                     {mode === 'OTP_VERIFY' && 'Xác nhận OTP'}
-                    {mode === 'FORGOT_PASSWORD' && 'Khôi phục mật khẩu'}
+                    {mode === 'FORGOT_PASSWORD' && 'Nhận mã OTP khôi phục'}
+                    {mode === 'FORGOT_PASSWORD_OTP' && 'Xác nhận OTP'}
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </>
                 )}
@@ -178,7 +180,7 @@ export default function LoginPage() {
                   <button onClick={() => { setMode('OTP_REQUEST'); setMessage(null); }} className="w-full inline-flex justify-center py-2 px-4 border border-slate-300 rounded-xl shadow-sm bg-white text-sm font-medium text-slate-700 hover:bg-slate-50">
                     Đăng nhập bằng mã OTP (Email)
                   </button>
-                  <button onClick={() => { setMode('FORGOT_PASSWORD'); setMessage(null); }} className="w-full text-center text-sm font-medium text-green-600 hover:text-green-500">
+                  <button onClick={() => { setMode('FORGOT_PASSWORD'); setMessage(null); }} className="w-full text-center text-sm font-medium text-[#183A2D] hover:text-[#112a20]">
                     Quên mật khẩu?
                   </button>
                   <button onClick={() => { setMode('SIGNUP'); setMessage(null); }} className="w-full text-center text-sm font-medium text-slate-600 hover:text-slate-900 mt-2">

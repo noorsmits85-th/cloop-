@@ -89,7 +89,14 @@ export default function DashboardLayout({
   ];
 
   return (
-    <div className="min-h-screen bg-stone-50 font-body">
+    <div className="min-h-screen bg-stone-50 font-sans antialiased text-stone-800">
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap" />
+      <style>{`
+        /* Force Be Vietnam Pro for all dashboard UI except specific logos/headings if needed */
+        aside h3, aside span, aside a, main h1, main h2, main h3, main h4, main p, main span, main div, main button, main input, main label, main td, main th { 
+          font-family: 'Be Vietnam Pro', sans-serif !important; 
+        }
+      `}</style>
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
         <div
@@ -123,7 +130,7 @@ export default function DashboardLayout({
         <div className="flex-1 overflow-y-auto py-6 px-4 space-y-8 no-scrollbar">
           {navGroups.map((group, index) => (
             <div key={index}>
-              <h3 className="px-4 text-xs font-bold uppercase tracking-[0.15em] text-[#0A2517] mb-3 font-ui">
+              <h3 className="px-4 text-xs font-bold uppercase tracking-wider text-stone-900 mb-3 font-ui">
                 {group.title}
               </h3>
               <nav className="space-y-1 font-ui">

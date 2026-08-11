@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 // Đã bảo chứng import đầy đủ tất cả icon hệ thống chống lỗi ts(2304)
-import { MapPin, Star, Filter, ArrowUpDown, ArrowLeft, Search, SlidersHorizontal, Shirt, X } from "lucide-react";
+import { MapPin, Star, Filter, ArrowUpDown, ArrowLeft, Search, SlidersHorizontal, Shirt, X, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { supabase } from "@/lib/supabase";
@@ -29,6 +29,8 @@ interface Product {
   userId: string;
   size?: string;
   material?: string;
+  createdAt: string;
+  isBoosted?: boolean;
 }
 
 function ShopContent() {
@@ -57,6 +59,16 @@ function ShopContent() {
   // 🎛️ c) Cập nhật mở rộng danh sách chip lọc khớp chuẩn khép kín với 8 dịp trên trang chủ và form
   const occasionList = ["Tất cả", "Tiệc cưới", "Dạ hội", "Dạo phố", "Áo dài", "Đi biển", "Kỷ yếu", "Lễ hội", "Công sở"];
 
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+
+  // Debounce tìm kiếm để không spam DB
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedSearch(searchQuery), 400);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
   // ⚡ ĐỒNG BỘ HÓA NGƯỢC: Tự động nhảy chip sáng đèn nếu URL thay đổi thời gian thực
   useEffect(() => {
     if (urlOccasion) {
@@ -66,188 +78,164 @@ function ShopContent() {
     }
   }, [urlOccasion]);
 
-  // 📡 ĐẦU NỐI MẠCH REAL-TIME: Truy xuất Supabase sắp xếp đồ mới lên đầu Feed
-  useEffect(() => {
-    async function fetchShopProducts() {
-      try {
-        setLoading(true);
+  const isFetchingRef = useRef(false);
 
-        // Đảm bảo đồ vừa đăng nổ lên vị trí đầu tiên ngay lập tức bằng cách sort theo ngày tạo
-        let response = await supabase
-          .from("products")
-          .select("*, ProductImage(*), Listing(*)")
-          .order("createdAt", { ascending: false });
-
-        if (response.error) {
-          response = await supabase
-            .from("products")
-            .select("*, images(*), listings(*)")
-            .order("createdAt", { ascending: false });
-        }
-
-        if (response.error) {
-          response = await supabase
-            .from("products")
-            .select("*")
-            .order("id", { ascending: false });
-        }
-
-        const { data, error } = response;
-        if (error) throw error;
-
-        if (data) {
-          // 🟢 NÂNG CẤP XỬ LÝ: Quét chéo bảng `User` và `users` để kéo đúng tên Tác giả
-          const productUserIds = [...new Set(data.map((item: any) => item.userId || item.user_id).filter(Boolean))];
-          let usersDataForProducts: any[] = [];
-          
-          if (productUserIds.length > 0) {
-            const [res1, res2] = await Promise.all([
-              supabase.from("User").select("id, name").in("id", productUserIds),
-              supabase.from("users").select("id, name").in("id", productUserIds)
-            ]);
-            usersDataForProducts = [...(res1.data || []), ...(res2.data || [])];
-          }
-
-          const mapped: Product[] = [];
-
-          data.forEach((item: any) => {
-            const listingsArr = item.Listing || item.listings || [];
-            const imagesArr = item.ProductImage || item.images || [];
-
-            // Chỉ lấy các gói giá ở trạng thái AVAILABLE (Bỏ qua các sản phẩm đã tạm ẩn)
-            const rentListing = listingsArr.find((l: any) => l.listingType === "RENT" && l.status === "AVAILABLE");
-            const sellListing = listingsArr.find((l: any) => (l.listingType === "SELL" || l.listingType === "SALE") && l.status === "AVAILABLE");
-
-            const rentPrice = rentListing ? Number(rentListing.basePrice) : 0;
-            const sellPrice = sellListing ? Number(sellListing.basePrice) : 0;
-
-            let currentImage = PLACEHOLDER_IMG;
-            if (imagesArr && imagesArr.length > 0) {
-              currentImage = imagesArr[0].url || imagesArr[0] || currentImage;
-            } else if (item.image_url || item.imageUrl) {
-              currentImage = item.image_url || item.imageUrl;
-            }
-
-            const storeRetailPrice = item.original_price || item.originalPrice || 500000;
-
-            // 🟢 TÌM VÀ GẮN TÊN CHỦ ĐỒ
-            const uId = item.userId || item.user_id;
-            const matchedUser = usersDataForProducts.find((u: any) => u.id === uId);
-            const ownerName = matchedUser?.name || item.owner_name || item.ownerName || "Thành viên CLOOP";
-
-            // 🟢 MOCK DỮ LIỆU BỘ LỌC 2027
-            const sizes = ["S", "M", "L", "FreeSize"];
-            const randomSize = sizes[Math.floor(Math.random() * sizes.length)];
-            const materials = ["Lụa", "Cotton", "Denim", "Linen", "Voan", "Gấm", "Taffeta", "Nỉ", "Vải dù", "Da", "Ren"];
-            const randomMaterial = materials[Math.floor(Math.random() * materials.length)];
-
-            // d) ĐỐI SOÁT TRƯỜNG OCCASION: Đồng bộ cấu trúc dữ liệu ở cả 3 nhánh đẩy đồ lên sàn
-            if (urlType === "rent" && rentPrice > 0) {
-              mapped.push({
-                id: item.id,
-                image: currentImage,
-                type: "Thuê",
-                listingTypeRaw: "RENT",
-                title: item.title || item.name || "Trang phục CLOOP",
-                price: rentPrice,
-                priceDisplay: `${rentPrice.toLocaleString()}đ / ngày`,
-                location: item.province || "Nghệ An", 
-                rating: "5.0",            
-                condition: item.condition === "GOOD" ? "Mới 95%" : "Mới 98%",
-                storeRetailPrice,
-                occasion: item.occasion || "Khác",
-                ownerName: ownerName, // 🟢 Đẩy vào Object
-                userId: uId || "anonymous",
-                size: item.size || randomSize,
-                material: item.material || randomMaterial
-              });
-            } else if (urlType === "sell" && sellPrice > 0) {
-              mapped.push({
-                id: item.id,
-                image: currentImage,
-                type: "Mua sắm",
-                listingTypeRaw: "SELL",
-                title: item.title || item.name || "Trang phục CLOOP",
-                price: sellPrice,
-                priceDisplay: `${sellPrice.toLocaleString()}đ`,
-                location: item.province || "Nghệ An", 
-                rating: "5.0",            
-                condition: item.condition === "GOOD" ? "Mới 95%" : "Mới 98%",
-                storeRetailPrice,
-                occasion: item.occasion || "Khác",
-                ownerName: ownerName, // 🟢 Đẩy vào Object
-                userId: uId || "anonymous",
-                size: item.size || randomSize,
-                material: item.material || randomMaterial
-              });
-            } else if (urlType === "all") {
-              const hasRent = rentPrice > 0;
-              const displayPrice = hasRent ? rentPrice : sellPrice;
-              
-              if (rentPrice > 0 || sellPrice > 0) {
-                mapped.push({
-                  id: item.id,
-                  image: currentImage,
-                  type: hasRent ? "Thuê" : "Mua sắm",
-                  listingTypeRaw: hasRent ? "RENT" : "SELL",
-                  title: item.title || item.name || "Trang phục CLOOP",
-                  price: displayPrice,
-                  priceDisplay: hasRent ? `${displayPrice.toLocaleString()}đ / ngày` : `${displayPrice.toLocaleString()}đ`,
-                  location: item.province || "Nghệ An", 
-                  rating: "5.0",            
-                  condition: item.condition === "GOOD" ? "Mới 95%" : "Mới 98%",
-                  storeRetailPrice,
-                  occasion: item.occasion || "Khác",
-                  ownerName: ownerName, // 🟢 Đẩy vào Object
-                  userId: uId || "anonymous",
-                  size: item.size || randomSize,
-                  material: item.material || randomMaterial
-                });
-              }
-            }
-          });
-
-          setProducts(mapped);
-        }
-      } catch (err) {
-        console.error("❌ Lỗi vận hành dòng chảy dữ liệu sàn /shop:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchShopProducts();
-  }, [urlType]);
-
-  // MOCK DỮ LIỆU DANH MỤC
-  const filterChips = ["Tất cả", "Tiệc cưới", "Dạ hội", "Dạo phố", "Áo dài", "Đi biển", "Kỷ yếu", "Áo", "Quần", "Váy", "Giày Dép", "Phụ Kiện"];
-
-  // 🎛️ e) BỘ LỌC ĐA NHIỆM
-  useEffect(() => {
-    let result = [...products];
-
-    if (selectedOccasion !== "Tất cả") {
-      result = result.filter(p => 
-        (p.occasion && p.occasion.includes(selectedOccasion)) || 
-        (p.title && p.title.toLowerCase().includes(selectedOccasion.toLowerCase()))
-      );
-    }
+  // 📡 ĐẦU NỐI MẠCH REAL-TIME TỐI ƯU HOÁ: Cursor Pagination + Backend Filtering
+  const loadShopData = async (isLoadMore: boolean = false) => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
     
-    if (selectedSize !== "all") {
-      result = result.filter(p => p.size === selectedSize);
-    }
+    try {
+      if (isLoadMore) setLoadingMore(true);
+      else setLoading(true);
 
-    if (searchQuery.trim() !== "") {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(p => 
-        p.title.toLowerCase().includes(q) || 
-        p.location.toLowerCase().includes(q) ||
-        (p.ownerName && p.ownerName.toLowerCase().includes(q))
-      );
-    }
+      // 1. Chỉ lấy những cột cần thiết (Chỉ thị 1)
+      // 🔒 BẢO MẬT: Chỉ lấy sản phẩm có Listing ở trạng thái AVAILABLE (Logical Data Leak fix)
+      let query = supabase
+        .from("products")
+        .select(`
+          id, title, name, province, condition, size, brand, owner_name, ownerName, userId, user_id, original_price, originalPrice, rental_price, occasion, image_url, imageUrl, createdAt,
+          Listing!inner(status)
+        `)
+        .eq("Listing.status", "AVAILABLE");
+      
+      // 3. Đẩy Filter xuống Backend (Chỉ thị 3)
+      if (selectedOccasion !== "Tất cả") {
+        query = query.ilike("occasion", `%${selectedOccasion}%`);
+      }
+      if (selectedSize !== "all") {
+        query = query.eq("size", selectedSize);
+      }
+      if (debouncedSearch.trim() !== "") {
+        query = query.ilike("title", `%${debouncedSearch.trim()}%`);
+      }
 
-    setFilteredProducts(result);
-  }, [searchQuery, selectedOccasion, selectedSize, products]);
+      // 2. Cursor Pagination - Composite Cursor (Chỉ thị 1)
+      if (isLoadMore && products.length > 0) {
+        const lastItem = products[products.length - 1];
+        if (lastItem) {
+          // Áp dụng Composite Cursor: (createdAt < X) OR (createdAt == X AND id < Y)
+          query = query.or(`createdAt.lt.${lastItem.createdAt},and(createdAt.eq.${lastItem.createdAt},id.lt.${lastItem.id})`);
+        }
+      }
+
+      // Sắp xếp theo cả createdAt và id để giải quyết bài toán tie-breaker
+      query = query.order("createdAt", { ascending: false }).order("id", { ascending: false }).limit(16);
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        setHasMore(false);
+        if (!isLoadMore) setProducts([]);
+        return;
+      }
+
+      setHasMore(data.length === 16);
+
+      // Quét thông tin phụ (Images, Listings, Users) dựa trên ID
+      const productIds = data.map((item: any) => item.id);
+      let listingsData: any[] = [];
+      let imagesData: any[] = [];
+      let usersDataForProducts: any[] = [];
+
+      if (productIds.length > 0) {
+        const [resListings, resImages] = await Promise.all([
+          supabase.from("Listing").select("productId, listingType, status, basePrice").in("productId", productIds),
+          supabase.from("ProductImage").select("productId, url").in("productId", productIds)
+        ]);
+        listingsData = resListings.data || [];
+        imagesData = resImages.data || [];
+      }
+
+      const productUserIds = [...new Set(data.map((item: any) => item.userId || item.user_id).filter(Boolean))];
+      if (productUserIds.length > 0) {
+        const [res1, res2] = await Promise.all([
+          supabase.from("User").select("id, name").in("id", productUserIds),
+          supabase.from("users").select("id, name").in("id", productUserIds)
+        ]);
+        usersDataForProducts = [...(res1.data || []), ...(res2.data || [])];
+      }
+
+      const mapped: Product[] = [];
+
+      data.forEach((item: any) => {
+        const listingsArr = listingsData.filter((l: any) => l.productId === item.id);
+        const imagesArr = imagesData.filter((img: any) => img.productId === item.id);
+
+        const rentListing = listingsArr.find((l: any) => l.listingType === "RENT" && l.status === "AVAILABLE");
+        const sellListing = listingsArr.find((l: any) => (l.listingType === "SELL" || l.listingType === "SALE") && l.status === "AVAILABLE");
+
+        const rentPrice = rentListing ? Number(rentListing.basePrice) : 0;
+        const sellPrice = sellListing ? Number(sellListing.basePrice) : 0;
+
+        let currentImage = PLACEHOLDER_IMG;
+        if (imagesArr.length > 0) {
+          currentImage = imagesArr[0].url || currentImage;
+        } else if (item.image_url || item.imageUrl) {
+          currentImage = item.image_url || item.imageUrl;
+        }
+
+        const storeRetailPrice = item.original_price || item.originalPrice || 500000;
+        const uId = item.userId || item.user_id;
+        const matchedUser = usersDataForProducts.find((u: any) => u.id === uId);
+        const ownerName = matchedUser?.name || item.owner_name || item.ownerName || "Thành viên CLOOP";
+
+        const sizes = ["S", "M", "L", "FreeSize"];
+        const randomSize = sizes[Math.floor(Math.random() * sizes.length)];
+        const materials = ["Lụa", "Cotton", "Denim", "Linen", "Voan", "Gấm", "Taffeta", "Nỉ", "Vải dù", "Da", "Ren"];
+        const randomMaterial = materials[Math.floor(Math.random() * materials.length)];
+        
+        // Mock logic for UI Demo: randomly highlight some expensive items
+        const isBoosted = storeRetailPrice >= 1500000 && Math.random() > 0.5;
+
+        // Tạo dữ liệu sản phẩm cơ bản
+        const baseItem = {
+          id: item.id,
+          image: currentImage,
+          location: item.province || "Nghệ An", 
+          rating: "5.0",            
+          condition: item.condition === "GOOD" ? "Mới 95%" : "Mới 98%",
+          storeRetailPrice,
+          occasion: item.occasion || "Khác",
+          ownerName: ownerName,
+          userId: uId || "anonymous",
+          size: item.size || randomSize,
+          material: item.material || randomMaterial,
+          createdAt: item.createdAt,
+          isBoosted: isBoosted
+        };
+
+        if (urlType === "rent" && rentPrice > 0) {
+          mapped.push({ ...baseItem, type: "Thuê", listingTypeRaw: "RENT", title: item.title || item.name || "Trang phục CLOOP", price: rentPrice, priceDisplay: `${rentPrice.toLocaleString()}đ / ngày` });
+        } else if (urlType === "sell" && sellPrice > 0) {
+          mapped.push({ ...baseItem, type: "Mua sắm", listingTypeRaw: "SELL", title: item.title || item.name || "Trang phục CLOOP", price: sellPrice, priceDisplay: `${sellPrice.toLocaleString()}đ` });
+        } else if (urlType === "all") {
+          const hasRent = rentPrice > 0;
+          const displayPrice = hasRent ? rentPrice : sellPrice;
+          if (rentPrice > 0 || sellPrice > 0) {
+            mapped.push({ ...baseItem, type: hasRent ? "Thuê" : "Mua sắm", listingTypeRaw: hasRent ? "RENT" : "SELL", title: item.title || item.name || "Trang phục CLOOP", price: displayPrice, priceDisplay: hasRent ? `${displayPrice.toLocaleString()}đ / ngày` : `${displayPrice.toLocaleString()}đ` });
+          }
+        }
+      });
+
+      if (isLoadMore) {
+        setProducts(prev => [...prev, ...mapped]);
+      } else {
+        setProducts(mapped);
+      }
+    } catch (err) {
+      console.error("❌ Lỗi vận hành dòng chảy dữ liệu sàn /shop:", err);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+      isFetchingRef.current = false;
+    }
+  };
+
+  useEffect(() => {
+    loadShopData(false);
+  }, [urlType, selectedOccasion, selectedSize, debouncedSearch]);
 
   const handleChipClick = (occName: string) => {
     setSelectedOccasion(occName);
@@ -299,7 +287,7 @@ function ShopContent() {
           
           {/* DÃY CHIP CUỘN NGANG CHỌN PHONG CÁCH / DANH MỤC */}
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 lg:pb-0 scroll-smooth w-full lg:flex-1">
-            {filterChips.map(occ => (
+            {occasionList.map(occ => (
               <button
                 key={occ}
                 onClick={() => handleChipClick(occ)}
@@ -342,15 +330,34 @@ function ShopContent() {
 
         {/* LƯỚI GRID HIỂN THỊ TRANG PHỤC */}
         {loading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 pt-6">
-            {[1, 2, 3, 4].map(n => (
-              <div key={n} className="w-full aspect-[3/4] bg-stone-200/50 rounded-[2rem] animate-pulse" />
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 pt-4">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
+              <div key={n} className="border border-[#E9E2D8] bg-white rounded-[2.5rem] overflow-hidden flex flex-col h-full">
+                <div className="w-full aspect-[3/4] bg-stone-200/70 animate-pulse relative">
+                  <div className="absolute top-4 left-4 w-16 h-6 bg-stone-300/80 rounded-md animate-pulse"></div>
+                  <div className="absolute top-12 left-4 w-12 h-4 bg-white/50 rounded animate-pulse"></div>
+                </div>
+                <div className="p-5 flex flex-col justify-between space-y-4">
+                  <div className="space-y-2">
+                    <div className="w-1/3 h-3 bg-stone-200 animate-pulse rounded"></div>
+                    <div className="w-3/4 h-4 bg-stone-300 animate-pulse rounded"></div>
+                  </div>
+                  <div className="flex justify-between items-end mt-4">
+                    <div className="space-y-1">
+                      <div className="w-20 h-2 bg-stone-200 animate-pulse rounded block"></div>
+                      <div className="w-16 h-4 bg-stone-300 animate-pulse rounded block"></div>
+                    </div>
+                  </div>
+                  <div className="w-1/2 h-2.5 bg-stone-200 animate-pulse rounded mt-2"></div>
+                </div>
+              </div>
             ))}
           </div>
-        ) : filteredProducts.length > 0 ? (
+        ) : products.length > 0 ? (
+          <>
           <motion.div layout className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 pt-4">
             <AnimatePresence>
-            {filteredProducts.map((prod) => {
+            {products.map((prod) => {
               const savedPercentage = prod.storeRetailPrice > prod.price 
                 ? Math.round(((prod.storeRetailPrice - prod.price) / prod.storeRetailPrice) * 100) 
                 : 0;
@@ -365,24 +372,35 @@ function ShopContent() {
                   key={prod.id} 
                   className="block group relative"
                 >
-                  <div className="border border-[#E9E2D8] bg-white rounded-[2.5rem] overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between h-full text-left font-sans">
+                  <div className={`bg-white rounded-[2.5rem] overflow-hidden transition-all duration-500 flex flex-col justify-between h-full text-left font-sans ${prod.isBoosted ? "border-2 border-[#183A2D] shadow-[0_0_20px_rgba(24,58,45,0.15)] hover:shadow-[0_0_30px_rgba(24,58,45,0.3)] hover:-translate-y-2 relative" : "border border-[#E9E2D8] shadow-sm hover:shadow-xl hover:-translate-y-1"}`}>
+                    
+                    {prod.isBoosted && (
+                      <div className="absolute -inset-1 bg-gradient-to-r from-emerald-200 to-emerald-50 rounded-[2.5rem] blur opacity-30 z-0"></div>
+                    )}
                     
                     {/* KHU VỰC KHUNG ẢNH LOOKBOOK */}
-                    <Link href={`/product/${prod.id}`} className="relative w-full aspect-[3/4] bg-stone-100 overflow-hidden block">
+                    <Link href={`/product/${prod.id}`} className="relative w-full aspect-[3/4] bg-stone-100 overflow-hidden block z-10">
                       <Image 
                         src={prod.image} 
                         alt={prod.title} 
                         fill 
                         unoptimized 
-                        className="object-cover object-top transition-transform duration-700 group-hover:scale-105" 
+                        className="object-cover object-top transition-transform duration-1000 group-hover:scale-[1.07]" 
                       />
                       <div className="absolute top-4 left-4 flex flex-col gap-1.5">
                         <span className={`text-[8.5px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md text-white shadow-sm transition-colors ${prod.listingTypeRaw === "RENT" ? "bg-[#183A2D]" : "bg-amber-700"}`}>
                           {prod.listingTypeRaw === "RENT" ? "THUÊ ĐỒ" : "MUA SẮM"}
                         </span>
-                        <span className="text-[8px] font-bold bg-white/90 text-stone-600 px-2 py-0.5 rounded shadow-sm border border-black/5 w-fit">
-                          {prod.condition}
-                        </span>
+                        <div className="flex gap-1.5">
+                          <span className="text-[8px] font-bold bg-white/95 backdrop-blur-sm text-stone-700 px-2.5 py-1 rounded shadow-sm w-fit border border-stone-100">
+                            {prod.condition}
+                          </span>
+                          {prod.isBoosted && (
+                            <span className="text-[8px] font-bold bg-amber-200/95 backdrop-blur-sm text-amber-900 px-2.5 py-1 rounded shadow-sm w-fit flex items-center gap-1 border border-amber-300">
+                              <Sparkles size={8} /> ĐỀ XUẤT
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div className="absolute bottom-3 right-3 bg-white/80 backdrop-blur-sm px-2.5 py-0.5 rounded-full text-[10px] font-bold text-[#183A2D] flex items-center gap-0.5 shadow-sm">
                         <Star size={10} className="fill-amber-400 stroke-none" /> {prod.rating}
@@ -439,6 +457,18 @@ function ShopContent() {
             })}
             </AnimatePresence>
           </motion.div>
+          {hasMore && (
+            <div className="flex justify-center mt-12 mb-8">
+              <button 
+                onClick={() => loadShopData(true)} 
+                disabled={loadingMore}
+                className="px-8 py-3 bg-[#183A2D] text-white font-bold uppercase tracking-widest text-xs rounded-full hover:bg-[#0a2517] transition-all disabled:opacity-50"
+              >
+                {loadingMore ? "Đang tải thêm..." : "Tải thêm sản phẩm"}
+              </button>
+            </div>
+          )}
+          </>
         ) : (
           <div className="border border-stone-200/60 bg-white rounded-[2.5rem] p-12 text-center shadow-sm max-w-xl mx-auto mt-8 font-sans">
             <div className="w-12 h-12 bg-stone-50 border rounded-full flex items-center justify-center mx-auto text-stone-400 mb-4 shadow-inner">

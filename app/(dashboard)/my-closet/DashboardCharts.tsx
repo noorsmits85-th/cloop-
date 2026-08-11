@@ -21,7 +21,15 @@ const categoryData = [
 
 const COLORS = ['#183A2D', '#D9C8A9', '#4A675B', '#E5DFD3'];
 
-export function DashboardCharts() {
+export function DashboardCharts({ 
+  revenueData, 
+  categoryData, 
+  totalProducts 
+}: { 
+  revenueData: any[]; 
+  categoryData: any[]; 
+  totalProducts: number;
+}) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
       {/* Biểu đồ doanh thu - Area Chart */}
@@ -88,7 +96,7 @@ export function DashboardCharts() {
           {/* Custom Legend */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="text-center">
-              <span className="block text-2xl font-black text-[#183A2D]">1.2k</span>
+              <span className="block text-2xl font-black text-[#183A2D]">{totalProducts > 1000 ? (totalProducts / 1000).toFixed(1) + 'k' : totalProducts}</span>
               <span className="block text-[10px] uppercase font-bold text-stone-400">Sản phẩm</span>
             </div>
           </div>

@@ -62,12 +62,27 @@ export function useMarketplaceData() {
     async function fetchRealMarketplaceData() {
       try {
         setProductsLoading(true);
-        
-        const { data: pData, error: pError } = await supabase.from("products").select("*").order("createdAt", { ascending: false });
+        // Đã giới hạn lấy 40 sản phẩm mới nhất, và chỉ lấy các cột cần thiết (Cấm dùng select('*'))
+        const { data: pData, error: pError } = await supabase
+          .from("products")
+          .select("id, title, name, province, condition, size, brand, owner_name, ownerName, userId, user_id, original_price, originalPrice, rental_price, occasion, image_url, imageUrl")
+          .order("createdAt", { ascending: false })
+          .limit(40);
+          
         if (pError) throw pError;
 
-        const { data: listingsData } = await supabase.from("Listing").select("*");
-        const { data: imagesData } = await supabase.from("ProductImage").select("*");
+        const productIds = (pData || []).map((p: any) => p.id);
+        let listingsData: any[] = [];
+        let imagesData: any[] = [];
+        
+        if (productIds.length > 0) {
+          const [resListings, resImages] = await Promise.all([
+            supabase.from("Listing").select("productId, listingType, status, basePrice").in("productId", productIds),
+            supabase.from("ProductImage").select("productId, url").in("productId", productIds)
+          ]);
+          listingsData = resListings.data || [];
+          imagesData = resImages.data || [];
+        }
 
         const productUserIds = [...new Set((pData || []).map((item: any) => item.userId || item.user_id).filter(Boolean))];
         let usersDataForProducts: any[] = [];
@@ -162,7 +177,7 @@ export function useMarketplaceData() {
 
         const { data: blogData } = await supabase
           .from("BlogPost")
-          .select("*")
+          .select("id, title, content, coverImage, cover_image, productId, userId, user_id, createdAt")
           .filter("status", "neq", "HIDDEN")
           .order("isPinned", { ascending: false })
           .order("createdAt", { ascending: false })
@@ -185,7 +200,11 @@ export function useMarketplaceData() {
           const productIds = blogData.map((b: any) => b.productId).filter(Boolean);
           const userIds = blogData.map((b: any) => b.userId || b.user_id).filter(Boolean);
           
-          const { data: imagesData } = await supabase.from("ProductImage").select("*").in("productId", productIds);
+          let imagesData: any[] = [];
+          if (productIds.length > 0) {
+            const resImages = await supabase.from("ProductImage").select("productId, url").in("productId", productIds);
+            imagesData = resImages.data || [];
+          }
           
           let allBlogUsers: any[] = [];
           if (userIds.length > 0) {
