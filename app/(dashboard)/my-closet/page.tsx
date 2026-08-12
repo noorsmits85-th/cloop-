@@ -11,6 +11,10 @@ export default async function MyClosetOverviewPage() {
   try {
     userAuth = await requireUser();
   } catch (error) {
+    // Bắt lỗi an toàn, thực hiện redirect bên ngoài catch block
+  }
+
+  if (!userAuth) {
     redirect("/login");
   }
 
