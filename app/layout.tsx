@@ -1,597 +1,58 @@
-"use client";
-
-import { useState, useEffect, Suspense, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import Image from "next/image";
-import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation"; 
-import { 
-  Search, ShoppingBag, Sun, Moon, Shirt, Users, Leaf, Star, X, Shield, BookOpen,
-  Home, PlusCircle, User, Loader2
-} from "lucide-react";
-import { createClient } from "@supabase/supabase-js"; 
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { cookies } from "next/headers";
 import "./globals.css";
-import AiStylistChat from "./components/AiStylistChat"; 
-import PwaInstallPrompt from "./components/PwaInstallPrompt";
-import { AuthModalProvider, useAuthModal } from "./AuthModalContext";
+import { AuthModalProvider } from "./AuthModalContext";
 import SmoothScroll from "./components/SmoothScroll";
+import ClientLayout from "./components/ClientLayout";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "temporary-placeholder-key";
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const cookieStore = await cookies();
 
-function HeaderNavbar({ darkMode, setDarkMode, handleFeatureRequirement, currentUser, setCurrentUser }: any) {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const type = searchParams.get("type");
-  const mode = searchParams.get("mode");
-
-  const placeholders = ["Search outfits...", "AI Stylist...", "AI Discovery...", "Near me..."];
-  const [placeholderIndex, setPlaceholderIndex] = useState<number>(0);
-
-  // 🟢 NÂNG CẤP: Lấy userId từ bộ nhớ để tạo lối tắt trang cá nhân
-  const [userIdStr, setUserIdStr] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setUserIdStr(localStorage.getItem("cloop_user_id"));
-    }
-  }, [currentUser]);
-
-  useEffect(() => {
-    const interval = setInterval(() => { 
-      setPlaceholderIndex((prev) => (prev + 1) % placeholders.length); 
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const getNavbarClass = (targetPath: string, targetType: string | null = null, targetMode: string | null = null) => {
-    const isCurrentActive = pathname === targetPath && type === targetType && mode === targetMode;
-    return isCurrentActive
-      ? "text-[#183A2D] dark:text-emerald-400 transition-colors shrink-0 font-bold"
-      : "text-gray-400 hover:text-[#183A2D] transition-colors shrink-0 font-bold";
-  };
-
-  return (
-    <header className={`sticky top-0 z-50 border-b px-4 lg:px-6 transition-all duration-500 backdrop-blur-md ${darkMode ? "bg-[#141E28]/90 border-[#2B3946]" : "bg-white border-[#ece7dc]"}`}>
-      <div className="max-w-[1280px] mx-auto h-[88px] grid grid-cols-[auto_1fr_auto] items-center gap-4">
-        
-        <Link href="/" className="flex items-center gap-3 shrink-0 cursor-pointer group">
-          <Image src="/loogo.png" alt="CLOOP Brand Logo" width={46} height={46} className="mix-blend-multiply" />
-          <div className="leading-none mt-0.5 text-left">
-            <div className={`font-logo text-[28px] font-semibold tracking-[0.18em] transition-colors ${darkMode ? "text-[#F5F5F5]" : "text-[#183A2D]"}`}>CLOOP</div>
-            <p className="font-body text-[8px] font-bold tracking-[0.3em] uppercase text-[#6BA37A] mt-1">Fashion In A Loop</p>
-          </div>
-        </Link>
-
-        <div className="flex items-center gap-4 xl:gap-5 min-w-0">
-          <div className={`hidden md:flex items-center w-[120px] xl:w-[150px] h-[40px] rounded-full px-4 shrink-0 transition-all ${darkMode ? "bg-[#1C2834] border border-[#2B3946]" : "bg-stone-100 border border-stone-200 focus-within:bg-white focus-within:border-[#183A2D]"}`}>
-            <Search size={13} className="text-gray-500 shrink-0" />
-            <input className="ml-2 flex-1 bg-transparent text-[11px] font-search outline-none placeholder:text-gray-500 text-[#183A2D]" placeholder={placeholders[placeholderIndex]} readOnly onClick={() => window.location.href = '/shop'} />
-          </div>
-
-          <nav className="hidden lg:flex items-center gap-3.5 xl:gap-5 font-ui text-[11px] xl:text-[12px] uppercase tracking-wide whitespace-nowrap font-bold min-w-0 overflow-x-auto no-scrollbar">
-            <Link href="/" className={getNavbarClass("/", null, null)}>Trang chủ</Link>
-            <Link href="/shop?type=rent" className={getNavbarClass("/shop", "rent", null)}>Thuê đồ</Link>
-            <Link href="/my-closet/create?mode=rent" className={getNavbarClass("/my-closet/create", null, "rent")}>Cho thuê đồ</Link>
-            <Link href="/shop?type=sell" className={getNavbarClass("/shop", "sell", null)}>Sở hữu</Link>
-            <Link href="/my-closet/create?mode=consign" className={getNavbarClass("/my-closet/create", null, "consign")}>Thanh lý</Link>
-            <button onClick={() => handleFeatureRequirement("Tái chế")} className="text-gray-400 hover:text-[#183A2D] transition-colors uppercase shrink-0 whitespace-nowrap bg-transparent border-none cursor-pointer font-bold">Tái chế</button>
-            <Link href="/blog" className={getNavbarClass("/blog", null, null)}>Blog</Link>
-          </nav>
-        </div>
-
-        <div className="flex items-center gap-4 shrink-0 whitespace-nowrap font-ui text-[11px] font-bold uppercase tracking-widest">
-
-          {currentUser ? (
-            <div className="flex items-center gap-2 xl:gap-3">
-              <span className="hidden xl:inline text-xs font-bold text-[#6BA37A] max-w-[140px] truncate">
-                Chào {currentUser.name}! 🌿
-              </span>
-              
-              {/* 🟢 NÂNG CẤP: Lối tắt siêu tốc đến Tủ Đồ Công Khai và Nhật Ký */}
-              {userIdStr && (
-                <div className="flex items-center gap-1.5 ml-1">
-                  <Link href={`/closet/${userIdStr}`} title="Xem Tủ Đồ Công Khai" className="w-[30px] h-[30px] rounded-full border border-[#E9E2D8] bg-white text-stone-400 hover:text-[#183A2D] hover:bg-[#FAF8F3] hover:border-[#183A2D]/30 transition-all flex items-center justify-center shadow-sm">
-                    <Shirt size={13} />
-                  </Link>
-                  <Link href={`/closet/${userIdStr}/memories`} title="Mở Cuốn Nhật Ký" className="w-[30px] h-[30px] rounded-full border border-[#E9E2D8] bg-white text-stone-400 hover:text-[#183A2D] hover:bg-[#FAF8F3] hover:border-[#183A2D]/30 transition-all flex items-center justify-center shadow-sm">
-                    <BookOpen size={13} />
-                  </Link>
-                </div>
-              )}
-
-              <Link href="/my-closet" className="text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full border whitespace-nowrap bg-white text-[#183A2D] border-[#E9E2D8] hover:bg-[#FAF8F3]">
-                Tủ đồ của tôi
-              </Link>
-              <button 
-                onClick={() => { 
-                  if (typeof window !== "undefined") {
-                    localStorage.removeItem("cloop_user"); 
-                    localStorage.removeItem("cloop_user_id");
-                  }
-                  setCurrentUser(null);
-                  window.location.reload(); 
-                }} 
-                className="text-[10px] font-bold text-red-500 hover:underline"
-              >
-                Thoát
-              </button>
-            </div>
-          ) : (
-            <>
-              <button onClick={() => handleFeatureRequirement("Đăng nhập")} className="text-gray-500 hover:text-[#183A2D] transition-colors">LOG IN</button>
-              <button onClick={() => handleFeatureRequirement("Đăng ký")} className={`px-4 py-2 rounded-full border transition-all ${darkMode ? "bg-white text-black border-white" : "bg-black text-white border-black"}`}>JOIN US</button>
-            </>
-          )}
-          <div className="w-[1px] h-5 bg-gray-200 mx-1 hidden sm:block" />
-          <ShoppingBag size={20} onClick={() => window.location.href = '/shop'} className="text-[#183A2D] dark:text-white cursor-pointer hidden sm:block" />
-        </div>
-
-      </div>
-    </header>
-  );
-}
-
-function MobileBottomNavbar({ darkMode, currentUser, handleFeatureRequirement }: any) {
-  const pathname = usePathname();
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "temporary-placeholder-key";
   
-  const getNavClass = (targetPath: string) => {
-    const isActive = pathname === targetPath || (targetPath !== "/" && pathname.startsWith(targetPath));
-    return `flex flex-col items-center justify-center gap-1 w-full h-full transition-colors cursor-pointer ${
-      isActive 
-        ? "text-[#183A2D] dark:text-emerald-400 font-bold" 
-        : "text-gray-400 hover:text-[#183A2D]"
-    }`;
-  };
-
-  return (
-    <div className={`flex md:hidden fixed bottom-0 left-0 w-full h-[65px] pt-1 z-[90] border-t backdrop-blur-xl transition-colors duration-500 ${darkMode ? "bg-[#141E28]/95 border-[#2B3946]" : "bg-white/95 border-[#ece7dc]"}`}>
-      <div className="flex items-center justify-around w-full h-full px-2">
-        <Link href="/" className={getNavClass("/")}>
-          <Home size={22} strokeWidth={pathname === "/" ? 2.5 : 2} />
-          <span className="text-[9px] font-ui uppercase tracking-widest mt-0.5">Trang chủ</span>
-        </Link>
-        <Link href="/shop" className={getNavClass("/shop")}>
-          <ShoppingBag size={22} strokeWidth={pathname.startsWith("/shop") ? 2.5 : 2} />
-          <span className="text-[9px] font-ui uppercase tracking-widest mt-0.5">Khám phá</span>
-        </Link>
-        <Link href="/my-closet/create?mode=consign" className="flex flex-col items-center justify-center gap-1 w-full h-full text-gray-400 hover:text-[#183A2D] relative group">
-          <div className={`absolute -top-7 w-12 h-12 rounded-full bg-[#183A2D] text-white flex items-center justify-center shadow-lg border-4 transition-colors duration-500 group-hover:bg-[#112a20] ${darkMode ? 'border-[#141E28]' : 'border-white'}`}>
-            <PlusCircle size={22} strokeWidth={2} />
-          </div>
-          <span className="text-[9px] font-ui uppercase tracking-widest mt-6">Đăng bán</span>
-        </Link>
-        <div 
-          onClick={() => {
-            if (currentUser) {
-              window.location.href = '/my-closet';
-            } else {
-              handleFeatureRequirement("Tủ đồ");
-            }
-          }}
-          className={getNavClass("/my-closet")}
-        >
-          <Shirt size={22} strokeWidth={pathname.startsWith("/my-closet") ? 2.5 : 2} />
-          <span className="text-[9px] font-ui uppercase tracking-widest mt-0.5">Tủ đồ</span>
-        </div>
-        <div 
-          onClick={() => {
-            if (currentUser) {
-              window.location.href = '/profile';
-            } else {
-              handleFeatureRequirement("Hồ sơ");
-            }
-          }}
-          className={getNavClass("/profile")}
-        >
-          <User size={22} strokeWidth={pathname.startsWith("/profile") ? 2.5 : 2} />
-          <span className="text-[9px] font-ui uppercase tracking-widest mt-0.5">Hồ sơ</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function LayoutContent({ children }: { children: React.ReactNode }) {
-  const { showAuthModal, setShowAuthModal, activeFeatureName, handleFeatureRequirement, currentUser, setCurrentUser } = useAuthModal();
-  const [darkMode, setDarkMode] = useState<boolean>(false);
-  const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot' | 'forgot_otp'>('login');
-  const [resetEmail, setResetEmail] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [otpValues, setOtpValues] = useState(['', '', '', '', '', '']);
-  const [otpCooldown, setOtpCooldown] = useState(0);
-
-  useEffect(() => {
-    if (otpCooldown > 0) {
-      const timer = setTimeout(() => setOtpCooldown(otpCooldown - 1), 1000);
-      return () => clearTimeout(timer);
+  const supabase = createServerClient(
+    supabaseUrl,
+    supabaseAnonKey,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          try {
+            cookieStore.set({ name, value, ...options });
+          } catch (error) {
+            // The `set` method was called from a Server Component.
+            // This can be ignored if you have middleware refreshing
+            // user sessions.
+          }
+        },
+        remove(name: string, options: CookieOptions) {
+          try {
+            cookieStore.set({ name, value: "", ...options });
+          } catch (error) {
+            // The `remove` method was called from a Server Component.
+            // This can be ignored if you have middleware refreshing
+            // user sessions.
+          }
+        },
+      },
     }
-  }, [otpCooldown]);
+  );
+
+  const { data: { session } } = await supabase.auth.getSession();
   
-  // Create refs array for the 6 OTP input boxes
-  const otpRefs = [
-    useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null),
-  ];
+  let initialUser = null;
+  if (session?.user) {
+    initialUser = {
+      id: session.user.id,
+      email: session.user.email || "",
+      name: session.user.user_metadata?.name || session.user.email?.split("@")[0] || "Member",
+      isLoggedIn: true
+    };
+  }
 
-  const handleOtpChange = (index: number, value: string) => {
-    const digits = value.replace(/\D/g, '');
-    if (!digits) {
-      const newOtp = [...otpValues];
-      newOtp[index] = '';
-      setOtpValues(newOtp);
-      return;
-    }
-
-    const newOtp = [...otpValues];
-    digits.slice(0, 6 - index).split('').forEach((digit, offset) => {
-      newOtp[index + offset] = digit;
-    });
-    setOtpValues(newOtp);
-
-    const nextIndex = Math.min(index + digits.length, 5);
-    if (index < 5) {
-      otpRefs[nextIndex].current?.focus();
-    }
-  };
-
-  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace') {
-      if (!otpValues[index] && index > 0) {
-        otpRefs[index - 1].current?.focus();
-      }
-    }
-  };
-
-  const clearOtp = () => {
-    setOtpValues(['', '', '', '', '', '']);
-    otpRefs[0].current?.focus();
-  };
-
-  const handleOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-    e.preventDefault();
-    const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6).split('');
-    const newOtp = [...otpValues];
-    pastedData.forEach((char, i) => {
-      if (i < 6) newOtp[i] = char;
-    });
-    setOtpValues(newOtp);
-    if (pastedData.length > 0) {
-      const focusIndex = Math.min(pastedData.length, 5);
-      otpRefs[focusIndex].current?.focus();
-    }
-  };
-
-  useEffect(() => {
-    if (showAuthModal) {
-      if (activeFeatureName === "Đăng ký") setAuthMode('register');
-      else setAuthMode('login');
-    }
-  }, [showAuthModal, activeFeatureName]);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const session = localStorage.getItem("cloop_user");
-      if (session) {
-        try {
-          setCurrentUser(JSON.parse(session));
-        } catch (e) {
-          console.error("Lỗi đồng bộ bộ nhớ thành viên tại Layout Master:", e);
-        }
-      }
-    }
-  }, [setCurrentUser]);
-
-  return (
-    <body className={`min-h-screen overflow-x-hidden antialiased relative transition-colors duration-500 font-body selection:bg-[#0A2517] selection:text-[#FAF9F6] ${darkMode ? "bg-[#0F1720] text-[#F5F5F5]" : "bg-[#FAF9F6] text-[#0A2517]"}`}>
-      
-      <style>{`
-        html { scroll-behavior: smooth; }
-        .font-logo { font-family: 'Fraunces', serif; font-weight: 800; letter-spacing: -0.02em; }
-        .font-heading { font-family: 'Fraunces', serif; }
-        .font-body { font-family: 'Lora', serif; }
-        .font-slogan { font-family: 'Fraunces', serif; font-style: italic; }
-        .font-ui { font-family: 'Inter', sans-serif; }
-        .font-search { font-family: 'Inter', sans-serif; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      `}</style>
-
-      <div className="relative z-10 min-h-screen">
-        {children}
-      </div>
-
-
-
-      <AnimatePresence>
-        {showAuthModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }} 
-              animate={{ opacity: 1, scale: 1 }} 
-              exit={{ opacity: 0, scale: 0.95 }} 
-              className={`p-8 rounded-[2.5rem] max-w-[420px] w-full text-center shadow-2xl relative space-y-5 mx-auto border ${darkMode ? "bg-[#18222B] border-[#2B3946]" : "bg-white border-[#E9E2D8]"}`}
-            >
-              <button type="button" onClick={() => setShowAuthModal(false)} className="absolute top-6 right-6 text-gray-400 hover:text-[#183A2D] transition">
-                <X size={18} />
-              </button>
-              
-              <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center mb-2 mx-auto border border-emerald-200">
-                <Shield size={20} className="animate-pulse" />
-              </div>
-              
-              <div className="text-center space-y-1">
-                <h3 className="font-heading text-2xl font-bold uppercase tracking-wide">
-                  {authMode === 'login' ? 'Đăng nhập CLOOP' : authMode === 'register' ? 'Kích hoạt ID Xanh' : authMode === 'forgot' ? 'Quên mật khẩu' : 'Nhập mã khôi phục'}
-                </h3>
-                <p className="text-[11px] text-gray-400">
-                  {authMode === 'login' ? 'Chào mừng bạn quay trở lại với thời trang tuần hoàn.' : authMode === 'register' ? 'Đăng ký tài khoản bảo mật để đồng bộ hóa và quản lý kệ đồ cá nhân.' : authMode === 'forgot' ? 'Nhập email để nhận mã OTP khôi phục mật khẩu.' : `Mã bảo mật đã được gửi tới ${resetEmail}. Nhập mã và mật khẩu mới.`}
-                </p>
-              </div>
-
-              <form 
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  setIsLoading(true);
-                  try {
-                    const fData = new FormData(e.currentTarget);
-                    const email = fData.get("email") as string;
-                    
-                    if (authMode === 'forgot') {
-                      if (!email.trim()) return;
-                      if (otpCooldown > 0) {
-                        alert(`Vui lòng đợi ${otpCooldown} giây trước khi yêu cầu lại mã OTP.`);
-                        return;
-                      }
-                      
-                      const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
-                      if (error) {
-                        alert(`Lỗi gửi mã khôi phục: ${error.message}`);
-                        return;
-                      }
-                      setResetEmail(email.trim());
-                      setOtpValues(['', '', '', '', '', '']); // Reset OTP fields
-                      setOtpCooldown(60); // Set 60s cooldown
-                      setAuthMode('forgot_otp');
-                      return;
-                    }
-
-                    const password = fData.get("password") as string;
-
-                    if (authMode === 'forgot_otp') {
-                      const otp = otpValues.join('');
-                      if (otp.length < 6 || !password) {
-                        alert("Vui lòng nhập đủ 6 ký tự mã xác thực và mật khẩu mới.");
-                        return;
-                      }
-                      
-                      const cleanOtp = otp.trim();
-                      if (!/^\d{6}$/.test(cleanOtp)) {
-                        alert("Ma OTP phai gom dung 6 chu so.");
-                        return;
-                      }
-
-                      const { error: verifyError } = await supabase.auth.verifyOtp({
-                        email: resetEmail,
-                        token: cleanOtp,
-                        type: 'recovery'
-                      });
-                      
-                      if (verifyError) {
-                        alert(`Mã xác thực không hợp lệ: ${verifyError.message}`);
-                        return;
-                      }
-
-                      const { error: updateError } = await supabase.auth.updateUser({ password });
-                      if (updateError) {
-                        alert(`Lỗi cập nhật mật khẩu: ${updateError.message}`);
-                        return;
-                      }
-                      
-                      alert("Cập nhật mật khẩu thành công! Vui lòng đăng nhập lại.");
-                      setAuthMode('login');
-                      return;
-                    }
-
-                    const name = fData.get("username") as string || ""; 
-                    
-                    if (!email.trim() || !password.trim() || (authMode === 'register' && !name.trim())) return;
-
-                    if (authMode === 'login') {
-                      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-                        email: email.trim(),
-                        password: password
-                      });
-
-                      if (authError) {
-                        alert(`Đăng nhập thất bại: Mật khẩu hoặc Email không chính xác.`);
-                        return;
-                      }
-
-                      let userName = authData.user?.user_metadata?.name;
-                      if (!userName && authData.user?.id) {
-                        const { data: dbUser } = await supabase
-                          .from("User")
-                          .select("name")
-                          .eq("id", authData.user.id)
-                          .maybeSingle();
-                        
-                        if (dbUser?.name) {
-                          userName = dbUser.name;
-                          // Cập nhật lại vào Auth để lần sau khỏi query
-                          await supabase.auth.updateUser({ data: { name: userName } });
-                        }
-                      }
-                      
-                      const userSession = { name: userName || email.trim().split('@')[0], email: email.trim(), isLoggedIn: true };
-                      localStorage.setItem("cloop_user_id", authData.user?.id || "");
-                      localStorage.setItem("cloop_user", JSON.stringify(userSession));
-                      setCurrentUser(userSession);
-                      setShowAuthModal(false);
-                      
-                    } else if (authMode === 'register') {
-                      const { data: existingUser } = await supabase
-                        .from("User")
-                        .select("id")
-                        .eq("email", email.trim())
-                        .maybeSingle();
-
-                      if (existingUser) {
-                        alert("Email này đã được đăng ký. Vui lòng đăng nhập!");
-                        setAuthMode('login');
-                        return;
-                      }
-
-                      const { data: authData, error: authError } = await supabase.auth.signUp({
-                        email: email.trim(),
-                        password: password,
-                        options: {
-                          data: { name: name.trim() }
-                        }
-                      });
-                      
-                      if (authError) {
-                        alert(`Đăng ký thất bại: ${authError.message}`);
-                        return;
-                      }
-                      
-                      if (!authData.user) return;
-                      
-                      await supabase.from("User").upsert({
-                        id: authData.user.id,
-                        email: email.trim(),
-                        password: password, 
-                        name: name.trim()
-                      }, { onConflict: 'email' });
-
-                      const userSession = { name: name.trim(), email: email.trim(), isLoggedIn: true };
-                      localStorage.setItem("cloop_user_id", authData.user.id);
-                      localStorage.setItem("cloop_user", JSON.stringify(userSession));
-                      setCurrentUser(userSession);
-                      setShowAuthModal(false);
-                    }
-                  } catch (err: any) {
-                    alert(`Hệ thống gặp sự cố: ${err.message || err}`);
-                  } finally {
-                    setIsLoading(false);
-                  }
-                }}
-                className="space-y-4 pt-2 text-left"
-              >
-                {authMode === 'register' && (
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Biệt danh công khai</label>
-                    <input type="text" name="username" required placeholder="Ví dụ: abc..." className={`w-full px-4 py-2.5 border rounded-xl text-xs font-medium outline-none ${darkMode ? "bg-[#0F1720] border-[#2B3946] text-white" : "bg-[#FAF8F3] border-[#E9E2D8] text-[#183A2D]"}`} />
-                  </div>
-                )}
-
-                {authMode !== 'forgot_otp' && (
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Địa chỉ Email</label>
-                    <input type="email" name="email" required placeholder="member@cloop.vn" className={`w-full px-4 py-2.5 border rounded-xl text-xs font-medium outline-none ${darkMode ? "bg-[#0F1720] border-[#2B3946] text-white" : "bg-[#FAF8F3] border-[#E9E2D8] text-[#183A2D]"}`} />
-                  </div>
-                )}
-
-                {authMode === 'forgot_otp' && (
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Mã Xác Thực (OTP 6 số)</label>
-                      <button type="button" onClick={clearOtp} className="text-[10px] font-bold text-red-400 hover:text-red-500 hover:underline">XÓA TRẮNG</button>
-                    </div>
-                    <div className="flex justify-between gap-2" onPaste={handleOtpPaste}>
-                      {otpValues.map((digit, index) => (
-                        <input
-                          key={index}
-                          ref={otpRefs[index]}
-                          type="text"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          autoComplete={index === 0 ? "one-time-code" : "off"}
-                          maxLength={1}
-                          value={digit}
-                          onFocus={(e) => e.target.select()}
-                          onChange={(e) => handleOtpChange(index, e.target.value)}
-                          onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                          disabled={isLoading}
-                          className={`w-12 h-12 text-center text-lg font-bold border rounded-xl outline-none transition-all focus:border-[#183A2D] focus:ring-1 focus:ring-[#183A2D] ${
-                            darkMode ? "bg-[#0F1720] border-[#2B3946] text-white" : "bg-[#FAF8F3] border-[#E9E2D8] text-[#183A2D]"
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {authMode !== 'forgot' && (
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{authMode === 'forgot_otp' ? 'Mật khẩu mới' : 'Mật khẩu bảo mật'}</label>
-                    <input type="password" name="password" required placeholder="••••••••" className={`w-full px-4 py-2.5 border rounded-xl text-xs font-medium outline-none ${darkMode ? "bg-[#0F1720] border-[#2B3946] text-white" : "bg-[#FAF8F3] border-[#E9E2D8] text-[#183A2D]"}`} />
-                  </div>
-                )}
-
-                               <button 
-                  disabled={isLoading || (authMode === 'forgot' && otpCooldown > 0)} 
-                  type="submit" 
-                  className="w-full font-body flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest bg-[#183A2D] text-white py-3.5 rounded-full shadow-md text-center hover:bg-[#254F3B] transition mt-2 disabled:opacity-70 disabled:cursor-not-allowed"
-                >
-                  {isLoading && <Loader2 size={16} className="animate-spin" />}
-                  {isLoading ? 'Đang xử lý...' : 
-                    authMode === 'login' ? 'Đăng nhập ngay' : 
-                    authMode === 'register' ? 'Kích hoạt tài khoản' : 
-                    authMode === 'forgot' ? (otpCooldown > 0 ? `Đang gửi mã... (${otpCooldown}s)` : 'Gửi mã OTP khôi phục') : 
-                    'Đổi mật khẩu'}
-                </button>
-              </form> 
-
-              <div className="flex flex-col gap-2 mt-4 text-[11px] font-medium text-gray-500">
-                {authMode === 'login' && (
-                  <>
-                    <button onClick={() => setAuthMode('forgot')} className="hover:text-[#183A2D] transition hover:underline">Quên mật khẩu?</button>
-                    <button onClick={() => setAuthMode('register')} className="hover:text-[#183A2D] transition hover:underline">Chưa có ID Xanh? Tạo ngay</button>
-                  </>
-                )}
-                {authMode === 'register' && (
-                  <button onClick={() => setAuthMode('login')} className="hover:text-[#183A2D] transition hover:underline">Đã có ID Xanh? Đăng nhập</button>
-                )}
-                {(authMode === 'forgot' || authMode === 'forgot_otp') && (
-                  <button onClick={() => setAuthMode('login')} className="hover:text-[#183A2D] transition hover:underline">Quay lại đăng nhập</button>
-                )}
-                {authMode === 'forgot_otp' && otpCooldown === 0 && (
-                  <button 
-                    onClick={async () => {
-                      setIsLoading(true);
-                      try {
-                        const { error } = await supabase.auth.resetPasswordForEmail(resetEmail);
-                        if (error) throw error;
-                        setOtpCooldown(60);
-                        alert("Mã khôi phục mới đã được gửi!");
-                      } catch (err: any) {
-                        alert(`Lỗi gửi mã: ${err.message}`);
-                      } finally {
-                        setIsLoading(false);
-                      }
-                    }} 
-                    className="hover:text-[#183A2D] transition hover:underline mt-2"
-                  >
-                    Chưa nhận được mã? Gửi lại
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-      <PwaInstallPrompt />
-    </body>
-  );
-}
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="vi">
       <head>
@@ -603,11 +64,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-title" content="CLOOP" />
         <link rel="apple-touch-icon" href="/app-icon.jpg" />
       </head>
-      <SmoothScroll>
-        <AuthModalProvider>
-          <LayoutContent>{children}</LayoutContent>
-        </AuthModalProvider>
-      </SmoothScroll>
+      <body>
+        <SmoothScroll>
+          <AuthModalProvider initialUser={initialUser}>
+            <ClientLayout>{children}</ClientLayout>
+          </AuthModalProvider>
+        </SmoothScroll>
+      </body>
     </html>
   );
 }

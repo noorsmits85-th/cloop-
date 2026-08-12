@@ -54,6 +54,8 @@ model Product {
   latitude        Float?
   longitude       Float?
   userId          String?
+  status          ProductStatus      @default(IN_CLOSET)
+  isDeleted       Boolean            @default(false)
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
   boostExpiresAt  DateTime?
@@ -63,7 +65,7 @@ model Product {
   images          ProductImage[]
   lifecycles      ProductLifecycle[]
   reviews         Review[]
-  user            User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User?              @relation(fields: [userId], references: [id])
   rentalHistory   RentalHistory[]
 
   @@index([userId])
@@ -91,7 +93,7 @@ model ProductImage {
   isPrimary       Boolean  @default(false)
   sortOrder       Int      @default(0)
   createdAt       DateTime @default(now())
-  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product         Product  @relation(fields: [productId], references: [id])
 
   @@index([productId])
   @@index([productId, isPrimary])
@@ -103,6 +105,7 @@ model Listing {
   listingType     ListingType
   status          ListingStatus @default(AVAILABLE)
   basePrice       Int?
+  snapshot        Json?
   pricing_tiers   Json?
   turnaround_days Int           @default(2)
   salePrice       Int?
@@ -111,7 +114,10 @@ model Listing {
   greenPoints     Int?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
-  product         Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  isDeleted       Boolean       @default(false)
+
+  @@unique([updatedAt, id])
+  product         Product       @relation(fields: [productId], references: [id])
 
   @@index([productId])
   @@index([status])
@@ -136,10 +142,11 @@ model RentalHistory {
   shippingCode       String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
+  isDeleted          Boolean   @default(false)
   disputes           Dispute[]
   invoice            Invoice?
-  product            Product   @relation(fields: [product_id], references: [id], onDelete: Cascade)
-  renter             User      @relation(fields: [renterId], references: [id], onDelete: Cascade)
+  product            Product   @relation(fields: [product_id], references: [id])
+  renter             User      @relation(fields: [renterId], references: [id])
 
   @@index([renterId])
   @@index([product_id])
@@ -158,8 +165,9 @@ model Invoice {
   payosStatus   String?
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
+  isDeleted     Boolean             @default(false)
   disputes      Dispute[]
-  rental        RentalHistory       @relation(fields: [rentalId], references: [id], onDelete: Cascade)
+  rental        RentalHistory       @relation(fields: [rentalId], references: [id])
   ledgerEntries LedgerTransaction[]
 
   @@index([rentalId])
@@ -197,7 +205,7 @@ model Dispute {
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
   invoice            Invoice?       @relation(fields: [invoiceId], references: [id])
-  rental             RentalHistory  @relation(fields: [rentalId], references: [id], onDelete: Cascade)
+  rental             RentalHistory  @relation(fields: [rentalId], references: [id])
 
   @@index([rentalId])
   @@index([invoiceId])
@@ -247,9 +255,9 @@ model Review {
   comment    String?
   type       String
   createdAt  DateTime @default(now())
-  product    Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
-  reviewee   User     @relation("Reviewee", fields: [revieweeId], references: [id], onDelete: Cascade)
-  reviewer   User     @relation("Reviewer", fields: [reviewerId], references: [id], onDelete: Cascade)
+  product    Product? @relation(fields: [productId], references: [id])
+  reviewee   User     @relation("Reviewee", fields: [revieweeId], references: [id])
+  reviewer   User     @relation("Reviewer", fields: [reviewerId], references: [id])
 
   @@index([reviewerId])
   @@index([revieweeId])
@@ -267,9 +275,10 @@ model BlogPost {
   isPinned     Boolean           @default(false)
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
+  isDeleted    Boolean           @default(false)
   interactions BlogInteraction[]
   product      Product?          @relation(fields: [productId], references: [id])
-  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User              @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([productId])
@@ -284,8 +293,8 @@ model BlogInteraction {
   type      String
   content   String?
   createdAt DateTime @default(now())
-  blog      BlogPost @relation(fields: [blogId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  blog      BlogPost @relation(fields: [blogId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 
   @@index([blogId])
   @@index([userId])
@@ -299,8 +308,8 @@ model ProductLifecycle {
   co2Saved  Float              @default(0.0)
   notes     String?
   createdAt DateTime           @default(now())
-  product   Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
-  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product            @relation(fields: [productId], references: [id])
+  user      User               @relation(fields: [userId], references: [id])
 
   @@index([productId])
   @@index([userId])
@@ -316,6 +325,14 @@ enum ListingType {
   RENT
   SELL
   RECYCLE
+}
+
+enum ProductStatus {
+  DRAFT
+  IN_CLOSET
+  ON_MARKET
+  IN_TRANSIT
+  WITH_RENTER
 }
 
 enum ListingStatus {

@@ -7,9 +7,8 @@ import { useRouter } from "next/navigation";
 import Cropper from "react-easy-crop";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image"; // 🟢 Đã fix: Trả lại thẻ Image cho Next.js
-import { Heart, Sparkles, Shirt, Info, MapPin, BadgePercent, ShieldAlert, Camera, Feather, Quote, ArrowLeft, Leaf } from "lucide-react"; // 🟢 Đã fix: Thêm ArrowLeft và Leaf
-
-import { supabase } from "@/lib/supabase";
+import { Heart, Sparkles, Shirt, Info, MapPin, BadgePercent, ShieldAlert, Camera, Feather, Quote, ArrowLeft, Leaf } from "lucide-react"; 
+import { createProductAction } from "./actions";
 
 const PLACEHOLDER_IMG = "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600";
 const PAPER_BG = "https://www.transparenttextures.com/patterns/cream-paper.png";
@@ -182,17 +181,8 @@ export default function CreateProductListingPage() {
     }
 
     setIsSubmitting(true);
-
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      let finalUserId = session?.user?.id;
-
-      if (!finalUserId) {
-        alert("Cậu nhớ đăng nhập trước khi gửi đồ vào tủ nhé!");
-        setIsSubmitting(false);
-        return;
-      }
-
+      // 1. Upload ảnh
       const uploadPromises = images.map(async (imgItem) => {
         const formData = new FormData();
         formData.append("file", imgItem.file);
@@ -211,114 +201,31 @@ export default function CreateProductListingPage() {
       });
 
       const uploadedImages = await Promise.all(uploadPromises);
-      const uploadedImageUrls = uploadedImages.map((image) => image.url);
-      const formattedCondition = product.condition.includes("95") ? "GOOD" : "EXCELLENT";
 
-      const { data: insertedProduct, error: productError } = await supabase
-        .from("products")
-        .insert([{
-          title: product.name,
-          size: product.size,
-          material: product.material,
-          color: product.color, 
-          condition: formattedCondition,
-          province: product.province,
-          ward: product.ward,
-          specificAddress: `${product.ward}, ${product.province}`,
-          category: "UNISEX",
-          targetHeight: String(product.targetHeight),
-          targetWeight: String(product.targetWeight),
-          bust: product.bust || null,
-          waist: product.waist || null,
-          hips: product.hips || null,
-          image_url: uploadedImageUrls[0],
-          is_recycle: listings.isRecycle,
-          original_price: Number(product.originalPrice),
-          userId: finalUserId, 
-          owner_phone: product.ownerPhone,
-          occasion: product.occasion,
-        }])
-        .select()
-        .single();
+      // 2. Chuẩn bị payload và gọi Server Action
+      const payload = {
+        title: product.name,
+        size: product.size,
+        material: product.material,
+        color: product.color,
+        condition: product.condition,
+        province: product.province,
+        ward: product.ward,
+        occasion: product.occasion,
+        bust: product.bust ? Number(product.bust) : null,
+        waist: product.waist ? Number(product.waist) : null,
+        hips: product.hips ? Number(product.hips) : null,
+        uploadedImages,
+        listings,
+        storyText: hasStory ? storyText : undefined
+      };
 
-      if (productError) {
-        alert(`Oái, có lỗi khi cất đồ vào tủ rồi:\n${productError.message}`);
+      const result = await createProductAction(payload);
+
+      if (!result.success) {
+        alert("Lỗi máy chủ rùi: " + result.error);
         setIsSubmitting(false);
         return;
-      }
-
-      if (insertedProduct) {
-        if (uploadedImageUrls.length > 0) {
-          const imagePayload = uploadedImages.map((image, index) => ({
-            id: crypto.randomUUID(), 
-            productId: insertedProduct.id, 
-            url: image.url,
-            storageProvider: image.storageProvider,
-            publicId: image.publicId,
-            width: image.width,
-            height: image.height,
-            bytes: image.bytes,
-            format: image.format,
-            isPrimary: index === 0,
-            sortOrder: index
-          }));
-          try {
-            await supabase.from("ProductImage").insert(imagePayload);
-          } catch (e) { console.error(e); }
-        }
-
-        const currentTime = new Date().toISOString();
-        const listingsToInsert: any[] = [];
-
-        if (listings.isRental) {
-          listingsToInsert.push({
-            id: crypto.randomUUID(),
-            productId: insertedProduct.id,
-            status: "AVAILABLE",
-            listingType: "RENT",
-            basePrice: Number(listings.rentalPrice),
-            deposit: Number(listings.depositPercent), 
-            minDays: 3,
-            createdAt: currentTime,
-            updatedAt: currentTime
-          });
-        }
-
-        if (listings.isSale) {
-          listingsToInsert.push({
-            id: crypto.randomUUID(),
-            productId: insertedProduct.id,
-            status: "AVAILABLE",
-            listingType: "SELL", 
-            basePrice: Number(listings.salePrice),
-            deposit: 0,
-            minDays: 0,
-            createdAt: currentTime,
-            updatedAt: currentTime
-          });
-        }
-
-        if (listingsToInsert.length > 0) {
-          const { error: listErr } = await supabase.from("Listing").insert(listingsToInsert);
-          if (listErr) {
-            alert(`Lỗi khi dán thẻ giá: ${listErr.message}`);
-          }
-        }
-
-        if (hasStory && storyText.trim() !== "") {
-          const isSafe = !checkContactInfoLeak(storyText);
-          if (isSafe) {
-            await supabase.from("BlogPost").insert([{
-              title: `Kỷ niệm cùng ${insertedProduct.title}`,
-              content: storyText.trim(),
-              coverImage: uploadedImageUrls[0] || null,
-              productId: insertedProduct.id, 
-              userId: finalUserId,
-              status: "PUBLIC",   
-              isPinned: false,    
-            }]);
-          }
-        }
       }
 
       alert("Món đồ xinh xắn của cậu đã được cất vào tủ CLOOP thành công! ✨");

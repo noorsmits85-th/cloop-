@@ -93,9 +93,6 @@ export default async function MyClosetOverviewPage() {
             <h1 className="text-xl font-bold tracking-tight text-[#183A2D]">Tổng quan CLOOP Dashboard</h1>
             <p className="text-stone-400 text-xs font-medium tracking-wide">Quản lý hiệu suất, chỉ số sinh thái và doanh thu thực tế.</p>
           </div>
-          <Link href="/my-closet/create" className="inline-flex items-center gap-1.5 bg-[#183A2D] hover:bg-[#224430] text-white text-xs font-medium px-4 py-2.5 rounded-xl transition-all shadow-sm shrink-0">
-            <Plus size={14} /> Thêm đồ mới
-          </Link>
         </div>
 
         {/* GREEN IMPACT ESG DASHBOARD & COIN BALANCE */}
@@ -107,7 +104,7 @@ export default async function MyClosetOverviewPage() {
             <div className="space-y-0.5">
               <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Giảm CO₂ tích lũy</div>
               <div className="text-2xl font-mono font-black text-stone-900">{ecoStats.co2Saved.toLocaleString()} kg</div>
-              <p className="text-[11px] text-emerald-700 font-medium">Bảo vệ bầu không khí sạch</p>
+              <p className="text-[11px] text-gray-500 font-medium">Bảo vệ bầu không khí sạch</p>
             </div>
           </div>
 
@@ -118,7 +115,7 @@ export default async function MyClosetOverviewPage() {
             <div className="space-y-0.5">
               <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Tiết kiệm nước</div>
               <div className="text-2xl font-mono font-black text-stone-900">{ecoStats.waterSaved.toLocaleString()} Lít</div>
-              <p className="text-[11px] text-blue-700 font-medium">Tối ưu tài nguyên bản địa</p>
+              <p className="text-[11px] text-gray-500 font-medium">Tối ưu tài nguyên bản địa</p>
             </div>
           </div>
 
@@ -129,7 +126,7 @@ export default async function MyClosetOverviewPage() {
             <div className="space-y-0.5">
               <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Điểm Green Pts</div>
               <div className="text-2xl font-mono font-black text-[#183A2D]">{ecoStats.greenPoints.toLocaleString()} Pts</div>
-              <p className="text-[11px] text-amber-700 font-medium">Định danh người dùng xanh</p>
+              <p className="text-[11px] text-gray-500 font-medium">Định danh người dùng xanh</p>
             </div>
           </div>
 
@@ -143,7 +140,7 @@ export default async function MyClosetOverviewPage() {
             <div className="space-y-0.5 relative z-10">
               <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Tài khoản Lá CLOOP</div>
               <div className="text-2xl font-mono font-black text-[#183A2D]">{cloopCoins.toLocaleString()} <span className="text-xs font-bold">Lá</span></div>
-              <p className="text-[11px] text-[#183A2D] font-medium">Sẵn sàng quảng cáo tủ đồ</p>
+              <p className="text-[11px] text-gray-500 font-medium">Sẵn sàng quảng cáo tủ đồ</p>
             </div>
           </div>
         </div>
