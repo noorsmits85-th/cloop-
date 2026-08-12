@@ -82,8 +82,8 @@ export default function DashboardLayout({
     {
       title: "Tài khoản",
       items: [
-        { name: "Hồ sơ & Uy tín", path: "/profile", icon: <Award size={20} /> },
-        { name: "Cài đặt", path: "/settings", icon: <Settings size={20} /> },
+        { name: "Hồ sơ & Uy tín", path: "/my-closet/profile", icon: <Award size={20} /> },
+        { name: "Cài đặt", path: "/my-closet/settings", icon: <Settings size={20} /> },
       ],
     },
   ];
@@ -217,7 +217,7 @@ export default function DashboardLayout({
                   <div className="text-xs font-bold text-[#183A2D]">{currentUser?.name || "Member"}</div>
                   <div className="text-[10px] text-emerald-600 font-bold">Trustworthy</div>
                 </div>
-                <Link href="/profile" className="block px-4 py-2.5 text-xs font-medium text-gray-700 hover:bg-stone-50 hover:text-[#183A2D]">
+                <Link href="/my-closet/profile" className="block px-4 py-2.5 text-xs font-medium text-gray-700 hover:bg-stone-50 hover:text-[#183A2D]">
                   Xem hồ sơ
                 </Link>
                 <Link href="/my-closet/create" className="block sm:hidden px-4 py-2.5 text-xs font-medium text-emerald-600 hover:bg-stone-50 hover:text-emerald-700">

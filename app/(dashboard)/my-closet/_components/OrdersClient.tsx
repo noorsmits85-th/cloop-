@@ -1,15 +1,57 @@
 "use client";
 
 import React, { useState } from "react";
-import { History, ShoppingBag, Star, X } from "lucide-react";
+import { History, ShoppingBag, Star, X, Check, Truck, Package, RotateCcw, AlertTriangle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 
 const PLACEHOLDER_IMG = "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=120";
 
+function StatusStepper({ status }: { status: string }) {
+  const steps = [
+    { key: "pending_payment", label: "Chờ cọc", icon: <Package size={14} /> },
+    { key: "active", label: "Đang giao", icon: <Truck size={14} /> },
+    { key: "returning", label: "Trả đồ", icon: <RotateCcw size={14} /> },
+    { key: "completed", label: "Hoàn tất", icon: <Check size={14} /> }
+  ];
+
+  let currentStepIndex = steps.findIndex(s => s.key === status);
+  if (status === "disputed") currentStepIndex = 4; // Lỗi
+
+  if (status === "disputed") {
+    return (
+      <div className="flex items-center gap-2 text-red-600 font-bold text-xs bg-red-50 p-2 rounded-lg border border-red-100 w-full justify-center">
+        <AlertTriangle size={16} /> Đang xảy ra tranh chấp
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center w-full max-w-sm mt-2">
+      {steps.map((step, index) => {
+        const isActive = index <= currentStepIndex;
+        const isLast = index === steps.length - 1;
+        return (
+          <React.Fragment key={step.key}>
+            <div className={`flex flex-col items-center gap-1 ${isActive ? "text-emerald-700" : "text-stone-300"}`}>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] ${isActive ? "bg-emerald-100 border border-emerald-200 shadow-sm" : "bg-stone-50 border border-stone-200"}`}>
+                {step.icon}
+              </div>
+              <span className={`text-[9px] font-bold whitespace-nowrap ${isActive ? "text-emerald-700" : "text-stone-400"}`}>{step.label}</span>
+            </div>
+            {!isLast && (
+              <div className={`flex-1 h-0.5 mx-1 mb-3 ${isActive && index < currentStepIndex ? "bg-emerald-500" : "bg-stone-200"}`}></div>
+            )}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
 export function OrdersClient({ initialEscrow, initialRented }: { initialEscrow: any[], initialRented: any[] }) {
-  const [activeTab, setActiveTab] = useState<"ESCROW" | "RENTED">("ESCROW");
+  const [activeTab, setActiveTab] = useState<"INCOMING" | "OUTGOING">("INCOMING");
   const [escrowOrders, setEscrowOrders] = useState(initialEscrow);
   const [rentedOrders, setRentedOrders] = useState(initialRented);
   
@@ -54,7 +96,7 @@ export function OrdersClient({ initialEscrow, initialRented }: { initialEscrow: 
 
       alert("🎉 Ghi nhận phản hồi thành công! Hệ thống cộng thưởng +10 Green Points vào tài khoản tủ đồ của cậu nhé.");
       setShowReviewModal(false);
-      router.refresh(); // Refresh Server Components
+      router.refresh(); 
     } catch (err: any) {
       alert(`Trục trặc luồng đẩy dữ liệu: ${err.message}`);
     } finally {
@@ -67,141 +109,100 @@ export function OrdersClient({ initialEscrow, initialRented }: { initialEscrow: 
       <div className="bg-white rounded-2xl border border-stone-200/60 shadow-sm overflow-hidden flex flex-col mt-4">
         <div className="flex border-b border-stone-100 w-full px-2 pt-2 overflow-x-auto no-scrollbar bg-stone-50/50">
           <button 
-            onClick={() => setActiveTab("ESCROW")} 
-            className={`px-4 py-3 text-xs font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${activeTab === "ESCROW" ? "border-transparent text-amber-800 border-b-2 !border-amber-800 bg-white rounded-t-lg" : "border-transparent text-stone-400 hover:text-stone-700"}`}
+            onClick={() => setActiveTab("INCOMING")} 
+            className={`px-4 py-3 text-xs font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${activeTab === "INCOMING" ? "border-transparent text-amber-800 border-b-2 !border-amber-800 bg-white rounded-t-lg" : "border-transparent text-stone-400 hover:text-stone-700"}`}
           >
-            <History size={16} /> Yêu cầu ký quỹ
-            <span className={`ml-1 px-1.5 py-0.5 rounded-md text-[10px] ${activeTab === "ESCROW" ? "bg-amber-100 text-amber-800" : "bg-stone-100"}`}>{escrowOrders.length}</span>
+            <History size={16} /> Luồng Yêu cầu ĐẾN (Khách đặt)
+            <span className={`ml-1 px-1.5 py-0.5 rounded-md text-[10px] ${activeTab === "INCOMING" ? "bg-amber-100 text-amber-800" : "bg-stone-100"}`}>{escrowOrders.length}</span>
           </button>
           <button 
-            onClick={() => setActiveTab("RENTED")} 
-            className={`px-4 py-3 text-xs font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${activeTab === "RENTED" ? "border-transparent text-[#0ea5e9] border-b-2 !border-[#0ea5e9] bg-white rounded-t-lg" : "border-transparent text-stone-400 hover:text-stone-700"}`}
+            onClick={() => setActiveTab("OUTGOING")} 
+            className={`px-4 py-3 text-xs font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${activeTab === "OUTGOING" ? "border-transparent text-[#0ea5e9] border-b-2 !border-[#0ea5e9] bg-white rounded-t-lg" : "border-transparent text-stone-400 hover:text-stone-700"}`}
           >
-            <ShoppingBag size={16} /> Trang phục đi thuê
-            <span className={`ml-1 px-1.5 py-0.5 rounded-md text-[10px] ${activeTab === "RENTED" ? "bg-blue-50 text-blue-700" : "bg-stone-100"}`}>{rentedOrders.length}</span>
+            <ShoppingBag size={16} /> Luồng Yêu cầu ĐI (Mình đặt)
+            <span className={`ml-1 px-1.5 py-0.5 rounded-md text-[10px] ${activeTab === "OUTGOING" ? "bg-blue-50 text-blue-700" : "bg-stone-100"}`}>{rentedOrders.length}</span>
           </button>
         </div>
 
-        <div className="p-0">
-          {activeTab === "ESCROW" && (
+        <div className="p-0 bg-stone-50/20">
+          {activeTab === "INCOMING" && (
             <div>
               {escrowOrders.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse whitespace-nowrap">
-                    <thead>
-                      <tr className="border-b border-stone-100 bg-stone-50/30 text-stone-400 font-bold text-[10px] uppercase tracking-wider">
-                        <th className="py-4 px-6">Mã Giao Dịch</th>
-                        <th className="py-4 px-6">Sản Phẩm</th>
-                        <th className="py-4 px-6">Khách Thuê</th>
-                        <th className="py-4 px-6">Trạng Thái</th>
-                        <th className="py-4 px-6 text-right">Tổng Tiền Ký Quỹ</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-stone-100 font-medium text-stone-600 text-[13px]">
-                      {escrowOrders.map((order) => (
-                        <tr key={order.id} className="hover:bg-stone-50/50 transition-colors">
-                          <td className="py-3 px-6 font-mono text-xs text-stone-500">#{String(order.id).substring(0,8)}</td>
-                          <td className="py-3 px-6">
-                            <div className="flex items-center gap-3">
-                              <img src={order.products?.image_url || PLACEHOLDER_IMG} className="w-8 h-10 rounded-md object-cover bg-stone-100 border border-stone-200" />
-                              <span className="font-bold text-[#183A2D] truncate max-w-[150px]">{order.products?.title || 'Trang phục CLOOP'}</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-6">
-                            <div className="flex flex-col">
-                              <span className="font-bold text-stone-800 text-xs">{order.renter_name || `Khách: ${order.renterId?.substring(0,8)}`}</span>
-                              <span className="text-[10px] text-amber-600 font-bold flex items-center gap-0.5"><Star size={10} className="fill-amber-500" /> {order.renterAvg} ({order.renterReviewCount} đánh giá)</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-6">
-                            {order.status === "active" && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">Đang thuê</span>}
-                            {order.status === "completed" && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-500">Đã hoàn tất</span>}
-                            {order.status === "returning" && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100 animate-pulse">Khách đang trả đồ</span>}
-                            {order.status === "disputed" && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-100">Tranh chấp</span>}
-                          </td>
-                          <td className="py-3 px-6 text-right font-mono font-bold text-[#183A2D]">
-                            {(order.total_amount || 0).toLocaleString()}₫
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="flex flex-col">
+                  {escrowOrders.map((order) => (
+                    <div key={order.id} className="p-4 sm:p-6 border-b border-stone-100 hover:bg-stone-50/80 transition-colors flex flex-col md:flex-row gap-4 md:gap-6">
+                      <div className="flex-1 flex gap-4">
+                        <img src={order.products?.image_url || PLACEHOLDER_IMG} className="w-20 h-24 rounded-lg object-cover bg-stone-100 border border-stone-200 shrink-0" />
+                        <div className="flex flex-col gap-1">
+                          <span className="font-mono text-[10px] text-stone-400">#{String(order.id).substring(0,8)}</span>
+                          <span className="font-bold text-[#183A2D] text-sm sm:text-base line-clamp-1">{order.products?.title || 'Trang phục CLOOP'}</span>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[11px] text-stone-500">Khách thuê:</span>
+                            <span className="font-bold text-stone-800 text-[11px]">{order.renter_name || `ID: ${order.renterId?.substring(0,8)}`}</span>
+                            <span className="text-[10px] text-amber-600 font-bold flex items-center gap-0.5"><Star size={10} className="fill-amber-500" /> {order.renterAvg}</span>
+                          </div>
+                          <span className="text-sm font-bold text-[#183A2D] mt-auto">Tổng cọc: {(order.total_amount || 0).toLocaleString()}₫</span>
+                        </div>
+                      </div>
+                      <div className="w-full md:w-1/3 border-t md:border-t-0 md:border-l border-stone-100 pt-4 md:pt-0 md:pl-6 flex flex-col justify-center items-center md:items-start">
+                        <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-2">Trạng thái giao dịch</span>
+                        <StatusStepper status={order.status} />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
                   <div className="w-20 h-20 bg-stone-100 rounded-full flex items-center justify-center text-stone-300 mb-4">
                     <History size={32} />
                   </div>
-                  <h3 className="text-lg font-bold text-stone-800 mb-2">Chưa có giao dịch ký quỹ</h3>
-                  <p className="text-sm text-stone-500 max-w-sm">Tủ đồ của bạn hiện chưa có yêu cầu thuê nào từ người dùng khác.</p>
+                  <h3 className="text-lg font-bold text-stone-800 mb-2">Chưa có yêu cầu đến</h3>
+                  <p className="text-sm text-stone-500 max-w-sm">Tủ đồ của bạn hiện chưa có yêu cầu thuê/mua nào từ người dùng khác.</p>
                 </div>
               )}
             </div>
           )}
 
-          {activeTab === "RENTED" && (
+          {activeTab === "OUTGOING" && (
             <div>
               {rentedOrders.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse whitespace-nowrap">
-                    <thead>
-                      <tr className="border-b border-stone-100 bg-stone-50/30 text-stone-400 font-bold text-[10px] uppercase tracking-wider">
-                        <th className="py-4 px-6">Mã Giao Dịch</th>
-                        <th className="py-4 px-6">Sản Phẩm</th>
-                        <th className="py-4 px-6">Chủ Đồ</th>
-                        <th className="py-4 px-6">Trạng Thái</th>
-                        <th className="py-4 px-6 text-right">Tiền Thanh Toán</th>
-                        <th className="py-4 px-6 text-right">Đánh giá</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-stone-100 font-medium text-stone-600 text-[13px]">
-                      {rentedOrders.map((order) => (
-                        <tr key={order.id} className="hover:bg-stone-50/50 transition-colors group">
-                          <td className="py-3 px-6 font-mono text-xs text-stone-500">#{String(order.id).substring(0,8)}</td>
-                          <td className="py-3 px-6">
-                            <div className="flex items-center gap-3">
-                              <img src={order.products?.image_url || PLACEHOLDER_IMG} className="w-8 h-10 rounded-md object-cover bg-stone-100 border border-stone-200" />
-                              <span className="font-bold text-[#183A2D] truncate max-w-[150px]">{order.products?.title || 'Trang phục CLOOP'}</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-6">
-                            <div className="flex flex-col">
-                              <span className="font-bold text-stone-800 text-xs">{order.owner_name || `Chủ đồ: ${order.ownerId?.substring(0,8)}`}</span>
-                              <span className="text-[10px] text-amber-600 font-bold flex items-center gap-0.5"><Star size={10} className="fill-amber-500" /> {order.ownerAvg} ({order.ownerReviewCount} đánh giá)</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-6">
-                            {order.status === "active" && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">Đang thuê</span>}
-                            {order.status === "completed" && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-500">Đã hoàn tất</span>}
-                            {order.status === "returning" && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100">Đang trả đồ</span>}
-                            {order.status === "disputed" && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-100">Tranh chấp</span>}
-                          </td>
-                          <td className="py-3 px-6 text-right font-mono font-bold text-[#0ea5e9]">
-                            {(order.total_amount || 0).toLocaleString()}₫
-                          </td>
-                          <td className="py-3 px-6 text-right">
-                            {order.status === "completed" ? (
-                              <button onClick={() => {
-                                setSelectedOrderForReview(order);
-                                setShowReviewModal(true);
-                              }} className="text-[10px] font-bold text-[#183A2D] bg-[#183A2D]/10 hover:bg-[#183A2D] hover:text-white px-3 py-1.5 rounded-md transition-colors">
-                                Đánh giá
-                              </button>
-                            ) : (
-                              <span className="text-[10px] text-stone-400">Chưa thể đánh giá</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="flex flex-col">
+                  {rentedOrders.map((order) => (
+                    <div key={order.id} className="p-4 sm:p-6 border-b border-stone-100 hover:bg-stone-50/80 transition-colors flex flex-col md:flex-row gap-4 md:gap-6">
+                      <div className="flex-1 flex gap-4">
+                        <img src={order.products?.image_url || PLACEHOLDER_IMG} className="w-20 h-24 rounded-lg object-cover bg-stone-100 border border-stone-200 shrink-0" />
+                        <div className="flex flex-col gap-1">
+                          <span className="font-mono text-[10px] text-stone-400">#{String(order.id).substring(0,8)}</span>
+                          <span className="font-bold text-[#183A2D] text-sm sm:text-base line-clamp-1">{order.products?.title || 'Trang phục CLOOP'}</span>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[11px] text-stone-500">Chủ đồ:</span>
+                            <span className="font-bold text-stone-800 text-[11px]">{order.owner_name || `ID: ${order.ownerId?.substring(0,8)}`}</span>
+                            <span className="text-[10px] text-amber-600 font-bold flex items-center gap-0.5"><Star size={10} className="fill-amber-500" /> {order.ownerAvg}</span>
+                          </div>
+                          <span className="text-sm font-bold text-[#0ea5e9] mt-auto">Đã thanh toán: {(order.total_amount || 0).toLocaleString()}₫</span>
+                          {order.status === "completed" && (
+                            <button onClick={() => {
+                              setSelectedOrderForReview(order);
+                              setShowReviewModal(true);
+                            }} className="text-[10px] font-bold text-[#183A2D] bg-[#183A2D]/10 hover:bg-[#183A2D] hover:text-white px-3 py-1.5 rounded-md transition-colors w-fit mt-2">
+                              Đánh giá chủ đồ
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="w-full md:w-1/3 border-t md:border-t-0 md:border-l border-stone-100 pt-4 md:pt-0 md:pl-6 flex flex-col justify-center items-center md:items-start">
+                        <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-2">Trạng thái giao dịch</span>
+                        <StatusStepper status={order.status} />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
                   <div className="w-20 h-20 bg-stone-100 rounded-full flex items-center justify-center text-stone-300 mb-4">
                     <ShoppingBag size={32} />
                   </div>
-                  <h3 className="text-lg font-bold text-stone-800 mb-2">Bạn chưa thuê món đồ nào</h3>
+                  <h3 className="text-lg font-bold text-stone-800 mb-2">Bạn chưa đặt món đồ nào</h3>
                   <p className="text-sm text-stone-500 max-w-sm mb-6">Hàng ngàn sản phẩm tuyệt đẹp đang chờ bạn khám phá trên CLOOP Market.</p>
                 </div>
               )}
