@@ -126,6 +126,6 @@ export function SettingsClient({ userProfile }: { userProfile: any }) {
           <Save size={16} /> {isSaving ? "Đang lưu..." : "Lưu thay đổi"}
         </button>
       </div>
-    </div>
+    </form>
   );
 }
