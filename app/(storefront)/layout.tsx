@@ -9,7 +9,7 @@ import {
   Search, ShoppingBag, Sun, Moon, Shirt, Users, Leaf, Star, X, Shield, BookOpen,
   Home, PlusCircle, User, Loader2
 } from "lucide-react";
-import { createClient } from "@supabase/supabase-js"; 
+import { createBrowserClient } from "@supabase/ssr"; 
 import "../globals.css";
 import AiStylistChat from "@/app/components/AiStylistChat"; 
 import PwaInstallPrompt from "@/app/components/PwaInstallPrompt";
@@ -18,7 +18,7 @@ import SmoothScroll from "@/app/components/SmoothScroll";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "temporary-placeholder-key";
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
 
 function HeaderNavbar({ darkMode, setDarkMode, handleFeatureRequirement, currentUser, setCurrentUser }: any) {
   const pathname = usePathname();
