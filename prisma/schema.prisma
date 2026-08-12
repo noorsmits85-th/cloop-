@@ -75,7 +75,6 @@ model Product {
   @@index([material])
   @@index([occasion])
   @@index([size])
-  @@index([title(ops: raw("gin_trgm_ops"))], type: Gin)
   @@map("products")
 }
 
