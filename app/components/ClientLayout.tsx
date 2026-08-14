@@ -217,21 +217,42 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     }
 
     const newOtp = [...otpValues];
-    digits.slice(0, 6 - index).split('').forEach((digit, offset) => {
-      newOtp[index + offset] = digit;
+
+    // Single digit typed or replaced (takes the latest typed digit)
+    if (digits.length <= 2) {
+      const lastDigit = digits[digits.length - 1];
+      newOtp[index] = lastDigit;
+      setOtpValues(newOtp);
+
+      if (index < 5) {
+        setTimeout(() => {
+          otpRefs[index + 1].current?.focus();
+        }, 10);
+      }
+      return;
+    }
+
+    // Pasted multi-digit string (e.g. 6 digits)
+    const sliced = digits.slice(0, 6 - index).split('');
+    sliced.forEach((digit, offset) => {
+      if (index + offset < 6) {
+        newOtp[index + offset] = digit;
+      }
     });
     setOtpValues(newOtp);
 
-    const nextIndex = Math.min(index + digits.length, 5);
-    if (index < 5) {
+    const nextIndex = Math.min(index + sliced.length, 5);
+    setTimeout(() => {
       otpRefs[nextIndex].current?.focus();
-    }
+    }, 10);
   };
 
   const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Backspace') {
       if (!otpValues[index] && index > 0) {
-        otpRefs[index - 1].current?.focus();
+        setTimeout(() => {
+          otpRefs[index - 1].current?.focus();
+        }, 10);
       }
     }
   };
@@ -569,7 +590,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                           inputMode="numeric"
                           pattern="[0-9]*"
                           autoComplete={index === 0 ? "one-time-code" : "off"}
-                          maxLength={1}
+                          maxLength={2}
                           value={digit}
                           onFocus={(e) => e.target.select()}
                           onChange={(e) => handleOtpChange(index, e.target.value)}
