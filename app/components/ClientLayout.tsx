@@ -620,8 +620,9 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                 {(authMode === 'forgot' || authMode === 'forgot_otp') && (
                   <button onClick={() => setAuthMode('login')} className="hover:text-[#183A2D] transition hover:underline">Quay lại đăng nhập</button>
                 )}
-                {authMode === 'forgot_otp' && otpCooldown === 0 && (
+                {authMode === 'forgot_otp' && (
                   <button 
+                    disabled={otpCooldown > 0 || isLoading}
                     onClick={async () => {
                       setIsLoading(true);
                       try {
@@ -635,9 +636,9 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                         setIsLoading(false);
                       }
                     }} 
-                    className="hover:text-[#183A2D] transition hover:underline mt-2"
+                    className="hover:text-[#183A2D] transition hover:underline mt-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:no-underline"
                   >
-                    Chưa nhận được mã? Gửi lại
+                    {otpCooldown > 0 ? `Chưa nhận được mã? Gửi lại (${otpCooldown}s)` : 'Chưa nhận được mã? Gửi lại'}
                   </button>
                 )}
               </div>
