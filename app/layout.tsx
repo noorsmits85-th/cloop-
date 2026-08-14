@@ -41,14 +41,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     }
   );
 
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { user } } = await supabase.auth.getUser();
   
   let initialUser = null;
-  if (session?.user) {
+  if (user) {
     initialUser = {
-      id: session.user.id,
-      email: session.user.email || "",
-      name: session.user.user_metadata?.name || session.user.email?.split("@")[0] || "Member",
+      id: user.id,
+      email: user.email || "",
+      name: user.user_metadata?.name || user.email?.split("@")[0] || "Member",
       isLoggedIn: true
     };
   }
