@@ -28,7 +28,7 @@ export async function requireAdmin() {
   // Bỏ qua RLS của Supabase, truy vấn trực tiếp qua Prisma
   const profile = await prisma.user.findUnique({
     where: { id: user.id },
-    select: { id: true, email: true, role: true, name: true }
+    select: { id: true, role: true, name: true }
   });
 
   if (!profile) {

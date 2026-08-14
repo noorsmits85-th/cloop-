@@ -14,7 +14,7 @@ export default async function WalletPage() {
 
   // Fetch user profile to get wallet balance
   const { data: userProfile } = await supabase
-    .from("users")
+    .from("profiles")
     .select("wallet_balance, cloopCoins")
     .eq("id", userId)
     .single();

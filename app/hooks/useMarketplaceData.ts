@@ -77,8 +77,8 @@ export function useMarketplaceData() {
         
         if (productIds.length > 0) {
           const [resListings, resImages] = await Promise.all([
-            supabase.from("Listing").select("productId, listingType, status, basePrice").in("productId", productIds),
-            supabase.from("ProductImage").select("productId, url").in("productId", productIds)
+            supabase.from("listings").select("productId, listingType, status, basePrice").in("productId", productIds),
+            supabase.from("product_images").select("productId, url").in("productId", productIds)
           ]);
           listingsData = resListings.data || [];
           imagesData = resImages.data || [];
@@ -90,8 +90,8 @@ export function useMarketplaceData() {
         if (productUserIds.length > 0) {
           // Giữ nguyên truy vấn 2 bảng "User" và "users" bằng Promise.all
           const [res1, res2] = await Promise.all([
-            supabase.from("User").select("id, name").in("id", productUserIds),
-            supabase.from("users").select("id, name").in("id", productUserIds)
+            supabase.from("profiles").select("id, name").in("id", productUserIds),
+            supabase.from("profiles").select("id, name").in("id", productUserIds)
           ]);
           usersDataForProducts = [...(res1.data || []), ...(res2.data || [])];
         }
@@ -176,7 +176,7 @@ export function useMarketplaceData() {
         }
 
         const { data: blogData } = await supabase
-          .from("BlogPost")
+          .from("blog_posts")
           .select("id, title, content, coverImage, cover_image, productId, userId, user_id, createdAt")
           .filter("status", "neq", "HIDDEN")
           .order("isPinned", { ascending: false })
@@ -202,7 +202,7 @@ export function useMarketplaceData() {
           
           let imagesData: any[] = [];
           if (productIds.length > 0) {
-            const resImages = await supabase.from("ProductImage").select("productId, url").in("productId", productIds);
+            const resImages = await supabase.from("product_images").select("productId, url").in("productId", productIds);
             imagesData = resImages.data || [];
           }
           
@@ -210,8 +210,8 @@ export function useMarketplaceData() {
           if (userIds.length > 0) {
             // Giữ nguyên truy vấn 2 bảng
             const [res1, res2] = await Promise.all([
-              supabase.from("User").select("id, name, avatar").in("id", userIds),
-              supabase.from("users").select("id, name, avatar").in("id", userIds)
+              supabase.from("profiles").select("id, name, avatar").in("id", userIds),
+              supabase.from("profiles").select("id, name, avatar").in("id", userIds)
             ]);
             allBlogUsers = [...(res1.data || []), ...(res2.data || [])];
           }

@@ -68,7 +68,7 @@ export async function POST(req: Request) {
     // 4. Nếu update thành công, kích hoạt các side-effects khác
     await prisma.rentalHistory.update({
       where: { id: invoice.rentalId },
-      data: { status: "active" } // Xác nhận hợp đồng
+      data: { status: "LENDER_SHIPPED" } // Xác nhận hợp đồng
     });
 
     // Có thể chèn dữ liệu Sổ cái (Ledger) hoặc bắn Event cho Hệ thống vận chuyển ở đây

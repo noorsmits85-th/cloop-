@@ -3,6 +3,8 @@
 import { createClient } from "@/src/utils/supabase/server";
 import { PrismaClient } from "@prisma/client";
 
+import { Logger } from "next-axiom";
+
 const prisma = new PrismaClient();
 
 export async function createBooking({
@@ -13,7 +15,8 @@ export async function createBooking({
   renterPhone,
   ownerName,
   ownerPhone,
-  isRental
+  isRental,
+  shippingMode
 }: {
   productId: string;
   startDate: string;
@@ -23,7 +26,12 @@ export async function createBooking({
   ownerName: string;
   ownerPhone: string;
   isRental: boolean;
+  shippingMode: "CLOOP_BOOK" | "SELF_BOOK";
 }) {
+  const log = new Logger();
+  
+  log.info("Booking Process Started", { productId, isRental, renterPhone, shippingMode });
+
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -55,18 +63,31 @@ export async function createBooking({
     const end = new Date(endDate);
     const days = isRental && start && end ? Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000) + 1) : 0;
     
+    const shippingFee = shippingMode === "CLOOP_BOOK" ? 35000 : 0;
     const subTotal = isRental ? (days > 0 ? days * basePrice : 0) : basePrice; 
     const totalAmount = isRental 
-      ? (days > 0 ? subTotal + deposit + serviceFee : 0)
-      : (basePrice + serviceFee);
+      ? (days > 0 ? subTotal + deposit + serviceFee + shippingFee : 0)
+      : (basePrice + serviceFee + shippingFee);
 
     // 2. Chặn trùng lịch (Overlap check) trên Server (Sử dụng Prisma Transaction để an toàn)
     return await prisma.$transaction(async (tx) => {
+      // 🚀 BƯỚC KHÓA BẢNG PESSIMISTIC LOCK: NGĂN CHẶN DOUBLE BOOKING
+      // Gọi lệnh này TRƯỚC khi thực hiện bất kỳ lệnh check hay create nào!
+      try {
+        await tx.$queryRaw`SELECT id FROM "products" WHERE id = ${productId} FOR UPDATE NOWAIT;`;
+      } catch (err: any) {
+        // Lỗi P2010 là Raw Query Error trong Prisma. Mã lỗi 55P03 trong Postgres nghĩa là "could not obtain lock".
+        if (err.code === "P2010" || err.message.includes("could not obtain lock") || err.message.includes("NOWAIT")) {
+          throw new Error("Rất tiếc, một khách hàng khác đang thanh toán món đồ này. Vui lòng thử lại sau vài giây!");
+        }
+        throw err;
+      }
+
       if (isRental) {
         const overlapping = await tx.rentalHistory.findFirst({
           where: {
             product_id: productId,
-            status: "active",
+            status: "BORROWER_RECEIVED",
             start_date: { lte: end },
             end_date: { gte: start },
           }
@@ -92,7 +113,7 @@ export async function createBooking({
           owner_phone: ownerPhone,
           start_date: isRental ? start : new Date(),
           end_date: isRental ? end : new Date(),
-          status: "pending_payment", // Giai đoạn Pilot: Tạo pending trước, sau đó Pilot sẽ check
+          status: "PENDING_APPROVAL", // Giai đoạn Pilot: Tạo pending trước, sau đó Pilot sẽ check
         }
       });
 
@@ -105,6 +126,22 @@ export async function createBooking({
         }
       });
 
+      // 4. Đổi trạng thái (State Machine) sang RESERVED
+      // Nếu thuê thì khóa listing RENT, mua thì khóa listing SELL
+      await tx.listing.updateMany({
+        where: {
+          productId: productId,
+          listingType: isRental ? "RENT" : "SELL",
+          status: "AVAILABLE"
+        },
+        data: {
+          status: "RESERVED"
+        }
+      });
+      
+      // Ghi log Nghiệp vụ
+      log.info("Booking Created Successfully", { rentalId: rental.id, amount: totalAmount, shippingMode });
+
       return { 
         success: true, 
         rentalId: rental.id, 
@@ -116,6 +153,17 @@ export async function createBooking({
   } catch (err: any) {
     console.error("SERVER ACTION ERROR:", err);
     return { success: false, error: err.message || "Lỗi hệ thống khi tạo đơn hàng." };
+  } finally {
+    // 5. Kích nổ Cache của Next.js để tránh ảo giác giao diện!
+    // Tuyệt đối không dùng revalidatePath('/', 'layout') vì sẽ phá sập DB.
+    try {
+      const { revalidatePath } = require("next/cache");
+      revalidatePath(`/product/${productId}`, "page");
+      revalidatePath("/", "page");
+      revalidatePath("/shop", "page");
+    } catch (e) {
+      console.error("Cache purge failed:", e);
+    }
   }
 }
 
@@ -129,7 +177,7 @@ export async function confirmManualTransfer(rentalId: string) {
     // This allows the demo UI to work while retaining security (we know WHO clicked it).
     await prisma.rentalHistory.update({
       where: { id: rentalId, renterId: user.id },
-      data: { status: "active" } // In reality, an Admin should do this or PayOS Webhook
+      data: { status: "LENDER_SHIPPED" } // In reality, an Admin should do this or PayOS Webhook
     });
 
     return { success: true };

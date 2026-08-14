@@ -20,9 +20,9 @@ async function main() {
   // 1. Create Users
   const admin = await prisma.user.create({
     data: {
-      email: 'admin@cloop.vn',
-      password: 'password123', // In real app, this should be hashed
       name: 'Admin CLOOP',
+      email: 'admin@cloop.local',
+      password: 'password',
       role: UserRole.ADMIN,
       isVerified: true,
       rating: 5.0
@@ -31,9 +31,9 @@ async function main() {
 
   const user1 = await prisma.user.create({
     data: {
-      email: 'renter@cloop.vn',
-      password: 'password123',
       name: 'Trang Thuê Đồ',
+      email: 'user@cloop.local',
+      password: 'password',
       role: UserRole.USER,
       isVerified: true,
       rating: 4.8

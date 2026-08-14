@@ -21,7 +21,7 @@ export function SettingsClient({ userProfile }: { userProfile: any }) {
       if (!session?.user?.id) throw new Error("Chưa đăng nhập");
 
       const { error } = await supabase
-        .from("users")
+        .from("profiles")
         .update({
           pickup_address: address,
           phone: phone,

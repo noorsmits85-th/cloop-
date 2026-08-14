@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { createPayOSPaymentLink } from "@/app/actions/payment";
 import { createBooking } from "@/app/actions/booking";
+import { useLogger } from "next-axiom";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "temporary-placeholder-key";
@@ -36,6 +37,7 @@ export default function RentalBookingBox({
   ownerAddress
 }: RentalBookingBoxProps) {
   const router = useRouter();
+  const log = useLogger();
   const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
   const [rentalPackage, setRentalPackage] = useState<1 | 3 | 7>(3);
   
@@ -44,7 +46,7 @@ export default function RentalBookingBox({
   
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+  const shippingMode = "CLOOP_BOOK";
   // Mock Payment Flow States
   const [showMockPayment, setShowMockPayment] = useState(false);
   const [mockPaymentStatus, setMockPaymentStatus] = useState<"IDLE" | "SCANNING" | "SUCCESS">("IDLE");
@@ -85,9 +87,11 @@ export default function RentalBookingBox({
   
   const depositAmount = isRental && days > 0 ? Number(depositPercent) : 0;
   
+  const shippingFee = shippingMode === "CLOOP_BOOK" ? 35000 : 0;
+
   const totalInvoicePrice = isRental 
-    ? (days > 0 ? subTotal + depositAmount + currentServiceFee : 0)
-    : (activePrice + currentServiceFee);
+    ? (days > 0 ? subTotal + depositAmount + currentServiceFee + shippingFee : 0)
+    : (activePrice + currentServiceFee + shippingFee);
 
   const finalOwnerName = ownerName || "Chủ tủ đồ ẩn danh";
   const finalOwnerPhone = ownerPhone || "Chưa cập nhật SĐT";
@@ -100,7 +104,7 @@ export default function RentalBookingBox({
     async function fetchOwnerReviewStats() {
       try {
         const { data, error } = await supabase
-          .from("Review")
+          .from("reviews")
           .select("rating")
           .eq("revieweeId", ownerId)
           .eq("type", "RENTER_TO_OWNER");
@@ -139,6 +143,16 @@ export default function RentalBookingBox({
     if (!agreedToTerms) { alert(`Bạn ơi, vui lòng tích chọn đồng ý với Điều khoản và cam kết bảo chứng của CLOOP nhé! 😊`); return; }
 
     setIsSubmitting(true);
+    
+    // Ghi log Nghiệp vụ Axiom
+    log.info("User Clicked Checkout", { 
+      productId, 
+      isRental, 
+      shippingMode, 
+      totalInvoicePrice, 
+      renterPhone 
+    });
+
     try {
       // 2. Gọi Server Action để tạo Booking
       const bookingRes = await createBooking({
@@ -149,7 +163,8 @@ export default function RentalBookingBox({
         renterPhone,
         ownerName: finalOwnerName,
         ownerPhone: finalOwnerPhone,
-        isRental
+        isRental,
+        shippingMode
       });
 
       if (!bookingRes.success || !(bookingRes as any).rentalId) {
@@ -255,6 +270,21 @@ export default function RentalBookingBox({
             <span className="font-mono">+{depositAmount.toLocaleString()}đ</span>
           </div>
         )}
+        
+        {/* LỰA CHỌN PHƯƠNG THỨC VẬN CHUYỂN */}
+        <div className="pt-2 pb-1 space-y-2">
+          <label className="block text-[11px] font-bold text-[#183A2D] uppercase tracking-wider mb-2">Phương thức vận chuyển</label>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-3 p-3 rounded-xl border bg-emerald-50/50 border-emerald-600/30">
+              <input type="radio" checked readOnly className="w-4 h-4 text-emerald-600 cursor-not-allowed" />
+              <div className="flex flex-col flex-1">
+                <span className="text-xs font-bold text-stone-800">CLOOP gọi Ship hộ (Lấy tận nhà)</span>
+                <span className="text-[10px] text-stone-500">Đồng giá toàn quốc, không lo vận đơn</span>
+              </div>
+              <span className="text-xs font-mono font-bold text-emerald-700">+35.000đ</span>
+            </div>
+          </div>
+        </div>
         
         <div className="flex justify-between items-center text-xs">
           <span>Phí dịch vụ tuần hoàn (Nền tảng):</span>

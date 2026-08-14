@@ -10,24 +10,10 @@ export default function AdminPaymentDashboard() {
   // 📡 LỆNH BỐC DỮ LIỆU ĐỐI SOÁT 24H TRỰC TIẾP
   useEffect(() => {
     async function fetchPaymentsForTrang() {
-      // Gọi bảng orders, đồng thời bắc cầu sang bảng User để lấy tên và thông tin ngân hàng của chủ đồ
-      const { data, error } = await supabase
-        .from("orders")
-        .select(`
-          id,
-          total_amount,
-          owner_net_amount,
-          status,
-          created_at,
-          User (
-            name,
-            bank_name,
-            bank_account
-          )
-        `)
-        .eq("status", "pending"); // Chỉ lọc ra những đơn khách đã trả tiền mà cậu chưa thanh toán cho chủ đồ
-
-      if (!error && data) {
+      // Thay vì truy vấn trực tiếp supabase.from("orders"), gọi Server Action
+      const response = await fetch("/api/admin/payments/pending");
+      if (response.ok) {
+        const data = await response.json();
         setPendingOrders(data);
       }
     }
@@ -36,12 +22,14 @@ export default function AdminPaymentDashboard() {
 
   // 🛠️ Nút bấm cập nhật trạng thái sau khi cậu đã chuyển khoản xong cho họ trên điện thoại
   const handleMarkAsPaid = async (orderId: string) => {
-    const { error } = await supabase
-      .from("orders")
-      .update({ status: "completed" })
-      .eq("id", orderId);
+    // Gọi API route để update trạng thái
+    const res = await fetch(`/api/admin/payments/mark-paid`, {
+      method: "POST",
+      body: JSON.stringify({ orderId }),
+      headers: { "Content-Type": "application/json" }
+    });
 
-    if (!error) {
+    if (res.ok) {
       alert("Đã xác nhận thanh toán thành công cho chủ đồ!");
       setPendingOrders(pendingOrders.filter(order => order.id !== orderId)); // Xóa khỏi danh sách chờ
     }

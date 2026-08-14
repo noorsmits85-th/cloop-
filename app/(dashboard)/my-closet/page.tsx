@@ -60,7 +60,7 @@ export default async function MyClosetOverviewPage() {
   const completedRentals = await prisma.rentalHistory.findMany({
     where: {
       product: { userId },
-      status: "completed"
+      status: "LENDER_COMPLETED"
     },
     include: { invoice: true }
   });

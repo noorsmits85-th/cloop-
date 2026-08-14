@@ -50,15 +50,7 @@ export default function AuthModal({
           }
         });
         if (error) throw error;
-        // Also insert into public.User just to be safe with the old schema
-        if (data.user) {
-           await supabase.from('User').upsert({
-             id: data.user.id,
-             email: email,
-             name: name,
-             password: "managed_by_supabase_auth"
-           });
-        }
+
         setSuccessMsg('Đăng ký thành công! Vui lòng kiểm tra Email để xác nhận.');
       } 
       else if (mode === 'LOGIN') {

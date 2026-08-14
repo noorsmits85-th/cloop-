@@ -120,7 +120,7 @@ function ShopContent() {
       }
 
       // Sắp xếp theo cả createdAt và id để giải quyết bài toán tie-breaker
-      query = query.order("createdAt", { ascending: false }).order("id", { ascending: false }).limit(16);
+      query = query.order("lastBumpedAt", { ascending: false }).order("id", { ascending: false }).limit(16);
 
       const { data, error } = await query;
       if (error) throw error;
@@ -141,8 +141,8 @@ function ShopContent() {
 
       if (productIds.length > 0) {
         const [resListings, resImages] = await Promise.all([
-          supabase.from("Listing").select("productId, listingType, status, basePrice").in("productId", productIds),
-          supabase.from("ProductImage").select("productId, url").in("productId", productIds)
+          supabase.from("listings").select("productId, listingType, status, basePrice").in("productId", productIds),
+          supabase.from("product_images").select("productId, url").in("productId", productIds)
         ]);
         listingsData = resListings.data || [];
         imagesData = resImages.data || [];
@@ -151,8 +151,8 @@ function ShopContent() {
       const productUserIds = [...new Set(data.map((item: any) => item.userId || item.user_id).filter(Boolean))];
       if (productUserIds.length > 0) {
         const [res1, res2] = await Promise.all([
-          supabase.from("User").select("id, name").in("id", productUserIds),
-          supabase.from("users").select("id, name").in("id", productUserIds)
+          supabase.from("profiles").select("id, name").in("id", productUserIds),
+          supabase.from("profiles").select("id, name").in("id", productUserIds)
         ]);
         usersDataForProducts = [...(res1.data || []), ...(res2.data || [])];
       }

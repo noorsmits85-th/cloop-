@@ -131,7 +131,7 @@ export default function ClosetProfilePage() {
     setIsSaving(true);
     try {
       const { error } = await supabase
-        .from("User")
+        .from("profiles")
         .update({
           name: editForm.name,
           bio: editForm.bio,
@@ -171,7 +171,7 @@ export default function ClosetProfilePage() {
         if (loggedInId === userId) setIsMe(true);
 
         const { data: userData } = await supabase
-          .from("User")
+          .from("profiles")
           .select("id, name, avatar, created_at, bio, quote, coverImage, location, todaysMemory, rating, completedOrders")
           .eq("id", userId)
           .maybeSingle();
@@ -179,7 +179,7 @@ export default function ClosetProfilePage() {
         let finalUser = userData;
         if (!finalUser) {
           const { data: fallbackUser } = await supabase
-            .from("users")
+            .from("profiles")
             .select("id, name, avatar, created_at, bio, quote, coverImage, location, todaysMemory, rating, completedOrders")
             .eq("id", userId)
             .maybeSingle();
@@ -207,8 +207,8 @@ export default function ClosetProfilePage() {
 
         if (productsData && productsData.length > 0) {
           const productIds = productsData.map((p) => p.id);
-          const { data: listingsData } = await supabase.from("Listing").select("*").in("productId", productIds);
-          const { data: imagesData } = await supabase.from("ProductImage").select("*").in("productId", productIds);
+          const { data: listingsData } = await supabase.from("listings").select("*").in("productId", productIds);
+          const { data: imagesData } = await supabase.from("product_images").select("*").in("productId", productIds);
 
           const formatted: ClosetProduct[] = [];
 
@@ -236,7 +236,7 @@ export default function ClosetProfilePage() {
           setAllProducts(formatted);
         }
 
-        const { data: blogData } = await supabase.from("BlogPost").select("*").eq("userId", userId).eq("status", "PUBLIC").order("createdAt", { ascending: false });
+        const { data: blogData } = await supabase.from("blog_posts").select("*").eq("userId", userId).eq("status", "PUBLIC").order("createdAt", { ascending: false });
         
         if (blogData && blogData.length > 0) {
            const mappedMemories = blogData.map((b:any) => {

@@ -23,7 +23,7 @@ export default async function MyClosetItemsPage() {
       blogs: true,
       rentalHistory: {
         where: {
-          status: { in: ["active", "returning"] }
+          status: { in: ["BORROWER_RECEIVED", "BORROWER_RETURNED"] }
         }
       },
       images: {

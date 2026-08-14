@@ -109,7 +109,7 @@ export async function POST(req: Request) {
         const conflicting = await tx.rentalHistory.findFirst({
           where: {
             product_id: productId,
-            status: { notIn: ["cancelled", "rejected", "completed"] },
+            status: { notIn: ["CANCELLED", "LENDER_COMPLETED"] },
             actual_return_date: null, // Đơn đã được khách xác nhận trả sớm thì bỏ qua
             // Giao tuyến: Start MỚI < End CŨ và End MỚI > Start CŨ
             start_date: { lt: bufferedNewEndDate },
@@ -132,7 +132,7 @@ export async function POST(req: Request) {
             owner_name: product.user?.name,
             start_date: normStartDate,
             end_date: normEndDate,
-            status: "pending_payment"
+            status: "PENDING_APPROVAL"
           }
         });
 
@@ -178,7 +178,7 @@ export async function POST(req: Request) {
       // COMPENSATING ACTION (Xử lý khi PayOS lỗi để tránh rác dữ liệu)
       await prisma.rentalHistory.update({
         where: { id: checkoutResult.rental.id },
-        data: { status: "cancelled" }
+        data: { status: "CANCELLED" }
       });
       await prisma.invoice.update({
         where: { id: checkoutResult.invoice.id },

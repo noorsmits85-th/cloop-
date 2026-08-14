@@ -13,7 +13,7 @@ export default async function SettingsPage() {
   }
 
   const { data: userProfile } = await supabase
-    .from("users")
+    .from("profiles")
     .select("*")
     .eq("id", userId)
     .single();

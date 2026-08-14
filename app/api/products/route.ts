@@ -1,20 +1,23 @@
-// app/api/products/route.ts
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
-);
+import { supabaseAdmin } from "@/src/lib/supabase";
+import { requireUser } from "@/src/lib/auth";
 
 export async function POST(request: Request) {
   try {
+    if (!supabaseAdmin) {
+      throw new Error("Missing Supabase Admin Key");
+    }
+    const user = await requireUser();
+    
     const body = await request.json();
     const { client_upload_id, ...productData } = body;
+    
+    // Đảm bảo userId gán đúng với người đăng nhập
+    productData.userId = user.id;
 
     // 🎯 CHỐNG TRÙNG LẶP: Nếu ID tạm thời đã tồn tại trong hệ thống, trả về kết quả cũ ngay lập tức
     if (client_upload_id) {
-      const { data: existingProduct } = await supabase
+      const { data: existingProduct } = await supabaseAdmin
         .from("products")
         .select("id")
         .eq("id", client_upload_id)
@@ -74,7 +77,7 @@ export async function POST(request: Request) {
     }
 
     // Ghi hạch toán dữ liệu sạch xuống cơ sở dữ liệu kèm theo cột embedding vừa sinh
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("products")
       .insert([{ 
         id: client_upload_id, 

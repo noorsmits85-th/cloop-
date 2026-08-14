@@ -1,8 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/supabase";
 
 // 1. Đọc cấu hình bảo mật từ file .env của dự án
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // 2. Chặn lỗi từ vòng gửi xe nếu quên chưa cấu hình môi trường
 if (!supabaseUrl || !supabaseAnonKey) {
@@ -11,20 +13,20 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 // 3. Khởi tạo và export thực thể supabase xịn đét toàn hệ thống
 // Cấu hình thêm bộ persistSession để trình duyệt tự găm token, không bao giờ out app bậy bạ
-export const supabase = createClient(supabaseUrl || "", supabaseAnonKey || "", {
+export const supabase = createClient<Database>(supabaseUrl || "", supabaseAnonKey || "", {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
   },
 });
 
-// 4. Khởi tạo client supabaseAdmin với Service Role Key để thực thi quyền tối cao (bypass RLS, delete user)
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-export const supabaseAdmin = supabaseServiceKey 
-  ? createClient(supabaseUrl || "", supabaseServiceKey, {
+// 4. Client Quyền Lực (Dành riêng cho Server/API)
+// TẮT hoàn toàn auth để vượt qua RLS. Phải tuyệt đối bảo mật!
+export const supabaseAdmin = supabaseServiceKey
+  ? createClient<Database>(supabaseUrl || "", supabaseServiceKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
-      }
+      },
     })
   : null;

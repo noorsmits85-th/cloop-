@@ -503,7 +503,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                       let userName = authData.user?.user_metadata?.name;
                       if (!userName && authData.user?.id) {
                         const { data: dbUser } = await supabase
-                          .from("User")
+                          .from("profiles")
                           .select("name")
                           .eq("id", authData.user.id)
                           .maybeSingle();
@@ -517,18 +517,6 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                       setShowAuthModal(false);
                       
                     } else if (authMode === 'register') {
-                      const { data: existingUser } = await supabase
-                        .from("User")
-                        .select("id")
-                        .eq("email", email.trim())
-                        .maybeSingle();
-
-                      if (existingUser) {
-                        alert("Email này đã được đăng ký. Vui lòng đăng nhập!");
-                        setAuthMode('login');
-                        return;
-                      }
-
                       const { data: authData, error: authError } = await supabase.auth.signUp({
                         email: email.trim(),
                         password: password,
@@ -543,13 +531,6 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                       }
                       
                       if (!authData.user) return;
-                      
-                      await supabase.from("User").upsert({
-                        id: authData.user.id,
-                        email: email.trim(),
-                        password: password, 
-                        name: name.trim()
-                      }, { onConflict: 'email' });
 
                       setShowAuthModal(false);
                     }

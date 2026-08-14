@@ -1,3 +1,4 @@
+import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -22,4 +23,24 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Cấu hình Sentry bọc thép
+export default withSentryConfig(
+  nextConfig,
+  {
+    // Tắt các log loằng ngoằng của Sentry lúc Vercel đang build cho đỡ rác Terminal
+    silent: true,
+    org: "cloop-tech",
+    project: "cloop-app",
+
+    // 🛡️ BỌC THÉP 1: Upload source maps lên Sentry nhưng GIẤU KHỎI TRÌNH DUYỆT (End-user)
+    sourcemaps: {
+      disable: false,
+      deleteSourcemapsAfterUpload: true,
+    },
+
+    // Dọn dẹp các frame rác trong stack trace (v8 mặc định đã tối ưu)
+    
+    // 🛡️ BỌC THÉP 2: Ẩn các log console của Sentry trên trình duyệt khách hàng
+    disableLogger: true,
+  }
+);

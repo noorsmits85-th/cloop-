@@ -68,7 +68,7 @@ export default function BlogJournalPage() {
   useEffect(() => {
     if (!currentUserId) return;
     async function fetchMyProfile() {
-      const { data } = await supabase.from("User").select("id, name, avatar, isVip").eq("id", currentUserId).maybeSingle();
+      const { data } = await supabase.from("profiles").select("id, name, avatar, isVip").eq("id", currentUserId).maybeSingle();
       if (data) setMyProfile(data);
     }
     fetchMyProfile();
@@ -79,7 +79,7 @@ export default function BlogJournalPage() {
     async function fetchRealDataFeed() {
       try {
         const { data: blogData, error: blogError } = await supabase
-          .from("BlogPost")
+          .from("blog_posts")
           .select("*")
           .order("isPinned", { ascending: false })
           .order("createdAt", { ascending: false });
@@ -106,10 +106,10 @@ export default function BlogJournalPage() {
           { data: interactionsData } 
         ] = await Promise.all([
           productIds.length > 0 ? supabase.from("products").select("*").in("id", productIds) : Promise.resolve({ data: [] }),
-          productIds.length > 0 ? supabase.from("Listing").select("*").in("productId", productIds) : Promise.resolve({ data: [] }),
-          productIds.length > 0 ? supabase.from("ProductImage").select("*").in("productId", productIds) : Promise.resolve({ data: [] }),
-          authorIds.length > 0 ? supabase.from("User").select("id, name, avatar, isVip").in("id", authorIds) : Promise.resolve({ data: [] }), 
-          blogIds.length > 0 ? supabase.from("BlogInteraction").select("*").in("blogId", blogIds) : Promise.resolve({ data: [] }) 
+          productIds.length > 0 ? supabase.from("listings").select("*").in("productId", productIds) : Promise.resolve({ data: [] }),
+          productIds.length > 0 ? supabase.from("product_images").select("*").in("productId", productIds) : Promise.resolve({ data: [] }),
+          authorIds.length > 0 ? supabase.from("profiles").select("id, name, avatar, isVip").in("id", authorIds) : Promise.resolve({ data: [] }), 
+          blogIds.length > 0 ? supabase.from("blog_interactions").select("*").in("blogId", blogIds) : Promise.resolve({ data: [] }) 
         ]);
 
         let authorScores: Record<string, { name: string; avatar: string; score: number }> = {};
@@ -236,9 +236,9 @@ export default function BlogJournalPage() {
       const isCurrentlyActive = isLiking ? post.hasLiked : post.hasSaved;
 
       if (isCurrentlyActive) {
-        await supabase.from("BlogInteraction").delete().match({ blogId: blogId, userId: currentUserId, type });
+        await supabase.from("blog_interactions").delete().match({ blogId: blogId, userId: currentUserId, type });
       } else {
-        await supabase.from("BlogInteraction").insert({ blogId: blogId, userId: currentUserId, type });
+        await supabase.from("blog_interactions").insert({ blogId: blogId, userId: currentUserId, type });
       }
     } catch (error) {
       console.error(`Lỗi cập nhật ${type}:`, error);

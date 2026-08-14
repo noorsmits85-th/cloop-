@@ -52,11 +52,11 @@ export default function MemoriesDiaryPage() {
     async function fetchData() {
       try {
         setLoading(true);
-        const { data: user } = await supabase.from("User").select("name").eq("id", userId).maybeSingle();
+        const { data: user } = await supabase.from("profiles").select("name").eq("id", userId).maybeSingle();
         if (user?.name) setUserName(user.name);
 
         const { data: blogData } = await supabase
-          .from("BlogPost")
+          .from("blog_posts")
           .select("*")
           .eq("userId", userId)
           .eq("status", "PUBLIC")
@@ -69,7 +69,7 @@ export default function MemoriesDiaryPage() {
           
           if (productIds.length > 0) {
             const { data: pImages } = await supabase
-              .from("ProductImage")
+              .from("product_images")
               .select("productId, url")
               .in("productId", productIds);
             if (pImages) productImages = pImages;

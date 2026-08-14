@@ -59,6 +59,7 @@ model Product {
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
   boostExpiresAt  DateTime?
+  lastBumpedAt    DateTime?
   isHighlighted   Boolean            @default(false)
   blogs           BlogPost[]
   listings        Listing[]
@@ -138,7 +139,7 @@ model RentalHistory {
   start_date         DateTime
   end_date           DateTime
   actual_return_date DateTime?
-  status             String    @default("pending_payment")
+  status             RentalStatus @default(PENDING_APPROVAL)
   shippingCode       String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
@@ -368,6 +369,16 @@ enum ItemCondition {
 enum PaymentStatus {
   PENDING
   PAID
+  CANCELLED
+}
+
+enum RentalStatus {
+  PENDING_APPROVAL
+  LENDER_SHIPPED
+  BORROWER_RECEIVED
+  BORROWER_RETURNED
+  LENDER_COMPLETED
+  DISPUTE
   CANCELLED
 }
 

@@ -7,7 +7,7 @@ export function useTopClosets() {
   useEffect(() => {
     async function fetchTopClosets() {
       try {
-        const { data: reviewsData } = await supabase.from("Review").select("*").eq("type", "RENTER_TO_OWNER");
+        const { data: reviewsData } = await supabase.from("reviews").select("*").eq("type", "RENTER_TO_OWNER");
         if (!reviewsData || reviewsData.length === 0) {
           setTopClosets([]);
           return;
@@ -34,8 +34,8 @@ export function useTopClosets() {
         if (userIds.length > 0) {
           // Giữ nguyên truy vấn 2 bảng "User" và "users" bằng Promise.all
           const [res1, res2] = await Promise.all([
-            supabase.from("User").select("id, name, avatar").in("id", userIds),
-            supabase.from("users").select("id, name, avatar").in("id", userIds)
+            supabase.from("profiles").select("id, name, avatar").in("id", userIds),
+            supabase.from("profiles").select("id, name, avatar").in("id", userIds)
           ]);
           allTopUsers = [...(res1.data || []), ...(res2.data || [])];
         }

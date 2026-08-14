@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@supabase/supabase-js";
 import { Wallet, ArrowUpRight, ArrowDownLeft, ShieldCheck, TrendingUp, RefreshCw } from "lucide-react";
+import { getDepositVaultMetricsAction } from "./actions";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "temporary-placeholder-key";
@@ -22,68 +23,13 @@ export default function DepositVaultAdmin() {
   async function calculateVaultMetrics() {
     try {
       setLoading(true);
-      
-      // 1. Quét toàn bộ lịch sử thuê đồ để tính toán dòng tiền cọc
-      const { data: rentalHistory } = await supabase.from("rental_history").select("*, products(title)");
-      const { data: listingsData } = await supabase.from("Listing").select("*");
-
-      if (!rentalHistory || !listingsData) return;
-
-      let totalVault = 0;
-      let pendingReturn = 0;
-      const today = new Date();
-
-      const formattedTx = (rentalHistory || []).map((rent: any) => {
-        // Tìm cấu trúc giá cọc của sản phẩm tương ứng
-        const listing = (listingsData || []).find((l: any) => String(l.productId) === String(rent.product_id));
-        const rentPrice = listing?.basePrice || 0;
-        const depositPercent = listing?.deposit || 100;
-        
-        // Tính toán số tiền cọc thật sự của đơn này
-        const startDate = new Date(rent.start_date);
-        const endDate = new Date(rent.end_date);
-        const days = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / 86400000) + 1);
-        const depositAmount = Math.round(((rentPrice * days) * depositPercent) / 100);
-
-        // Phân loại trạng thái dòng tiền cọc
-        if (rent.status === "active") {
-          totalVault += depositAmount;
-          
-          // Nếu đơn hàng sắp kết thúc trong 3 ngày tới, xếp vào nhóm sắp hoàn trả
-          const timeDiffToInvoceEnd = endDate.getTime() - today.getTime();
-          const daysToReturn = Math.ceil(timeDiffToInvoceEnd / 86400000);
-          if (daysToReturn <= 3 && daysToReturn >= 0) {
-            pendingReturn += depositAmount;
-          }
-        }
-
-        return {
-          id: rent.id,
-          productName: rent.products?.title || "Trang phục CLOOP",
-          renterName: rent.renter_name,
-          amount: depositAmount,
-          status: rent.status,
-          date: rent.start_date
-        };
-      });
-
-      // Bài toán kinh tế: Tiền nhàn rỗi khả dụng = Tổng tiền đang giữ - Tiền bắt buộc phải trả trong 3 ngày tới
-      const availableLiquidity = Math.max(0, totalVault - pendingReturn);
-      
-      // Giả định lãi suất tích lũy qua đêm / ngắn hạn hợp tác với Ngân hàng là 4.5%/năm
-      const estimatedInterest = Math.round((availableLiquidity * 0.045) / 365);
-
-      setVaultSummary({
-        totalVault,
-        pendingReturn,
-        availableLiquidity,
-        estimatedInterest
-      });
-
-      setTransactions(formattedTx.filter(t => t.amount > 0).slice(0, 5)); // Lấy 5 giao dịch tiền cọc gần nhất
-
+      const res = await getDepositVaultMetricsAction();
+      if (res.success && res.data) {
+        setVaultSummary(res.data.vaultSummary);
+        setTransactions(res.data.transactions);
+      }
     } catch (error) {
-      console.error("Lỗi tính toán quỹ bảo chứng:", error);
+      console.error("Lỗi khi kéo dữ liệu Vault:", error);
     } finally {
       setLoading(false);
     }

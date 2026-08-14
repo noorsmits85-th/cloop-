@@ -20,7 +20,7 @@ export function ItemsClient({ initialItems }: { initialItems: any[] }) {
     const newStatus = currentlyHidden ? "PUBLIC" : "HIDDEN";
     try {
       const { error } = await supabase
-        .from("BlogPost")
+        .from("blog_posts")
         .update({ status: newStatus })
         .eq("productId", productId);
       

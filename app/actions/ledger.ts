@@ -156,12 +156,12 @@ export async function processReconciliation(
         }
       });
 
-      // Cập nhật trạng thái RentalHistory thành "completed"
+      // Cập nhật trạng thái RentalHistory thành "LENDER_COMPLETED"
       const invoice = await tx.invoice.findUnique({ where: { id: invoiceId } });
       if (invoice) {
         await tx.rentalHistory.update({
           where: { id: invoice.rentalId },
-          data: { status: "completed" }
+          data: { status: "LENDER_COMPLETED" }
         });
       }
     });

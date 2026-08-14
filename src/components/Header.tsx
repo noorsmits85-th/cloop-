@@ -46,7 +46,7 @@ export default function Header() {
           } else {
             try {
               const { data: uData } = await supabase
-                .from("User")
+                .from("profiles")
                 .select("*")
                 .eq("id", storedUserId)
                 .single();

@@ -22,6 +22,7 @@ function ProductDetailContent() {
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [transactionMode, setTransactionMode] = useState<"RENT" | "SELL">("RENT");
+  const [hasActiveRentals, setHasActiveRentals] = useState(false);
 
   const [imagesList, setImagesList] = useState<string[]>([]); 
   const [activeImgIndex, setActiveImgIndex] = useState(0);    
@@ -36,7 +37,7 @@ function ProductDetailContent() {
 
         let fetchedImages: string[] = [];
         try {
-          const { data: imgData } = await supabase.from("ProductImage").select("url").eq("productId", id);
+          const { data: imgData } = await supabase.from("product_images").select("url").eq("productId", id);
           if (imgData && imgData.length > 0) {
             fetchedImages = imgData.map((img: any) => img.url);
           }
@@ -53,7 +54,7 @@ function ProductDetailContent() {
         let ownerProfile: any = null;
         if (data?.userId) {
           try {
-            const { data: uData } = await supabase.from("User").select("*").eq("id", data.userId).single();
+            const { data: uData } = await supabase.from("profiles").select("*").eq("id", data.userId).single();
             if (uData) ownerProfile = uData;
           } catch (authErr) {
             console.error("Lỗi truy vấn bảng User chính chủ:", authErr);
@@ -62,10 +63,27 @@ function ProductDetailContent() {
 
         let priceData: any[] = [];
         try {
-          const { data: lData } = await supabase.from("Listing").select("*").eq("productId", id);
+          const { data: lData } = await supabase.from("listings").select("*").eq("productId", id);
           if (lData && lData.length > 0) priceData = lData;
         } catch (e) {
           console.warn("Bỏ qua lỗi truy xuất Listing.");
+        }
+
+        // Kiểm tra xem sản phẩm có đang bị kẹt lịch thuê không
+        try {
+          // Table name might be RentalHistory or rental_history depending on DB case mapping, try both if needed
+          const { data: rentData } = await supabase.from("RentalHistory").select("id").eq("product_id", id).in("status", ["active", "RESERVED"]).limit(1);
+          if (rentData && rentData.length > 0) {
+            setHasActiveRentals(true);
+          } else {
+            // Fallback for snake_case table name if Prisma mapped it differently in Supabase public schema
+            const { data: rentData2 } = await supabase.from("rental_history").select("id").eq("product_id", id).in("status", ["active", "RESERVED"]).limit(1);
+            if (rentData2 && rentData2.length > 0) {
+              setHasActiveRentals(true);
+            }
+          }
+        } catch (e) {
+          console.warn("Bỏ qua kiểm tra lịch thuê", e);
         }
 
         const rentListing = priceData.find((l: any) => (l.listingType || l.listing_type) === "RENT");
@@ -235,21 +253,29 @@ function ProductDetailContent() {
             </div>
 
             {product.isRental && product.isSale && (
-              <div className="flex bg-stone-100 p-1 rounded-xl border border-stone-200 w-full">
-                <button 
-                  type="button"
-                  onClick={() => setTransactionMode("RENT")}
-                  className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${transactionMode === "RENT" ? "bg-[#183A2D] text-white shadow-sm" : "text-gray-500 hover:text-stone-800"}`}
-                >
-                  <Shirt size={14} /> Xem Luồng Thuê Đồ
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => setTransactionMode("SELL")}
-                  className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${transactionMode === "SELL" ? "bg-amber-800 text-white shadow-sm" : "text-gray-500 hover:text-stone-800"}`}
-                >
-                  <ShoppingBag size={14} /> Xem Luồng Mua Đứt
-                </button>
+              <div className="flex flex-col gap-2">
+                <div className="flex bg-stone-100 p-1 rounded-xl border border-stone-200 w-full">
+                  <button 
+                    type="button"
+                    onClick={() => setTransactionMode("RENT")}
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${transactionMode === "RENT" ? "bg-[#183A2D] text-white shadow-sm" : "text-gray-500 hover:text-stone-800"}`}
+                  >
+                    <Shirt size={14} /> Xem Luồng Thuê Đồ
+                  </button>
+                  <button 
+                    type="button"
+                    disabled={hasActiveRentals}
+                    onClick={() => setTransactionMode("SELL")}
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${hasActiveRentals ? "opacity-50 cursor-not-allowed bg-stone-200 text-stone-400" : transactionMode === "SELL" ? "bg-amber-800 text-white shadow-sm" : "text-gray-500 hover:text-stone-800"}`}
+                  >
+                    <ShoppingBag size={14} /> Xem Luồng Mua Đứt
+                  </button>
+                </div>
+                {hasActiveRentals && (
+                  <p className="text-[10px] text-amber-600 font-semibold text-center italic">
+                    *Sản phẩm đang vướng lịch thuê. Vui lòng quay lại sau!
+                  </p>
+                )}
               </div>
             )}
 

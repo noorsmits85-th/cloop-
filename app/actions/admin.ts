@@ -2,19 +2,20 @@
 
 import { prisma } from "@/src/lib/prisma";
 import { createClient } from "@/src/utils/supabase/server";
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 // Hàm tiện ích để check quyền Admin
 async function requireAdmin() {
   const supabase = await createClient();
   const { data: { session } } = await supabase.auth.getSession();
   
-  if (!session?.user?.email) {
+  if (!session?.user?.id) {
     throw new Error("Không tìm thấy phiên đăng nhập.");
   }
 
   // Lấy User từ database
   const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
+    where: { id: session.user.id },
     select: { role: true }
   });
 
@@ -33,11 +34,25 @@ export async function searchUserByEmail(email: string) {
       return { error: "Vui lòng nhập email." };
     }
 
+    const supabaseAdmin = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+    
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.listUsers();
+    
+    if (authError) throw new Error(authError.message);
+    
+    const authUser = authData.users.find(u => u.email === email);
+    
+    if (!authUser) {
+      return { error: "Không tìm thấy user với email này trong hệ thống Auth." };
+    }
+
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { id: authUser.id },
       select: {
         id: true,
-        email: true,
         name: true,
         avatar: true,
         cloopCoins: true,
@@ -46,10 +61,11 @@ export async function searchUserByEmail(email: string) {
     });
 
     if (!user) {
-      return { error: "Không tìm thấy user với email này." };
+      return { error: "Không tìm thấy user profile với email này." };
     }
 
-    return { success: true, user };
+    // Đính kèm email vào để hiển thị trên UI Admin
+    return { success: true, user: { ...user, email: authUser.email } };
   } catch (error: any) {
     return { error: error.message };
   }
@@ -71,12 +87,12 @@ export async function pumpCoins(userId: string, amount: number) {
           increment: amount,
         }
       },
-      select: { cloopCoins: true, name: true, email: true }
+      select: { cloopCoins: true, name: true }
     });
 
     return { 
       success: true, 
-      message: `Đã bơm thành công ${amount.toLocaleString()} Lá CLOOP cho ${updatedUser.name || updatedUser.email}! Số dư mới: ${updatedUser.cloopCoins.toLocaleString()}` 
+      message: `Đã bơm thành công ${amount.toLocaleString()} Lá CLOOP cho ${updatedUser.name || "thành viên"}! Số dư mới: ${updatedUser.cloopCoins.toLocaleString()}` 
     };
 
   } catch (error: any) {

@@ -1,7 +1,9 @@
 "use server";
 
 import { createClient } from "@/src/utils/supabase/server";
-import { PrismaClient, ItemCondition, GenderCategory } from "@prisma/client";
+import { PrismaClient, ItemCondition, GenderCategory, ListingType } from "@prisma/client";
+import { uploadProductSchema } from "@/lib/validations/product";
+import { revalidatePath } from "next/cache";
 
 const prisma = new PrismaClient();
 
@@ -30,107 +32,147 @@ export async function createProductAction({
       return { success: false, error: "Chưa có ảnh món đồ mất rồi!" };
     }
 
-    const formattedCondition = product.condition.includes("95") ? ItemCondition.GOOD : ItemCondition.EXCELLENT;
+    // Tái cấu trúc data để parse Zod ở phía Server chống Hacker
+    const payloadToValidate = {
+      title: product.name,
+      description: product.description,
+      size: product.size,
+      material: product.material,
+      color: product.color,
+      condition: product.condition,
+      province: product.province,
+      ward: product.ward,
+      occasion: product.occasion,
+      isRental: listings.isRental,
+      isSale: listings.isSale,
+      rentalPrice: listings.rentalPrice,
+      salePrice: listings.salePrice,
+      deposit: listings.deposit,
+      minDays: listings.minDays,
+      images: uploadedImageUrls
+    };
+
+    const parsed = uploadProductSchema.safeParse(payloadToValidate);
+    if (!parsed.success) {
+      return { success: false, error: parsed.error.issues[0].message };
+    }
+
+    const validData = parsed.data;
+
+    let conditionEnum: ItemCondition = ItemCondition.GOOD;
+    if (validData.condition === "99") conditionEnum = ItemCondition.EXCELLENT;
+    if (validData.condition === "NEW") conditionEnum = ItemCondition.NEW_WITH_TAGS;
 
     // Sử dụng Prisma Transaction để đảm bảo toàn vẹn dữ liệu
     const newProductId = await prisma.$transaction(async (tx) => {
       // 1. Tạo Product
       const newProduct = await tx.product.create({
         data: {
-          title: product.name,
-          size: product.size,
-          material: product.material,
-          color: product.color, 
-          condition: formattedCondition,
-          province: product.province,
-          specificAddress: `${product.ward}, ${product.province}`,
-          category: "DRESSES", // Tạm thời hardcode theo UI cũ (UNISEX -> DRESSES)
+          title: validData.title,
+          description: validData.description,
+          size: validData.size,
+          material: validData.material,
+          color: validData.color || null,
+          condition: conditionEnum,
+          province: validData.province,
+          specificAddress: `${validData.ward}, ${validData.province}`,
+          category: "DRESSES", // Default fallback
           gender: GenderCategory.UNISEX,
-          // targetHeight: String(product.targetHeight),
-          // targetWeight: String(product.targetWeight),
-          bust: product.bust || null,
-          waist: product.waist || null,
-          hips: product.hips || null,
-          // image_url: uploadedImageUrls[0],
-          // is_recycle: listings.isRecycle,
-          // original_price: Number(product.originalPrice),
-          userId: user.id, 
-          // owner_phone: product.ownerPhone,
-          occasion: product.occasion,
+          userId: user.id,
+          occasion: validData.occasion || null,
         }
       });
 
-      // 2. Tạo ProductImage
-      if (uploadedImageUrls.length > 0) {
-        await tx.productImage.createMany({
-          data: uploadedImageUrls.map((url, index) => ({
-            productId: newProduct.id,
-            url: url,
-            isPrimary: index === 0,
-            sortOrder: index,
-          }))
-        });
-      }
-
-      // 3. Tạo Listings
+      // 2. Tạo Listings
       const listingsData = [];
-      if (listings.isRental) {
+      if (validData.isRental) {
         listingsData.push({
           productId: newProduct.id,
-          listingType: "RENT",
-          basePrice: Number(listings.rentalPrice),
-          deposit: Number(listings.depositPercent), 
-          minDays: 3,
+          listingType: ListingType.RENT,
+          basePrice: validData.rentalPrice || 0,
+          deposit: validData.deposit || null,
+          minDays: validData.minDays,
+          turnaround_days: 2
         });
       }
       
-      if (listings.isSale) {
+      if (validData.isSale) {
         listingsData.push({
           productId: newProduct.id,
-          listingType: "SELL",
-          basePrice: Number(listings.salePrice),
-          deposit: 0,
-          minDays: 0,
+          listingType: ListingType.SELL,
+          basePrice: validData.salePrice || 0, // Dùng basePrice cho giá bán
+          salePrice: validData.salePrice || 0,
+          turnaround_days: 2
         });
       }
 
-      if (listingsData.length > 0) {
-        // Prisma không hỗ trợ enum kiểu string lỏng trong createMany nếu không ép kiểu chính xác
-        // Dùng create từng cái hoặc cast.
-        for (const l of listingsData) {
-          await tx.listing.create({
-            data: {
-              productId: l.productId,
-              listingType: l.listingType as any,
-              basePrice: l.basePrice,
-              deposit: l.deposit,
-              minDays: l.minDays
-            }
-          });
-        }
-      }
+      await tx.listing.createMany({
+        data: listingsData
+      });
 
-      // 4. Tạo BlogPost (Story)
-      if (hasStory && storyText && storyText.trim() !== "") {
-        await tx.blogPost.create({
-          data: {
-            title: `Kỷ niệm cùng ${newProduct.title}`,
-            content: storyText.trim(),
-            cover_image: uploadedImageUrls[0] || null,
-            productId: newProduct.id, 
-            userId: user.id,
-            status: "PUBLIC",   
-            isPinned: false, 
-          }
-        });
-      }
+      // 3. Tạo Product Images
+      const imageRecords = validData.images.map((url, idx) => ({
+        productId: newProduct.id,
+        url: url,
+        isPrimary: idx === 0,
+        sortOrder: idx,
+        storageProvider: "cloudinary"
+      }));
+
+      await tx.productImage.createMany({
+        data: imageRecords
+      });
 
       return newProduct.id;
     });
 
     return { success: true, productId: newProductId };
-  } catch (err: any) {
-    console.error("Lỗi khi tạo sản phẩm:", err);
-    return { success: false, error: err.message || "Đã xảy ra lỗi trên máy chủ." };
+  } catch (error: any) {
+    console.error("Create Product Error:", error);
+    return { success: false, error: "Đã xảy ra lỗi hệ thống khi lưu sản phẩm." };
+  }
+}
+
+export async function bumpProductAction(productId: string) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: "Bạn cần đăng nhập để thực hiện hành động này." };
+    }
+
+    const product = await prisma.product.findUnique({
+      where: { id: productId }
+    });
+
+    if (!product) {
+      return { success: false, error: "Không tìm thấy sản phẩm." };
+    }
+
+    if (product.userId !== user.id) {
+      return { success: false, error: "Bạn không có quyền đẩy sản phẩm này." };
+    }
+
+    const now = new Date();
+    const lastBumped = product.lastBumpedAt ? new Date(product.lastBumpedAt) : new Date(0);
+    const diffInHours = (now.getTime() - lastBumped.getTime()) / (1000 * 60 * 60);
+
+    if (diffInHours < 1) {
+      return { success: false, error: "Chưa hồi chiêu xong, cất tool đi hacker!" };
+    }
+
+    await prisma.product.update({
+      where: { id: productId },
+      data: { lastBumpedAt: now }
+    });
+
+    revalidatePath('/');
+    revalidatePath('/shop');
+
+    return { success: true };
+  } catch (error) {
+    console.error("Bump Error:", error);
+    return { success: false, error: "Đã xảy ra lỗi." };
   }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "@/src/lib/supabase";
+import { createBooking } from "@/app/actions/booking";
 
 interface CheckoutModalProps {
   productName: string;
@@ -28,32 +28,25 @@ export default function CheckoutModal({ productName, totalPrice, productId, onCl
     try {
       setIsSubmitting(true);
 
-      // 🔐 Lấy thông tin tài khoản thuê đồ hiện tại
-      const { data: { user } } = await supabase.auth.getUser();
-      const renterId = user?.id || "mock-renter-trang-2026";
+      // Gọi Server Action để tạo đơn hàng an toàn qua Prisma thay vì bắn thẳng lên Supabase
+      const result = await createBooking({
+        productId,
+        startDate: new Date().toISOString(),
+        endDate: new Date().toISOString(),
+        renterName: fullName,
+        renterPhone: phone,
+        ownerName: "CLOOP Owner",
+        ownerPhone: "000000000",
+        isRental: false,
+        shippingMode: "CLOOP_BOOK"
+      });
 
-      // Bắn toàn bộ thông tin đơn hàng lên bảng 'orders' hoặc 'rentals' trên Supabase
-      const { data, error } = await supabase.from("orders").insert([
-        {
-          product_id: productId,
-          product_name: productName,
-          total_amount: totalPrice,
-          renter_id: renterId,
-          customer_name: fullName,
-          customer_phone: phone,
-          shipping_province: province,
-          shipping_address: address,
-          status: "pending_payment",
-          created_at: new Date().toISOString()
-        }
-      ]).select();
-
-      if (error) throw error;
+      if (!result.success || !("rentalId" in result)) {
+        throw new Error("error" in result ? result.error : "Unknown error");
+      }
 
       alert("🎉 Kích hoạt đơn hàng thuê tuần hoàn thành công!");
-      if (data && data[0]) {
-        onSuccess(data[0]); // Trả kết quả hóa đơn ngược về cho trang xử lý bên dưới hiển thị
-      }
+      onSuccess({ id: result.rentalId, totalAmount: result.totalAmount });
       onClose();
     } catch (error: any) {
       console.error("❌ Lỗi ngắt mạch khi tạo đơn hàng:", error.message);

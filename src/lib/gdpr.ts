@@ -21,10 +21,8 @@ export async function anonymizeUserForGDPR(userId: string) {
   await prismaAdmin.user.update({
     where: { id: userId },
     data: {
-      email: tombstoneEmail,
       name: "Người dùng đã xóa",
       avatar: null,
-      password: "DELETED",
     }
   });
 
