@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthModalProvider } from "./AuthModalContext";
 import SmoothScroll from "./components/SmoothScroll";
 import ClientLayout from "./components/ClientLayout";
+import { Toaster } from "sonner";
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();
@@ -65,6 +66,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <link rel="apple-touch-icon" href="/app-icon.jpg" />
       </head>
       <body>
+        <Toaster position="top-right" richColors theme="light" closeButton />
         <SmoothScroll>
           <AuthModalProvider initialUser={initialUser}>
             <ClientLayout>{children}</ClientLayout>

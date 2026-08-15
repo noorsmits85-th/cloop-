@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense } from "react";
 import { requireUser } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { redirect } from "next/navigation";
@@ -19,6 +19,7 @@ export default async function MyClosetOrdersPage() {
     where: { 
       product: { userId } 
     },
+    take: 21,
     include: {
       product: { include: { images: true } },
       renter: {
@@ -37,6 +38,7 @@ export default async function MyClosetOrdersPage() {
     where: { 
       renterId: userId 
     },
+    take: 21,
     include: {
       product: { 
         include: { 
@@ -61,7 +63,13 @@ export default async function MyClosetOrdersPage() {
     return { avg: (total / reviews.length).toFixed(1), count: reviews.length };
   };
 
-  const initialEscrow = escrowRaw.map(order => {
+  const hasMoreEscrow = escrowRaw.length > 20;
+  const pagedEscrow = hasMoreEscrow ? escrowRaw.slice(0, 20) : escrowRaw;
+
+  const hasMoreRented = rentedRaw.length > 20;
+  const pagedRented = hasMoreRented ? rentedRaw.slice(0, 20) : rentedRaw;
+
+  const initialEscrow = pagedEscrow.map(order => {
     const renterStats = getReviewStats(order.renter?.reviewsReceived || []);
     return {
       ...order,
@@ -75,7 +83,7 @@ export default async function MyClosetOrdersPage() {
     };
   });
 
-  const initialRented = rentedRaw.map(order => {
+  const initialRented = pagedRented.map(order => {
     const ownerStats = getReviewStats(order.product.user?.reviewsReceived || []);
     return {
       ...order,
@@ -101,8 +109,15 @@ export default async function MyClosetOrdersPage() {
             <p className="text-stone-400 text-xs font-medium tracking-wide">Quản lý các yêu cầu thuê đồ và theo dõi đơn thuê của bạn.</p>
           </div>
         </div>
-
-        <OrdersClient initialEscrow={initialEscrow} initialRented={initialRented} />
+        
+        <Suspense fallback={<div className="p-8 text-center text-stone-400">Đang tải dữ liệu...</div>}>
+          <OrdersClient 
+            initialEscrow={initialEscrow} 
+            initialRented={initialRented} 
+            initialHasMoreEscrow={hasMoreEscrow}
+            initialHasMoreRented={hasMoreRented}
+          />
+        </Suspense>
       </div>
     </div>
   );
