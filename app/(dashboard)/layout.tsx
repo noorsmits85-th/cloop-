@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useAuthModal } from "@/app/AuthModalContext";
 import { DashboardHeader } from "./_components/DashboardHeader";
+import { TropicalAmbient } from "./_components/TropicalAmbient";
 
 export default function DashboardLayout({
   children,
@@ -84,6 +85,10 @@ export default function DashboardLayout({
           font-family: 'Be Vietnam Pro', sans-serif !important; 
         }
       `}</style>
+      
+      {/* Ambient Tropical Background Effect */}
+      <TropicalAmbient />
+
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
         <div
