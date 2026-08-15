@@ -147,7 +147,7 @@ export default async function MyClosetOverviewPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
           {/* Card: Giảm CO2 */}
           <div className="group bg-white border border-stone-200/50 p-5 rounded-2xl shadow-sm flex items-center gap-4 text-left hover:border-emerald-200 transition-colors cursor-pointer">
-            <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-800 flex items-center justify-center border border-emerald-100 shrink-0 group-hover:-rotate-12 group-hover:scale-110 transition-all duration-300">
+            <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-800 flex items-center justify-center border border-emerald-100 shrink-0 group-hover:-rotate-12 group-hover:scale-110 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
               <Leaf size={18} />
             </div>
             <div className="space-y-0.5">
@@ -159,7 +159,7 @@ export default async function MyClosetOverviewPage() {
 
           {/* Card: Tiết kiệm nước */}
           <div className="group bg-white border border-stone-200/50 p-5 rounded-2xl shadow-sm flex items-center gap-4 text-left hover:border-blue-200 transition-colors cursor-pointer">
-            <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-800 flex items-center justify-center border border-blue-100 shrink-0 group-hover:translate-y-1 group-hover:scale-105 transition-all duration-300">
+            <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-800 flex items-center justify-center border border-blue-100 shrink-0 group-hover:translate-y-1 group-hover:scale-110 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
               <Droplet size={18} />
             </div>
             <div className="space-y-0.5">
@@ -173,7 +173,7 @@ export default async function MyClosetOverviewPage() {
           <div className="group bg-white border border-stone-200/50 p-5 rounded-2xl shadow-sm flex items-center gap-4 text-left hover:border-amber-200 transition-colors cursor-pointer relative overflow-hidden">
             {/* Shimmer effect inside the card */}
             <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent group-hover:animate-[shimmer_1.5s_infinite] skew-x-[-20deg] z-10 pointer-events-none" />
-            <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-800 flex items-center justify-center border border-amber-100 shrink-0 group-hover:rotate-45 group-hover:scale-110 transition-all duration-500">
+            <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-800 flex items-center justify-center border border-amber-100 shrink-0 group-hover:rotate-45 group-hover:scale-110 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
               <Sparkles size={18} />
             </div>
             <div className="space-y-0.5 relative z-20">
@@ -185,10 +185,10 @@ export default async function MyClosetOverviewPage() {
 
           {/* Card: Lá CLOOP */}
           <div className="bg-white border border-stone-200/50 p-5 rounded-2xl shadow-sm flex items-center gap-4 text-left relative overflow-hidden group cursor-pointer hover:border-[#183A2D]/30 transition-colors">
-            <div className="absolute -right-6 -bottom-6 w-24 h-24 opacity-[0.03] group-hover:opacity-[0.08] group-hover:scale-110 transition-all duration-500">
+            <div className="absolute -right-6 -bottom-6 w-24 h-24 opacity-[0.03] group-hover:opacity-[0.08] group-hover:scale-110 transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
               <img src="/images/cloop-coin-tilt.png" alt="Coin bg" className="w-full h-full object-contain mix-blend-multiply" />
             </div>
-            <div className="w-10 h-10 rounded-full bg-stone-50 flex items-center justify-center border border-stone-100 shrink-0 p-1.5 relative z-10 group-hover:scale-110 transition-transform duration-300">
+            <div className="w-10 h-10 rounded-full bg-stone-50 flex items-center justify-center border border-stone-100 shrink-0 p-1.5 relative z-10 group-hover:scale-110 transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
               <img src="/images/cloop-coin-front.png" alt="Lá CLOOP" className="w-full h-full object-contain drop-shadow-sm mix-blend-multiply" />
             </div>
             <div className="space-y-0.5 relative z-10">
