@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { Plus, Leaf, Droplet, Sparkles } from "lucide-react";
+import { Plus, Leaf, Droplet, Sprout } from "lucide-react";
 import { requireUser } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { DashboardCharts } from "./DashboardCharts";
@@ -170,11 +170,11 @@ export default async function MyClosetOverviewPage() {
           </div>
 
           {/* Card: Điểm Green Pts */}
-          <div className="group bg-white border border-stone-200/50 p-5 rounded-2xl shadow-sm flex items-center gap-4 text-left hover:border-amber-200 transition-colors cursor-pointer relative overflow-hidden">
+          <div className="group bg-white border border-stone-200/50 p-5 rounded-2xl shadow-sm flex items-center gap-4 text-left hover:border-emerald-200 transition-colors cursor-pointer relative overflow-hidden">
             {/* Shimmer effect inside the card */}
             <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent group-hover:animate-[shimmer_1.5s_infinite] skew-x-[-20deg] z-10 pointer-events-none" />
-            <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-800 flex items-center justify-center border border-amber-100 shrink-0 group-hover:rotate-45 group-hover:scale-110 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
-              <Sparkles size={18} />
+            <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 shrink-0 group-hover:rotate-12 group-hover:scale-110 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
+              <Sprout size={18} />
             </div>
             <div className="space-y-0.5 relative z-20">
               <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Điểm Green Pts</div>
