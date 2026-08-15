@@ -1,8 +1,7 @@
-"use server";
+﻿"use server";
 
 import { prisma } from "@/src/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { supabaseAdmin } from "@/src/lib/supabase";
 
 export async function submitReviewAction({
   rentalHistoryId,
@@ -11,7 +10,7 @@ export async function submitReviewAction({
   rating,
   type,
   comment,
-  updateField // e.g. { renterRatedAt: Date } or { ownerRatedAt: Date }
+  updateField
 }: {
   rentalHistoryId: string;
   reviewerId: string;
@@ -22,9 +21,7 @@ export async function submitReviewAction({
   updateField: Record<string, any>;
 }) {
   try {
-    // 1. Dùng prisma thực thi transaction để vừa insert review vừa update rental history an toàn
     await prisma.$transaction(async (tx: any) => {
-      // Create Review
       await tx.review.create({
         data: {
           rentalHistoryId,
@@ -36,7 +33,6 @@ export async function submitReviewAction({
         }
       });
       
-      // Update Rental History
       await tx.rentalHistory.update({
         where: { id: rentalHistoryId },
         data: updateField
@@ -60,7 +56,7 @@ export async function completeOrderAction(orderId: string) {
     revalidatePath("/my-closet/orders");
     return { success: true };
   } catch (error: any) {
-    console.error("L?i khi ho�n t?t don:", error);
+    console.error("Lỗi khi hoàn tất đơn:", error);
     return { success: false, error: error.message };
   }
 }
@@ -68,7 +64,6 @@ export async function completeOrderAction(orderId: string) {
 export async function raiseDisputeAction(orderId: string, description: string, images: string[]) {
   try {
     await prisma.$transaction(async (tx: any) => {
-      // Create Dispute
       await tx.dispute.create({
         data: {
           rentalId: orderId,
@@ -80,7 +75,6 @@ export async function raiseDisputeAction(orderId: string, description: string, i
         }
       });
       
-      // Update Rental History status
       await tx.rentalHistory.update({
         where: { id: orderId },
         data: { status: "DISPUTE" }
@@ -90,7 +84,8 @@ export async function raiseDisputeAction(orderId: string, description: string, i
     revalidatePath("/my-closet/orders");
     return { success: true };
   } catch (error: any) {
-    console.error("L?i khi b�o c�o s? c?:", error);
+    console.error("Lỗi khi báo cáo sự cố:", error);
     return { success: false, error: error.message };
   }
 }
+
