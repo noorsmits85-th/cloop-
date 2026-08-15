@@ -30,6 +30,15 @@ export function DashboardCharts({
   categoryData: any[]; 
   totalProducts: number;
 }) {
+  const maxRevenue = Math.max(...revenueData.map(d => Math.max(d.rent, d.sell)));
+  const isRevenueEmpty = maxRevenue === 0;
+
+  const formatYAxis = (value: number) => {
+    if (value === 0) return '0đ';
+    if (value >= 1000000) return `${(value / 1000000).toFixed(1).replace('.0', '')}M`;
+    if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
+    return `${value}đ`;
+  };
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
       {/* Biểu đồ doanh thu - Area Chart */}
@@ -38,7 +47,7 @@ export function DashboardCharts({
           <h3 className="font-bold text-[#183A2D] text-base">Thống kê doanh thu tuần</h3>
           <p className="text-xs text-stone-500">So sánh doanh thu từ việc cho thuê và bán lại</p>
         </div>
-        <div className="h-[250px] w-full">
+        <div className="h-[250px] w-full relative">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <defs>
@@ -52,16 +61,41 @@ export function DashboardCharts({
                 </linearGradient>
               </defs>
               <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#78716c' }} dy={10} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#78716c' }} />
+              <YAxis 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fontSize: 12, fill: '#78716c' }} 
+                tickFormatter={formatYAxis}
+                domain={isRevenueEmpty ? [0, 1000000] : ['auto', 'auto']}
+              />
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e5e5" />
               <Tooltip 
                 contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                 labelStyle={{ fontWeight: 'bold', color: '#183A2D' }}
+                formatter={(value: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)}
               />
               <Area type="monotone" dataKey="sell" name="Bán" stroke="#D9C8A9" fillOpacity={1} fill="url(#colorSell)" />
               <Area type="monotone" dataKey="rent" name="Cho thuê" stroke="#183A2D" strokeWidth={2} fillOpacity={1} fill="url(#colorRent)" />
             </AreaChart>
           </ResponsiveContainer>
+          
+          {/* Empty State Overlay */}
+          {isRevenueEmpty && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/60 backdrop-blur-[1px] rounded-2xl">
+              <div className="bg-white p-4 rounded-xl shadow-sm border border-stone-100 flex flex-col items-center text-center space-y-3 max-w-[280px]">
+                <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/-2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 12v10H4V12"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-[#183A2D]">Tủ đồ chưa có doanh thu</h4>
+                  <p className="text-xs text-stone-500 mt-1">Đăng món đồ đầu tiên lên CLOOP để bắt đầu hành trình thời trang tuần hoàn nhé!</p>
+                </div>
+                <a href="/my-closet/create" className="px-4 py-2 bg-[#183A2D] text-white text-xs font-bold rounded-full hover:bg-[#183A2D]/90 transition-colors w-full">
+                  Đăng món đồ đầu tiên ngay
+                </a>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
