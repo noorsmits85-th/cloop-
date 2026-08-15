@@ -132,6 +132,7 @@ model RentalHistory {
   id                 String    @id @default(uuid())
   product_id         String
   renterId           String
+  ownerId            String?
   renter_name        String?
   renter_phone       String?
   owner_name         String?
@@ -150,6 +151,7 @@ model RentalHistory {
   renter             User      @relation(fields: [renterId], references: [id])
 
   @@index([renterId])
+  @@index([ownerId])
   @@index([product_id])
   @@index([status])
   @@index([createdAt(sort: Desc)])
