@@ -145,8 +145,9 @@ export default async function MyClosetOverviewPage() {
 
         {/* GREEN IMPACT ESG DASHBOARD & COIN BALANCE */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
-          <div className="bg-white border border-stone-200/50 p-5 rounded-2xl shadow-sm flex items-center gap-4 text-left">
-            <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-800 flex items-center justify-center border border-emerald-100 shrink-0">
+          {/* Card: Giảm CO2 */}
+          <div className="group bg-white border border-stone-200/50 p-5 rounded-2xl shadow-sm flex items-center gap-4 text-left hover:border-emerald-200 transition-colors cursor-pointer">
+            <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-800 flex items-center justify-center border border-emerald-100 shrink-0 group-hover:-rotate-12 group-hover:scale-110 transition-all duration-300">
               <Leaf size={18} />
             </div>
             <div className="space-y-0.5">
@@ -156,8 +157,9 @@ export default async function MyClosetOverviewPage() {
             </div>
           </div>
 
-          <div className="bg-white border border-stone-200/50 p-5 rounded-2xl shadow-sm flex items-center gap-4 text-left">
-            <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-800 flex items-center justify-center border border-blue-100 shrink-0">
+          {/* Card: Tiết kiệm nước */}
+          <div className="group bg-white border border-stone-200/50 p-5 rounded-2xl shadow-sm flex items-center gap-4 text-left hover:border-blue-200 transition-colors cursor-pointer">
+            <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-800 flex items-center justify-center border border-blue-100 shrink-0 group-hover:translate-y-1 group-hover:scale-105 transition-all duration-300">
               <Droplet size={18} />
             </div>
             <div className="space-y-0.5">
@@ -167,22 +169,26 @@ export default async function MyClosetOverviewPage() {
             </div>
           </div>
 
-          <div className="bg-white border border-stone-200/50 p-5 rounded-2xl shadow-sm flex items-center gap-4 text-left">
-            <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-800 flex items-center justify-center border border-amber-100 shrink-0">
+          {/* Card: Điểm Green Pts */}
+          <div className="group bg-white border border-stone-200/50 p-5 rounded-2xl shadow-sm flex items-center gap-4 text-left hover:border-amber-200 transition-colors cursor-pointer relative overflow-hidden">
+            {/* Shimmer effect inside the card */}
+            <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent group-hover:animate-[shimmer_1.5s_infinite] skew-x-[-20deg] z-10 pointer-events-none" />
+            <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-800 flex items-center justify-center border border-amber-100 shrink-0 group-hover:rotate-45 group-hover:scale-110 transition-all duration-500">
               <Sparkles size={18} />
             </div>
-            <div className="space-y-0.5">
+            <div className="space-y-0.5 relative z-20">
               <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Điểm Green Pts</div>
               <div className="text-2xl font-mono font-black text-[#183A2D]">{ecoStats.greenPoints.toLocaleString()} Pts</div>
               <p className="text-[11px] text-gray-500 font-medium">Định danh người dùng xanh</p>
             </div>
           </div>
 
+          {/* Card: Lá CLOOP */}
           <div className="bg-white border border-stone-200/50 p-5 rounded-2xl shadow-sm flex items-center gap-4 text-left relative overflow-hidden group cursor-pointer hover:border-[#183A2D]/30 transition-colors">
-            <div className="absolute -right-6 -bottom-6 w-24 h-24 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity">
+            <div className="absolute -right-6 -bottom-6 w-24 h-24 opacity-[0.03] group-hover:opacity-[0.08] group-hover:scale-110 transition-all duration-500">
               <img src="/images/cloop-coin-tilt.png" alt="Coin bg" className="w-full h-full object-contain mix-blend-multiply" />
             </div>
-            <div className="w-10 h-10 rounded-full bg-stone-50 flex items-center justify-center border border-stone-100 shrink-0 p-1.5 relative z-10">
+            <div className="w-10 h-10 rounded-full bg-stone-50 flex items-center justify-center border border-stone-100 shrink-0 p-1.5 relative z-10 group-hover:scale-110 transition-transform duration-300">
               <img src="/images/cloop-coin-front.png" alt="Lá CLOOP" className="w-full h-full object-contain drop-shadow-sm mix-blend-multiply" />
             </div>
             <div className="space-y-0.5 relative z-10">
