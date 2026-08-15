@@ -69,8 +69,8 @@ export function DashboardCharts({
                   <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 16V4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v12"/><path d="M4 16h16v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M12 7v4"/><path d="M9 16v-3a3 3 0 0 1 6 0v3"/></svg>
                 </motion.div>
                 <div>
-                  <h4 className="text-[15px] font-bold text-[#183A2D]">Tủ đồ đang tĩnh lặng nhỉ?</h4>
-                  <p className="text-xs text-stone-500 mt-1.5 max-w-[260px] mx-auto">Chưa có giao dịch nào phát sinh. Lên đồ ngay để đón khách nhé sếp ơi!</p>
+                  <h4 className="text-[15px] font-bold text-[#183A2D]">Mở bát tủ đồ, "nhả vía" chốt đơn!</h4>
+                  <p className="text-xs text-stone-500 mt-1.5 max-w-[260px] mx-auto">Giao diện này đang thiếu vài chiếc ảnh xinh xỉu để kích hoạt dòng tiền. Đăng đồ ngay để rinh lộc rủng rỉnh nào bồ ơi!</p>
                 </div>
                 <motion.a 
                   href="/my-closet/create" 
@@ -78,7 +78,7 @@ export function DashboardCharts({
                   whileTap={{ scale: 0.95 }}
                   className="relative overflow-hidden px-5 py-2.5 bg-[#183A2D] text-white text-xs font-bold rounded-full shadow-sm transition-all group"
                 >
-                  <span className="relative z-10">+ Đăng món đồ đầu tiên</span>
+                  <span className="relative z-10">+ Kích hoạt tủ đồ</span>
                   {/* Shimmer effect */}
                   <motion.div 
                     initial={{ x: "-100%" }}
