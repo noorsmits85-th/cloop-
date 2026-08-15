@@ -57,33 +57,81 @@ export default async function MyClosetOverviewPage() {
 
   // 4. Prisma Fetch Thống kê doanh thu (Rent & Sale)
   // 🔒 Bảo mật IDOR: where: { product: { userId } }
+  // Khởi tạo mảng 7 ngày gần nhất (từ hôm nay lùi về 6 ngày trước)
+  const today = new Date();
+  const past7Days = Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() - (6 - i));
+    d.setHours(0, 0, 0, 0); // Đặt về đầu ngày để so sánh dễ dàng
+    return {
+      dateObj: d,
+      name: `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`,
+      rent: 0,
+      sell: 0
+    };
+  });
+  
+  const sevenDaysAgo = past7Days[0].dateObj;
+
   const completedRentals = await prisma.rentalHistory.findMany({
     where: {
       product: { userId },
-      status: "LENDER_COMPLETED"
+      status: "LENDER_COMPLETED",
+      updatedAt: { gte: sevenDaysAgo }
     },
-    include: { invoice: true }
+    include: { 
+      product: {
+        include: {
+          listings: {
+            where: { listingType: "RENT" },
+            take: 1
+          }
+        }
+      }
+    }
   });
 
   const soldItems = await prisma.listing.findMany({
     where: {
       product: { userId },
       status: "SOLD",
-      listingType: { in: ["SELL", "RECYCLE"] } // Thay PASS bằng RECYCLE theo đúng schema
+      listingType: { in: ["SELL", "RECYCLE"] },
+      updatedAt: { gte: sevenDaysAgo }
     }
   });
 
-  // (Ví dụ) Map dữ liệu thực tế vào mảng thứ ngày tháng - Chạy cực nhanh trên Server Node.js
-  const revenueData = [
-    { name: 'T2', rent: 4000, sell: 2400 },
-    { name: 'T3', rent: 3000, sell: 1398 },
-    { name: 'T4', rent: 2000, sell: 9800 },
-    { name: 'T5', rent: 2780, sell: 3908 },
-    { name: 'T6', rent: 1890, sell: 4800 },
-    { name: 'T7', rent: 2390, sell: 3800 },
-    { name: 'CN', rent: 3490, sell: 4300 },
-  ];
-  //TODO: Tự động cộng dồn theo ngày của completedRentals và soldItems
+  // Gom nhóm dữ liệu doanh thu
+  completedRentals.forEach(rental => {
+    const rentalDate = new Date(rental.updatedAt);
+    rentalDate.setHours(0, 0, 0, 0);
+    
+    // Tìm ngày tương ứng trong mảng past7Days
+    const dayData = past7Days.find(d => d.dateObj.getTime() === rentalDate.getTime());
+    if (dayData) {
+      // Tính doanh thu: basePrice * số ngày thuê
+      const basePrice = rental.product.listings[0]?.basePrice || 0;
+      const days = Math.ceil((new Date(rental.end_date).getTime() - new Date(rental.start_date).getTime()) / (1000 * 60 * 60 * 24));
+      const rentalDays = days > 0 ? days : 1;
+      dayData.rent += basePrice * rentalDays;
+    }
+  });
+
+  soldItems.forEach(item => {
+    const soldDate = new Date(item.updatedAt);
+    soldDate.setHours(0, 0, 0, 0);
+    
+    const dayData = past7Days.find(d => d.dateObj.getTime() === soldDate.getTime());
+    if (dayData) {
+      dayData.sell += item.salePrice || item.basePrice || 0;
+    }
+  });
+
+  // Format lại array chỉ lấy những thuộc tính cần thiết cho biểu đồ
+  const revenueData = past7Days.map(d => ({
+    name: d.name,
+    rent: d.rent,
+    sell: d.sell
+  }));
 
   return (
     <div className="min-h-screen bg-[#FAF9F5] py-10 px-4 sm:px-8 text-stone-800 antialiased">
