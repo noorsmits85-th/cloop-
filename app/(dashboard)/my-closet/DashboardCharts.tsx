@@ -1,6 +1,7 @@
 "use client";
 
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, BarChart, Bar, Legend, PieChart, Pie, Cell } from "recharts";
+import { motion } from "framer-motion";
 
 const revenueData = [
   { name: 'T2', rent: 4000, sell: 2400 },
@@ -49,20 +50,50 @@ export function DashboardCharts({
         </div>
         <div className="h-[250px] w-full relative">
           {isRevenueEmpty ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-white rounded-2xl">
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="absolute inset-0 flex flex-col items-center justify-center bg-white rounded-2xl"
+            >
               <div className="flex flex-col items-center text-center space-y-4">
-                <div className="w-16 h-16 bg-stone-50 text-[#183A2D] rounded-full flex items-center justify-center border border-stone-100 shadow-sm">
+                <motion.div 
+                  animate={{ y: [-4, 4, -4] }}
+                  transition={{ 
+                    duration: 3, 
+                    repeat: Infinity, 
+                    ease: "easeInOut" 
+                  }}
+                  className="w-16 h-16 bg-stone-50 text-[#183A2D] rounded-full flex items-center justify-center border border-stone-100 shadow-sm"
+                >
                   <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 16V4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v12"/><path d="M4 16h16v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M12 7v4"/><path d="M9 16v-3a3 3 0 0 1 6 0v3"/></svg>
-                </div>
+                </motion.div>
                 <div>
                   <h4 className="text-[15px] font-bold text-[#183A2D]">Tủ đồ đang tĩnh lặng nhỉ?</h4>
                   <p className="text-xs text-stone-500 mt-1.5 max-w-[260px] mx-auto">Chưa có giao dịch nào phát sinh. Lên đồ ngay để đón khách nhé sếp ơi!</p>
                 </div>
-                <a href="/my-closet/create" className="px-5 py-2.5 bg-[#183A2D] text-white text-xs font-bold rounded-full hover:bg-[#183A2D]/90 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5">
-                  + Đăng món đồ đầu tiên
-                </a>
+                <motion.a 
+                  href="/my-closet/create" 
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="relative overflow-hidden px-5 py-2.5 bg-[#183A2D] text-white text-xs font-bold rounded-full shadow-sm transition-all group"
+                >
+                  <span className="relative z-10">+ Đăng món đồ đầu tiên</span>
+                  {/* Shimmer effect */}
+                  <motion.div 
+                    initial={{ x: "-100%" }}
+                    animate={{ x: "200%" }}
+                    transition={{
+                      repeat: Infinity,
+                      duration: 2.5,
+                      ease: "linear",
+                      repeatDelay: 1
+                    }}
+                    className="absolute inset-0 z-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-[-20deg]"
+                  />
+                </motion.a>
               </div>
-            </div>
+            </motion.div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
