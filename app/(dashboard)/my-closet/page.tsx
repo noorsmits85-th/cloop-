@@ -18,22 +18,6 @@ export default async function MyClosetOverviewPage() {
     redirect("/login");
   }
 
-  // ECO_MATRIX Dictionary for Eco Stats
-  // Fallback: 2000L water, 15kg CO2, 100 Pts
-  const ECO_MATRIX: Record<string, { water: number; co2: number; pts: number }> = {
-    'jean': { water: 7000, co2: 33, pts: 200 },
-    'denim': { water: 7000, co2: 33, pts: 200 },
-    'quần': { water: 5000, co2: 25, pts: 150 },
-    'áo thun': { water: 2700, co2: 15, pts: 100 },
-    't-shirt': { water: 2700, co2: 15, pts: 100 },
-    'váy': { water: 800, co2: 20, pts: 150 },
-    'đầm': { water: 800, co2: 20, pts: 150 },
-    'lụa': { water: 800, co2: 20, pts: 150 },
-    'áo khoác': { water: 3000, co2: 45, pts: 250 },
-    'jacket': { water: 3000, co2: 45, pts: 250 },
-    'da': { water: 3000, co2: 45, pts: 250 },
-  };
-
   const userId = userAuth.id;
 
   // 1. Fetch User Coins
@@ -43,10 +27,19 @@ export default async function MyClosetOverviewPage() {
   });
   const cloopCoins = user?.cloopCoins || 0;
 
-  // 2. Fetch all products to calculate Eco Stats using Matrix
+  // 2. Fetch all products to calculate Eco Stats using DB Matrix
   const products = await prisma.product.findMany({
     where: { userId },
     select: { category: true, material: true }
+  });
+
+  // Fetch EcoMetrics from Database
+  const dbMetrics = await prisma.ecoMetric.findMany();
+  
+  // Convert array to Dictionary for fast lookup
+  const ECO_MATRIX: Record<string, { water: number; co2: number; pts: number }> = {};
+  dbMetrics.forEach(m => {
+    ECO_MATRIX[m.keyword.toLowerCase()] = { water: m.waterFactor, co2: m.co2Factor, pts: m.greenPts };
   });
 
   let co2Saved = 0;

@@ -412,3 +412,16 @@ enum AccountingPeriodStatus {
   CLOSED
   REOPENED
 }
+
+model EcoMetric {
+  id          String   @id @default(uuid())
+  keyword     String   @unique
+  waterFactor Int      @default(2000)
+  co2Factor   Float    @default(15.0)
+  greenPts    Int      @default(100)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("eco_metrics")
+}
+
