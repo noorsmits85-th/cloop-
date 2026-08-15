@@ -2,7 +2,7 @@
 
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, BarChart, Bar, Legend, PieChart, Pie, Cell } from "recharts";
 import { motion } from "framer-motion";
-import { Sparkles } from "lucide-react";
+import { Coins } from "lucide-react";
 
 const revenueData = [
   { name: 'T2', rent: 4000, sell: 2400 },
@@ -60,30 +60,18 @@ export function DashboardCharts({
               <div className="flex flex-col items-center text-center space-y-4">
                 <motion.div 
                   animate={{ 
-                    y: [-10, 5, -10],
-                    rotate: [-10, 10, -10],
-                    scale: [1, 1.15, 1],
-                    boxShadow: ["0px 0px 0px rgba(245,158,11,0)", "0px 0px 20px rgba(245,158,11,0.4)", "0px 0px 0px rgba(245,158,11,0)"]
+                    y: [-6, 2, -6],
+                    rotate: [-5, 5, -5],
+                    boxShadow: ["0px 0px 0px rgba(245,158,11,0)", "0px 4px 20px rgba(245,158,11,0.3)", "0px 0px 0px rgba(245,158,11,0)"]
                   }}
                   transition={{ 
-                    duration: 2.5, 
+                    duration: 3, 
                     repeat: Infinity, 
                     ease: "easeInOut" 
                   }}
-                  className="w-16 h-16 bg-gradient-to-tr from-amber-100 to-yellow-50 text-amber-500 rounded-full flex items-center justify-center border border-amber-200 shadow-sm relative"
+                  className="w-16 h-16 bg-gradient-to-tr from-amber-50 to-yellow-100 text-amber-600 rounded-full flex items-center justify-center border border-amber-200 shadow-sm relative"
                 >
-                  <Sparkles size={28} strokeWidth={2} />
-                  {/* Small floating sparkles */}
-                  <motion.div
-                    animate={{ scale: [1, 0, 1], opacity: [1, 0, 1] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
-                    className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full blur-[1px]"
-                  />
-                  <motion.div
-                    animate={{ scale: [0, 1, 0], opacity: [0, 1, 0] }}
-                    transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
-                    className="absolute -bottom-1 -left-1 w-2 h-2 bg-amber-400 rounded-full blur-[1px]"
-                  />
+                  <Coins size={28} strokeWidth={1.5} />
                 </motion.div>
                 <div>
                   <h4 className="text-[15px] font-bold text-[#183A2D]">Mở bát tủ đồ, "nhả vía" chốt đơn!</h4>
