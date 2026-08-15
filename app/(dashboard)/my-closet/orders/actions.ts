@@ -77,24 +77,39 @@ export async function completeOrderAction(orderId: string) {
     // 🛡️ 1. Authentication Check
     const userAuth = await requireUser();
 
-    // 🛡️ 2. IDOR & Optimistic Locking Protection:
-    // Atomic updateMany guarantees EXACTLY-ONCE execution.
-    // If multiple requests hit in parallel, only 1 will succeed (count === 1), others will get count === 0.
-    const updateResult = await prisma.rentalHistory.updateMany({
-      where: { 
-        id: orderId,
-        status: { in: ["BORROWER_RETURNED", "BORROWER_RECEIVED", "LENDER_SHIPPED"] },
-        product: { userId: userAuth.id }
-      },
-      data: { status: "LENDER_COMPLETED" }
-    });
+    // 🛡️ 2. IDOR, Optimistic Locking & Partial Failure Prevention (ACID Transaction)
+    // Sống cùng sống, chết cùng chết!
+    await prisma.$transaction(async (tx) => {
+      // Fetch renterId to refund
+      const rental = await tx.rentalHistory.findUnique({
+        where: { id: orderId }
+      });
 
-    if (updateResult.count === 0) {
-      return { 
-        success: false, 
-        error: "Giao dịch đã được hoàn tất trước đó hoặc không ở trạng thái hợp lệ để kết thúc." 
-      };
-    }
+      if (!rental) {
+        throw new Error("Không tìm thấy đơn hàng.");
+      }
+
+      // Atomic updateMany guarantees EXACTLY-ONCE execution.
+      // Dùng cột ownerId đã phi chuẩn hóa, Prisma sẽ không báo lỗi!
+      const updateResult = await tx.rentalHistory.updateMany({
+        where: { 
+          id: orderId,
+          status: { in: ["BORROWER_RETURNED", "BORROWER_RECEIVED", "LENDER_SHIPPED"] },
+          ownerId: userAuth.id 
+        },
+        data: { status: "LENDER_COMPLETED" }
+      });
+
+      if (updateResult.count === 0) {
+        throw new Error("Giao dịch đã được hoàn tất trước đó, sai trạng thái, hoặc bạn không có quyền.");
+      }
+
+      // 💸 Nếu update status thành công, cộng tiền vào Ví (Refund Escrow):
+      await tx.user.update({
+        where: { id: rental.renterId },
+        data: { cloopCoins: { increment: 5000000 } }
+      });
+    });
 
     revalidatePath("/my-closet/orders");
     return { success: true };
