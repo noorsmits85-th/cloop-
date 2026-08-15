@@ -77,25 +77,24 @@ export async function completeOrderAction(orderId: string) {
     // 🛡️ 1. Authentication Check
     const userAuth = await requireUser();
 
-    // 🛡️ 2. IDOR Protection: Verify ownership
-    const rental = await prisma.rentalHistory.findUnique({
-      where: { id: orderId },
-      include: { product: true }
-    });
-
-    if (!rental) {
-      return { success: false, error: "Không tìm thấy đơn hàng." };
-    }
-
-    if (rental.product.userId !== userAuth.id) {
-      return { success: false, error: "Forbidden: Bạn không phải chủ sở hữu món đồ này để xác nhận nhận lại đồ." };
-    }
-
-    // 🛡️ 3. Update Order Status
-    await prisma.rentalHistory.update({
-      where: { id: orderId },
+    // 🛡️ 2. IDOR & Optimistic Locking Protection:
+    // Atomic updateMany guarantees EXACTLY-ONCE execution.
+    // If multiple requests hit in parallel, only 1 will succeed (count === 1), others will get count === 0.
+    const updateResult = await prisma.rentalHistory.updateMany({
+      where: { 
+        id: orderId,
+        status: { in: ["BORROWER_RETURNED", "BORROWER_RECEIVED", "LENDER_SHIPPED"] },
+        product: { userId: userAuth.id }
+      },
       data: { status: "LENDER_COMPLETED" }
     });
+
+    if (updateResult.count === 0) {
+      return { 
+        success: false, 
+        error: "Giao dịch đã được hoàn tất trước đó hoặc không ở trạng thái hợp lệ để kết thúc." 
+      };
+    }
 
     revalidatePath("/my-closet/orders");
     return { success: true };
@@ -125,8 +124,20 @@ export async function raiseDisputeAction(orderId: string, description: string, i
       return { success: false, error: "Forbidden: Bạn không có quyền khiếu nại cho đơn hàng này." };
     }
 
-    // 🛡️ 3. Atomic Dispute Creation & Escrow Lock Binding
-    await prisma.$transaction(async (tx: any) => {
+    // 🛡️ 3. Atomic Dispute Creation & Optimistic Status Guard
+    const isUpdated = await prisma.$transaction(async (tx: any) => {
+      const updateCount = await tx.rentalHistory.updateMany({
+        where: {
+          id: orderId,
+          status: { notIn: ["DISPUTE", "LENDER_COMPLETED"] }
+        },
+        data: { status: "DISPUTE" }
+      });
+
+      if (updateCount.count === 0) {
+        return false;
+      }
+
       await tx.dispute.create({
         data: {
           rentalId: orderId,
@@ -138,12 +149,13 @@ export async function raiseDisputeAction(orderId: string, description: string, i
           status: "PENDING_REVIEW"
         }
       });
-      
-      await tx.rentalHistory.update({
-        where: { id: orderId },
-        data: { status: "DISPUTE" }
-      });
+
+      return true;
     });
+
+    if (!isUpdated) {
+      return { success: false, error: "Đơn hàng đã được giải quyết hoặc đã có khiếu nại đang xử lý." };
+    }
 
     revalidatePath("/my-closet/orders");
     return { success: true };

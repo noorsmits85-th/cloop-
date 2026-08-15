@@ -87,6 +87,9 @@ export function OrdersClient({
   const [hasMoreRented, setHasMoreRented] = useState(initialHasMoreRented);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   
+  // 🛡️ Idempotency / Double-click shields
+  const [completingIds, setCompletingIds] = useState<Record<string, boolean>>({});
+  
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showDisputeModal, setShowDisputeModal] = useState(false);
   const [selectedOrderForReview, setSelectedOrderForReview] = useState<any>(null);
@@ -257,7 +260,10 @@ export function OrdersClient({
   };
 
   const handleCompleteOrder = async (orderId: string) => {
+    if (completingIds[orderId]) return; // 🔒 Guard against double-click
     if (!confirm("Xác nhận bạn đã nhận lại đồ nguyên vẹn và kết thúc đơn hàng? (Tiền cọc sẽ được hoàn lại cho người thuê)")) return;
+    
+    setCompletingIds(prev => ({ ...prev, [orderId]: true }));
     try {
       const res = await completeOrderAction(orderId);
       if (res.success) {
@@ -268,6 +274,8 @@ export function OrdersClient({
       }
     } catch (e: any) {
       toast.error("Lỗi hệ thống", { description: e.message });
+    } finally {
+      setCompletingIds(prev => ({ ...prev, [orderId]: false }));
     }
   };
 
@@ -350,10 +358,19 @@ export function OrdersClient({
                                 )}
                                 {order.status === "BORROWER_RETURNED" && (
                                   <button 
+                                    disabled={completingIds[order.id]}
                                     onClick={() => handleCompleteOrder(order.id)}
-                                    className="border border-[#183A2D] bg-[#183A2D] hover:bg-transparent text-white hover:text-[#183A2D] text-xs font-medium px-5 py-2.5 rounded-md transition-all duration-500 flex items-center gap-2"
+                                    className="border border-[#183A2D] bg-[#183A2D] hover:bg-transparent text-white hover:text-[#183A2D] text-xs font-medium px-5 py-2.5 rounded-md transition-all duration-500 flex items-center gap-2 disabled:opacity-50"
                                   >
-                                    <Check size={14} strokeWidth={2} /> Đã nhận lại đồ
+                                    {completingIds[order.id] ? (
+                                      <>
+                                        <Loader2 size={14} className="animate-spin" /> Đang hoàn tất...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Check size={14} strokeWidth={2} /> Đã nhận lại đồ
+                                      </>
+                                    )}
                                   </button>
                                 )}
                                 {order.status === "BORROWER_RETURNED" && (
