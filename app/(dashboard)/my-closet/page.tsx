@@ -5,6 +5,7 @@ import { requireUser } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { DashboardCharts } from "./DashboardCharts";
 import { redirect } from "next/navigation";
+import { unstable_cache } from "next/cache";
 
 export default async function MyClosetOverviewPage() {
   let userAuth;
@@ -33,13 +34,22 @@ export default async function MyClosetOverviewPage() {
     select: { category: true, material: true }
   });
 
-  // Fetch EcoMetrics from Database
-  const dbMetrics = await prisma.ecoMetric.findMany();
+  // Fetch EcoMetrics from Database with Cache (Lá bùa 1: Chống bóp nghẹt DB)
+  const getCachedEcoMetrics = unstable_cache(
+    async () => {
+      return await prisma.ecoMetric.findMany();
+    },
+    ['eco-metrics'],
+    { revalidate: 86400 } // 24 hours TTL
+  );
+  
+  const dbMetrics = await getCachedEcoMetrics();
   
   // Convert array to Dictionary for fast lookup
   const ECO_MATRIX: Record<string, { water: number; co2: number; pts: number }> = {};
   dbMetrics.forEach(m => {
-    ECO_MATRIX[m.keyword.toLowerCase()] = { water: m.waterFactor, co2: m.co2Factor, pts: m.greenPts };
+    // Lưu trữ từ khóa chuẩn (lowercase, trim)
+    ECO_MATRIX[m.keyword.toLowerCase().trim()] = { water: m.waterFactor, co2: m.co2Factor, pts: m.greenPts };
   });
 
   let co2Saved = 0;
@@ -47,8 +57,9 @@ export default async function MyClosetOverviewPage() {
   let greenPoints = 0;
 
   products.forEach((product) => {
-    const cat = (product.category || "").toLowerCase();
-    const mat = (product.material || "").toLowerCase();
+    // Lá bùa 2: Chuẩn hóa chuỗi dữ liệu đầu vào (trim & lowercase)
+    const cat = (product.category || "").toLowerCase().trim();
+    const mat = (product.material || "").toLowerCase().trim();
     
     // Look for a match in the matrix
     let match = null;
