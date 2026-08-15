@@ -18,6 +18,22 @@ export default async function MyClosetOverviewPage() {
     redirect("/login");
   }
 
+  // ECO_MATRIX Dictionary for Eco Stats
+  // Fallback: 2000L water, 15kg CO2, 100 Pts
+  const ECO_MATRIX: Record<string, { water: number; co2: number; pts: number }> = {
+    'jean': { water: 7000, co2: 33, pts: 200 },
+    'denim': { water: 7000, co2: 33, pts: 200 },
+    'quần': { water: 5000, co2: 25, pts: 150 },
+    'áo thun': { water: 2700, co2: 15, pts: 100 },
+    't-shirt': { water: 2700, co2: 15, pts: 100 },
+    'váy': { water: 800, co2: 20, pts: 150 },
+    'đầm': { water: 800, co2: 20, pts: 150 },
+    'lụa': { water: 800, co2: 20, pts: 150 },
+    'áo khoác': { water: 3000, co2: 45, pts: 250 },
+    'jacket': { water: 3000, co2: 45, pts: 250 },
+    'da': { water: 3000, co2: 45, pts: 250 },
+  };
+
   const userId = userAuth.id;
 
   // 1. Fetch User Coins
@@ -27,16 +43,41 @@ export default async function MyClosetOverviewPage() {
   });
   const cloopCoins = user?.cloopCoins || 0;
 
-  // 2. Tự động tính Eco Stats qua Prisma Count
-  const totalProducts = await prisma.product.count({
-    where: { userId }
+  // 2. Fetch all products to calculate Eco Stats using Matrix
+  const products = await prisma.product.findMany({
+    where: { userId },
+    select: { category: true, material: true }
   });
 
-  const ecoStats = {
-    co2Saved: totalProducts * 25,
-    waterSaved: totalProducts * 1500,
-    greenPoints: totalProducts * 100
-  };
+  let co2Saved = 0;
+  let waterSaved = 0;
+  let greenPoints = 0;
+
+  products.forEach((product) => {
+    const cat = (product.category || "").toLowerCase();
+    const mat = (product.material || "").toLowerCase();
+    
+    // Look for a match in the matrix
+    let match = null;
+    for (const key of Object.keys(ECO_MATRIX)) {
+      if (cat.includes(key) || mat.includes(key)) {
+        match = ECO_MATRIX[key];
+        break;
+      }
+    }
+
+    // Fallback baseline if no match
+    const metrics = match || { water: 2000, co2: 15, pts: 100 };
+
+    co2Saved += metrics.co2;
+    waterSaved += metrics.water;
+    greenPoints += metrics.pts;
+  });
+
+  const ecoStats = { co2Saved, waterSaved, greenPoints };
+
+  // Tự động tính tổng sản phẩm cho các thống kê khác
+  const totalProducts = products.length;
 
   // 3. Prisma Aggregation cho Pie Chart (Phân bổ danh mục)
   // 🔒 Bảo mật IDOR: where: { userId } đảm bảo chỉ tính tài sản của chính user này
