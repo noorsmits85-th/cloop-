@@ -2,6 +2,7 @@
 
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, BarChart, Bar, Legend, PieChart, Pie, Cell } from "recharts";
 import { motion } from "framer-motion";
+import { Sparkles } from "lucide-react";
 
 const revenueData = [
   { name: 'T2', rent: 4000, sell: 2400 },
@@ -58,15 +59,31 @@ export function DashboardCharts({
             >
               <div className="flex flex-col items-center text-center space-y-4">
                 <motion.div 
-                  animate={{ y: [-4, 4, -4] }}
+                  animate={{ 
+                    y: [-10, 5, -10],
+                    rotate: [-10, 10, -10],
+                    scale: [1, 1.15, 1],
+                    boxShadow: ["0px 0px 0px rgba(245,158,11,0)", "0px 0px 20px rgba(245,158,11,0.4)", "0px 0px 0px rgba(245,158,11,0)"]
+                  }}
                   transition={{ 
-                    duration: 3, 
+                    duration: 2.5, 
                     repeat: Infinity, 
                     ease: "easeInOut" 
                   }}
-                  className="w-16 h-16 bg-stone-50 text-[#183A2D] rounded-full flex items-center justify-center border border-stone-100 shadow-sm"
+                  className="w-16 h-16 bg-gradient-to-tr from-amber-100 to-yellow-50 text-amber-500 rounded-full flex items-center justify-center border border-amber-200 shadow-sm relative"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 16V4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v12"/><path d="M4 16h16v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M12 7v4"/><path d="M9 16v-3a3 3 0 0 1 6 0v3"/></svg>
+                  <Sparkles size={28} strokeWidth={2} />
+                  {/* Small floating sparkles */}
+                  <motion.div
+                    animate={{ scale: [1, 0, 1], opacity: [1, 0, 1] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                    className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full blur-[1px]"
+                  />
+                  <motion.div
+                    animate={{ scale: [0, 1, 0], opacity: [0, 1, 0] }}
+                    transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
+                    className="absolute -bottom-1 -left-1 w-2 h-2 bg-amber-400 rounded-full blur-[1px]"
+                  />
                 </motion.div>
                 <div>
                   <h4 className="text-[15px] font-bold text-[#183A2D]">Mở bát tủ đồ, "nhả vía" chốt đơn!</h4>
@@ -74,9 +91,13 @@ export function DashboardCharts({
                 </div>
                 <motion.a 
                   href="/my-closet/create" 
+                  animate={{
+                    boxShadow: ["0px 4px 6px -1px rgba(24,58,45,0.1)", "0px 0px 15px rgba(24,58,45,0.5)", "0px 4px 6px -1px rgba(24,58,45,0.1)"]
+                  }}
+                  transition={{ duration: 2, repeat: Infinity }}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="relative overflow-hidden px-5 py-2.5 bg-[#183A2D] text-white text-xs font-bold rounded-full shadow-sm transition-all group"
+                  className="relative overflow-hidden px-6 py-3 bg-[#183A2D] text-white text-[13px] font-bold rounded-full shadow-md transition-all group"
                 >
                   <span className="relative z-10">+ Kích hoạt tủ đồ</span>
                   {/* Shimmer effect */}
