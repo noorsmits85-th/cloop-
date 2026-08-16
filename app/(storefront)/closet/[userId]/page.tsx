@@ -11,6 +11,7 @@ import {
   Calendar, ShoppingBag, Leaf, Heart, Share2, Plus, BookOpen,
   X, Camera, Save, Loader2 
 } from "lucide-react";
+import ReviewSection from "./_components/ReviewSection";
 
 // Kết nối Supabase
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
@@ -596,6 +597,8 @@ export default function ClosetProfilePage() {
                 </div>
             )}
         </div>
+
+        <ReviewSection targetUserId={userId} />
       </div>
 
       {/* ========================================================

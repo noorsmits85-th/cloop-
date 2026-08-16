@@ -293,4 +293,147 @@ export async function loadMoreOrdersAction({
   }
 }
 
+export async function submitReviewAction({
+  rentalId,
+  rating,
+  comment,
+  type
+}: {
+  rentalId: string;
+  rating: number;
+  comment: string;
+  type: "RENTER_TO_OWNER" | "OWNER_TO_RENTER";
+}) {
+  try {
+    const userAuth = await requireUser();
 
+    return await prisma.$transaction(async (tx) => {
+      // 1. Validate rental and permissions
+      const rental = await tx.rentalHistory.findUnique({
+        where: { id: rentalId }
+      });
+
+      if (!rental) {
+        throw new Error("Không tìm thấy giao dịch.");
+      }
+
+      if (rental.status !== "LENDER_COMPLETED") {
+        throw new Error("Chỉ có thể đánh giá khi giao dịch đã hoàn tất.");
+      }
+
+      const isRenter = rental.renterId === userAuth.id;
+      const isOwner = rental.ownerId === userAuth.id;
+
+      if (type === "RENTER_TO_OWNER" && !isRenter) {
+        throw new Error("Forbidden: Bạn không phải Khách thuê của đơn này.");
+      }
+      if (type === "OWNER_TO_RENTER" && !isOwner) {
+        throw new Error("Forbidden: Bạn không phải Chủ tủ của đơn này.");
+      }
+
+      const reviewerId = userAuth.id;
+      const revieweeId = type === "RENTER_TO_OWNER" ? rental.ownerId! : rental.renterId;
+
+      // 2. Kiểm tra xem user đã đánh giá chưa (tránh spam)
+      const existingReview = await tx.review.findFirst({
+        where: { rentalId, reviewerId, type }
+      });
+
+      if (existingReview) {
+        throw new Error("Bạn đã đánh giá giao dịch này rồi.");
+      }
+
+      // 3. Tạo Review mới (Blind State)
+      const newReview = await tx.review.create({
+        data: {
+          rentalId,
+          reviewerId,
+          revieweeId,
+          rating,
+          comment,
+          type,
+          isPublished: false
+        }
+      });
+
+      // 4. Kiểm tra xem đối phương đã đánh giá chưa
+      const oppositeType = type === "RENTER_TO_OWNER" ? "OWNER_TO_RENTER" : "RENTER_TO_OWNER";
+      const oppositeReview = await tx.review.findFirst({
+        where: { rentalId, type: oppositeType }
+      });
+
+      // Nếu đối phương đã đánh giá => Cả 2 đều nộp bài => LẬT BÀI NGỬA (Reveal)
+      if (oppositeReview) {
+        // Cập nhật isPublished = true cho cả 2
+        await tx.review.updateMany({
+          where: { rentalId },
+          data: { isPublished: true }
+        });
+
+        // Hàm helper để update rating trung bình (O(1) Aggregation)
+        const updateAvgRating = async (userId: string, newRating: number) => {
+          const user = await tx.user.findUnique({ where: { id: userId }, select: { rating: true, reviewCount: true } });
+          if (user) {
+            const currentCount = user.reviewCount || 0;
+            const currentTotal = user.rating * currentCount;
+            const newCount = currentCount + 1;
+            const newAvg = (currentTotal + newRating) / newCount;
+
+            await tx.user.update({
+              where: { id: userId },
+              data: {
+                rating: newAvg,
+                reviewCount: newCount
+              }
+            });
+          }
+        };
+
+        // Cập nhật cho CẢ HAI user
+        await updateAvgRating(revieweeId, newReview.rating); // Update người vừa bị đánh giá
+        await updateAvgRating(reviewerId, oppositeReview.rating); // Update người vừa đánh giá (từ bài review cũ của đối phương)
+      }
+
+      revalidatePath("/my-closet/orders");
+      revalidatePath(`/closet/${revieweeId}`);
+      return { success: true };
+    });
+  } catch (error: any) {
+    console.error("Lỗi khi gửi đánh giá:", error);
+    return { success: false, error: error.message || "Lỗi khi gửi đánh giá." };
+  }
+}
+
+export async function getScrubbedReviewsAction(targetUserId: string, currentUserId?: string) {
+  try {
+    const rawReviews = await prisma.review.findMany({
+      where: { revieweeId: targetUserId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        reviewer: { select: { id: true, name: true, avatar: true } },
+        rental: { select: { id: true, product: { select: { title: true } } } }
+      }
+    });
+
+    const scrubbed = rawReviews.map(review => {
+      // THE BLIND LOGIC: Mask data if not published AND viewer is the reviewee
+      if (!review.isPublished && review.revieweeId === currentUserId) {
+        return {
+          ...review,
+          rating: null,
+          comment: "HIDDEN_BY_SERVER", // Absolute server-side scrubbing
+          isMasked: true
+        };
+      }
+      return {
+        ...review,
+        isMasked: false
+      };
+    });
+
+    return { success: true, reviews: scrubbed };
+  } catch (error: any) {
+    console.error("Lỗi fetch reviews:", error);
+    return { success: false, error: "Không thể lấy đánh giá." };
+  }
+}
