@@ -80,9 +80,10 @@ export async function completeOrderAction(orderId: string) {
     // 🛡️ 2. IDOR, Optimistic Locking & Partial Failure Prevention (ACID Transaction)
     // Sống cùng sống, chết cùng chết!
     await prisma.$transaction(async (tx) => {
-      // Fetch renterId to refund
+      // Fetch renterId and invoice to calculate dynamic refund amount
       const rental = await tx.rentalHistory.findUnique({
-        where: { id: orderId }
+        where: { id: orderId },
+        include: { invoice: true }
       });
 
       if (!rental) {
@@ -104,11 +105,27 @@ export async function completeOrderAction(orderId: string) {
         throw new Error("Giao dịch đã được hoàn tất trước đó, sai trạng thái, hoặc bạn không có quyền.");
       }
 
-      // 💸 Nếu update status thành công, cộng tiền vào Ví (Refund Escrow):
-      await tx.user.update({
-        where: { id: rental.renterId },
-        data: { cloopCoins: { increment: 5000000 } }
-      });
+      const depositAmount = rental.invoice?.depositAmount || 0;
+      const rentalFee = rental.invoice?.rentalFee || 0;
+
+      // 💸 1. Hoàn Tiền Cọc (Refund Escrow) cho Khách Thuê:
+      if (depositAmount > 0) {
+        await tx.user.update({
+          where: { id: rental.renterId },
+          data: { cloopCoins: { increment: depositAmount } }
+        });
+      }
+
+      // 💸 2. Thanh Toán Tiền Thuê (Rental Fee) cho Chủ Tủ (trừ 10% phí nền tảng):
+      if (rentalFee > 0) {
+        const platformFee = Math.floor(rentalFee * 0.1);
+        const lenderEarnings = rentalFee - platformFee;
+
+        await tx.user.update({
+          where: { id: userAuth.id }, // userAuth is the owner according to our IDOR check
+          data: { cloopCoins: { increment: lenderEarnings } }
+        });
+      }
     });
 
     revalidatePath("/my-closet/orders");

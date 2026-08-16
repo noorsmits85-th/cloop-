@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Invoice" ADD COLUMN     "depositAmount" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "rentalFee" INTEGER NOT NULL DEFAULT 0;

@@ -162,6 +162,8 @@ model Invoice {
   id            String              @id @default(uuid())
   rentalId      String              @unique
   amount        Int
+  rentalFee     Int                 @default(0)
+  depositAmount Int                 @default(0)
   status        PaymentStatus       @default(PENDING)
   orderCode     BigInt?             @unique
   paymentLinkId String?             @unique
