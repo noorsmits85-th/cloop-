@@ -98,7 +98,10 @@ export async function completeOrderAction(orderId: string) {
           status: { in: ["BORROWER_RETURNED", "BORROWER_RECEIVED", "LENDER_SHIPPED"] },
           ownerId: userAuth.id 
         },
-        data: { status: "LENDER_COMPLETED" }
+        data: { 
+          status: "LENDER_COMPLETED",
+          completedAt: new Date()
+        }
       });
 
       if (updateResult.count === 0) {

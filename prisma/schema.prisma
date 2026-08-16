@@ -16,6 +16,7 @@ model User {
   name            String?
   avatar          String?
   rating          Float              @default(5.0)
+  reviewCount     Int                @default(0)
   isVerified      Boolean            @default(false)
   totalListings   Int                @default(0)
   completedOrders Int                @default(0)
@@ -116,10 +117,9 @@ model Listing {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   isDeleted       Boolean       @default(false)
-
-  @@unique([updatedAt, id])
   product         Product       @relation(fields: [productId], references: [id])
 
+  @@unique([updatedAt, id])
   @@index([productId])
   @@index([status])
   @@index([listingType])
@@ -129,7 +129,7 @@ model Listing {
 }
 
 model RentalHistory {
-  id                 String    @id @default(uuid())
+  id                 String       @id @default(uuid())
   product_id         String
   renterId           String
   ownerId            String?
@@ -140,15 +140,17 @@ model RentalHistory {
   start_date         DateTime
   end_date           DateTime
   actual_return_date DateTime?
+  completedAt        DateTime?
   status             RentalStatus @default(PENDING_APPROVAL)
   shippingCode       String?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
-  isDeleted          Boolean   @default(false)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  isDeleted          Boolean      @default(false)
   disputes           Dispute[]
   invoice            Invoice?
-  product            Product   @relation(fields: [product_id], references: [id])
-  renter             User      @relation(fields: [renterId], references: [id])
+  reviews            Review[]
+  product            Product      @relation(fields: [product_id], references: [id])
+  renter             User         @relation(fields: [renterId], references: [id])
 
   @@index([renterId])
   @@index([ownerId])
@@ -251,22 +253,34 @@ model AccountingPeriod {
   @@unique([month, year])
 }
 
-model Review {
-  id         String   @id @default(uuid())
-  reviewerId String
-  revieweeId String
-  productId  String?
-  rating     Float
-  comment    String?
-  type       String
-  createdAt  DateTime @default(now())
-  product    Product? @relation(fields: [productId], references: [id])
-  reviewee   User     @relation("Reviewee", fields: [revieweeId], references: [id])
-  reviewer   User     @relation("Reviewer", fields: [reviewerId], references: [id])
+enum ReviewType {
+  RENTER_TO_OWNER
+  OWNER_TO_RENTER
+}
 
+model Review {
+  id          String     @id @default(uuid())
+  rentalId    String
+  reviewerId  String
+  revieweeId  String
+  rating      Float
+  comment     String?
+  type        ReviewType
+  isPublished Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  rental    RentalHistory @relation(fields: [rentalId], references: [id])
+  reviewee  User          @relation("Reviewee", fields: [revieweeId], references: [id])
+  reviewer  User          @relation("Reviewer", fields: [reviewerId], references: [id])
+  product   Product?      @relation(fields: [productId], references: [id])
+  productId String?
+
+  @@unique([rentalId, reviewerId, type])
+  @@index([rentalId])
   @@index([reviewerId])
   @@index([revieweeId])
-  @@index([productId])
+  @@index([isPublished])
 }
 
 model BlogPost {
@@ -428,4 +442,3 @@ model EcoMetric {
 
   @@map("eco_metrics")
 }
-
