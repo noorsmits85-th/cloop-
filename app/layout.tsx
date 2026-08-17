@@ -6,6 +6,13 @@ import SmoothScroll from "./components/SmoothScroll";
 import ClientLayout from "./components/ClientLayout";
 import { Toaster } from "sonner";
 
+import { Inter } from "next/font/google";
+
+const inter = Inter({ 
+  subsets: ["latin", "vietnamese"],
+  display: "swap", 
+});
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();
 
@@ -24,28 +31,25 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           try {
             cookieStore.set({ name, value, ...options });
           } catch (error) {
-            // The `set` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing
-            // user sessions.
+            // Error handling
           }
         },
         remove(name: string, options: CookieOptions) {
           try {
             cookieStore.set({ name, value: "", ...options });
           } catch (error) {
-            // The `remove` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing
-            // user sessions.
+            // Error handling
           }
         },
       },
     }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { session } } = await supabase.auth.getSession();
   
   let initialUser = null;
-  if (user) {
+  if (session?.user) {
+    const { user } = session;
     initialUser = {
       id: user.id,
       email: user.email || "",
@@ -58,14 +62,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="vi">
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&family=Patrick+Hand&family=Dancing+Script:wght@400..700&family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&family=Lora:ital,wght@0,400..700;1,400..700&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" />
         <meta name="theme-color" content="#0A2517" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="CLOOP" />
         <link rel="apple-touch-icon" href="/app-icon.jpg" />
       </head>
-      <body>
+      <body className={`${inter.className} text-gray-800 antialiased`}>
         <Toaster position="top-right" richColors theme="light" closeButton />
         <SmoothScroll>
           <AuthModalProvider initialUser={initialUser}>

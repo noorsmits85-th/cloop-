@@ -1,12 +1,13 @@
 import React from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/src/lib/supabase";
 import { WalletClient } from "../_components/WalletClient";
 
 export const revalidate = 0;
 
-export default async function WalletPage() {
+export default async function WalletPage({ searchParams }: { searchParams: { [key: string]: string | string[] | undefined } }) {
   const { data: { session } } = await supabase.auth.getSession();
   const userId = session?.user?.id;
+  const status = searchParams?.status as string;
 
   if (!userId) {
     return <div className="p-10 text-center">Vui lòng đăng nhập</div>;
@@ -37,6 +38,7 @@ export default async function WalletPage() {
           balance={userProfile?.wallet_balance || 0} 
           coins={userProfile?.cloopCoins || 0}
           transactions={mockTransactions} 
+          paymentStatus={status}
         />
       </div>
     </div>

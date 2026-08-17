@@ -7,6 +7,7 @@ import Link from "next/link";
 import { MapPin, Star, ArrowLeft, Shirt, ShoppingBag, ChevronLeft, ChevronRight, Ruler, Scissors, Scale, User, Wand2 } from "lucide-react";
 
 import RentalBookingBox from "@/components/RentalBookingBox"; 
+import LiveViewerBadge from "@/components/LiveViewerBadge";
 
 import { supabase } from "@/lib/supabase";
 
@@ -63,7 +64,7 @@ function ProductDetailContent() {
 
         let priceData: any[] = [];
         try {
-          const { data: lData } = await supabase.from("listings").select("*").eq("productId", id);
+          const { data: lData } = await supabase.from("Listing").select("*").eq("productId", id);
           if (lData && lData.length > 0) priceData = lData;
         } catch (e) {
           console.warn("Bỏ qua lỗi truy xuất Listing.");
@@ -144,15 +145,15 @@ function ProductDetailContent() {
   );
 
   return (
-    <main className="min-h-screen bg-[#FAF8F3] text-[#183A2D] antialiased p-4 md:p-12 font-sans selection:bg-[#183A2D] selection:text-white relative">
+    <main className="min-h-screen bg-[#FAF8F3] text-[#183A2D] antialiased px-4 py-6 md:p-12 font-sans selection:bg-[#183A2D] selection:text-white relative">
       <div className="max-w-6xl mx-auto">
-        <div className="mb-8 text-left">
-          <Link href="/shop" className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-green-800 transition-colors">
-            <ArrowLeft size={12} /> — QUAY LẠI SÀN THƯƠNG MẠI CLOOP
+        <div className="mb-6 md:mb-8 text-left">
+          <Link href="/shop" className="inline-flex items-center gap-2 text-xs md:text-sm font-bold uppercase tracking-widest text-gray-500 hover:text-green-800 transition-colors">
+            <ArrowLeft size={14} /> — QUAY LẠI SÀN THƯƠNG MẠI CLOOP
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-start">
           
           <div className="space-y-4 w-full">
             <div className="relative w-full aspect-[3/4] rounded-[2rem] overflow-hidden shadow-md border border-stone-200/60 bg-white group">
@@ -181,7 +182,7 @@ function ProductDetailContent() {
                     <ChevronRight size={18} />
                   </button>
                   
-                  <div className="absolute bottom-4 right-4 bg-black/40 text-white font-mono text-[10px] px-2.5 py-0.5 rounded-full backdrop-blur-sm">
+                  <div className="absolute bottom-4 right-4 bg-black/50 text-white font-mono text-xs px-3 py-1 rounded-full backdrop-blur-sm">
                     {activeImgIndex + 1} / {imagesList.length}
                   </div>
                 </>
@@ -206,84 +207,112 @@ function ProductDetailContent() {
           </div>
 
           <div className="space-y-6 text-left">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1 text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                <MapPin size={12} className="text-[#6BA37A]" /> Khu vực bàn giao chung: {product.province} [Khóa SĐT bảo mật]
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-1.5 text-[11px] md:text-xs text-gray-500 font-bold uppercase tracking-widest">
+                <MapPin size={13} className="text-[#6BA37A]" /> Khu vực chung: {product.province}
               </div>
-              <Link href={`/closet/${product.userId}`} className="text-[10px] text-emerald-700 font-bold uppercase tracking-widest bg-emerald-50 px-2 py-1 rounded-full hover:bg-emerald-100 transition-colors">
-                Xem Tủ Đồ Của @{product.ownerRealName || 'closet'} ➔
+              <Link href={`/closet/${product.userId}`} className="text-[11px] md:text-xs w-fit text-emerald-700 font-bold uppercase tracking-widest bg-emerald-50 px-3 py-1.5 rounded-full hover:bg-emerald-100 transition-colors">
+                Tủ Đồ Của @{product.ownerRealName || 'closet'} ➔
               </Link>
             </div>
-            <h1 className="text-3xl font-bold tracking-normal text-[#183A2D] uppercase">{product.title || product.name}</h1>
+            <h1 className="text-xl md:text-2xl lg:text-3xl font-bold tracking-tight text-[#183A2D] capitalize leading-snug">{product.title || product.name}</h1>
             
-            <div className="flex items-center gap-2 text-xs text-amber-500 font-bold">
+            <LiveViewerBadge />
+            <div className="flex items-center gap-2 text-xs md:text-sm text-amber-500 font-bold">
               <div className="flex gap-0.5">{[1, 2, 3, 4, 5].map((s) => <Star key={s} size={14} className="fill-amber-400 stroke-none" />)}</div>
-              <span className="text-gray-400 font-medium font-mono translate-y-[1px]">(ĐỘ UY TÍN CAO)</span>
+              <span className="text-gray-400 font-medium font-mono text-[11px] md:text-xs translate-y-[1px]">(ĐỘ UY TÍN CAO)</span>
             </div>
 
-            <div className="bg-white border border-[#E9E2D8] rounded-3xl p-6 shadow-sm space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1">
-                  <span className="flex items-center gap-1.5 text-[9px] font-bold text-gray-400 uppercase tracking-wider"><Ruler size={12} /> KÍCH CỠ</span>
-                  <span className="text-sm font-bold text-[#183A2D]">{product.size} <span className="text-xs font-normal text-gray-500">(Độ mới: {product.condition})</span></span>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <span className="flex items-center gap-1.5 text-[9px] font-bold text-gray-400 uppercase tracking-wider"><Scissors size={12} /> CHẤT LIỆU</span>
-                  <span className="text-sm font-bold text-[#183A2D]">{product.material}</span>
+            <div className="bg-white border border-[#E9E2D8] rounded-2xl md:rounded-3xl p-5 md:p-6 shadow-sm space-y-6 md:space-y-8">
+              {/* Cụm A: Đặc tính sản phẩm */}
+              <div className="space-y-3 md:space-y-4">
+                <h3 className="text-sm md:text-base font-bold text-gray-900 border-b border-stone-100 pb-2 md:pb-3">Đặc tính sản phẩm</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 md:gap-y-4 text-sm">
+                  {product.color && <div className="flex gap-2"><span className="text-gray-500">Màu sắc:</span><span className="font-medium text-gray-900">{product.color}</span></div>}
+                  <div className="flex gap-2"><span className="text-gray-500">Kích cỡ:</span><span className="font-medium text-gray-900">{product.size}</span></div>
+                  {product.material && <div className="flex gap-2"><span className="text-gray-500">Chất liệu:</span><span className="font-medium text-gray-900">{product.material}</span></div>}
+                  <div className="flex gap-2"><span className="text-gray-500">Độ mới:</span><span className="font-medium text-gray-900">{product.condition}</span></div>
+                  {product.occasion && <div className="flex gap-2"><span className="text-gray-500">Dịp:</span><span className="font-medium text-gray-900">{product.occasion}</span></div>}
+                  {product.brand && <div className="flex gap-2"><span className="text-gray-500">Thương hiệu:</span><span className="font-medium text-gray-900">{product.brand}</span></div>}
                 </div>
               </div>
-              <div className="w-full h-px bg-stone-100" />
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1">
-                  <span className="flex items-center gap-1.5 text-[9px] font-bold text-gray-400 uppercase tracking-wider"><User size={12} /> CHIỀU CAO KHUYẾN NGHỊ</span>
-                  <span className="text-sm font-bold text-green-800 font-mono">{product.targetHeight} cm</span>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <span className="flex items-center gap-1.5 text-[9px] font-bold text-gray-400 uppercase tracking-wider"><Scale size={12} /> CÂN NẶNG KHUYẾN NGHỊ</span>
-                  <span className="text-sm font-bold text-green-800 font-mono">{product.targetWeight} kg</span>
+
+              {/* Cụm B: Vừa vặn hoàn hảo */}
+              <div className="space-y-3 md:space-y-4">
+                <h3 className="text-sm md:text-base font-bold text-gray-900 border-b border-stone-100 pb-2 md:pb-3 flex items-center gap-2"><Ruler size={14} /> Vừa vặn hoàn hảo</h3>
+                <div className="flex flex-col gap-2 md:gap-3">
+                  {(product.targetHeight || product.targetWeight) && (
+                    <div className="flex flex-wrap items-center gap-4 text-sm text-gray-700">
+                      {product.targetHeight && <span>Chiều cao: <strong className="text-green-800">{product.targetHeight} cm</strong></span>}
+                      {product.targetWeight && <span>Cân nặng: <strong className="text-green-800">{product.targetWeight} kg</strong></span>}
+                    </div>
+                  )}
+                  {(product.chest || product.waist || product.hips) && (
+                    <div className="flex items-center gap-2 text-sm text-gray-700">
+                      <span className="font-semibold text-gray-900">Số đo 3 vòng:</span>
+                      <span>
+                        {product.chest ? `Ngực ${product.chest} ` : ''} 
+                        {product.waist ? `- Eo ${product.waist} ` : ''} 
+                        {product.hips ? `- Mông ${product.hips}` : ''}
+                      </span>
+                    </div>
+                  )}
+                  {(!product.targetHeight && !product.targetWeight && !product.chest && !product.waist && !product.hips) && (
+                    <span className="text-xs text-stone-500 italic">Người bán chưa cung cấp số đo chi tiết.</span>
+                  )}
                 </div>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">MÔ TẢ TỪ CHỦ TỦ ĐỒ</div>
-              <p className="text-xs text-gray-500 leading-relaxed bg-white border border-[#E9E2D8] rounded-2xl p-4 shadow-sm">
+            <div className="space-y-2 md:space-y-3">
+              <div className="text-sm md:text-base font-bold text-gray-900">Mô tả từ chủ tủ đồ</div>
+              <p className="text-sm text-gray-600 leading-relaxed bg-white border border-[#E9E2D8] rounded-xl md:rounded-2xl p-4 md:p-5 shadow-sm">
                 {product.description || "Trang phục Lookbook tuyển chọn thương hiệu cao cấp."}
               </p>
             </div>
 
             {product.isRental && product.isSale && (
-              <div className="flex flex-col gap-2">
-                <div className="flex bg-stone-100 p-1 rounded-xl border border-stone-200 w-full">
+              <div className="flex flex-col gap-2 mb-4">
+                <div className="flex bg-gray-100/80 p-1.5 rounded-xl border border-gray-200/50 w-full">
                   <button 
                     type="button"
                     onClick={() => setTransactionMode("RENT")}
-                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${transactionMode === "RENT" ? "bg-[#183A2D] text-white shadow-sm" : "text-gray-500 hover:text-stone-800"}`}
+                    className={`flex-1 py-2.5 text-sm md:text-base font-semibold rounded-lg transition-all duration-200 ${
+                      transactionMode === "RENT" 
+                        ? "bg-white shadow-sm text-emerald-800 ring-1 ring-black/5" 
+                        : "text-gray-500 hover:text-gray-800"
+                    }`}
                   >
-                    <Shirt size={14} /> Xem Luồng Thuê Đồ
+                    Thuê đồ
                   </button>
                   <button 
                     type="button"
                     disabled={hasActiveRentals}
                     onClick={() => setTransactionMode("SELL")}
-                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${hasActiveRentals ? "opacity-50 cursor-not-allowed bg-stone-200 text-stone-400" : transactionMode === "SELL" ? "bg-amber-800 text-white shadow-sm" : "text-gray-500 hover:text-stone-800"}`}
+                    className={`flex-1 py-2.5 text-sm md:text-base font-semibold rounded-lg transition-all duration-200 ${
+                      hasActiveRentals 
+                        ? "opacity-50 cursor-not-allowed text-stone-400" 
+                        : transactionMode === "SELL" 
+                          ? "bg-white shadow-sm text-emerald-800 ring-1 ring-black/5" 
+                          : "text-gray-500 hover:text-gray-800"
+                    }`}
                   >
-                    <ShoppingBag size={14} /> Xem Luồng Mua Đứt
+                    Sở hữu món đồ
                   </button>
                 </div>
                 {hasActiveRentals && (
-                  <p className="text-[10px] text-amber-600 font-semibold text-center italic">
+                  <p className="text-xs text-amber-600 font-semibold text-center italic">
                     *Sản phẩm đang vướng lịch thuê. Vui lòng quay lại sau!
                   </p>
                 )}
               </div>
             )}
 
-            <div className="bg-white border border-[#E9E2D8] rounded-2xl p-5 shadow-sm space-y-1">
-              <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">
-                {transactionMode === "RENT" ? "CHI PHÍ THUÊ PHÁT HÀNH" : "CHI PHÍ SỞ HỮU ĐỨT ĐIỂM"}
+            <div className="bg-white border border-[#E9E2D8] rounded-xl md:rounded-2xl p-5 md:p-6 shadow-sm space-y-2 mb-6">
+              <div className="text-[11px] md:text-xs font-bold text-gray-500 uppercase tracking-wider">
+                {transactionMode === "RENT" ? "Giá thuê" : "Giá thanh toán toàn bộ"}
               </div>
-              <div className="text-2xl font-mono font-black text-stone-900">
+              <div className="text-2xl md:text-3xl lg:text-4xl font-mono font-black text-stone-900 tracking-tight">
                 {transactionMode === "RENT" 
                   ? `${product.rentalPrice.toLocaleString()}đ / ngày` 
                   : `${product.salePrice.toLocaleString()}đ`

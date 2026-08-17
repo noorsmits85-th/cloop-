@@ -176,6 +176,7 @@ model Invoice {
   disputes      Dispute[]
   rental        RentalHistory       @relation(fields: [rentalId], references: [id])
   ledgerEntries LedgerTransaction[]
+  transactions  TransactionHistory[]
 
   @@index([rentalId])
   @@index([status])
@@ -441,4 +442,31 @@ model EcoMetric {
   updatedAt   DateTime @updatedAt
 
   @@map("eco_metrics")
+}
+
+enum TransactionStatus {
+  VERIFIED
+  PROCESSED
+  AMOUNT_MISMATCH
+  DUPLICATE
+  FAILED
+}
+
+model TransactionHistory {
+  id            String            @id @default(uuid())
+  eventId       String?           @unique // Mã Webhook từ PayOS (Chặn dội bom đúp)
+  orderCode     BigInt            @unique // Mã đơn hàng map với PayOS
+  invoiceId     String?
+  amount        Int               // Số tiền thực tế PayOS báo về
+  currency      String            @default("VND")
+  invoiceAmount Int               // Số tiền cross-check từ bảng Invoice
+  status        TransactionStatus
+  rawPayload    Json              // Lưu trữ toàn vẹn chứng cứ (Postgres JSONB)
+  processedAt   DateTime?         // Timestamp khi thực thi xong Atomic Transaction
+  createdAt     DateTime          @default(now())
+  
+  invoice       Invoice?          @relation(fields: [invoiceId], references: [id])
+  
+  @@index([orderCode])
+  @@index([eventId])
 }

@@ -34,6 +34,7 @@ const createProductSchema = z.object({
     isSale: z.boolean(),
     salePrice: z.number(),
   }),
+  description: z.string().optional(),
   storyText: z.string().optional(),
 });
 
@@ -71,6 +72,7 @@ export async function createProductAction(data: any) {
           bust: v.bust || null,
           waist: v.waist || null,
           hips: v.hips || null,
+          description: v.description || null,
           status: "ON_MARKET"
         }
       });

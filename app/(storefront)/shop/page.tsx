@@ -62,6 +62,12 @@ function ShopContent() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [renderError, setRenderError] = useState<Error | null>(null);
+
+  // Ném lỗi vào Error Boundary (error.tsx) để hiển thị UI thân thiện nếu có lỗi nghiêm trọng lúc fetching
+  if (renderError) {
+    throw renderError;
+  }
 
   // Debounce tìm kiếm để không spam DB
   useEffect(() => {
@@ -94,7 +100,7 @@ function ShopContent() {
       let query = supabase
         .from("products")
         .select(`
-          id, title, name, province, condition, size, brand, owner_name, ownerName, userId, user_id, original_price, originalPrice, rental_price, occasion, image_url, imageUrl, createdAt,
+          id, title, province, condition, size, brand, userId, occasion, createdAt,
           Listing!inner(status)
         `)
         .eq("Listing.status", "AVAILABLE");
@@ -221,8 +227,10 @@ function ShopContent() {
       } else {
         setProducts(mapped);
       }
-    } catch (err) {
-      console.error("❌ Lỗi vận hành dòng chảy dữ liệu sàn /shop:", err);
+    } catch (err: any) {
+      console.error("❌ Lỗi vận hành dòng chảy dữ liệu sàn /shop:", err?.message || err);
+      // Ném lỗi vào Error Boundary (error.tsx)
+      setRenderError(err);
     } finally {
       setLoading(false);
       setLoadingMore(false);

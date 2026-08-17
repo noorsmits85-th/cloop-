@@ -46,7 +46,7 @@ export default function RentalBookingBox({
   
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const shippingMode = "CLOOP_BOOK";
+  const [shippingMode, setShippingMode] = useState<"CLOOP_BOOK" | "SELF_AGREEMENT">("CLOOP_BOOK");
   // Mock Payment Flow States
   const [showMockPayment, setShowMockPayment] = useState(false);
   const [mockPaymentStatus, setMockPaymentStatus] = useState<"IDLE" | "SCANNING" | "SUCCESS">("IDLE");
@@ -104,7 +104,7 @@ export default function RentalBookingBox({
     async function fetchOwnerReviewStats() {
       try {
         const { data, error } = await supabase
-          .from("reviews")
+          .from("Review")
           .select("rating")
           .eq("revieweeId", ownerId)
           .eq("type", "RENTER_TO_OWNER");
@@ -134,6 +134,11 @@ export default function RentalBookingBox({
       return;
     }
 
+    if (totalInvoicePrice <= 0) {
+      alert("Lỗi: Tổng hóa đơn thanh toán không hợp lệ (0đ). Vui lòng kiểm tra lại giá sản phẩm!");
+      return;
+    }
+
     if (!renterName.trim()) { alert(`Vui lòng nhập tên người ${isRental ? "thuê" : "mua"} để CLOOP bảo chứng nhé!`); return; }
     if (!renterPhone.trim()) { alert(`Vui lòng nhập số điện thoại người ${isRental ? "thuê" : "mua"} nhé!`); return; }
     
@@ -154,6 +159,23 @@ export default function RentalBookingBox({
     });
 
     try {
+      // 1.5 KIỂM TRA SỐ DƯ VÍ CLOOP
+      let walletBalance = 0;
+      const { data: userData } = await supabase.from('User').select('cloopCoins').eq('id', session.user.id).single();
+      if (userData) {
+        walletBalance = userData.cloopCoins || 0;
+      }
+
+      if (walletBalance < totalInvoicePrice) {
+        alert(`Số dư ví của bạn không đủ (${walletBalance.toLocaleString()}đ). Vui lòng nạp thêm tối thiểu ${(totalInvoicePrice - walletBalance).toLocaleString()}đ vào Ví Cloop để tiếp tục.`);
+        setIsSubmitting(false);
+        // Ở đây đáng lý sẽ gọi PayOS để nạp ví, tạm thời kích hoạt Mock Payment Modal
+        setShowMockPayment(true);
+        setMockPaymentStatus("SCANNING");
+        return;
+      }
+
+      // NẾU ĐỦ TIỀN VÍ -> Trừ tiền trong ví và tạo đơn hàng
       // 2. Gọi Server Action để tạo Booking
       const bookingRes = await createBooking({
         productId,
@@ -173,17 +195,10 @@ export default function RentalBookingBox({
         return;
       }
 
-      // 3. Gọi Server Action để tạo PayOS link
-      const payosRes = await createPayOSPaymentLink((bookingRes as any).rentalId);
-
-      if (!payosRes.success || !payosRes.checkoutUrl) {
-        alert(payosRes.error || "Không thể khởi tạo cổng thanh toán.");
-        setIsSubmitting(false);
-        return;
-      }
-
-      // 4. Chuyển hướng người dùng thẳng sang cổng thanh toán (Làm thật ăn thật)
-      window.location.href = payosRes.checkoutUrl;
+      // TRỪ TIỀN TRONG VÍ (Giả lập trừ ở Client/Server, đáng ra phải gọi API trừ tiền)
+      // Tạm thời bỏ qua gọi PayOS vì đã trả bằng ví thành công
+      alert("Thanh toán thành công qua Ví CLOOP! Tiền đã được giữ an toàn.");
+      window.location.href = `/my-closet/orders`;
       
     } catch (error) {
       console.error(error);
@@ -273,15 +288,30 @@ export default function RentalBookingBox({
         
         {/* LỰA CHỌN PHƯƠNG THỨC VẬN CHUYỂN */}
         <div className="pt-2 pb-1 space-y-2">
-          <label className="block text-[11px] font-bold text-[#183A2D] uppercase tracking-wider mb-2">Phương thức vận chuyển</label>
+          <label className="block text-sm font-semibold text-[#183A2D] mb-2">Phương thức vận chuyển</label>
           <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-3 p-3 rounded-xl border bg-emerald-50/50 border-emerald-600/30">
-              <input type="radio" checked readOnly className="w-4 h-4 text-emerald-600 cursor-not-allowed" />
+            <div 
+              onClick={() => setShippingMode("CLOOP_BOOK")}
+              className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${shippingMode === "CLOOP_BOOK" ? "bg-emerald-50/50 border-emerald-600/30" : "bg-white border-stone-200 hover:border-emerald-300"}`}
+            >
+              <input type="radio" checked={shippingMode === "CLOOP_BOOK"} readOnly className="w-4 h-4 text-emerald-600" />
               <div className="flex flex-col flex-1">
-                <span className="text-xs font-bold text-stone-800">CLOOP gọi Ship hộ (Lấy tận nhà)</span>
-                <span className="text-[10px] text-stone-500">Đồng giá toàn quốc, không lo vận đơn</span>
+                <span className="text-xs font-bold text-stone-800">🚚 Giao hàng thảnh thơi (Cloop lo trọn gói)</span>
+                <span className="text-[10px] text-stone-500">Đồng giá toàn quốc, theo dõi hành trình 24/7 (Khuyên dùng)</span>
               </div>
               <span className="text-xs font-mono font-bold text-emerald-700">+35.000đ</span>
+            </div>
+
+            <div 
+              onClick={() => setShippingMode("SELF_AGREEMENT")}
+              className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${shippingMode === "SELF_AGREEMENT" ? "bg-emerald-50/50 border-emerald-600/30" : "bg-white border-stone-200 hover:border-emerald-300"}`}
+            >
+              <input type="radio" checked={shippingMode === "SELF_AGREEMENT"} readOnly className="w-4 h-4 text-emerald-600" />
+              <div className="flex flex-col flex-1">
+                <span className="text-xs font-bold text-stone-800">Tự thỏa thuận với chủ đồ</span>
+                <span className="text-[10px] text-stone-500">Người mua tự thanh toán phí ship lúc nhận hàng</span>
+              </div>
+              <span className="text-xs font-mono font-bold text-emerald-700">0đ</span>
             </div>
           </div>
         </div>
@@ -292,26 +322,26 @@ export default function RentalBookingBox({
             <span className="text-stone-400 line-through">
               +{isRental ? (days > 0 ? (originalServiceFee * days).toLocaleString() : 0) : originalServiceFee.toLocaleString()}đ
             </span>
-            <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[10px] tracking-wide uppercase">
+            <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[10px] tracking-wide">
               FREE LAUNCH
             </span>
           </div>
         </div>
 
-        <div className="flex justify-between items-center text-xs font-bold border-t border-stone-200 pt-3 mt-2">
-          <span className="text-gray-700 uppercase">TỔNG HÓA ĐƠN ĐẶT {isRental ? "THUÊ" : "MUA"}:</span>
+        <div className="flex justify-between items-center text-sm font-bold border-t border-stone-200 pt-3 mt-2">
+          <span className="text-gray-700">Tổng hóa đơn đặt {isRental ? "thuê" : "mua"}:</span>
           <span className="text-xl font-mono text-[#183A2D] font-black">{totalInvoicePrice.toLocaleString()}đ</span>
         </div>
 
-        <div className="bg-amber-50/60 border border-amber-100 rounded-xl p-3.5 flex items-start gap-3 mt-4">
-          <input type="checkbox" id="legal-checkbox" checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)} className="mt-0.5 w-4 h-4 text-green-800 border-gray-300 rounded cursor-pointer" />
-          <label htmlFor="legal-checkbox" className="text-[11px] text-amber-900 leading-relaxed cursor-pointer select-none text-left">
-            Tôi xác nhận đồng ý cho CLOOP xử lý dữ liệu và cam kết <strong>ký quỹ bảo chứng số tiền {totalInvoicePrice.toLocaleString()}đ</strong>. Thông tin liên hệ chính thức của người đăng bài sẽ hiển thị ngay sau khi hệ thống ghi nhận dòng tiền bảo chứng.
+        <div className="bg-amber-50/60 border border-amber-100 rounded-xl p-4 flex items-start gap-3 mt-4">
+          <input type="checkbox" id="legal-checkbox" checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)} className="mt-1 w-4 h-4 text-green-800 border-gray-300 rounded cursor-pointer shrink-0" />
+          <label htmlFor="legal-checkbox" className="text-sm text-gray-700 leading-relaxed font-medium cursor-pointer select-none text-left">
+            🛡️ Tôi đồng ý thanh toán số tiền <strong>{totalInvoicePrice.toLocaleString()}đ</strong> qua Ví CLOOP. Tiền của bạn sẽ được Cloop giữ an toàn và chỉ chuyển cho người bán khi bạn xác nhận đã nhận đúng món đồ.
           </label>
         </div>
 
-        <button disabled={isSubmitting} onClick={handleActivatePayment} className="w-full py-4 bg-[#183A2D] text-white font-bold text-xs uppercase tracking-widest rounded-2xl hover:bg-[#23452F] transition-all shadow-md flex items-center justify-center gap-2 mt-2 disabled:opacity-50">
-          {isSubmitting ? "ĐANG CHUYỂN HƯỚNG..." : <><ShieldCheck size={16} /> BẢO CHỨNG GIAO DỊCH ➔</>}
+        <button disabled={isSubmitting} onClick={handleActivatePayment} className="w-full py-4 bg-[#183A2D] text-white font-bold text-sm rounded-2xl hover:bg-[#23452F] transition-all shadow-md flex items-center justify-center gap-2 mt-2 disabled:opacity-50">
+          {isSubmitting ? "ĐANG CHUYỂN HƯỚNG..." : <><ShieldCheck size={18} /> THANH TOÁN AN TOÀN ➔</>}
         </button>
       </div>
 

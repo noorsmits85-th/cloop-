@@ -9,9 +9,16 @@ import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image"; // 🟢 Đã fix: Trả lại thẻ Image cho Next.js
 import { Heart, Sparkles, Shirt, Info, MapPin, BadgePercent, ShieldAlert, Camera, Feather, Quote, ArrowLeft, Leaf } from "lucide-react"; 
 import { createProductAction } from "./actions";
+import { Montserrat } from 'next/font/google';
+
+const montserrat = Montserrat({ subsets: ['latin', 'vietnamese'], weight: ['400', '500', '600', '700'] });
 
 const PLACEHOLDER_IMG = "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600";
 const PAPER_BG = "https://www.transparenttextures.com/patterns/cream-paper.png";
+
+const SECTION_HEADING_CLASS = `${montserrat.className} text-sm font-semibold uppercase tracking-widest text-emerald-900`;
+const SECTION_NUMBER_CLASS = `${montserrat.className} italic text-xl text-emerald-700 font-bold mr-2 opacity-60`;
+
 
 // Hoa lá khô decor nền
 const DRIED_LEAF = "https://images.unsplash.com/photo-1621274220349-2e06cb388ea2?q=80&w=500";
@@ -24,6 +31,7 @@ interface ProductSpecifications {
   originalPrice: number; 
   ownerPhone: string;
   occasion: string; 
+  description: string;
 }
 
 interface ListingConfig {
@@ -78,6 +86,7 @@ export default function CreateProductListingPage() {
     originalPrice: 500000, 
     ownerPhone: "",
     occasion: "Dạo phố",
+    description: "",
   });
 
   const [listings, setListings] = useState<ListingConfig>({
@@ -277,18 +286,21 @@ export default function CreateProductListingPage() {
         .scrapbook-input {
             width: 100%;
             padding: 0.75rem 1rem;
-            background: #FFFDF9;
-            border: 1px solid #E9E2D5;
+            background: #ffffff;
+            border: 1px solid #d1d5db;
             border-radius: 0.25rem;
             font-size: 0.875rem;
-            color: #333;
+            color: #111827;
             transition: all 0.2s;
             box-shadow: inset 0 1px 3px rgba(0,0,0,0.02);
         }
+        .scrapbook-input::placeholder {
+            color: #9ca3af;
+        }
         .scrapbook-input:focus {
             outline: none;
-            border-color: #91714E;
-            box-shadow: inset 0 1px 3px rgba(0,0,0,0.02), 0 0 0 2px rgba(145,113,78,0.1);
+            border-color: #059669;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.02), 0 0 0 2px rgba(16, 185, 129, 0.2);
         }
 
         .blend-multiply {
@@ -335,9 +347,10 @@ export default function CreateProductListingPage() {
             
             {/* 01: HÌNH ẢNH */}
             <section>
-              <div className="flex items-center gap-3 mb-5">
-                <span className="font-heading italic text-2xl text-amber-700/60">01.</span>
-                <h2 className="font-heading text-lg md:text-xl font-bold tracking-wider text-[#183A2D] uppercase">Chân dung món đồ</h2>
+              <div className="flex items-center mb-5 group/heading cursor-default">
+                <span className={SECTION_NUMBER_CLASS}>01.</span>
+                <h2 className={SECTION_HEADING_CLASS}>Gương mặt thương hiệu</h2>
+                <div className="flex-grow h-[1px] bg-emerald-900/10 ml-6 origin-left scale-x-0 group-hover/heading:scale-x-100 transition-transform duration-1000 ease-out" />
               </div>
               
               <div 
@@ -348,8 +361,8 @@ export default function CreateProductListingPage() {
                 <div className="w-12 h-12 rounded-full bg-white border border-[#D5C6B1] flex items-center justify-center mx-auto text-stone-400 group-hover:bg-[#1C3F30] group-hover:text-white transition-all mb-3 shadow-sm">
                   <Camera size={20} />
                 </div>
-                <p className="font-handwriting text-xl text-stone-700 mb-1">Dán ảnh vào đây nhé</p>
-                <p className="text-[11px] text-stone-400 font-sans">Chọn tối đa 5 tấm ảnh rõ nét nhất (chụp bằng ánh sáng tự nhiên thì càng xinh).</p>
+                <p className="font-medium text-lg text-gray-500 mb-1">Dán ảnh vào đây nhé</p>
+                <p className="text-[11px] text-gray-400 font-sans">Chọn tối đa 5 tấm ảnh rõ nét nhất (chụp bằng ánh sáng tự nhiên thì càng xinh).</p>
               </div>
               
               {images.length > 0 && (
@@ -373,34 +386,35 @@ export default function CreateProductListingPage() {
 
             {/* 02: THÔNG TIN CƠ BẢN */}
             <section>
-              <div className="flex items-center gap-3 mb-5">
-                <span className="font-heading italic text-2xl text-amber-700/60">02.</span>
-                <h2 className="font-heading text-lg md:text-xl font-bold tracking-wider text-[#183A2D] uppercase">Giới thiệu đôi nét</h2>
+              <div className="flex items-center mb-5 group/heading cursor-default">
+                <span className={SECTION_NUMBER_CLASS}>02.</span>
+                <h2 className={SECTION_HEADING_CLASS}>Giới thiệu đôi nét</h2>
+                <div className="flex-grow h-[1px] bg-emerald-900/10 ml-6 origin-left scale-x-0 group-hover/heading:scale-x-100 transition-transform duration-1000 ease-out" />
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="md:col-span-2">
-                  <label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-2">Tên món đồ</label>
-                  <input type="text" required placeholder="Ví dụ: Váy hoa nhí mùa hè..." className="scrapbook-input font-medium text-stone-800" value={product.name} onChange={(e) => setProduct({...product, name: e.target.value})} />
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Tên món đồ</label>
+                  <input type="text" required placeholder="Ví dụ: Váy hoa nhí mùa hè..." className="scrapbook-input font-medium text-stone-800 placeholder:text-gray-400" value={product.name} onChange={(e) => setProduct({...product, name: e.target.value})} />
                 </div>
                 
                 <div>
-                  <label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-2">Độ mới hiện tại</label>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Độ mới hiện tại</label>
                   <input type="text" required placeholder="Mới 95%, mặc 1 lần..." className="scrapbook-input" value={product.condition} onChange={(e) => setProduct({...product, condition: e.target.value})} />
                 </div>
                 
                 <div>
-                  <label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-2">Chất liệu chính</label>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Chất liệu chính</label>
                   <input type="text" required placeholder="Lụa, linen, cotton..." className="scrapbook-input" value={product.material} onChange={(e) => setProduct({...product, material: e.target.value})} />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-2">Màu sắc</label>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Màu sắc</label>
                   <input type="text" required className="scrapbook-input" value={product.color} onChange={(e) => setProduct({...product, color: e.target.value})} />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-2">Phong cách / Dịp</label>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Phong cách / Dịp</label>
                   <select className="scrapbook-input cursor-pointer" value={product.occasion} onChange={(e) => setProduct({...product, occasion: e.target.value})}>
                     <option value="Dạo phố">Dạo phố</option><option value="Tiệc cưới">Tiệc cưới</option><option value="Dạ hội">Dạ hội</option>
                     <option value="Áo dài">Áo dài</option><option value="Đi biển">Đi biển</option><option value="Kỷ yếu">Kỷ yếu</option>
@@ -409,7 +423,19 @@ export default function CreateProductListingPage() {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-2">Giá mua ban đầu lúc mới (VNĐ)</label>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Mô tả chi tiết từ chủ đồ</label>
+                  <textarea 
+                    rows={4} 
+                    placeholder="Mô tả form dáng, cảm giác khi mặc, hoặc lưu ý bảo quản..." 
+                    className="scrapbook-input text-stone-800 resize-none placeholder:text-gray-400" 
+                    value={product.description} 
+                    onChange={(e) => setProduct({...product, description: e.target.value})} 
+                  />
+                </div>
+
+
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Giá mua ban đầu lúc mới (VNĐ)</label>
                   <input type="number" required className="scrapbook-input font-mono font-bold text-stone-800" value={product.originalPrice} onChange={(e) => setProduct({...product, originalPrice: Number(e.target.value)})} />
                   <p className="text-[10px] text-stone-400 mt-1.5 italic font-serif">Để CLOOP giúp cậu tính mức giá thuê hợp lý và % tiết kiệm nhé.</p>
                 </div>
@@ -418,44 +444,46 @@ export default function CreateProductListingPage() {
 
             {/* 03: FORM KÍCH CỠ */}
             <section>
-              <div className="flex items-center gap-3 mb-5">
-                <span className="font-heading italic text-2xl text-amber-700/60">03.</span>
-                <h2 className="font-heading text-lg md:text-xl font-bold tracking-wider text-[#183A2D] uppercase">Vừa vặn hoàn hảo</h2>
+              <div className="flex items-center mb-5 group/heading cursor-default">
+                <span className={SECTION_NUMBER_CLASS}>03.</span>
+                <h2 className={SECTION_HEADING_CLASS}>Vừa vặn hoàn hảo</h2>
+                <div className="flex-grow h-[1px] bg-emerald-900/10 ml-6 origin-left scale-x-0 group-hover/heading:scale-x-100 transition-transform duration-1000 ease-out" />
               </div>
               <div className="bg-[#FAF9F5] p-6 border border-[#E9E2D5] rounded-sm relative">
                 <div className="absolute top-3 right-3 opacity-20"><Shirt size={40} /></div>
                 
                 <div className="mb-4">
-                  <label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-2">Size đồ</label>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Size đồ</label>
                   <select className="scrapbook-input cursor-pointer w-full md:w-1/3" value={product.size} onChange={(e) => setProduct({...product, size: e.target.value as any})}>
                     <option value="S">Size S</option><option value="M">Size M</option><option value="L">Size L</option><option value="XL">Size XL</option>
                   </select>
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                  <div><label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1.5">Cao (cm)*</label><input type="number" required className="scrapbook-input font-mono px-2" value={product.targetHeight} onChange={(e) => setProduct({...product, targetHeight: e.target.value})} /></div>
-                  <div><label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1.5">Nặng (kg)*</label><input type="number" required className="scrapbook-input font-mono px-2" value={product.targetWeight} onChange={(e) => setProduct({...product, targetWeight: e.target.value})} /></div>
-                  <div><label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">Ngực (cm)</label><input type="number" className="scrapbook-input font-mono px-2" value={product.bust} onChange={(e) => setProduct({...product, bust: e.target.value})} /></div>
-                  <div><label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">Eo (cm)</label><input type="number" className="scrapbook-input font-mono px-2" value={product.waist} onChange={(e) => setProduct({...product, waist: e.target.value})} /></div>
-                  <div><label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1.5">Mông (cm)</label><input type="number" className="scrapbook-input font-mono px-2" value={product.hips} onChange={(e) => setProduct({...product, hips: e.target.value})} /></div>
+                  <div><label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Cao (cm)*</label><input type="number" required className="scrapbook-input font-mono px-2" value={product.targetHeight} onChange={(e) => setProduct({...product, targetHeight: e.target.value})} /></div>
+                  <div><label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Nặng (kg)*</label><input type="number" required className="scrapbook-input font-mono px-2" value={product.targetWeight} onChange={(e) => setProduct({...product, targetWeight: e.target.value})} /></div>
+                  <div><label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Ngực (cm)</label><input type="number" className="scrapbook-input font-mono px-2" value={product.bust} onChange={(e) => setProduct({...product, bust: e.target.value})} /></div>
+                  <div><label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Eo (cm)</label><input type="number" className="scrapbook-input font-mono px-2" value={product.waist} onChange={(e) => setProduct({...product, waist: e.target.value})} /></div>
+                  <div><label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Mông (cm)</label><input type="number" className="scrapbook-input font-mono px-2" value={product.hips} onChange={(e) => setProduct({...product, hips: e.target.value})} /></div>
                 </div>
               </div>
             </section>
 
             {/* 04: ĐỊA ĐIỂM & BẢO MẶT */}
             <section>
-              <div className="flex items-center gap-3 mb-5">
-                <span className="font-heading italic text-2xl text-amber-700/60">04.</span>
-                <h2 className="font-heading text-lg md:text-xl font-bold tracking-wider text-[#183A2D] uppercase">Tọa độ & Trạm gửi</h2>
+              <div className="flex items-center mb-5 group/heading cursor-default">
+                <span className={SECTION_NUMBER_CLASS}>04.</span>
+                <h2 className={SECTION_HEADING_CLASS}>Tọa độ & trạm gửi</h2>
+                <div className="flex-grow h-[1px] bg-emerald-900/10 ml-6 origin-left scale-x-0 group-hover/heading:scale-x-100 transition-transform duration-1000 ease-out" />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div><label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-2">Tỉnh / Thành phố</label><input type="text" required placeholder="VD: Hà Nội..." className="scrapbook-input font-bold text-stone-700" value={product.province} onChange={(e) => setProduct({...product, province: e.target.value})} /></div>
-                <div><label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-2">Quận / Huyện</label><input type="text" required placeholder="VD: Quận Hoàn Kiếm..." className="scrapbook-input font-bold text-stone-700" value={product.district} onChange={(e) => setProduct({...product, district: e.target.value})} /></div>
-                <div><label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-2">Phường / Xã</label><input type="text" required placeholder="VD: Phường Hàng Đào..." className="scrapbook-input font-bold text-stone-700" value={product.ward} onChange={(e) => setProduct({...product, ward: e.target.value})} /></div>
-                <div><label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-2">Địa chỉ cụ thể (Tên đường, số nhà)</label><input type="text" required placeholder="VD: Số 123 Đường XYZ..." className="scrapbook-input font-bold text-stone-700" value={product.address} onChange={(e) => setProduct({...product, address: e.target.value})} /></div>
+                <div><label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Tỉnh / Thành phố</label><input type="text" required placeholder="VD: Hà Nội..." className="scrapbook-input font-bold text-stone-700" value={product.province} onChange={(e) => setProduct({...product, province: e.target.value})} /></div>
+                <div><label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Quận / Huyện</label><input type="text" required placeholder="VD: Quận Hoàn Kiếm..." className="scrapbook-input font-bold text-stone-700" value={product.district} onChange={(e) => setProduct({...product, district: e.target.value})} /></div>
+                <div><label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Phường / Xã</label><input type="text" required placeholder="VD: Phường Hàng Đào..." className="scrapbook-input font-bold text-stone-700" value={product.ward} onChange={(e) => setProduct({...product, ward: e.target.value})} /></div>
+                <div><label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Địa chỉ cụ thể (Tên đường, số nhà)</label><input type="text" required placeholder="VD: Số 123 Đường XYZ..." className="scrapbook-input font-bold text-stone-700" value={product.address} onChange={(e) => setProduct({...product, address: e.target.value})} /></div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-2">Số điện thoại của cậu *</label>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Số điện thoại của cậu *</label>
                   <input type="tel" required placeholder="SĐT liên hệ..." className="scrapbook-input font-mono font-bold text-stone-800" value={product.ownerPhone} onChange={(e) => setProduct({...product, ownerPhone: e.target.value})} />
                 </div>
 
@@ -471,9 +499,10 @@ export default function CreateProductListingPage() {
 
             {/* 05: NGHIỆP VỤ */}
             <section>
-              <div className="flex items-center gap-3 mb-5">
-                <span className="font-heading italic text-2xl text-amber-700/60">05.</span>
-                <h2 className="font-heading text-lg md:text-xl font-bold tracking-wider text-[#183A2D] uppercase">Hành trình tiếp theo</h2>
+              <div className="flex items-center mb-5 group/heading cursor-default">
+                <span className={SECTION_NUMBER_CLASS}>05.</span>
+                <h2 className={SECTION_HEADING_CLASS}>Hành trình tiếp theo</h2>
+                <div className="flex-grow h-[1px] bg-emerald-900/10 ml-6 origin-left scale-x-0 group-hover/heading:scale-x-100 transition-transform duration-1000 ease-out" />
               </div>
               
               <div className="space-y-4 font-sans">
@@ -485,8 +514,8 @@ export default function CreateProductListingPage() {
                   </div>
                   {listings.isRental && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 ml-7 animate-fadeIn">
-                      <div><label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1.5">Giá thuê / Ngày (VNĐ)</label><input type="number" className="scrapbook-input font-mono" value={listings.rentalPrice} onChange={(e) => setListings({...listings, rentalPrice: Number(e.target.value)})} /></div>
-                      <div><label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1.5">Tiền cọc đảm bảo (VNĐ)</label><input type="number" className="scrapbook-input font-mono" value={listings.depositPercent} onChange={(e) => setListings({...listings, depositPercent: Number(e.target.value)})} /></div>
+                      <div><label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Giá thuê / Ngày (VNĐ)</label><input type="number" className="scrapbook-input font-mono" value={listings.rentalPrice} onChange={(e) => setListings({...listings, rentalPrice: Number(e.target.value)})} /></div>
+                      <div><label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Tiền cọc đảm bảo (VNĐ)</label><input type="number" className="scrapbook-input font-mono" value={listings.depositPercent} onChange={(e) => setListings({...listings, depositPercent: Number(e.target.value)})} /></div>
                     </div>
                   )}
                 </div>
@@ -499,7 +528,7 @@ export default function CreateProductListingPage() {
                   </div>
                   {listings.isSale && (
                     <div className="mt-4 ml-7 w-full sm:w-1/2 animate-fadeIn">
-                      <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1.5">Giá pass (VNĐ)</label>
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Giá pass (VNĐ)</label>
                       <input type="number" className="scrapbook-input font-mono" value={listings.salePrice} onChange={(e) => setListings({...listings, salePrice: Number(e.target.value)})} />
                     </div>
                   )}
@@ -522,14 +551,15 @@ export default function CreateProductListingPage() {
 
             {/* 06: CÂU CHUYỆN */}
             <section>
-              <div className="flex items-center gap-3 mb-5">
-                <span className="font-heading italic text-2xl text-amber-700/60">06.</span>
-                <h2 className="font-heading text-lg md:text-xl font-bold tracking-wider text-[#183A2D] uppercase">Ký ức bỏ túi (Tùy chọn)</h2>
+              <div className="flex items-center mb-5 group/heading cursor-default">
+                <span className={SECTION_NUMBER_CLASS}>06.</span>
+                <h2 className={SECTION_HEADING_CLASS}>Ký ức bỏ túi (Tùy chọn)</h2>
+                <div className="flex-grow h-[1px] bg-emerald-900/10 ml-6 origin-left scale-x-0 group-hover/heading:scale-x-100 transition-transform duration-1000 ease-out" />
               </div>
               <div className="bg-[#FFFDF9] p-6 border border-[#E9E2D5] rounded-sm relative">
                 <div className="flex items-center gap-3 mb-4">
                   <input type="checkbox" id="hasStory" className="w-4 h-4 accent-pink-600 cursor-pointer" checked={hasStory} onChange={(e) => setHasStory(e.target.checked)} />
-                  <label htmlFor="hasStory" className="font-bold text-stone-800 text-[13px] uppercase tracking-wider cursor-pointer">
+                  <label htmlFor="hasStory" className="block text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer mb-0">
                     Viết một lời tựa nhỏ cho trang nhật ký
                   </label>
                 </div>
@@ -561,11 +591,13 @@ export default function CreateProductListingPage() {
             <div className="pt-8 flex justify-center">
               <button
                 type="submit" disabled={isSubmitting}
-                className="group relative px-10 py-4 bg-[#1C3F30] hover:bg-[#2A5A46] text-[#FDFBF7] font-heading font-bold text-xl md:text-2xl uppercase tracking-widest rounded-sm transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed shadow-[2px_4px_10px_rgba(28,63,48,0.3)] hover:shadow-[4px_6px_15px_rgba(28,63,48,0.4)]"
+                className={`group relative overflow-hidden px-12 py-5 bg-[#1C3F30] text-[#FDFBF7] ${montserrat.className} font-bold text-xl md:text-2xl uppercase tracking-widest rounded-sm transition-all duration-500 disabled:opacity-60 disabled:cursor-not-allowed shadow-xl hover:shadow-emerald-900/40 hover:-translate-y-1`}
               >
+                {/* Shine effect */}
+                <div className="absolute inset-0 -translate-x-[150%] group-hover:translate-x-[150%] transition-transform duration-1000 ease-in-out bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12" />
                 {/* Vintage border inside button */}
                 <div className="absolute inset-1 border border-[#FDFBF7]/30 pointer-events-none" />
-                {isSubmitting ? "Đang nhẹ nhàng xếp vào tủ..." : "Cất vào Tủ Đồ CLOOP"}
+                <span className="relative z-10">{isSubmitting ? "Đang xếp vào tủ..." : "Cất vào Tủ Đồ CLOOP"}</span>
               </button>
             </div>
 

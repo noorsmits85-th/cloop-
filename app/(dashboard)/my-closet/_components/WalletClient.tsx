@@ -1,15 +1,30 @@
 "use client";
 
-import React, { useState } from "react";
-import { CreditCard, ArrowUpRight, ArrowDownLeft, Clock, CheckCircle2, AlertCircle, X, Eye, EyeOff } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { CreditCard, ArrowUpRight, ArrowDownLeft, Clock, CheckCircle2, AlertCircle, X, Eye, EyeOff, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { createDepositPayment } from "../wallet/actions";
 
-export function WalletClient({ balance, coins, transactions }: { balance: number, coins: number, transactions: any[] }) {
+export function WalletClient({ balance, coins, transactions, paymentStatus }: { balance: number, coins: number, transactions: any[], paymentStatus?: string }) {
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [showDepositModal, setShowDepositModal] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [depositAmount, setDepositAmount] = useState(50000);
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDepositing, setIsDepositing] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    if (paymentStatus === "success") {
+      alert("🎉 Nạp tiền thành công! Vui lòng chờ hệ thống xử lý trong giây lát.");
+      // In real app, we should clean the URL params to prevent re-alerting
+      window.history.replaceState(null, '', '/my-closet/wallet');
+    } else if (paymentStatus === "cancel") {
+      alert("🚫 Thanh toán đã bị hủy.");
+      window.history.replaceState(null, '', '/my-closet/wallet');
+    }
+  }, [paymentStatus]);
 
   const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,6 +40,25 @@ export function WalletClient({ balance, coins, transactions }: { balance: number
       setWithdrawAmount("");
       setPassword("");
     }, 1500);
+  };
+
+  const handleDeposit = async () => {
+    if (depositAmount < 10000) return alert("Số tiền nạp tối thiểu là 10,000đ");
+    
+    setIsDepositing(true);
+    try {
+      const res = await createDepositPayment(depositAmount);
+      if (res.success && res.checkoutUrl) {
+        // Redirect to PayOS checkout
+        window.location.href = res.checkoutUrl;
+      } else {
+        alert(res.message || "Có lỗi xảy ra khi tạo link thanh toán.");
+        setIsDepositing(false);
+      }
+    } catch (error) {
+      alert("Lỗi kết nối.");
+      setIsDepositing(false);
+    }
   };
 
   return (
@@ -53,7 +87,10 @@ export function WalletClient({ balance, coins, transactions }: { balance: number
           >
             <ArrowUpRight size={18} /> Rút tiền
           </button>
-          <button className="flex-1 md:flex-none px-6 py-3 bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-full text-sm font-bold shadow-sm hover:bg-white/20 transition-colors flex items-center justify-center gap-2">
+          <button 
+            onClick={() => setShowDepositModal(true)}
+            className="flex-1 md:flex-none px-6 py-3 bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-full text-sm font-bold shadow-sm hover:bg-white/20 transition-colors flex items-center justify-center gap-2"
+          >
             Nạp CloopCoins
           </button>
         </div>
@@ -170,6 +207,79 @@ export function WalletClient({ balance, coins, transactions }: { balance: number
                   {isSubmitting ? "Đang xử lý..." : "Xác nhận lệnh rút"}
                 </button>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showDepositModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-stone-900/40 backdrop-blur-sm" onClick={() => setShowDepositModal(false)} />
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden flex flex-col z-10 p-6 sm:p-8">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h3 className="text-xl font-bold text-stone-800">Nạp CloopCoins</h3>
+                  <p className="text-stone-500 text-xs mt-1">Chọn số tiền nạp (1đ = 1 CloopCoin)</p>
+                </div>
+                <button onClick={() => setShowDepositModal(false)} className="p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-full transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                <div className="grid grid-cols-3 gap-3">
+                  {[50000, 100000, 200000, 500000, 1000000].map(amt => (
+                    <button
+                      key={amt}
+                      onClick={() => setDepositAmount(amt)}
+                      className={`py-3 rounded-xl border text-sm font-bold transition-all ${
+                        depositAmount === amt 
+                          ? "border-[#183A2D] bg-[#183A2D] text-white" 
+                          : "border-stone-200 text-stone-600 hover:border-stone-300 hover:bg-stone-50"
+                      }`}
+                    >
+                      {amt.toLocaleString()}đ
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setDepositAmount(0)}
+                    className={`py-3 rounded-xl border text-sm font-bold transition-all ${
+                      ![50000, 100000, 200000, 500000, 1000000].includes(depositAmount) && depositAmount > 0
+                        ? "border-[#183A2D] bg-[#183A2D] text-white" 
+                        : "border-stone-200 text-stone-600 hover:border-stone-300 hover:bg-stone-50"
+                    }`}
+                  >
+                    Khác
+                  </button>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider">Hoặc nhập số tiền khác</label>
+                  <input
+                    type="text"
+                    value={depositAmount ? depositAmount.toLocaleString() : ""}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      setDepositAmount(val ? parseInt(val) : 0);
+                    }}
+                    placeholder="Tối thiểu 10,000đ"
+                    className="w-full px-4 py-3 font-mono font-bold text-lg rounded-xl border border-stone-200 focus:outline-none focus:border-emerald-600 bg-white"
+                  />
+                </div>
+
+                <button
+                  onClick={handleDeposit}
+                  disabled={isDepositing || depositAmount < 10000}
+                  className="w-full py-4 bg-[#183A2D] text-white text-sm font-bold uppercase tracking-widest rounded-xl shadow transition-all flex items-center justify-center gap-2 hover:bg-[#23452F] disabled:opacity-50"
+                >
+                  {isDepositing ? (
+                    <><Loader2 size={18} className="animate-spin" /> Đang tạo mã QR...</>
+                  ) : (
+                    `Nạp ${depositAmount.toLocaleString()}đ`
+                  )}
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
