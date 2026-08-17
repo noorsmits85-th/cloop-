@@ -242,7 +242,7 @@ export function OrdersClient({
         comment
       });
 
-      if (!res.success) throw new Error(res.error);
+      if (!res.success) throw new Error("error" in res ? String(res.error) : "Lỗi không xác định");
 
       toast.success("🎉 Đã gửi đánh giá thành công!", { description: "Điểm tín nhiệm (+10 Pts) đã được ghi nhận." });
       setShowReviewModal(false);
