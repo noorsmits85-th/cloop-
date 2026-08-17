@@ -1,6 +1,7 @@
 import React from "react";
 import { supabase } from "@/src/lib/supabase";
 import { WalletClient } from "../_components/WalletClient";
+import { prisma } from "@/src/lib/prisma";
 
 export const revalidate = 0;
 
@@ -14,11 +15,10 @@ export default async function WalletPage({ searchParams }: { searchParams: { [ke
   }
 
   // Fetch user profile to get wallet balance
-  const { data: userProfile } = await supabase
-    .from("profiles")
-    .select("wallet_balance, cloopCoins")
-    .eq("id", userId)
-    .single();
+  const userProfile = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { cloopCoins: true }
+  });
 
   // Giả lập lịch sử giao dịch (thực tế sẽ lấy từ bảng transactions)
   const mockTransactions = [
@@ -35,7 +35,7 @@ export default async function WalletPage({ searchParams }: { searchParams: { [ke
         </div>
         
         <WalletClient 
-          balance={userProfile?.wallet_balance || 0} 
+          balance={0} 
           coins={userProfile?.cloopCoins || 0}
           transactions={mockTransactions} 
           paymentStatus={status}

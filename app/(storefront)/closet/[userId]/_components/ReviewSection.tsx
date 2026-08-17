@@ -73,7 +73,7 @@ export default function ReviewSection({ targetUserId }: ReviewSectionProps) {
         setReviews(reloadRes.reviews);
       }
     } else {
-      toast.error(res.error || "Có lỗi xảy ra khi đánh giá.");
+      toast.error("error" in res ? String(res.error) : "Có lỗi xảy ra khi đánh giá.");
     }
     setSubmitting(false);
   };

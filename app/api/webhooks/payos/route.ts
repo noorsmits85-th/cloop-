@@ -95,7 +95,7 @@ export async function POST(req: Request) {
           if (rental) {
             await tx.rentalHistory.update({
               where: { id: rental.id },
-              data: { status: "AWAITING_SHIPMENT" }
+              data: { status: "PENDING_APPROVAL" }
             });
           }
         }

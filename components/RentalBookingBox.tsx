@@ -46,7 +46,7 @@ export default function RentalBookingBox({
   
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [shippingMode, setShippingMode] = useState<"CLOOP_BOOK" | "SELF_AGREEMENT">("CLOOP_BOOK");
+  const [shippingMode, setShippingMode] = useState<"CLOOP_BOOK" | "SELF_BOOK">("CLOOP_BOOK");
   // Mock Payment Flow States
   const [showMockPayment, setShowMockPayment] = useState(false);
   const [mockPaymentStatus, setMockPaymentStatus] = useState<"IDLE" | "SCANNING" | "SUCCESS">("IDLE");
@@ -303,10 +303,10 @@ export default function RentalBookingBox({
             </div>
 
             <div 
-              onClick={() => setShippingMode("SELF_AGREEMENT")}
-              className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${shippingMode === "SELF_AGREEMENT" ? "bg-emerald-50/50 border-emerald-600/30" : "bg-white border-stone-200 hover:border-emerald-300"}`}
+              onClick={() => setShippingMode("SELF_BOOK")}
+              className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${shippingMode === "SELF_BOOK" ? "bg-emerald-50/50 border-emerald-600/30" : "bg-white border-stone-200 hover:border-emerald-300"}`}
             >
-              <input type="radio" checked={shippingMode === "SELF_AGREEMENT"} readOnly className="w-4 h-4 text-emerald-600" />
+              <input type="radio" checked={shippingMode === "SELF_BOOK"} readOnly className="w-4 h-4 text-emerald-600" />
               <div className="flex flex-col flex-1">
                 <span className="text-xs font-bold text-stone-800">Tự thỏa thuận với chủ đồ</span>
                 <span className="text-[10px] text-stone-500">Người mua tự thanh toán phí ship lúc nhận hàng</span>

@@ -20,15 +20,8 @@ export async function createDepositPayment(amount: number) {
     const orderCode = Number(String(Date.now()).slice(-6) + Math.floor(100 + Math.random() * 900));
 
     // 2. Tạo hóa đơn PENDING trong DB trước (Atomic)
-    const invoice = await prisma.invoice.create({
-      data: {
-        orderCode: orderCode,
-        amount: amount,
-        status: "PENDING",
-        // Liên kết với user qua trường nào đó nếu có, hiện tại invoice chưa có userId trực tiếp (chỉ qua rentalId)
-        // Để demo nạp ví, mình tạo hóa đơn trống không có rentalId
-      }
-    });
+    // TODO: Cập nhật DB schema để hỗ trợ nạp tiền không qua Rental (chưa có trường liên kết ví)
+    // const invoice = await prisma.invoice.create({ ... });
 
     // 3. Gọi PayOS tạo Payment Link
     const DOMAIN = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
