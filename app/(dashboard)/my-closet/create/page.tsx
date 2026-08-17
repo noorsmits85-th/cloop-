@@ -9,15 +9,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image"; // 🟢 Đã fix: Trả lại thẻ Image cho Next.js
 import { Heart, Sparkles, Shirt, Info, MapPin, BadgePercent, ShieldAlert, Camera, Feather, Quote, ArrowLeft, Leaf } from "lucide-react"; 
 import { createProductAction } from "./actions";
-import { Montserrat } from 'next/font/google';
-
-const montserrat = Montserrat({ subsets: ['latin', 'vietnamese'], weight: ['400', '500', '600', '700'] });
-
 const PLACEHOLDER_IMG = "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600";
 const PAPER_BG = "https://www.transparenttextures.com/patterns/cream-paper.png";
 
-const SECTION_HEADING_CLASS = `${montserrat.className} text-sm font-semibold uppercase tracking-widest text-emerald-900`;
-const SECTION_NUMBER_CLASS = `${montserrat.className} italic text-xl text-emerald-700 font-bold mr-2 opacity-60`;
+const SECTION_HEADING_CLASS = "font-sans text-sm font-semibold uppercase tracking-widest text-emerald-900";
+const SECTION_NUMBER_CLASS = "font-sans italic text-xl text-emerald-700 font-bold mr-2 opacity-60";
 
 
 // Hoa lá khô decor nền
@@ -591,7 +587,7 @@ export default function CreateProductListingPage() {
             <div className="pt-8 flex justify-center">
               <button
                 type="submit" disabled={isSubmitting}
-                className={`group relative overflow-hidden px-12 py-5 bg-[#1C3F30] text-[#FDFBF7] ${montserrat.className} font-bold text-xl md:text-2xl uppercase tracking-widest rounded-sm transition-all duration-500 disabled:opacity-60 disabled:cursor-not-allowed shadow-xl hover:shadow-emerald-900/40 hover:-translate-y-1`}
+                className="group relative overflow-hidden px-12 py-5 bg-[#1C3F30] text-[#FDFBF7] font-sans font-bold text-xl md:text-2xl uppercase tracking-widest rounded-sm transition-all duration-500 disabled:opacity-60 disabled:cursor-not-allowed shadow-xl hover:shadow-emerald-900/40 hover:-translate-y-1"
               >
                 {/* Shine effect */}
                 <div className="absolute inset-0 -translate-x-[150%] group-hover:translate-x-[150%] transition-transform duration-1000 ease-in-out bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12" />

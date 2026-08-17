@@ -6,13 +6,6 @@ import SmoothScroll from "./components/SmoothScroll";
 import ClientLayout from "./components/ClientLayout";
 import { Toaster } from "sonner";
 
-import { Inter } from "next/font/google";
-
-const inter = Inter({ 
-  subsets: ["latin", "vietnamese"],
-  display: "swap", 
-});
-
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();
 
@@ -68,7 +61,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <meta name="apple-mobile-web-app-title" content="CLOOP" />
         <link rel="apple-touch-icon" href="/app-icon.jpg" />
       </head>
-      <body className={`${inter.className} text-gray-800 antialiased`}>
+      <body className="font-sans text-gray-800 antialiased">
         <Toaster position="top-right" richColors theme="light" closeButton />
         <SmoothScroll>
           <AuthModalProvider initialUser={initialUser}>
