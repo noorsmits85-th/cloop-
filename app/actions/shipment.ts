@@ -205,8 +205,11 @@ export async function markShipmentBookedAction(input: unknown) {
 
     revalidateShipmentViews(result.rentalId);
     return { success: true, shipmentId: result.id };
-  } catch (error) {
+  } catch (error: any) {
     // TODO: Pipe important shipment failures to Sentry/LogRocket before production scale.
+    if (error?.code === "P2002") {
+      return { success: false, error: "Mã vận đơn này đã được sử dụng. Vui lòng kiểm tra lại." };
+    }
     const message = error instanceof Error ? error.message : "Khong the cap nhat van don.";
     return { success: false, error: message };
   }
