@@ -128,7 +128,7 @@ export function DashboardCharts({
                 <Tooltip 
                   contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                   labelStyle={{ fontWeight: 'bold', color: '#183A2D' }}
-                  formatter={(value: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)}
+                  formatter={(value: any) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(value))}
                 />
                 <Area type="monotone" dataKey="sell" name="Bán" stroke="#D9C8A9" fillOpacity={1} fill="url(#colorSell)" />
                 <Area type="monotone" dataKey="rent" name="Cho thuê" stroke="#183A2D" strokeWidth={2} fillOpacity={1} fill="url(#colorRent)" />
