@@ -99,3 +99,26 @@ export async function pumpCoins(userId: string, amount: number) {
     return { error: error.message };
   }
 }
+
+export async function updateEcoMetrics(keyword: string, waterFactor: number, co2Factor: number, greenPts: number) {
+  try {
+    await requireAdmin();
+    
+    await prisma.ecoMetric.upsert({
+      where: { keyword },
+      update: { waterFactor, co2Factor, greenPts },
+      create: { keyword, waterFactor, co2Factor, greenPts }
+    });
+
+    try {
+      const { revalidateTag } = require("next/cache");
+      revalidateTag('eco-metrics');
+    } catch(e) {
+      console.error("Cache purge failed:", e);
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}

@@ -59,6 +59,7 @@ export async function POST(req: Request) {
     }
 
     // 3. Khóa Nguyên Tử (Atomic Update) CÓ AWAIT để đảm bảo Serverless không bị đóng băng
+    let productIdToRevalidate: string | null = null;
     try {
       await prisma.$transaction(async (tx) => {
         const existingTx = await tx.transactionHistory.findUnique({
@@ -93,6 +94,7 @@ export async function POST(req: Request) {
         if (invoice.rentalId) {
           const rental = await tx.rentalHistory.findUnique({ where: { id: invoice.rentalId } });
           if (rental) {
+            productIdToRevalidate = rental.product_id;
             await tx.rentalHistory.update({
               where: { id: rental.id },
               data: { status: "PENDING_APPROVAL" }
@@ -104,6 +106,18 @@ export async function POST(req: Request) {
       console.error("❌ Lỗi khi lưu Transaction vào Database:", err);
       // Ném lỗi 500 để PayOS tự động Retry sau 5 phút theo chuẩn "Kế toán thép"
       return NextResponse.json({ success: false, message: "Database Error" }, { status: 500 });
+    }
+
+    // Dọn rác cache sau khi giao dịch thành công (đặt trong try-catch riêng để webhook không văng lỗi)
+    if (productIdToRevalidate) {
+      try {
+        const { revalidatePath } = require('next/cache');
+        revalidatePath('/shop');
+        revalidatePath(`/product/${productIdToRevalidate}`);
+        revalidatePath('/my-closet/orders');
+      } catch (cacheError) {
+        console.error("Lỗi dọn rác cache, nhưng tiền đã vào ví nên cứ kệ nó:", cacheError);
+      }
     }
 
     // Phản hồi 200 OK cho PayOS sau khi đã cầm chắc tiền trong Database

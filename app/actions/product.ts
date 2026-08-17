@@ -126,6 +126,13 @@ export async function createProductAction({
       return newProduct.id;
     });
 
+    try {
+      revalidatePath("/shop");
+      revalidatePath("/");
+      revalidatePath("/my-closet/items");
+    } catch(e) {
+      console.error("Cache purge failed:", e);
+    }
     return { success: true, productId: newProductId };
   } catch (error: any) {
     console.error("Create Product Error:", error);
@@ -167,8 +174,13 @@ export async function bumpProductAction(productId: string) {
       data: { lastBumpedAt: now }
     });
 
-    revalidatePath('/');
-    revalidatePath('/shop');
+    try {
+      revalidatePath('/');
+      revalidatePath('/shop');
+      revalidatePath(`/product/${productId}`);
+    } catch(e) {
+      console.error("Cache purge failed:", e);
+    }
 
     return { success: true };
   } catch (error) {

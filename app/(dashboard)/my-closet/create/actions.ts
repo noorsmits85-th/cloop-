@@ -138,7 +138,14 @@ export async function createProductAction(data: any) {
       }
     });
 
-    revalidatePath("/my-closet");
+    try {
+      revalidatePath("/my-closet");
+      revalidatePath("/my-closet/items");
+      revalidatePath("/shop");
+      revalidatePath("/");
+    } catch(e) {
+      console.error("Cache purge failed:", e);
+    }
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err.message || "Lỗi khi lưu vào Database" };

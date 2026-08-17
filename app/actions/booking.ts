@@ -161,6 +161,7 @@ export async function createBooking({
       revalidatePath(`/product/${productId}`, "page");
       revalidatePath("/", "page");
       revalidatePath("/shop", "page");
+      revalidatePath("/my-closet/orders", "page");
     } catch (e) {
       console.error("Cache purge failed:", e);
     }

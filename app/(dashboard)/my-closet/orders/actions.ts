@@ -12,6 +12,7 @@ export async function completeOrderAction(orderId: string) {
 
     // 🛡️ 2. IDOR, Optimistic Locking & Partial Failure Prevention (ACID Transaction)
     // Sống cùng sống, chết cùng chết!
+    let productIdToRevalidate: string | null = null;
     await prisma.$transaction(async (tx) => {
       // Fetch renterId and invoice to calculate dynamic refund amount
       const rental = await tx.rentalHistory.findUnique({
@@ -22,6 +23,8 @@ export async function completeOrderAction(orderId: string) {
       if (!rental) {
         throw new Error("Không tìm thấy đơn hàng.");
       }
+      
+      productIdToRevalidate = rental.product_id;
 
       // Atomic updateMany guarantees EXACTLY-ONCE execution.
       // Dùng cột ownerId đã phi chuẩn hóa, Prisma sẽ không báo lỗi!
@@ -64,7 +67,15 @@ export async function completeOrderAction(orderId: string) {
       }
     });
 
-    revalidatePath("/my-closet/orders");
+    try {
+      revalidatePath("/my-closet/orders");
+      if (productIdToRevalidate) {
+        revalidatePath(`/product/${productIdToRevalidate}`);
+      }
+    } catch(e) {
+      console.error("Cache purge failed:", e);
+    }
+    
     return { success: true };
   } catch (error: any) {
     console.error("Lỗi khi hoàn tất đơn:", error);
@@ -125,7 +136,15 @@ export async function raiseDisputeAction(orderId: string, description: string, i
       return { success: false, error: "Đơn hàng đã được giải quyết hoặc đã có khiếu nại đang xử lý." };
     }
 
-    revalidatePath("/my-closet/orders");
+    try {
+      revalidatePath("/my-closet/orders");
+      if (rental?.product_id) {
+        revalidatePath(`/product/${rental.product_id}`);
+      }
+    } catch(e) {
+      console.error("Cache purge failed:", e);
+    }
+
     return { success: true };
   } catch (error: any) {
     console.error("Lỗi khi báo cáo sự cố:", error);
@@ -327,8 +346,15 @@ export async function submitReviewAction({
         await updateAvgRating(reviewerId, oppositeReview.rating); // Update người vừa đánh giá (từ bài review cũ của đối phương)
       }
 
-      revalidatePath("/my-closet/orders");
-      revalidatePath(`/closet/${revieweeId}`);
+      try {
+        revalidatePath("/my-closet/orders");
+        revalidatePath(`/closet/${revieweeId}`);
+        if (rental?.product_id) {
+          revalidatePath(`/product/${rental.product_id}`);
+        }
+      } catch(e) {
+        console.error("Cache purge failed:", e);
+      }
       return { success: true };
     });
   } catch (error: any) {
