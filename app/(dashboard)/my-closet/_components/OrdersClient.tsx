@@ -233,18 +233,13 @@ export function OrdersClient({
       if (!currentUserId) { alert("Vui lòng đăng nhập để thực hiện."); return; }
 
       const isRenterToOwnerLuong = String(selectedOrderForReview.renterId) === String(currentUserId);
-      const finalRevieweeId = isRenterToOwnerLuong ? selectedOrderForReview.ownerId : selectedOrderForReview.renterId;
       const finalType = isRenterToOwnerLuong ? "RENTER_TO_OWNER" : "OWNER_TO_RENTER";
-      const updateField = isRenterToOwnerLuong ? { renterRatedAt: new Date().toISOString() } : { ownerRatedAt: new Date().toISOString() };
 
       const res = await submitReviewAction({
-        rentalHistoryId: selectedOrderForReview.id,
-        reviewerId: currentUserId,
-        revieweeId: finalRevieweeId || "",
+        rentalId: selectedOrderForReview.id,
         rating,
         type: finalType,
-        comment,
-        updateField
+        comment
       });
 
       if (!res.success) throw new Error(res.error);

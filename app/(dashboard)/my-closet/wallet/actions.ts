@@ -1,6 +1,6 @@
 "use server";
 
-import prisma from "@/src/lib/prisma";
+import { prisma } from "@/src/lib/prisma";
 import { payos } from "@/lib/payos";
 import { supabase } from "@/src/lib/supabase"; // For auth session
 

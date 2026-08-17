@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 export const dynamic = 'force-dynamic';
 
-import prisma from "@/src/lib/prisma";
+import { prisma } from "@/src/lib/prisma";
 import { payos } from "@/lib/payos";
 
 export async function POST(req: Request) {
