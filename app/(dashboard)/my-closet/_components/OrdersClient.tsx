@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { submitReviewAction, raiseDisputeAction, completeOrderAction, loadMoreOrdersAction } from "../orders/actions"; 
+import { requestPickupAction } from "@/app/actions/shipment";
 import { CldUploadWidget } from "next-cloudinary";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -89,6 +90,7 @@ export function OrdersClient({
   
   // 🛡️ Idempotency / Double-click shields
   const [completingIds, setCompletingIds] = useState<Record<string, boolean>>({});
+  const [requestingPickupIds, setRequestingPickupIds] = useState<Record<string, boolean>>({});
   
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showDisputeModal, setShowDisputeModal] = useState(false);
@@ -274,6 +276,26 @@ export function OrdersClient({
     }
   };
 
+  const handleRequestPickup = async (orderId: string) => {
+    if (requestingPickupIds[orderId]) return;
+    if (!confirm("Xác nhận bạn đã đóng gói xong và sẵn sàng gọi Shipper tới lấy đồ?")) return;
+    
+    setRequestingPickupIds(prev => ({ ...prev, [orderId]: true }));
+    try {
+      const res = await requestPickupAction(orderId);
+      if (res.success) {
+        toast.success("Đã báo hệ thống đóng gói xong!", { description: "Admin sẽ điều phối Shipper tới lấy đồ sớm nhất." });
+        router.refresh();
+      } else {
+        toast.error("Lỗi xác nhận", { description: res.error });
+      }
+    } catch (e: any) {
+      toast.error("Lỗi hệ thống", { description: e.message });
+    } finally {
+      setRequestingPickupIds(prev => ({ ...prev, [orderId]: false }));
+    }
+  };
+
   const handleSubmitDispute = async () => {
     if (!selectedOrderForDispute) return;
     if (!disputeDescription) { alert("Vui lòng nhập mô tả sự cố"); return; }
@@ -347,9 +369,24 @@ export function OrdersClient({
                               
                               <div className="flex flex-wrap gap-3 mt-4">
                                 {order.status === "PENDING_APPROVAL" && (
-                                  <button className="border border-[#183A2D] bg-[#183A2D] hover:bg-transparent text-white hover:text-[#183A2D] text-xs font-medium px-5 py-2.5 rounded-md transition-all duration-500">
-                                    Xác nhận giao
+                                  <button 
+                                    disabled={requestingPickupIds[order.id]}
+                                    onClick={() => handleRequestPickup(order.id)}
+                                    className="border border-[#183A2D] bg-[#183A2D] hover:bg-transparent text-white hover:text-[#183A2D] text-xs font-medium px-5 py-2.5 rounded-md transition-all duration-500 flex items-center gap-2 disabled:opacity-50"
+                                  >
+                                    {requestingPickupIds[order.id] ? (
+                                      <>
+                                        <Loader2 size={14} className="animate-spin" /> Đang xử lý...
+                                      </>
+                                    ) : (
+                                      <>Đã đóng gói - Gọi Shipper</>
+                                    )}
                                   </button>
+                                )}
+                                {order.status === "OWNER_PACKED" && (
+                                  <div className="bg-[#183A2D]/10 text-[#183A2D] border border-[#183A2D]/20 text-xs font-medium px-5 py-2.5 rounded-md flex items-center gap-2">
+                                    <Truck size={14} strokeWidth={2} /> Chờ điều phối Shipper...
+                                  </div>
                                 )}
                                 {order.status === "BORROWER_RETURNED" && (
                                   <button 

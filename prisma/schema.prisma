@@ -149,6 +149,7 @@ model RentalHistory {
   disputes           Dispute[]
   invoice            Invoice?
   reviews            Review[]
+  shipments          Shipment[]
   product            Product      @relation(fields: [product_id], references: [id])
   renter             User         @relation(fields: [renterId], references: [id])
 
@@ -161,12 +162,14 @@ model RentalHistory {
 }
 
 model Invoice {
-  id            String              @id @default(uuid())
-  rentalId      String              @unique
-  amount        Int
-  rentalFee     Int                 @default(0)
-  depositAmount Int                 @default(0)
-  status        PaymentStatus       @default(PENDING)
+  id                   String              @id @default(uuid())
+  rentalId             String              @unique
+  amount               Int
+  rentalFee            Int                 @default(0)
+  depositAmount        Int                 @default(0)
+  shippingFeeCollected Int                 @default(0)
+  platformFee          Int                 @default(0)
+  status               PaymentStatus       @default(PENDING)
   orderCode     BigInt?             @unique
   paymentLinkId String?             @unique
   payosStatus   String?
@@ -393,6 +396,7 @@ enum PaymentStatus {
 
 enum RentalStatus {
   PENDING_APPROVAL
+  OWNER_PACKED
   LENDER_SHIPPED
   BORROWER_RECEIVED
   BORROWER_RETURNED
@@ -469,4 +473,50 @@ model TransactionHistory {
   
   @@index([orderCode])
   @@index([eventId])
+}
+
+enum ShipmentStatus {
+  PENDING_BOOKING
+  BOOKED
+  PICKING
+  IN_TRANSIT
+  DELIVERED
+  FAILED
+  RETURNING
+  RETURNED
+  CANCELLED
+}
+
+enum ShipmentDirection {
+  DELIVERY
+  RETURN
+}
+
+model Shipment {
+  id                   String            @id @default(uuid())
+  rentalId             String
+  direction            ShipmentDirection @default(DELIVERY)
+  provider             String?           // GHN, GHTK, MANUAL
+  status               ShipmentStatus    @default(PENDING_BOOKING)
+  trackingCode         String?
+  clientOrderCode      String?           @unique // Mã nội bộ tạo sự Idempotent khi gọi API đối tác (VD: rentalId-DELIVERY)
+  providerOrderCode    String?           // Mã vận đơn của đối tác
+  shippingFeeCollected Int               @default(0)
+  actualShippingFee    Int?
+  pickupAddress        Json?             // Snapshot địa chỉ lấy
+  deliveryAddress      Json?             // Snapshot địa chỉ giao
+  providerRawPayload   Json?             // Dữ liệu thô từ đối tác
+  bookedByAdminId      String?
+  bookedByUserId       String?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  
+  rental               RentalHistory     @relation(fields: [rentalId], references: [id])
+  
+  @@unique([rentalId, direction])
+  @@unique([provider, providerOrderCode])
+  @@index([rentalId])
+  @@index([status])
+  @@index([trackingCode])
+  @@map("shipments")
 }
