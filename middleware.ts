@@ -1,9 +1,11 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { updateSession } from './src/utils/supabase/middleware';
-import { checkoutRateLimit, searchRateLimit } from '@/src/lib/rate-limit';
+// import { checkoutRateLimit, searchRateLimit } from '@/src/lib/rate-limit';
 
 export async function middleware(request: NextRequest) {
   // Bỏ qua nếu ko có config Rate Limit (Fallback an toàn)
+  // Tạm thời comment lại vì @upstash/ratelimit hoặc rate-limit.ts đang gây lỗi Unsupported modules trên Vercel Edge Runtime
+  /*
   if (checkoutRateLimit || searchRateLimit) {
     const ip = request.headers.get("x-forwarded-for") ?? "127.0.0.1";
     const pathname = request.nextUrl.pathname;
@@ -24,6 +26,7 @@ export async function middleware(request: NextRequest) {
       }
     }
   }
+  */
 
   return await updateSession(request);
 }
