@@ -7,6 +7,7 @@ export async function POST(request: Request) {
     if (!supabaseAdmin) {
       throw new Error("Missing Supabase Admin Key");
     }
+    const adminClient = supabaseAdmin as any;
     const user = await requireUser();
     
     const body = await request.json();
@@ -17,7 +18,7 @@ export async function POST(request: Request) {
 
     // 🎯 CHỐNG TRÙNG LẶP: Nếu ID tạm thời đã tồn tại trong hệ thống, trả về kết quả cũ ngay lập tức
     if (client_upload_id) {
-      const { data: existingProduct } = await supabaseAdmin
+      const { data: existingProduct } = await adminClient
         .from("products")
         .select("id")
         .eq("id", client_upload_id)
@@ -77,7 +78,7 @@ export async function POST(request: Request) {
     }
 
     // Ghi hạch toán dữ liệu sạch xuống cơ sở dữ liệu kèm theo cột embedding vừa sinh
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await adminClient
       .from("products")
       .insert([{ 
         id: client_upload_id, 

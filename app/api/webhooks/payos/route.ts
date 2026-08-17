@@ -6,6 +6,10 @@ import { payos } from "@/lib/payos";
 
 export async function POST(req: Request) {
   try {
+    if (!payos) {
+      return NextResponse.json({ success: false, message: "Missing PayOS config" }, { status: 500 });
+    }
+
     const body = await req.json();
 
     // 1. Xác thực Webhook chữ ký từ PayOS

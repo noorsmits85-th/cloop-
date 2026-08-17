@@ -1,4 +1,4 @@
-import { cloudinary } from "./cloudinary";
+import { cloudinary, hasCloudinaryConfig } from "./cloudinary";
 
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
@@ -34,6 +34,10 @@ export const uploadImage = async (
   fileBuffer: Buffer,
   folder: string = "cloop_outfits"
 ): Promise<CloudinaryUploadResult> => {
+  if (!hasCloudinaryConfig) {
+    throw new Error("Missing Cloudinary environment variables");
+  }
+
   return new Promise((resolve, reject) => {
     cloudinary.uploader
       .upload_stream(

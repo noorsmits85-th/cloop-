@@ -6,6 +6,13 @@ import { supabase } from "@/src/lib/supabase"; // For auth session
 
 export async function createDepositPayment(amount: number) {
   try {
+    if (!payos) {
+      return {
+        success: false,
+        message: "Thiếu cấu hình PayOS trên server"
+      };
+    }
+
     // 1. Kiểm tra xác thực (Vì đây là Server Action, chúng ta cần auth tay hoặc check auth header)
     // Nếu dùng Supabase SSR Client thì sẽ an toàn hơn, nhưng ở đây dùng supabase client tạm thời
     // hoặc có thể truyền userId từ Client. Tốt nhất là fetch session.
