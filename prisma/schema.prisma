@@ -21,7 +21,8 @@ model User {
   totalListings   Int                @default(0)
   completedOrders Int                @default(0)
   createdAt       DateTime           @default(now())
-  cloopCoins      Int                @default(1500)
+  walletBalance   Int                @default(0)
+  cloopLeaves     Int                @default(1500)
   interactions    BlogInteraction[]
   blogs           BlogPost[]
   lifecycles      ProductLifecycle[]

@@ -55,7 +55,7 @@ export async function searchUserByEmail(email: string) {
         id: true,
         name: true,
         avatar: true,
-        cloopCoins: true,
+        cloopLeaves: true,
         role: true,
       }
     });
@@ -83,16 +83,16 @@ export async function pumpCoins(userId: string, amount: number) {
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
-        cloopCoins: {
+        cloopLeaves: {
           increment: amount,
         }
       },
-      select: { cloopCoins: true, name: true }
+      select: { cloopLeaves: true, name: true }
     });
 
     return { 
       success: true, 
-      message: `Đã bơm thành công ${amount.toLocaleString()} Lá CLOOP cho ${updatedUser.name || "thành viên"}! Số dư mới: ${updatedUser.cloopCoins.toLocaleString()}` 
+      message: `Đã bơm thành công ${amount.toLocaleString()} Lá CLOOP cho ${updatedUser.name || "thành viên"}! Số dư mới: ${updatedUser.cloopLeaves.toLocaleString()}` 
     };
 
   } catch (error: any) {

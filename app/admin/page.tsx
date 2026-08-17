@@ -13,7 +13,7 @@ export default async function AdminPage() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { role: true, name: true, cloopCoins: true }
+    select: { role: true, name: true, cloopLeaves: true }
   });
 
   if (!user || user.role !== 'ADMIN') {
@@ -23,7 +23,7 @@ export default async function AdminPage() {
 
   return (
     <div className="min-h-screen bg-slate-900 pb-20 pt-16">
-      <AdminDashboardClient currentAdmin={{ name: user.name || session.user.email, coins: user.cloopCoins }} />
+      <AdminDashboardClient currentAdmin={{ name: user.name || session.user.email, coins: user.cloopLeaves }} />
     </div>
   );
 }

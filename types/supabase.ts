@@ -20,7 +20,8 @@ export interface Database {
           totalListings: number
           completedOrders: number
           createdAt: string
-          cloopCoins: number
+          walletBalance: number
+          cloopLeaves: number
         }
         Insert: {
           id?: string
@@ -32,7 +33,8 @@ export interface Database {
           totalListings?: number
           completedOrders?: number
           createdAt?: string
-          cloopCoins?: number
+          walletBalance?: number
+          cloopLeaves?: number
         }
         Update: {
           id?: string
@@ -44,7 +46,8 @@ export interface Database {
           totalListings?: number
           completedOrders?: number
           createdAt?: string
-          cloopCoins?: number
+          walletBalance?: number
+          cloopLeaves?: number
         }
         Relationships: []
       }

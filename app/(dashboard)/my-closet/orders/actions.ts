@@ -51,7 +51,7 @@ export async function completeOrderAction(orderId: string) {
       if (depositAmount > 0) {
         await tx.user.update({
           where: { id: rental.renterId },
-          data: { cloopCoins: { increment: depositAmount } }
+          data: { walletBalance: { increment: depositAmount } }
         });
       }
 
@@ -62,7 +62,7 @@ export async function completeOrderAction(orderId: string) {
 
         await tx.user.update({
           where: { id: userAuth.id }, // userAuth is the owner according to our IDOR check
-          data: { cloopCoins: { increment: lenderEarnings } }
+          data: { walletBalance: { increment: lenderEarnings } }
         });
       }
     });

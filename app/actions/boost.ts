@@ -15,14 +15,14 @@ export async function purchaseBoostPackage(productId: string, userId: string, pa
       // 1. Kiểm tra số dư người dùng
       const user = await tx.user.findUnique({
         where: { id: userId },
-        select: { cloopCoins: true }
+        select: { cloopLeaves: true }
       });
 
       if (!user) {
         throw new Error("Không tìm thấy người dùng");
       }
 
-      if (user.cloopCoins < cost) {
+      if (user.cloopLeaves < cost) {
         throw new Error("Tài khoản của bạn không đủ Lá CLOOP. Vui lòng nạp thêm!");
       }
 
@@ -30,14 +30,14 @@ export async function purchaseBoostPackage(productId: string, userId: string, pa
       const updatedUser = await tx.user.update({
         where: { id: userId },
         data: {
-          cloopCoins: {
+          cloopLeaves: {
             decrement: cost
           }
         }
       });
 
       // Kiểm tra lần cuối (Double-check an toàn)
-      if (updatedUser.cloopCoins < 0) {
+      if (updatedUser.cloopLeaves < 0) {
          throw new Error("Không đủ Lá CLOOP. Lỗi bảo mật phát sinh!");
       }
 
@@ -61,7 +61,7 @@ export async function purchaseBoostPackage(productId: string, userId: string, pa
         });
       }
 
-      return updatedUser.cloopCoins; // Trả về số dư mới để cập nhật Client
+      return updatedUser.cloopLeaves; // Trả về số dư mới để cập nhật Client
     });
 
     return { success: true, newBalance: result };

@@ -24,9 +24,9 @@ export default async function MyClosetOverviewPage() {
   // 1. Fetch User Coins
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { cloopCoins: true }
+    select: { cloopLeaves: true }
   });
-  const cloopCoins = user?.cloopCoins || 0;
+  const cloopCoins = user?.cloopLeaves || 0;
 
   // 2. Fetch all products to calculate Eco Stats using DB Matrix
   const products = await prisma.product.findMany({

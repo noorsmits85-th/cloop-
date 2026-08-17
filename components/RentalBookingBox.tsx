@@ -161,9 +161,9 @@ export default function RentalBookingBox({
     try {
       // 1.5 KIỂM TRA SỐ DƯ VÍ CLOOP
       let walletBalance = 0;
-      const { data: userData } = await supabase.from('User').select('cloopCoins').eq('id', session.user.id).single();
+      const { data: userData } = await supabase.from('User').select('walletBalance').eq('id', session.user.id).single();
       if (userData) {
-        walletBalance = userData.cloopCoins || 0;
+        walletBalance = userData.walletBalance || 0;
       }
 
       if (walletBalance < totalInvoicePrice) {
