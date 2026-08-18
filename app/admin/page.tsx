@@ -23,7 +23,7 @@ export default async function AdminPage() {
 
   return (
     <div className="min-h-screen bg-slate-900 pb-20 pt-16">
-      <AdminDashboardClient currentAdmin={{ name: user.name || session.user.email, coins: user.cloopLeaves }} />
+      <AdminDashboardClient currentAdmin={{ name: user.name || session.user.email, coins: user.cloopCoins }} />
     </div>
   );
 }

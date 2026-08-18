@@ -83,16 +83,16 @@ export async function pumpCoins(userId: string, amount: number) {
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
-        cloopLeaves: {
+        cloopCoins: {
           increment: amount,
         }
       },
-      select: { cloopLeaves: true, name: true }
+      select: { cloopCoins: true, name: true }
     });
 
     return { 
       success: true, 
-      message: `Đã bơm thành công ${amount.toLocaleString()} Lá CLOOP cho ${updatedUser.name || "thành viên"}! Số dư mới: ${updatedUser.cloopLeaves.toLocaleString()}` 
+      message: `Đã bơm thành công ${amount.toLocaleString()} Lá CLOOP cho ${updatedUser.name || "thành viên"}! Số dư mới: ${updatedUser.cloopCoins.toLocaleString()}` 
     };
 
   } catch (error: any) {

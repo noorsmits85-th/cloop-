@@ -36,7 +36,7 @@ export default async function WalletPage({ searchParams }: { searchParams: { [ke
         
         <WalletClient 
           balance={0} 
-          coins={userProfile?.cloopLeaves || 0}
+          coins={userProfile?.cloopCoins || 0}
           transactions={mockTransactions} 
           paymentStatus={status}
         />

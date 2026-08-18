@@ -22,7 +22,7 @@ export async function purchaseBoostPackage(productId: string, userId: string, pa
         throw new Error("Không tìm thấy người dùng");
       }
 
-      if (user.cloopLeaves < cost) {
+      if (user.cloopCoins < cost) {
         throw new Error("Tài khoản của bạn không đủ Lá CLOOP. Vui lòng nạp thêm!");
       }
 
@@ -30,14 +30,14 @@ export async function purchaseBoostPackage(productId: string, userId: string, pa
       const updatedUser = await tx.user.update({
         where: { id: userId },
         data: {
-          cloopLeaves: {
+          cloopCoins: {
             decrement: cost
           }
         }
       });
 
       // Kiểm tra lần cuối (Double-check an toàn)
-      if (updatedUser.cloopLeaves < 0) {
+      if (updatedUser.cloopCoins < 0) {
          throw new Error("Không đủ Lá CLOOP. Lỗi bảo mật phát sinh!");
       }
 
@@ -61,7 +61,7 @@ export async function purchaseBoostPackage(productId: string, userId: string, pa
         });
       }
 
-      return updatedUser.cloopLeaves; // Trả về số dư mới để cập nhật Client
+      return updatedUser.cloopCoins; // Trả về số dư mới để cập nhật Client
     });
 
     return { success: true, newBalance: result };

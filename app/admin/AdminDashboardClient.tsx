@@ -40,7 +40,7 @@ export default function AdminDashboardClient({ currentAdmin }: { currentAdmin: a
     } else {
       setMessage({ type: 'success', text: res.message || 'Thành công' });
       // Update local state to reflect new coins
-      setTargetUser({ ...targetUser, cloopCoins: targetUser.cloopLeaves + amount });
+      setTargetUser({ ...targetUser, cloopCoins: targetUser.cloopCoins + amount });
     }
     
     setIsPumping(false);
@@ -132,7 +132,7 @@ export default function AdminDashboardClient({ currentAdmin }: { currentAdmin: a
                 <div className="bg-slate-800 px-3 py-1.5 rounded-lg flex items-center gap-1.5 border border-slate-700">
                   <img src="/images/cloop-coin-front.png" className="w-4 h-4" alt="coin" />
                   <span className="text-yellow-400 font-mono font-bold text-sm">
-                    {targetUser.cloopLeaves.toLocaleString()}
+                    {targetUser.cloopCoins.toLocaleString()}
                   </span>
                 </div>
               </div>
