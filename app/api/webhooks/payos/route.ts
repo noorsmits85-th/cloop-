@@ -89,10 +89,20 @@ export async function POST(req: Request) {
           }
         });
 
-        console.log(`➤ Cập nhật Invoice thành PAID/COMPLETED`);
+        console.log(`➤ Cập nhật Invoice thành PAID/COMPLETED và Ghi Sổ Cái DEPOSIT_IN`);
         await tx.invoice.update({
           where: { id: invoice.id },
           data: { status: 'PAID', payosStatus: 'success' }
+        });
+
+        await tx.ledgerTransaction.create({
+          data: {
+            invoiceId: invoice.id,
+            type: 'DEPOSIT_IN',
+            amount: verifiedData.amount,
+            description: `Tiền nạp thanh toán Đơn thuê Cloop - OrderCode ${orderCode}`,
+            status: 'COMPLETED'
+          }
         });
 
         if (invoice.rentalId) {

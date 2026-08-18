@@ -141,6 +141,10 @@ export async function POST(req: Request) {
           data: {
             rentalId: rental.id,
             amount: totalAmount,
+            rentalFee: itemPrice,
+            depositAmount: depositPrice,
+            shippingFeeCollected: shippingFee,
+            platformFee: Math.floor(itemPrice * 0.1),
             status: "PENDING",
             orderCode: orderCode,
           }

@@ -5,6 +5,116 @@ import { requireUser } from "@/src/lib/auth";
 import { revalidatePath } from "next/cache";
 
 
+export async function renterReceivedAction(orderId: string) {
+  try {
+    const userAuth = await requireUser();
+
+    await prisma.$transaction(async (tx) => {
+      const updateResult = await tx.rentalHistory.updateMany({
+        where: { 
+          id: orderId,
+          status: "LENDER_SHIPPED",
+          renterId: userAuth.id 
+        },
+        data: { status: "BORROWER_RECEIVED" }
+      });
+
+      if (updateResult.count === 0) {
+        throw new Error("Không thể cập nhật. Đơn hàng không ở trạng thái đang giao hoặc bạn không phải người thuê.");
+      }
+
+      await tx.auditLog.create({
+        data: {
+          adminId: userAuth.id,
+          action: "RENTER_RECEIVED_ITEM",
+          targetType: "RENTAL",
+          targetId: orderId,
+          beforeStatus: "LENDER_SHIPPED",
+          afterStatus: "BORROWER_RECEIVED"
+        }
+      });
+    });
+
+    revalidatePath("/my-closet/orders");
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Lỗi khi xác nhận nhận hàng." };
+  }
+}
+
+export async function renterReturnAction(orderId: string) {
+  try {
+    const userAuth = await requireUser();
+
+    await prisma.$transaction(async (tx) => {
+      const rental = await tx.rentalHistory.findUnique({
+        where: { id: orderId },
+        include: { invoice: true, product: true }
+      });
+
+      if (!rental || rental.renterId !== userAuth.id) {
+        throw new Error("Không tìm thấy đơn hàng hoặc bạn không phải người thuê.");
+      }
+
+      const updateResult = await tx.rentalHistory.updateMany({
+        where: { 
+          id: orderId,
+          status: "BORROWER_RECEIVED"
+        },
+        data: { status: "BORROWER_RETURNED" }
+      });
+
+      if (updateResult.count === 0) {
+        throw new Error("Không thể cập nhật. Đơn hàng chưa được nhận.");
+      }
+
+      // Tạo Shipment chiều về
+      const pickupAddress = {
+        name: rental.renter_name,
+        phone: rental.renter_phone,
+      };
+      
+      const deliveryAddress = {
+        name: rental.owner_name,
+        phone: rental.owner_phone,
+        province: rental.product.province,
+        districtId: rental.product.districtId,
+        wardCode: rental.product.wardCode,
+        specificAddress: rental.product.specificAddress,
+      };
+
+      await tx.shipment.create({
+        data: {
+          rentalId: rental.id,
+          direction: "RETURN",
+          status: "PENDING_BOOKING",
+          clientOrderCode: `${rental.id}-RETURN`,
+          shippingFeeCollected: 0, // Phí ship chiều về do các bên tự thỏa thuận hoặc Renter trả
+          pickupAddress,
+          deliveryAddress,
+          bookedByUserId: userAuth.id,
+        }
+      });
+
+      await tx.auditLog.create({
+        data: {
+          adminId: userAuth.id,
+          action: "RENTER_RETURNED_ITEM",
+          targetType: "RENTAL",
+          targetId: orderId,
+          beforeStatus: "BORROWER_RECEIVED",
+          afterStatus: "BORROWER_RETURNED"
+        }
+      });
+    });
+
+    revalidatePath("/my-closet/orders");
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Lỗi khi báo trả hàng." };
+  }
+}
+
 export async function completeOrderAction(orderId: string) {
   try {
     // 🛡️ 1. Authentication Check
@@ -46,6 +156,9 @@ export async function completeOrderAction(orderId: string) {
 
       const depositAmount = rental.invoice?.depositAmount || 0;
       const rentalFee = rental.invoice?.rentalFee || 0;
+      const platformFee = rental.invoice?.platformFee || Math.floor(rentalFee * 0.1);
+      const shippingFee = rental.invoice?.shippingFeeCollected || 0;
+      const invoiceId = rental.invoice?.id;
 
       // 💸 1. Hoàn Tiền Cọc (Refund Escrow) cho Khách Thuê:
       if (depositAmount > 0) {
@@ -53,18 +166,49 @@ export async function completeOrderAction(orderId: string) {
           where: { id: rental.renterId },
           data: { walletBalance: { increment: depositAmount } }
         });
+        if (invoiceId) {
+          await tx.ledgerTransaction.create({
+            data: { invoiceId, type: 'REFUND_OUT', amount: depositAmount, description: `Hoàn cọc đơn ${orderId}` }
+          });
+        }
       }
 
       // 💸 2. Thanh Toán Tiền Thuê (Rental Fee) cho Chủ Tủ (trừ 10% phí nền tảng):
       if (rentalFee > 0) {
-        const platformFee = Math.floor(rentalFee * 0.1);
         const lenderEarnings = rentalFee - platformFee;
 
         await tx.user.update({
           where: { id: userAuth.id }, // userAuth is the owner according to our IDOR check
           data: { walletBalance: { increment: lenderEarnings } }
         });
+        
+        if (invoiceId) {
+          await tx.ledgerTransaction.create({
+            data: { invoiceId, type: 'PAYOUT_OUT', amount: lenderEarnings, description: `Thanh toán tiền thuê đơn ${orderId}` }
+          });
+          await tx.ledgerTransaction.create({
+            data: { invoiceId, type: 'FEE_RETAINED', amount: platformFee, description: `Phí nền tảng đơn ${orderId}` }
+          });
+        }
       }
+      
+      // 💸 3. Thu phí Ship cho Platform:
+      if (shippingFee > 0 && invoiceId) {
+        await tx.ledgerTransaction.create({
+          data: { invoiceId, type: 'SHIPPING_RETAINED', amount: shippingFee, description: `Phí vận chuyển giữ lại đơn ${orderId}` }
+        });
+      }
+      
+      // Ghi Audit
+      await tx.auditLog.create({
+        data: {
+          adminId: userAuth.id,
+          action: "SETTLEMENT_COMPLETED",
+          targetType: "RENTAL",
+          targetId: orderId,
+          metadata: JSON.stringify({ depositAmount, rentalFee, platformFee, shippingFee })
+        }
+      });
     });
 
     try {
