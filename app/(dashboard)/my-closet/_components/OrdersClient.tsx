@@ -5,7 +5,7 @@ import { History, ShoppingBag, Star, X, Check, Truck, Package, RotateCcw, AlertT
 import { supabase } from "@/lib/supabase";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { submitReviewAction, raiseDisputeAction, completeOrderAction, loadMoreOrdersAction } from "../orders/actions"; 
+import { submitReviewAction, raiseDisputeAction, completeOrderAction, loadMoreOrdersAction, renterReceivedAction, renterReturnAction } from "../orders/actions"; 
 import { requestPickupAction } from "@/app/actions/shipment";
 import { CldUploadWidget } from "next-cloudinary";
 import Link from "next/link";
@@ -91,6 +91,8 @@ export function OrdersClient({
   // 🛡️ Idempotency / Double-click shields
   const [completingIds, setCompletingIds] = useState<Record<string, boolean>>({});
   const [requestingPickupIds, setRequestingPickupIds] = useState<Record<string, boolean>>({});
+  const [receivingIds, setReceivingIds] = useState<Record<string, boolean>>({});
+  const [returningIds, setReturningIds] = useState<Record<string, boolean>>({});
   
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showDisputeModal, setShowDisputeModal] = useState(false);
@@ -296,6 +298,46 @@ export function OrdersClient({
     }
   };
 
+  const handleRenterReceived = async (orderId: string) => {
+    if (receivingIds[orderId]) return;
+    if (!confirm("Xác nhận bạn đã nhận được đồ từ Shipper an toàn?")) return;
+    
+    setReceivingIds(prev => ({ ...prev, [orderId]: true }));
+    try {
+      const res = await renterReceivedAction(orderId);
+      if (res.success) {
+        toast.success("Đã xác nhận nhận hàng!", { description: "Chúc bạn có những trải nghiệm tuyệt vời với món đồ này." });
+        router.refresh();
+      } else {
+        toast.error("Lỗi xác nhận", { description: res.error });
+      }
+    } catch (e: any) {
+      toast.error("Lỗi hệ thống", { description: e.message });
+    } finally {
+      setReceivingIds(prev => ({ ...prev, [orderId]: false }));
+    }
+  };
+
+  const handleRenterReturn = async (orderId: string) => {
+    if (returningIds[orderId]) return;
+    if (!confirm("Xác nhận bạn đã đóng gói xong và sẵn sàng gửi trả lại đồ cho chủ tủ?")) return;
+    
+    setReturningIds(prev => ({ ...prev, [orderId]: true }));
+    try {
+      const res = await renterReturnAction(orderId);
+      if (res.success) {
+        toast.success("Đã báo hệ thống hoàn trả!", { description: "Hãy giao đồ cho Shipper để gửi về nhé." });
+        router.refresh();
+      } else {
+        toast.error("Lỗi xác nhận", { description: res.error });
+      }
+    } catch (e: any) {
+      toast.error("Lỗi hệ thống", { description: e.message });
+    } finally {
+      setReturningIds(prev => ({ ...prev, [orderId]: false }));
+    }
+  };
+
   const handleSubmitDispute = async () => {
     if (!selectedOrderForDispute) return;
     if (!disputeDescription) { alert("Vui lòng nhập mô tả sự cố"); return; }
@@ -478,8 +520,21 @@ export function OrdersClient({
                               
                               <div className="flex flex-wrap gap-3 mt-4">
                                 {order.status === "LENDER_SHIPPED" && (
-                                  <button className="border border-slate-900 bg-slate-900 hover:bg-transparent text-white hover:text-slate-900 text-xs font-medium px-5 py-2.5 rounded-md transition-all duration-500">
-                                    Đã nhận được đồ
+                                  <button 
+                                    disabled={receivingIds[order.id]}
+                                    onClick={() => handleRenterReceived(order.id)}
+                                    className="border border-slate-900 bg-slate-900 hover:bg-transparent text-white hover:text-slate-900 text-xs font-medium px-5 py-2.5 rounded-md transition-all duration-500 disabled:opacity-50 flex items-center gap-2"
+                                  >
+                                    {receivingIds[order.id] ? <><Loader2 size={14} className="animate-spin" /> Đang xử lý...</> : "Đã nhận được đồ"}
+                                  </button>
+                                )}
+                                {order.status === "BORROWER_RECEIVED" && (
+                                  <button 
+                                    disabled={returningIds[order.id]}
+                                    onClick={() => handleRenterReturn(order.id)}
+                                    className="border border-slate-900 bg-slate-900 hover:bg-transparent text-white hover:text-slate-900 text-xs font-medium px-5 py-2.5 rounded-md transition-all duration-500 disabled:opacity-50 flex items-center gap-2"
+                                  >
+                                    {returningIds[order.id] ? <><Loader2 size={14} className="animate-spin" /> Đang xử lý...</> : "Đóng gói trả đồ"}
                                   </button>
                                 )}
                                 {order.status === "LENDER_COMPLETED" && (

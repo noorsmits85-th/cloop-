@@ -34,7 +34,7 @@ export interface Database {
           completedOrders?: number
           createdAt?: string
           walletBalance?: number
-          cloopLeaves?: number
+          cloopCoins?: number
         }
         Update: {
           id?: string
@@ -47,7 +47,7 @@ export interface Database {
           completedOrders?: number
           createdAt?: string
           walletBalance?: number
-          cloopLeaves?: number
+          cloopCoins?: number
         }
         Relationships: []
       }
