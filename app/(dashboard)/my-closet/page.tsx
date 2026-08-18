@@ -24,7 +24,7 @@ export default async function MyClosetOverviewPage() {
   // 1. Fetch User Coins
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { cloopLeaves: true }
+    select: { cloopCoins: true }
   });
   const cloopCoins = user?.cloopLeaves || 0;
 

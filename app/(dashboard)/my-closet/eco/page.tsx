@@ -15,7 +15,7 @@ export default async function EcoPage() {
   // Fetch eco stats from user profile
   const { data: userProfile } = await supabase
     .from("profiles")
-    .select("carbon_saved, water_saved, items_recycled, cloopLeaves")
+    .select("carbon_saved, water_saved, items_recycled, cloopCoins")
     .eq("id", userId)
     .single();
 

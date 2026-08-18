@@ -40,7 +40,7 @@ export default function AdminDashboardClient({ currentAdmin }: { currentAdmin: a
     } else {
       setMessage({ type: 'success', text: res.message || 'Thành công' });
       // Update local state to reflect new coins
-      setTargetUser({ ...targetUser, cloopLeaves: targetUser.cloopLeaves + amount });
+      setTargetUser({ ...targetUser, cloopCoins: targetUser.cloopLeaves + amount });
     }
     
     setIsPumping(false);

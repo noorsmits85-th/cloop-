@@ -22,7 +22,7 @@ model User {
   completedOrders Int                @default(0)
   createdAt       DateTime           @default(now())
   walletBalance   Int                @default(0)
-  cloopLeaves     Int                @default(1500)
+  cloopCoins     Int                @default(1500)
   interactions    BlogInteraction[]
   blogs           BlogPost[]
   lifecycles      ProductLifecycle[]

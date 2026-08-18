@@ -17,7 +17,7 @@ export default async function WalletPage({ searchParams }: { searchParams: { [ke
   // Fetch user profile to get wallet balance
   const userProfile = await prisma.user.findUnique({
     where: { id: userId },
-    select: { cloopLeaves: true }
+    select: { cloopCoins: true }
   });
 
   // Giả lập lịch sử giao dịch (thực tế sẽ lấy từ bảng transactions)

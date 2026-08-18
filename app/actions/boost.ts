@@ -15,7 +15,7 @@ export async function purchaseBoostPackage(productId: string, userId: string, pa
       // 1. Kiểm tra số dư người dùng
       const user = await tx.user.findUnique({
         where: { id: userId },
-        select: { cloopLeaves: true }
+        select: { cloopCoins: true }
       });
 
       if (!user) {

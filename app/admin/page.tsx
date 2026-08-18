@@ -13,7 +13,7 @@ export default async function AdminPage() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { role: true, name: true, cloopLeaves: true }
+    select: { role: true, name: true, cloopCoins: true }
   });
 
   if (!user || user.role !== 'ADMIN') {

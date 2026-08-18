@@ -55,7 +55,7 @@ export async function searchUserByEmail(email: string) {
         id: true,
         name: true,
         avatar: true,
-        cloopLeaves: true,
+        cloopCoins: true,
         role: true,
       }
     });

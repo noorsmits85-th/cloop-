@@ -21,7 +21,7 @@ export interface Database {
           completedOrders: number
           createdAt: string
           walletBalance: number
-          cloopLeaves: number
+          cloopCoins: number
         }
         Insert: {
           id?: string
