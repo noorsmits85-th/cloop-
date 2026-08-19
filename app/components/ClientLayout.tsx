@@ -53,10 +53,10 @@ function HeaderNavbar({ darkMode, setDarkMode, handleFeatureRequirement, current
             <Image src="/loogo.png" alt="CLOOP Brand Logo" width={48} height={48} className="mix-blend-multiply transition-transform duration-500 group-hover:scale-105 animate-logo-glow" />
           </div>
           <div className="flex flex-col items-center justify-center text-center">
-            <div className="font-brand-title text-[28px] font-extrabold tracking-[0.24em] leading-none animate-brand-shimmer drop-shadow-sm transition-all duration-300 pl-[0.24em]">
+            <div className="font-brand-title text-[23px] sm:text-[25px] font-bold tracking-[0.32em] leading-none animate-brand-shimmer drop-shadow-sm transition-all duration-300 pl-[0.32em]">
               CLOOP
             </div>
-            <p className="font-brand-sub text-[7.5px] font-bold tracking-[0.38em] uppercase text-[#1B5E20] dark:text-[#86EFAC] mt-1.5 w-full text-center pl-[0.38em] transition-colors">
+            <p className="font-brand-sub text-[7.5px] sm:text-[8px] font-semibold tracking-[0.44em] uppercase text-[#1B4D31] dark:text-[#A7F3D0] mt-1.5 w-full text-center pl-[0.44em] transition-colors">
               FASHION IN A LOOP
             </p>
           </div>
