@@ -30,38 +30,44 @@ export function Footer() {
           </div>
 
           {/* CỘT MENU */}
-          <div className="md:col-span-12 lg:col-span-8 grid grid-cols-2 md:grid-cols-3 gap-8 pt-2">
+          <div className="md:col-span-12 lg:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-10 pt-2">
             
             {/* Cột Khám Phá */}
-            <div className="flex flex-col">
-              <h3 className="font-ui text-[10px] font-bold uppercase tracking-[0.2em] mb-6 text-gray-200">Khám Phá</h3>
-              <ul className="font-ui flex flex-col gap-3.5 text-sm text-gray-400 font-light">
-                <li><button className="hover:text-white transition-colors">Trang phục cho thuê</button></li>
-                <li><button className="hover:text-white transition-colors">Đồ chuyển nhượng</button></li>
-                <li><button className="hover:text-white transition-colors">Chợ Xanh Upcycle</button></li>
-                <li><button className="hover:text-white transition-colors">Bảo tàng ký ức</button></li>
+            <div className="flex flex-col items-center text-center">
+              <h3 className="font-heading text-sm md:text-base font-bold uppercase tracking-[0.18em] text-[#E8F5E9] mb-5 drop-shadow-sm border-b border-[#6BA37A]/30 pb-2 px-3">
+                Khám Phá
+              </h3>
+              <ul className="font-body flex flex-col items-center gap-3 text-xs md:text-sm text-gray-300 font-light">
+                <li><Link href="/shop?type=rent" className="hover:text-white hover:underline transition-colors">Trang phục cho thuê</Link></li>
+                <li><Link href="/shop?type=sell" className="hover:text-white hover:underline transition-colors">Đồ chuyển nhượng</Link></li>
+                <li><Link href="/shop" className="hover:text-white hover:underline transition-colors">Chợ Xanh Upcycle</Link></li>
+                <li><Link href="/blog" className="hover:text-white hover:underline transition-colors">Bảo tàng ký ức</Link></li>
               </ul>
             </div>
 
             {/* Cột Về Chúng Tôi */}
-            <div className="flex flex-col">
-              <h3 className="font-ui text-[10px] font-bold uppercase tracking-[0.2em] mb-6 text-gray-200">Về CLOOP</h3>
-              <ul className="font-ui flex flex-col gap-3.5 text-sm text-gray-400 font-light">
-                <li><button className="hover:text-white transition-colors">Câu chuyện thương hiệu</button></li>
-                <li><button className="hover:text-white transition-colors">Sứ mệnh bền vững</button></li>
-                <li><button className="hover:text-white transition-colors">Cộng đồng xanh</button></li>
-                <li><button className="hover:text-white transition-colors">Sự kiện & Workshop</button></li>
+            <div className="flex flex-col items-center text-center">
+              <h3 className="font-heading text-sm md:text-base font-bold uppercase tracking-[0.18em] text-[#E8F5E9] mb-5 drop-shadow-sm border-b border-[#6BA37A]/30 pb-2 px-3">
+                Về CLOOP
+              </h3>
+              <ul className="font-body flex flex-col items-center gap-3 text-xs md:text-sm text-gray-300 font-light">
+                <li><Link href="/blog" className="hover:text-white hover:underline transition-colors">Câu chuyện thương hiệu</Link></li>
+                <li><Link href="/my-closet/eco" className="hover:text-white hover:underline transition-colors">Sứ mệnh bền vững</Link></li>
+                <li><Link href="/blog" className="hover:text-white hover:underline transition-colors">Cộng đồng xanh</Link></li>
+                <li><Link href="/blog" className="hover:text-white hover:underline transition-colors">Sự kiện & Workshop</Link></li>
               </ul>
             </div>
 
             {/* Cột Hỗ Trợ */}
-            <div className="flex flex-col">
-              <h3 className="font-ui text-[10px] font-bold uppercase tracking-[0.2em] mb-6 text-gray-200">Hỗ Trợ</h3>
-              <ul className="font-ui flex flex-col gap-3.5 text-sm text-gray-400 font-light">
-                <li><button className="hover:text-white transition-colors">Trung tâm trợ giúp</button></li>
-                <li><button className="hover:text-white transition-colors">Chính sách bảo vệ</button></li>
-                <li><button className="hover:text-white transition-colors">Điều khoản & Bảo mật</button></li>
-                <li><button className="hover:text-white transition-colors">Gửi khiếu nại</button></li>
+            <div className="flex flex-col items-center text-center">
+              <h3 className="font-heading text-sm md:text-base font-bold uppercase tracking-[0.18em] text-[#E8F5E9] mb-5 drop-shadow-sm border-b border-[#6BA37A]/30 pb-2 px-3">
+                Hỗ Trợ
+              </h3>
+              <ul className="font-body flex flex-col items-center gap-3 text-xs md:text-sm text-gray-300 font-light">
+                <li><Link href="/my-closet/profile" className="hover:text-white hover:underline transition-colors">Trung tâm trợ giúp</Link></li>
+                <li><Link href="/my-closet/profile" className="hover:text-white hover:underline transition-colors">Chính sách bảo vệ</Link></li>
+                <li><Link href="/my-closet/profile" className="hover:text-white hover:underline transition-colors">Điều khoản & Bảo mật</Link></li>
+                <li><Link href="/my-closet/orders" className="hover:text-white hover:underline transition-colors">Gửi khiếu nại</Link></li>
               </ul>
             </div>
 
