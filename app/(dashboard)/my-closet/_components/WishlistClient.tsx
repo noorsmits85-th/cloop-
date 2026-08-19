@@ -161,7 +161,7 @@ export default function WishlistClient({ initialItems, counts }: WishlistClientP
 
                 {/* Nút Xóa Khỏi Wishlist */}
                 <button
-                  onClick={() => handleRemove(product.id, type, favoriteId)}
+                  onClick={() => handleRemove(product.id, type as "LIKE" | "SAVE", favoriteId)}
                   disabled={isRemovingId === favoriteId}
                   title="Gỡ khỏi danh sách"
                   className="absolute top-2.5 right-2.5 w-7 h-7 rounded-full bg-white/80 hover:bg-white text-stone-600 hover:text-red-600 backdrop-blur-md flex items-center justify-center transition-colors shadow-xs z-10 cursor-pointer"
