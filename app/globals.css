@@ -1,15 +1,12 @@
 @import "tailwindcss";
 
-/* Fix scale UI Desktop as requested by user */
-@media (min-width: 1024px) {
-  body {
-    /* Sử dụng zoom để thu nhỏ toàn bộ web tương đương 80% trên Chrome/Edge/Safari */
-    zoom: 0.8;
-  }
-}
 @theme {
-  --font-body: var(--font-body), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-display), ui-serif, Georgia, serif;
+  --font-heading: 'Fraunces', 'Cormorant Garamond', 'Lora', 'Playfair Display', Georgia, serif;
+  --font-body: 'Be Vietnam Pro', 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  --font-ui: 'Be Vietnam Pro', 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  --font-logo: 'Cinzel', serif;
+  --font-search: 'Be Vietnam Pro', 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  --font-display: 'Fraunces', 'Cormorant Garamond', 'Lora', serif;
   
   --animate-shimmer: shimmer 1.5s infinite linear;
   @keyframes shimmer {
@@ -17,3 +14,33 @@
     100% { transform: translateX(200%) skewX(-20deg); }
   }
 }
+
+/* Explicit class definitions for complete typography styling */
+.font-heading {
+  font-family: 'Fraunces', 'Cormorant Garamond', 'Lora', 'Playfair Display', Georgia, serif !important;
+}
+
+.font-body {
+  font-family: 'Be Vietnam Pro', 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif !important;
+}
+
+.font-ui {
+  font-family: 'Be Vietnam Pro', 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif !important;
+}
+
+.font-logo {
+  font-family: 'Cinzel', serif !important;
+}
+
+.font-search {
+  font-family: 'Be Vietnam Pro', 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif !important;
+}
+
+/* Fix scale UI Desktop as requested by user */
+@media (min-width: 1024px) {
+  body {
+    /* Sử dụng zoom để thu nhỏ toàn bộ web tương đương 80% trên Chrome/Edge/Safari */
+    zoom: 0.8;
+  }
+}
+

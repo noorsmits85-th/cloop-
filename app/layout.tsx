@@ -1,25 +1,10 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { Be_Vietnam_Pro, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { AuthModalProvider } from "./AuthModalContext";
 import SmoothScroll from "./components/SmoothScroll";
 import ClientLayout from "./components/ClientLayout";
 import { Toaster } from "sonner";
-
-const beVietnamPro = Be_Vietnam_Pro({
-  weight: ['300', '400', '500', '600', '700', '800'],
-  subsets: ['vietnamese'],
-  display: 'swap',
-  variable: '--font-body',
-});
-
-const playfairDisplay = Playfair_Display({
-  weight: ['400', '500', '600', '700', '800'],
-  subsets: ['vietnamese'],
-  display: 'swap',
-  variable: '--font-display',
-});
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();
@@ -75,8 +60,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="CLOOP" />
         <link rel="apple-touch-icon" href="/app-icon.jpg" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Fraunces:ital,opsz,wght@0,9..144,400..900;1,9..144,400..900&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Lora:ital,wght@0,400..700;1,400..700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap" />
       </head>
-      <body className={`${beVietnamPro.variable} ${playfairDisplay.variable} font-body text-gray-800 antialiased`}>
+      <body className="font-body text-gray-800 antialiased">
         <Toaster position="top-right" richColors theme="light" closeButton />
         <SmoothScroll>
           <AuthModalProvider initialUser={initialUser}>
