@@ -1,10 +1,25 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { Be_Vietnam_Pro, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { AuthModalProvider } from "./AuthModalContext";
 import SmoothScroll from "./components/SmoothScroll";
 import ClientLayout from "./components/ClientLayout";
 import { Toaster } from "sonner";
+
+const beVietnamPro = Be_Vietnam_Pro({
+  weight: ['300', '400', '500', '600', '700', '800'],
+  subsets: ['vietnamese'],
+  display: 'swap',
+  variable: '--font-body',
+});
+
+const playfairDisplay = Playfair_Display({
+  weight: ['400', '500', '600', '700', '800'],
+  subsets: ['vietnamese'],
+  display: 'swap',
+  variable: '--font-display',
+});
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();
@@ -61,7 +76,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <meta name="apple-mobile-web-app-title" content="CLOOP" />
         <link rel="apple-touch-icon" href="/app-icon.jpg" />
       </head>
-      <body className="font-sans text-gray-800 antialiased">
+      <body className={`${beVietnamPro.variable} ${playfairDisplay.variable} font-body text-gray-800 antialiased`}>
         <Toaster position="top-right" richColors theme="light" closeButton />
         <SmoothScroll>
           <AuthModalProvider initialUser={initialUser}>

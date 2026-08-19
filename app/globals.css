@@ -8,6 +8,9 @@
   }
 }
 @theme {
+  --font-body: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display), ui-serif, Georgia, serif;
+  
   --animate-shimmer: shimmer 1.5s infinite linear;
   @keyframes shimmer {
     0% { transform: translateX(-100%) skewX(-20deg); }
