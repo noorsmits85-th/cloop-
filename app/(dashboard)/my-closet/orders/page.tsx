@@ -22,6 +22,8 @@ export default async function MyClosetOrdersPage() {
     take: 21,
     include: {
       product: { include: { images: true } },
+      invoice: true,
+      disputes: { orderBy: { createdAt: 'desc' } },
       renter: {
         include: {
           reviewsReceived: {
@@ -40,6 +42,8 @@ export default async function MyClosetOrdersPage() {
     },
     take: 21,
     include: {
+      invoice: true,
+      disputes: { orderBy: { createdAt: 'desc' } },
       product: { 
         include: { 
           images: true,

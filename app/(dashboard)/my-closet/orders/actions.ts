@@ -227,12 +227,36 @@ export async function completeOrderAction(orderId: string) {
   }
 }
 
-export async function raiseDisputeAction(orderId: string, description: string, images: string[]) {
+export async function raiseDisputeWithProposalAction(
+  orderId: string,
+  description: string,
+  images: string[],
+  suggestedDeduction: number = 0
+) {
   try {
-    // 🛡️ 1. Authentication Check
     const userAuth = await requireUser();
 
-    // 🛡️ 2. IDOR & Relation Verification
+    // 🛡️ 1. Sanitize & Validate Inputs
+    if (!description || description.trim().length < 5) {
+      return { success: false, error: "Vui lòng nhập mô tả chi tiết sự cố (tối thiểu 5 ký tự)." };
+    }
+
+    if (!Array.isArray(images) || images.length === 0) {
+      return { success: false, error: "Bắt buộc phải đính kèm ít nhất 1 ảnh bằng chứng." };
+    }
+
+    // URL validation: must be secure HTTPS from trusted media hosts
+    const isValidImages = images.every(img => 
+      typeof img === "string" && 
+      (img.startsWith("https://res.cloudinary.com/") || img.startsWith("https://") || img.startsWith("/"))
+    );
+    if (!isValidImages) {
+      return { success: false, error: "Định dạng hình ảnh không hợp lệ hoặc không an toàn." };
+    }
+
+    const cleanDeduction = Math.floor(Math.max(0, Number(suggestedDeduction) || 0));
+
+    // 🛡️ 2. Fetch Order and Check Authorization
     const rental = await prisma.rentalHistory.findUnique({
       where: { id: orderId },
       include: { product: true, invoice: true }
@@ -242,58 +266,392 @@ export async function raiseDisputeAction(orderId: string, description: string, i
       return { success: false, error: "Không tìm thấy đơn hàng." };
     }
 
-    const isPartyInvolved = rental.renterId === userAuth.id || rental.product.userId === userAuth.id;
-    if (!isPartyInvolved) {
-      return { success: false, error: "Forbidden: Bạn không có quyền khiếu nại cho đơn hàng này." };
+    const isRenter = rental.renterId === userAuth.id;
+    const isOwner = rental.product.userId === userAuth.id;
+
+    if (!isRenter && !isOwner) {
+      return { success: false, error: "Forbidden: Bạn không có quyền khiếu nại đơn hàng này." };
     }
 
-    // 🛡️ 3. Atomic Dispute Creation & Optimistic Status Guard
-    const isUpdated = await prisma.$transaction(async (tx: any) => {
+    const depositAmount = rental.invoice?.depositAmount || 0;
+    if (cleanDeduction > depositAmount) {
+      return { success: false, error: `Số tiền bồi thường đề xuất (${cleanDeduction.toLocaleString('vi-VN')}đ) không được vượt quá số tiền cọc (${depositAmount.toLocaleString('vi-VN')}đ).` };
+    }
+
+    // 🛡️ 3. Atomic State Update & Optimistic Lock
+    const result = await prisma.$transaction(async (tx) => {
       const updateCount = await tx.rentalHistory.updateMany({
         where: {
           id: orderId,
-          status: { notIn: ["DISPUTE", "LENDER_COMPLETED"] }
+          status: { notIn: ["DISPUTE", "LENDER_COMPLETED", "CANCELLED"] }
         },
         data: { status: "DISPUTE" }
       });
 
       if (updateCount.count === 0) {
-        return false;
+        throw new Error("Đơn hàng đã hoàn tất, đã bị hủy hoặc đang có tranh chấp xử lý.");
       }
 
-      await tx.dispute.create({
+      const initiatorRole = isOwner ? "OWNER" : "RENTER";
+
+      const dispute = await tx.dispute.create({
         data: {
           rentalId: orderId,
           invoiceId: rental.invoice?.id || null,
-          description: description,
-          images: images,
-          severity: "MEDIUM",
-          suggestedDeduction: 0,
-          status: "PENDING_REVIEW"
+          description: description.trim(),
+          images: images.slice(0, 5),
+          severity: cleanDeduction > 200000 ? "HIGH" : cleanDeduction > 0 ? "MEDIUM" : "LOW",
+          suggestedDeduction: cleanDeduction,
+          status: "PENDING_REVIEW",
+          adminNotes: JSON.stringify({
+            initiatorId: userAuth.id,
+            initiatorRole: initiatorRole,
+            proposedAt: new Date().toISOString(),
+          })
         }
       });
 
-      return true;
-    });
+      await tx.auditLog.create({
+        data: {
+          adminId: userAuth.id,
+          action: "DISPUTE_RAISED_P2P_PROPOSAL",
+          targetType: "DISPUTE",
+          targetId: dispute.id,
+          beforeStatus: rental.status,
+          afterStatus: "DISPUTE",
+          metadata: JSON.stringify({
+            suggestedDeduction: cleanDeduction,
+            initiatorRole,
+            depositAmount
+          })
+        }
+      });
 
-    if (!isUpdated) {
-      return { success: false, error: "Đơn hàng đã được giải quyết hoặc đã có khiếu nại đang xử lý." };
-    }
+      return dispute;
+    });
 
     try {
       revalidatePath("/my-closet/orders");
-      if (rental?.product_id) {
-        revalidatePath(`/product/${rental.product_id}`);
+      if (rental?.product_id) revalidatePath(`/product/${rental.product_id}`);
+    } catch (e) {}
+
+    return { success: true, disputeId: result.id };
+  } catch (error: any) {
+    console.error("Lỗi khi tạo đề xuất khiếu nại:", error);
+    return { success: false, error: error.message || "Lỗi xử lý khiếu nại." };
+  }
+}
+
+export async function acceptDisputeProposalAction(disputeId: string) {
+  try {
+    const userAuth = await requireUser();
+
+    // 🛡️ 1. Fetch Dispute with full relations
+    const dispute = await prisma.dispute.findUnique({
+      where: { id: disputeId },
+      include: {
+        rental: {
+          include: {
+            product: true,
+            invoice: true
+          }
+        }
       }
-    } catch(e) {
-      console.error("Cache purge failed:", e);
+    });
+
+    if (!dispute || !dispute.rental || !dispute.rental.invoice) {
+      return { success: false, error: "Không tìm thấy thông tin khiếu nại hoặc hóa đơn thanh toán." };
     }
+
+    const rental = dispute.rental;
+    const invoice = dispute.rental.invoice;
+    const isRenter = rental.renterId === userAuth.id;
+    const isOwner = rental.product.userId === userAuth.id;
+
+    if (!isRenter && !isOwner) {
+      return { success: false, error: "Forbidden: Bạn không thuộc giao dịch này." };
+    }
+
+    // 🛡️ 2. Parse initiator to enforce counterparty authorization
+    let initiatorId = "";
+    try {
+      if (dispute.adminNotes) {
+        const parsed = JSON.parse(dispute.adminNotes);
+        initiatorId = parsed.initiatorId || "";
+      }
+    } catch (e) {}
+
+    if (initiatorId && initiatorId === userAuth.id) {
+      return { success: false, error: "Bạn không thể tự chấp nhận đề xuất do chính mình khởi tạo." };
+    }
+
+    // 🛡️ 3. State validations
+    if (dispute.status !== "PENDING_REVIEW") {
+      return { success: false, error: "Đề xuất này không ở trạng thái chờ phản hồi." };
+    }
+
+    if (rental.status !== "DISPUTE") {
+      return { success: false, error: "Trạng thái đơn hàng không hợp lệ để hòa giải tranh chấp." };
+    }
+
+    // 🛡️ 4. Double-Settlement Guard (Ledger Check)
+    const existingPayout = await prisma.ledgerTransaction.findFirst({
+      where: {
+        invoiceId: invoice.id,
+        type: { in: ["PAYOUT_OUT", "REFUND_OUT"] }
+      }
+    });
+
+    if (existingPayout) {
+      return { success: false, error: "Giao dịch này đã được quyết toán trên sổ cái từ trước." };
+    }
+
+    // 🛡️ 5. Zero-Sum Balance Mathematical Invariant Verification
+    const totalAmount = invoice.amount;
+    const rentalFee = invoice.rentalFee;
+    const depositAmount = invoice.depositAmount;
+    const platformFee = invoice.platformFee;
+    const shippingFee = invoice.shippingFeeCollected;
+    const deduction = Math.floor(Math.max(0, dispute.suggestedDeduction));
+
+    if (deduction > depositAmount) {
+      return { success: false, error: "Lỗi bảo mật: Số tiền khấu trừ vượt quá số tiền cọc." };
+    }
+
+    const refundDepositToRenter = depositAmount - deduction;
+    const compensationToOwner = deduction;
+    const ownerRentalPayout = Math.max(0, rentalFee - platformFee);
+    const platformFeeCollected = platformFee;
+    const shippingFeeCollected = shippingFee;
+
+    const totalCalculated = refundDepositToRenter + compensationToOwner + ownerRentalPayout + platformFeeCollected + shippingFeeCollected;
+
+    if (totalCalculated !== totalAmount) {
+      console.error(`[CRITICAL MONEY INVARIANT ERROR] totalCalculated (${totalCalculated}) !== totalAmount (${totalAmount})`);
+      return { success: false, error: "LỖI KẾ TOÁN: Bất biến cân sổ tài chính bị lệch." };
+    }
+
+    // 🛡️ 6. Atomic Execution (ACID Transaction)
+    await prisma.$transaction(async (tx) => {
+      // 6a. Atomic Row Lock & Order Update
+      const lockCount = await tx.rentalHistory.updateMany({
+        where: { id: rental.id, status: "DISPUTE" },
+        data: { status: "LENDER_COMPLETED" }
+      });
+
+      if (lockCount.count === 0) {
+        throw new Error("Xung đột dữ liệu: Đơn hàng đã được xử lý bởi tiến trình khác.");
+      }
+
+      // 6b. Update Dispute
+      await tx.dispute.update({
+        where: { id: disputeId },
+        data: {
+          status: "RESOLVED",
+          finalDeduction: deduction,
+          adminNotes: JSON.stringify({
+            resolvedVia: "P2P_SELF_MEDIATION",
+            acceptedByUserId: userAuth.id,
+            resolvedAt: new Date().toISOString(),
+            deduction
+          })
+        }
+      });
+
+      // 6c. Update Invoice
+      await tx.invoice.update({
+        where: { id: invoice.id },
+        data: { status: "PAID" }
+      });
+
+      // 6d. Update User Wallets
+      if (refundDepositToRenter > 0) {
+        await tx.user.update({
+          where: { id: rental.renterId },
+          data: { walletBalance: { increment: refundDepositToRenter } }
+        });
+      }
+
+      const ownerId = rental.ownerId || rental.product?.userId;
+      const totalOwnerCredit = ownerRentalPayout + compensationToOwner;
+      if (totalOwnerCredit > 0 && ownerId) {
+        await tx.user.update({
+          where: { id: ownerId },
+          data: { walletBalance: { increment: totalOwnerCredit } }
+        });
+      }
+
+      // 6e. Record Immutable Double-Entry Ledger Transactions
+      const ledgerRows: any[] = [];
+
+      if (compensationToOwner > 0) {
+        ledgerRows.push({
+          invoiceId: invoice.id,
+          type: "COMPENSATION_OUT",
+          amount: compensationToOwner,
+          description: `Bồi thường tổn thất từ cọc khách thuê cho chủ đồ (P2P Thỏa thuận)`,
+          adminId: userAuth.id,
+          status: "COMPLETED"
+        });
+      }
+
+      if (refundDepositToRenter > 0) {
+        ledgerRows.push({
+          invoiceId: invoice.id,
+          type: "REFUND_OUT",
+          amount: refundDepositToRenter,
+          description: `Hoàn phần tiền cọc còn lại về ví khách thuê sau khấu trừ bồi thường`,
+          adminId: userAuth.id,
+          status: "COMPLETED"
+        });
+      }
+
+      if (ownerRentalPayout > 0) {
+        ledgerRows.push({
+          invoiceId: invoice.id,
+          type: "PAYOUT_OUT",
+          amount: ownerRentalPayout,
+          description: `Giải ngân tiền cho thuê trang phục vào ví chủ đồ (sau trừ phí sàn)`,
+          adminId: userAuth.id,
+          status: "COMPLETED"
+        });
+      }
+
+      if (platformFeeCollected > 0) {
+        ledgerRows.push({
+          invoiceId: invoice.id,
+          type: "FEE_RETAINED",
+          amount: platformFeeCollected,
+          description: `Thu phí dịch vụ nền tảng CLOOP`,
+          adminId: userAuth.id,
+          status: "COMPLETED"
+        });
+      }
+
+      if (shippingFeeCollected > 0) {
+        ledgerRows.push({
+          invoiceId: invoice.id,
+          type: "SHIPPING_RETAINED",
+          amount: shippingFeeCollected,
+          description: `Giữ phí vận chuyển để đối soát với nhà vận chuyển`,
+          adminId: userAuth.id,
+          status: "COMPLETED"
+        });
+      }
+
+      if (ledgerRows.length > 0) {
+        await tx.ledgerTransaction.createMany({ data: ledgerRows });
+      }
+
+      // 6f. Audit Log
+      await tx.auditLog.create({
+        data: {
+          adminId: userAuth.id,
+          action: "DISPUTE_P2P_ACCEPTED_AND_SETTLED",
+          targetType: "DISPUTE",
+          targetId: disputeId,
+          beforeStatus: "PENDING_REVIEW",
+          afterStatus: "RESOLVED",
+          metadata: JSON.stringify({
+            compensationToOwner,
+            refundDepositToRenter,
+            ownerRentalPayout,
+            platformFeeCollected,
+            shippingFeeCollected
+          })
+        }
+      });
+    });
+
+    try {
+      revalidatePath("/my-closet/orders");
+      if (rental?.product_id) revalidatePath(`/product/${rental.product_id}`);
+    } catch (e) {}
 
     return { success: true };
   } catch (error: any) {
-    console.error("Lỗi khi báo cáo sự cố:", error);
-    return { success: false, error: error.message || "Lỗi khi báo cáo sự cố." };
+    console.error("Lỗi khi chấp nhận thỏa thuận hòa giải:", error);
+    return { success: false, error: error.message || "Lỗi xử lý thỏa thuận." };
   }
+}
+
+export async function rejectAndEscalateDisputeAction(disputeId: string, reason: string = "") {
+  try {
+    const userAuth = await requireUser();
+
+    const dispute = await prisma.dispute.findUnique({
+      where: { id: disputeId },
+      include: { rental: { include: { product: true } } }
+    });
+
+    if (!dispute || !dispute.rental) {
+      return { success: false, error: "Không tìm thấy khiếu nại." };
+    }
+
+    const rental = dispute.rental;
+    const isRenter = rental.renterId === userAuth.id;
+    const isOwner = rental.product.userId === userAuth.id;
+
+    if (!isRenter && !isOwner) {
+      return { success: false, error: "Forbidden: Bạn không thuộc giao dịch này." };
+    }
+
+    let initiatorId = "";
+    try {
+      if (dispute.adminNotes) {
+        const parsed = JSON.parse(dispute.adminNotes);
+        initiatorId = parsed.initiatorId || "";
+      }
+    } catch (e) {}
+
+    if (initiatorId && initiatorId === userAuth.id) {
+      return { success: false, error: "Bạn không thể tự từ chối đề xuất do chính mình tạo ra." };
+    }
+
+    if (dispute.status !== "PENDING_REVIEW") {
+      return { success: false, error: "Đề xuất này đã được phản hồi hoặc đang được BQT xử lý." };
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.dispute.update({
+        where: { id: disputeId },
+        data: {
+          status: "DISPUTED",
+          adminNotes: JSON.stringify({
+            escalatedByUserId: userAuth.id,
+            escalateReason: reason || "Bên còn lại không đồng ý với mức bồi thường đề xuất.",
+            escalatedAt: new Date().toISOString()
+          })
+        }
+      });
+
+      await tx.auditLog.create({
+        data: {
+          adminId: userAuth.id,
+          action: "DISPUTE_ESCALATED_TO_ADMIN",
+          targetType: "DISPUTE",
+          targetId: disputeId,
+          beforeStatus: "PENDING_REVIEW",
+          afterStatus: "DISPUTED",
+          metadata: JSON.stringify({ reason })
+        }
+      });
+    });
+
+    try {
+      revalidatePath("/my-closet/orders");
+      if (rental?.product_id) revalidatePath(`/product/${rental.product_id}`);
+    } catch (e) {}
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Lỗi khi từ chối và đẩy lên BQT:", error);
+    return { success: false, error: error.message || "Lỗi xử lý." };
+  }
+}
+
+export async function raiseDisputeAction(orderId: string, description: string, images: string[]) {
+  return raiseDisputeWithProposalAction(orderId, description, images, 0);
 }
 
 export async function loadMoreOrdersAction({

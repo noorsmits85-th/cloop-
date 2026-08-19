@@ -5,7 +5,7 @@ import { History, ShoppingBag, Star, X, Check, Truck, Package, RotateCcw, AlertT
 import { supabase } from "@/lib/supabase";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { submitReviewAction, raiseDisputeAction, completeOrderAction, loadMoreOrdersAction, renterReceivedAction, renterReturnAction } from "../orders/actions"; 
+import { submitReviewAction, raiseDisputeWithProposalAction, acceptDisputeProposalAction, rejectAndEscalateDisputeAction, completeOrderAction, loadMoreOrdersAction, renterReceivedAction, renterReturnAction } from "../orders/actions"; 
 import { requestPickupAction } from "@/app/actions/shipment";
 import { CldUploadWidget } from "next-cloudinary";
 import Link from "next/link";
@@ -31,8 +31,8 @@ function StatusStepper({ status, isOwnerMode }: { status: string, isOwnerMode: b
 
   if (status === "DISPUTE") {
     return (
-      <div className="flex items-center gap-2 text-red-600 font-bold text-xs bg-red-50 p-2 rounded-lg border border-red-100 w-full justify-center mt-2">
-        <AlertTriangle size={16} strokeWidth={1.5} /> Đang xảy ra tranh chấp
+      <div className="flex items-center gap-2 text-amber-700 font-bold text-xs bg-amber-50 p-2 rounded-lg border border-amber-200 w-full justify-center mt-2">
+        <AlertTriangle size={16} strokeWidth={1.5} /> Đang tự hòa giải / Khiếu nại
       </div>
     );
   }
@@ -68,15 +68,15 @@ export function OrdersClient({
 }: { 
   initialEscrow: any[]; 
   initialRented: any[];
-  initialHasMoreEscrow?: boolean;
-  initialHasMoreRented?: boolean;
+  initialHasMoreEscrow: boolean;
+  initialHasMoreRented: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
   
-  const modeParam = searchParams.get("mode");
-  const isOwnerMode = modeParam !== "renter";
+  const mode = searchParams.get("mode") || "owner";
+  const isOwnerMode = mode === "owner";
   
   const handleModeChange = (newMode: "owner" | "renter") => {
     router.push(`${pathname}?mode=${newMode}`);
@@ -93,6 +93,8 @@ export function OrdersClient({
   const [requestingPickupIds, setRequestingPickupIds] = useState<Record<string, boolean>>({});
   const [receivingIds, setReceivingIds] = useState<Record<string, boolean>>({});
   const [returningIds, setReturningIds] = useState<Record<string, boolean>>({});
+  const [acceptingDisputeIds, setAcceptingDisputeIds] = useState<Record<string, boolean>>({});
+  const [rejectingDisputeIds, setRejectingDisputeIds] = useState<Record<string, boolean>>({});
   
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showDisputeModal, setShowDisputeModal] = useState(false);
@@ -102,6 +104,7 @@ export function OrdersClient({
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [disputeDescription, setDisputeDescription] = useState("");
+  const [suggestedDeduction, setSuggestedDeduction] = useState<number>(0);
   const [disputeImages, setDisputeImages] = useState<string[]>([]);
   
   const [isReviewSubmitting, setIsReviewSubmitting] = useState(false);
@@ -340,15 +343,31 @@ export function OrdersClient({
 
   const handleSubmitDispute = async () => {
     if (!selectedOrderForDispute) return;
-    if (!disputeDescription) { alert("Vui lòng nhập mô tả sự cố"); return; }
-    if (disputeImages.length === 0) { alert("Bắt buộc phải tải lên ít nhất 1 ảnh bằng chứng"); return; }
+    if (!disputeDescription || disputeDescription.trim().length < 5) { 
+      toast.error("Vui lòng nhập mô tả sự cố (tối thiểu 5 ký tự)"); 
+      return; 
+    }
+    if (disputeImages.length === 0) { 
+      toast.error("Bắt buộc phải tải lên ít nhất 1 ảnh bằng chứng"); 
+      return; 
+    }
 
     setIsDisputeSubmitting(true);
     try {
-      const res = await raiseDisputeAction(selectedOrderForDispute.id, disputeDescription, disputeImages);
+      const res = await raiseDisputeWithProposalAction(
+        selectedOrderForDispute.id, 
+        disputeDescription, 
+        disputeImages,
+        suggestedDeduction
+      );
       if (res.success) {
-        toast.success("Đã gửi báo cáo sự cố", { description: "Báo cáo của bạn đã được chuyển tới Ban Quản Trị." });
+        toast.success("Đã gửi đề xuất hòa giải sự cố!", { 
+          description: "Đề xuất đã được gửi tới bên còn lại để tự thương lượng trước khi đẩy lên BQT." 
+        });
         setShowDisputeModal(false);
+        setDisputeDescription("");
+        setDisputeImages([]);
+        setSuggestedDeduction(0);
         router.refresh();
       } else {
         toast.error("Lỗi gửi khiếu nại", { description: res.error });
@@ -357,6 +376,47 @@ export function OrdersClient({
       toast.error("Lỗi khiếu nại", { description: e.message });
     } finally {
       setIsDisputeSubmitting(false);
+    }
+  };
+
+  const handleAcceptDispute = async (disputeId: string) => {
+    if (acceptingDisputeIds[disputeId]) return;
+    if (!confirm("Xác nhận bạn đồng ý với mức bồi thường đề xuất và kết thúc đơn hàng? (Tiền sẽ được tự động giải ngân và hoàn cọc vào ví)")) return;
+
+    setAcceptingDisputeIds(prev => ({ ...prev, [disputeId]: true }));
+    try {
+      const res = await acceptDisputeProposalAction(disputeId);
+      if (res.success) {
+        toast.success("Thỏa thuận thành công!", { description: "Đơn hàng đã được quyết toán và hoàn cọc an toàn vào ví." });
+        router.refresh();
+      } else {
+        toast.error("Lỗi xử lý", { description: res.error });
+      }
+    } catch (e: any) {
+      toast.error("Lỗi hệ thống", { description: e.message });
+    } finally {
+      setAcceptingDisputeIds(prev => ({ ...prev, [disputeId]: false }));
+    }
+  };
+
+  const handleRejectDispute = async (disputeId: string) => {
+    if (rejectingDisputeIds[disputeId]) return;
+    const reason = prompt("Nhập lý do bạn không đồng ý với mức bồi thường này (để chuyển BQT xem xét):");
+    if (reason === null) return;
+
+    setRejectingDisputeIds(prev => ({ ...prev, [disputeId]: true }));
+    try {
+      const res = await rejectAndEscalateDisputeAction(disputeId, reason || "Không đồng ý mức bồi thường đề xuất");
+      if (res.success) {
+        toast.info("Đã chuyển lên Ban Quản Trị", { description: "BQT CLOOP sẽ tiếp nhận hồ sơ và làm trọng tài phân xử." });
+        router.refresh();
+      } else {
+        toast.error("Lỗi xử lý", { description: res.error });
+      }
+    } catch (e: any) {
+      toast.error("Lỗi hệ thống", { description: e.message });
+    } finally {
+      setRejectingDisputeIds(prev => ({ ...prev, [disputeId]: false }));
     }
   };
 
@@ -458,6 +518,66 @@ export function OrdersClient({
                                     <ShieldAlert size={14} strokeWidth={1.5} /> Báo cáo sự cố
                                   </button>
                                 )}
+                                {order.status === "DISPUTE" && (
+                                  <div className="mt-4 p-4 rounded-lg bg-amber-50/70 border border-amber-200/80 text-left space-y-3 w-full">
+                                    <div className="flex items-center gap-2 text-amber-800 font-semibold text-xs uppercase tracking-wide">
+                                      <AlertTriangle size={15} /> Thỏa thuận hòa giải P2P
+                                    </div>
+                                    {order.disputes?.[0] ? (
+                                      <div className="space-y-2">
+                                        <p className="text-xs text-stone-700 font-light">
+                                          <span className="font-medium text-stone-900">Lý do:</span> {order.disputes[0].description}
+                                        </p>
+                                        <p className="text-xs text-stone-700">
+                                          <span className="font-medium text-stone-900">Đề xuất bồi thường:</span>{" "}
+                                          <span className="font-bold text-amber-900">{order.disputes[0].suggestedDeduction?.toLocaleString('vi-VN')}đ</span>{" "}
+                                          <span className="text-[10px] text-stone-500">(khấu trừ từ tiền cọc của khách)</span>
+                                        </p>
+                                        {order.disputes[0].images?.length > 0 && (
+                                          <div className="flex gap-2 pt-1">
+                                            {order.disputes[0].images.map((img: string, i: number) => (
+                                              <img key={i} src={img} alt="Minh chứng" className="w-12 h-12 rounded object-cover border border-amber-200" />
+                                            ))}
+                                          </div>
+                                        )}
+                                        {order.disputes[0].status === "PENDING_REVIEW" ? (
+                                          <div className="pt-2">
+                                            {order.disputes[0].adminNotes?.includes('"initiatorRole":"OWNER"') ? (
+                                              <p className="text-[11px] text-amber-700 italic bg-amber-100/50 p-2 rounded border border-amber-200/50">
+                                                ⏳ Đang chờ khách thuê phản hồi đề xuất bồi thường của bạn...
+                                              </p>
+                                            ) : (
+                                              <div className="flex flex-wrap gap-2">
+                                                <button
+                                                  disabled={acceptingDisputeIds[order.disputes[0].id]}
+                                                  onClick={() => handleAcceptDispute(order.disputes[0].id)}
+                                                  className="bg-[#183A2D] hover:bg-[#122b22] text-white text-xs font-medium px-4 py-2 rounded-md transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                                                >
+                                                  {acceptingDisputeIds[order.disputes[0].id] ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+                                                  Đồng ý đề xuất & Hoàn tất
+                                                </button>
+                                                <button
+                                                  disabled={rejectingDisputeIds[order.disputes[0].id]}
+                                                  onClick={() => handleRejectDispute(order.disputes[0].id)}
+                                                  className="bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-medium px-3 py-2 rounded-md transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                                                >
+                                                  {rejectingDisputeIds[order.disputes[0].id] ? <Loader2 size={13} className="animate-spin" /> : <X size={13} />}
+                                                  Từ chối (Đẩy lên BQT)
+                                                </button>
+                                              </div>
+                                            )}
+                                          </div>
+                                        ) : (
+                                          <p className="text-[11px] text-red-700 font-medium bg-red-50 p-2 rounded border border-red-200">
+                                            ⚠️ Vụ việc đã được chuyển lên Ban Quản Trị CLOOP để làm trọng tài giải quyết.
+                                          </p>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <p className="text-xs text-stone-500">Đang khởi tạo khiếu nại...</p>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -529,13 +649,29 @@ export function OrdersClient({
                                   </button>
                                 )}
                                 {order.status === "BORROWER_RECEIVED" && (
-                                  <button 
-                                    disabled={returningIds[order.id]}
-                                    onClick={() => handleRenterReturn(order.id)}
-                                    className="border border-slate-900 bg-slate-900 hover:bg-transparent text-white hover:text-slate-900 text-xs font-medium px-5 py-2.5 rounded-md transition-all duration-500 disabled:opacity-50 flex items-center gap-2"
-                                  >
-                                    {returningIds[order.id] ? <><Loader2 size={14} className="animate-spin" /> Đang xử lý...</> : "Đóng gói trả đồ"}
-                                  </button>
+                                  <>
+                                    <button 
+                                      disabled={returningIds[order.id]}
+                                      onClick={() => handleRenterReturn(order.id)}
+                                      className="border border-slate-900 bg-slate-900 hover:bg-transparent text-white hover:text-slate-900 text-xs font-medium px-5 py-2.5 rounded-md transition-all duration-500 disabled:opacity-50 flex items-center gap-2"
+                                    >
+                                      {returningIds[order.id] ? <><Loader2 size={14} className="animate-spin" /> Đang xử lý...</> : "Đóng gói trả đồ"}
+                                    </button>
+                                    <button 
+                                      onClick={() => {
+                                        setSelectedOrderForDispute(order);
+                                        setShowDisputeModal(true);
+                                      }}
+                                      className="bg-transparent hover:bg-red-50 text-stone-500 hover:text-red-600 border border-stone-200 hover:border-red-200 text-xs font-medium px-4 py-2.5 rounded-md flex items-center gap-2 transition-all duration-500"
+                                    >
+                                      <ShieldAlert size={14} strokeWidth={1.5} /> Báo lỗi đồ
+                                    </button>
+                                  </>
+                                )}
+                                {order.status === "BORROWER_RETURNED" && (
+                                  <div className="bg-slate-100 text-slate-700 border border-slate-200 text-xs font-medium px-4 py-2 rounded-md flex items-center gap-2">
+                                    <Truck size={14} /> Đang chuyển hoàn về chủ đồ...
+                                  </div>
                                 )}
                                 {order.status === "LENDER_COMPLETED" && (
                                   <button onClick={() => {
@@ -544,6 +680,66 @@ export function OrdersClient({
                                   }} className="border border-stone-200 bg-transparent hover:border-slate-900 hover:bg-slate-900 text-stone-500 hover:text-white text-xs font-medium px-5 py-2.5 rounded-md transition-all duration-500">
                                     Đánh giá
                                   </button>
+                                )}
+                                {order.status === "DISPUTE" && (
+                                  <div className="mt-4 p-4 rounded-lg bg-amber-50/70 border border-amber-200/80 text-left space-y-3 w-full">
+                                    <div className="flex items-center gap-2 text-amber-800 font-semibold text-xs uppercase tracking-wide">
+                                      <AlertTriangle size={15} /> Thỏa thuận hòa giải P2P
+                                    </div>
+                                    {order.disputes?.[0] ? (
+                                      <div className="space-y-2">
+                                        <p className="text-xs text-stone-700 font-light">
+                                          <span className="font-medium text-stone-900">Lý do sự cố:</span> {order.disputes[0].description}
+                                        </p>
+                                        <p className="text-xs text-stone-700">
+                                          <span className="font-medium text-stone-900">Mức bồi thường đề xuất:</span>{" "}
+                                          <span className="font-bold text-amber-900">{order.disputes[0].suggestedDeduction?.toLocaleString('vi-VN')}đ</span>{" "}
+                                          <span className="text-[10px] text-stone-500">(khấu trừ từ tiền cọc của bạn)</span>
+                                        </p>
+                                        {order.disputes[0].images?.length > 0 && (
+                                          <div className="flex gap-2 pt-1">
+                                            {order.disputes[0].images.map((img: string, i: number) => (
+                                              <img key={i} src={img} alt="Minh chứng" className="w-12 h-12 rounded object-cover border border-amber-200" />
+                                            ))}
+                                          </div>
+                                        )}
+                                        {order.disputes[0].status === "PENDING_REVIEW" ? (
+                                          <div className="pt-2">
+                                            {order.disputes[0].adminNotes?.includes('"initiatorRole":"RENTER"') ? (
+                                              <p className="text-[11px] text-amber-700 italic bg-amber-100/50 p-2 rounded border border-amber-200/50">
+                                                ⏳ Đang chờ chủ đồ phản hồi đề xuất của bạn...
+                                              </p>
+                                            ) : (
+                                              <div className="flex flex-wrap gap-2">
+                                                <button
+                                                  disabled={acceptingDisputeIds[order.disputes[0].id]}
+                                                  onClick={() => handleAcceptDispute(order.disputes[0].id)}
+                                                  className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium px-4 py-2 rounded-md transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                                                >
+                                                  {acceptingDisputeIds[order.disputes[0].id] ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+                                                  Đồng ý khấu trừ & Hoàn cọc còn lại
+                                                </button>
+                                                <button
+                                                  disabled={rejectingDisputeIds[order.disputes[0].id]}
+                                                  onClick={() => handleRejectDispute(order.disputes[0].id)}
+                                                  className="bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-medium px-3 py-2 rounded-md transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                                                >
+                                                  {rejectingDisputeIds[order.disputes[0].id] ? <Loader2 size={13} className="animate-spin" /> : <X size={13} />}
+                                                  Không đồng ý (Đẩy lên BQT)
+                                                </button>
+                                              </div>
+                                            )}
+                                          </div>
+                                        ) : (
+                                          <p className="text-[11px] text-red-700 font-medium bg-red-50 p-2 rounded border border-red-200">
+                                            ⚠️ Vụ việc đã được chuyển lên Ban Quản Trị CLOOP để làm trọng tài giải quyết.
+                                          </p>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <p className="text-xs text-stone-500">Đang khởi tạo khiếu nại...</p>
+                                    )}
+                                  </div>
                                 )}
                               </div>
                             </div>
@@ -597,29 +793,72 @@ export function OrdersClient({
 
       {showDisputeModal && selectedOrderForDispute && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 backdrop-blur-md p-4">
-          <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="bg-white border border-stone-100 rounded-xl max-w-[440px] w-full shadow-2xl p-8 text-left space-y-6">
+          <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="bg-white border border-stone-100 rounded-xl max-w-[460px] w-full shadow-2xl p-8 text-left space-y-5">
             <div className="flex justify-between items-center border-b border-stone-100 pb-4">
-              <h3 className="text-xs font-medium text-red-600 tracking-wide uppercase flex items-center gap-2">
-                <AlertTriangle size={16} strokeWidth={1.5} /> Báo cáo sự cố
+              <h3 className="text-xs font-semibold text-amber-800 tracking-wide uppercase flex items-center gap-2">
+                <AlertTriangle size={16} strokeWidth={2} /> Báo cáo sự cố & Đề xuất hòa giải
               </h3>
               <button onClick={() => setShowDisputeModal(false)} className="text-stone-400 hover:text-stone-900 transition-colors p-1"><X size={18} strokeWidth={1.5} /></button>
             </div>
-            <p className="text-xs font-light text-stone-500 leading-relaxed">Hãy cung cấp chi tiết sự cố và hình ảnh minh chứng để Ban Quản Trị giải quyết.</p>
-            <div className="space-y-2">
-              <label className="block text-[10px] font-medium text-stone-500 uppercase tracking-wide">Mô tả chi tiết</label>
-              <textarea rows={3} value={disputeDescription} onChange={(e) => setDisputeDescription(e.target.value)} placeholder="Nhập chi tiết..." className="w-full px-4 py-3 rounded-md border border-stone-200/60 text-sm font-light focus:outline-none focus:border-red-400 bg-stone-50/30 resize-none transition-colors" />
+            
+            <p className="text-xs font-light text-stone-600 leading-relaxed">
+              Hệ thống sẽ gửi đề xuất bồi thường đến đối tác để 2 bên tự giải quyết trước. Nếu không đạt được thỏa thuận, vụ việc sẽ được đẩy lên Ban Quản Trị CLOOP phân xử.
+            </p>
+
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-medium text-stone-500 uppercase tracking-wide">Mô tả chi tiết sự cố</label>
+              <textarea 
+                rows={3} 
+                value={disputeDescription} 
+                onChange={(e) => setDisputeDescription(e.target.value)} 
+                placeholder="Mô tả cụ thể vết ố, rách, sai mẫu hoặc hư hỏng..." 
+                className="w-full px-4 py-2.5 rounded-md border border-stone-200/60 text-sm font-light focus:outline-none focus:border-amber-500 bg-stone-50/30 resize-none transition-colors" 
+              />
             </div>
-            <div className="space-y-2">
-              <label className="block text-[10px] font-medium text-stone-500 uppercase tracking-wide">Bằng chứng (Ít nhất 1 ảnh)</label>
-              <div className="flex flex-wrap gap-3">
-                {disputeImages.map((img, i) => (<img key={i} src={img} alt="Bằng chứng" className="w-16 h-16 object-cover rounded-md border border-stone-200" />))}
+
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <label className="block text-[10px] font-medium text-stone-500 uppercase tracking-wide">Mức bồi thường đề xuất (VNĐ)</label>
+                <span className="text-[10px] text-amber-800 font-medium">
+                  Cọc tối đa: {(selectedOrderForDispute.invoice?.depositAmount || 300000).toLocaleString('vi-VN')}đ
+                </span>
+              </div>
+              <input 
+                type="number" 
+                min={0}
+                max={selectedOrderForDispute.invoice?.depositAmount || 10000000}
+                step={10000}
+                value={suggestedDeduction || ""} 
+                onChange={(e) => setSuggestedDeduction(Number(e.target.value) || 0)} 
+                placeholder="VD: 80000 (chi phí giặt hấp, đính lại khuy...)" 
+                className="w-full px-4 py-2.5 rounded-md border border-stone-200/60 text-sm font-medium focus:outline-none focus:border-amber-500 bg-stone-50/30 transition-colors" 
+              />
+              <p className="text-[10px] text-stone-400 italic">
+                * Khoản tiền này sẽ được khấu trừ từ tiền cọc của khách thuê chuyển thẳng vào ví chủ đồ sau khi 2 bên đồng thuận.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-medium text-stone-500 uppercase tracking-wide">Ảnh minh chứng hiện trường (Ít nhất 1 ảnh)</label>
+              <div className="flex flex-wrap gap-2.5">
+                {disputeImages.map((img, i) => (
+                  <img key={i} src={img} alt="Bằng chứng" className="w-14 h-14 object-cover rounded-md border border-stone-200 shadow-xs" />
+                ))}
                 <CldUploadWidget uploadPreset="cloop_uploads" onSuccess={(result: any) => { if (result.info?.secure_url) setDisputeImages(prev => [...prev, result.info.secure_url]); }}>
-                  {({ open }) => (<button type="button" onClick={() => open()} className="w-16 h-16 rounded-md border border-dashed border-stone-300 flex items-center justify-center text-stone-400 hover:border-red-300 hover:text-red-500 transition-colors">+</button>)}
+                  {({ open }) => (
+                    <button type="button" onClick={() => open()} className="w-14 h-14 rounded-md border border-dashed border-stone-300 flex items-center justify-center text-stone-400 hover:border-amber-400 hover:text-amber-600 transition-colors text-lg font-light">+</button>
+                  )}
                 </CldUploadWidget>
               </div>
             </div>
-            <button type="button" onClick={handleSubmitDispute} disabled={isDisputeSubmitting} className="w-full py-3.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium tracking-wide rounded-md transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
-              {isDisputeSubmitting ? "Đang gửi..." : "Gửi báo cáo"}
+
+            <button 
+              type="button" 
+              onClick={handleSubmitDispute} 
+              disabled={isDisputeSubmitting} 
+              className="w-full py-3.5 bg-amber-800 hover:bg-amber-900 text-white text-xs font-semibold tracking-wide rounded-md transition-colors flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm cursor-pointer"
+            >
+              {isDisputeSubmitting ? <><Loader2 size={14} className="animate-spin" /> Đang gửi đề xuất...</> : "Gửi đề xuất hòa giải P2P"}
             </button>
           </motion.div>
         </div>
