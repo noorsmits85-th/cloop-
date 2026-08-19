@@ -105,10 +105,10 @@ export default function DashboardLayout({
               <Image src="/loogo.png" alt="CLOOP Brand Logo" width={44} height={44} className="mix-blend-multiply transition-transform duration-500 group-hover:scale-105 animate-logo-glow" />
             </div>
             <div className="flex flex-col items-center justify-center text-center">
-              <div className="font-brand-title text-[24px] font-extrabold tracking-[0.16em] leading-none animate-brand-shimmer text-[#183A2D] pl-[0.16em] transition-colors">
+              <div className="font-brand-title text-[25px] font-bold tracking-[0.14em] leading-none animate-brand-shimmer text-[#183A2D] pl-[0.14em] transition-colors">
                 CLOOP
               </div>
-              <p className="font-brand-sub text-[7.5px] font-bold tracking-[0.32em] uppercase text-[#1B5E20] mt-1.5 w-full text-center pl-[0.32em] transition-colors">
+              <p className="font-brand-sub text-[7.5px] font-semibold tracking-[0.34em] uppercase text-[#1B5E20] mt-1.5 w-full text-center pl-[0.34em] transition-colors">
                 FASHION IN A LOOP
               </p>
             </div>
