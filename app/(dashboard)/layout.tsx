@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   ArrowLeft,
   Shirt,
+  Heart,
   ShoppingBag,
   Archive,
   Wallet,
@@ -55,6 +56,7 @@ export default function DashboardLayout({
       title: "Quản lý Tủ Đồ",
       items: [
         { name: "Tủ đồ của tôi", path: "/my-closet/items", icon: <Shirt size={20} /> },
+        { name: "Đã thích & Đã lưu", path: "/my-closet/wishlist", icon: <Heart size={20} /> },
         { name: "Đơn hàng & Giao dịch", path: "/my-closet/orders", icon: <ShoppingBag size={20} /> },
         { name: "Kho lưu trữ", path: "/my-closet/archive", icon: <Archive size={20} /> },
       ],

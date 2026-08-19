@@ -3,10 +3,12 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Check, Star, Heart, Bookmark, Sparkles, Search } from "lucide-react";
+import { ArrowRight, Check, Star, Heart, Bookmark, Sparkles, Search, TrendingUp } from "lucide-react";
 import { motion } from "framer-motion";
 import MagneticButton from "@/app/components/MagneticButton";
 import { supabase } from "@/lib/supabase";
+import ProductLikeSaveButtons from "@/components/ProductLikeSaveButtons";
+import { getTrendingProductsAction } from "@/app/actions/favorite";
 
 export default function Home() {
   const [activeRentalCategory, setActiveRentalCategory] = useState("Tất cả");
@@ -17,29 +19,37 @@ export default function Home() {
 
   const [activeCard, setActiveCard] = useState(0);
 
-  // --- LẤY DỮ LIỆU SẢN PHẨM BOOST TỪ SUPABASE ---
+  // --- LẤY DỮ LIỆU SẢN PHẨM THỊNH HÀNH & TOP TIM/LƯU THEO TIME-DECAY ---
   const [boostedProducts, setBoostedProducts] = useState<any[]>([]);
 
   useEffect(() => {
-    async function fetchBoosted() {
-      // Lấy các sản phẩm có boostExpiresAt > now hoặc isHighlighted = true
+    async function fetchTrending() {
+      try {
+        const res = await getTrendingProductsAction(20);
+        if (res.success && res.products && res.products.length > 0) {
+          setBoostedProducts(res.products);
+          return;
+        }
+      } catch (e) {}
+
+      // Fallback query từ Supabase
       const now = new Date().toISOString();
       const { data, error } = await supabase
         .from("products")
         .select(`
-          id, title, name, province, condition, size, brand, owner_name, ownerName, userId, user_id, original_price, originalPrice, rental_price, occasion, image_url, imageUrl, boostExpiresAt, isHighlighted,
+          id, title, name, province, condition, size, brand, owner_name, ownerName, userId, user_id, original_price, originalPrice, rental_price, occasion, image_url, imageUrl, boostExpiresAt, isHighlighted, likeCount, saveCount,
           user:User(name, avatar),
-          images:ProductImage(url, isPrimary)
+          images:ProductImage(url, isPrimary),
+          listings:Listing(basePrice, status)
         `)
-        .or(`boostExpiresAt.gt.${now},isHighlighted.eq.true`)
-        .order("boostExpiresAt", { ascending: false, nullsFirst: false })
+        .order("likeCount", { ascending: false })
         .limit(20);
         
       if (!error && data) {
         setBoostedProducts(data);
       }
     }
-    fetchBoosted();
+    fetchTrending();
   }, []);
 
   const featuredClosets = [
@@ -449,19 +459,25 @@ export default function Home() {
                     <div className="flex flex-col">
                       <div className="flex justify-between items-center mb-1.5">
                         <Link href={`/closet/${product.userId}`} className="text-[9px] text-stone-500 uppercase tracking-[0.2em] font-ui hover:text-green-800 transition-colors z-20 relative">@{product.user?.name || "closet"}</Link>
-                        <div className="flex items-center gap-3 text-stone-400">
-                        <button className="hover:text-red-500 transition-colors"><Heart size={16} strokeWidth={1.5} /></button>
+                        <ProductLikeSaveButtons
+                          productId={product.id}
+                          initialLikeCount={product.likeCount || 0}
+                          initialSaveCount={product.saveCount || 0}
+                          variant="light"
+                          showCounts={true}
+                        />
                       </div>
+                      <Link href={`/checkout/${product.id}`}>
+                        <h3 className="text-xs md:text-base font-heading text-black mb-2 line-clamp-1 font-semibold hover:text-[#183A2D] transition-colors">{product.title}</h3>
+                      </Link>
+                      
+                      <p className="text-sm font-bold text-[#183A2D] font-ui">
+                        {product.listings?.[0]?.basePrice ? `${product.listings[0].basePrice.toLocaleString('vi-VN')}đ` : 'Đang cho thuê'} <span className="text-[10px] text-stone-500 font-normal">/ngày</span>
+                      </p>
                     </div>
-                    <h3 className="text-xs md:text-base font-heading text-black mb-2 line-clamp-1 font-semibold">{product.title}</h3>
-                    
-                    <p className="text-sm font-bold text-[#183A2D] font-ui">
-                      Đang cho thuê <span className="text-[10px] text-stone-500 font-normal">/ngày</span>
-                    </p>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
 
             {/* FALLBACK MOCK DATA NẾU CHƯA CÓ ĐỦ SẢN PHẨM BOOST (Để lấp đầy Grid) */}
             {boostedProducts.length < 4 && (

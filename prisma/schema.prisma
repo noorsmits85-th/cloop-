@@ -30,6 +30,7 @@ model User {
   reviewsGiven    Review[]           @relation("Reviewer")
   products        Product[]
   rentalHistory   RentalHistory[]
+  favorites       ProductFavorite[]
 }
 
 model Product {
@@ -63,6 +64,8 @@ model Product {
   boostExpiresAt  DateTime?
   lastBumpedAt    DateTime?
   isHighlighted   Boolean            @default(false)
+  likeCount       Int                @default(0)
+  saveCount       Int                @default(0)
   blogs           BlogPost[]
   listings        Listing[]
   images          ProductImage[]
@@ -70,6 +73,7 @@ model Product {
   reviews         Review[]
   user            User?              @relation(fields: [userId], references: [id])
   rentalHistory   RentalHistory[]
+  favorites       ProductFavorite[]
 
   @@index([userId])
   @@index([category])
@@ -521,4 +525,21 @@ model Shipment {
   @@index([status])
   @@index([trackingCode])
   @@map("shipments")
+}
+
+model ProductFavorite {
+  id        String   @id @default(uuid())
+  userId    String
+  productId String
+  type      String   @default("LIKE") // "LIKE" | "SAVE"
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId, type])
+  @@index([userId])
+  @@index([productId])
+  @@index([type])
+  @@map("product_favorites")
 }
