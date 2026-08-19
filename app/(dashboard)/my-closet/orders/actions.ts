@@ -266,8 +266,16 @@ export async function raiseDisputeWithProposalAction(
       return { success: false, error: "Không tìm thấy đơn hàng." };
     }
 
+    if (rental.status === "LENDER_COMPLETED" || rental.status === "CANCELLED") {
+      return { success: false, error: "Đơn hàng đã hoàn tất hoặc đã bị hủy, không thể mở khiếu nại." };
+    }
+
+    if (rental.invoice && rental.invoice.status !== "PAID") {
+      return { success: false, error: "Đơn hàng chưa được thanh toán thành công, không thể khiếu nại." };
+    }
+
     const isRenter = rental.renterId === userAuth.id;
-    const isOwner = rental.product.userId === userAuth.id;
+    const isOwner = rental.product.userId === userAuth.id || rental.ownerId === userAuth.id;
 
     if (!isRenter && !isOwner) {
       return { success: false, error: "Forbidden: Bạn không có quyền khiếu nại đơn hàng này." };
@@ -283,7 +291,7 @@ export async function raiseDisputeWithProposalAction(
       const updateCount = await tx.rentalHistory.updateMany({
         where: {
           id: orderId,
-          status: { notIn: ["DISPUTE", "LENDER_COMPLETED", "CANCELLED"] }
+          status: { in: ["BORROWER_RECEIVED", "BORROWER_RETURNED", "LENDER_SHIPPED", "OWNER_PACKED", "PENDING_APPROVAL"] }
         },
         data: { status: "DISPUTE" }
       });
@@ -366,13 +374,18 @@ export async function acceptDisputeProposalAction(disputeId: string) {
     const rental = dispute.rental;
     const invoice = dispute.rental.invoice;
     const isRenter = rental.renterId === userAuth.id;
-    const isOwner = rental.product.userId === userAuth.id;
+    const isOwner = rental.product.userId === userAuth.id || rental.ownerId === userAuth.id;
 
     if (!isRenter && !isOwner) {
       return { success: false, error: "Forbidden: Bạn không thuộc giao dịch này." };
     }
 
-    // 🛡️ 2. Parse initiator to enforce counterparty authorization
+    // 🛡️ 2. Invoice PAID status validation
+    if (invoice.status !== "PAID") {
+      return { success: false, error: "Hóa đơn chưa ở trạng thái thanh toán thành công (Invoice không ở trạng thái PAID), không thể quyết toán dòng tiền." };
+    }
+
+    // 🛡️ 3. Parse initiator to enforce counterparty authorization
     let initiatorId = "";
     try {
       if (dispute.adminNotes) {
@@ -385,7 +398,7 @@ export async function acceptDisputeProposalAction(disputeId: string) {
       return { success: false, error: "Bạn không thể tự chấp nhận đề xuất do chính mình khởi tạo." };
     }
 
-    // 🛡️ 3. State validations
+    // 🛡️ 4. State validations
     if (dispute.status !== "PENDING_REVIEW") {
       return { success: false, error: "Đề xuất này không ở trạng thái chờ phản hồi." };
     }
@@ -394,7 +407,7 @@ export async function acceptDisputeProposalAction(disputeId: string) {
       return { success: false, error: "Trạng thái đơn hàng không hợp lệ để hòa giải tranh chấp." };
     }
 
-    // 🛡️ 4. Double-Settlement Guard (Ledger Check)
+    // 🛡️ 5. Double-Settlement Guard (Ledger Check)
     const existingPayout = await prisma.ledgerTransaction.findFirst({
       where: {
         invoiceId: invoice.id,
@@ -406,13 +419,13 @@ export async function acceptDisputeProposalAction(disputeId: string) {
       return { success: false, error: "Giao dịch này đã được quyết toán trên sổ cái từ trước." };
     }
 
-    // 🛡️ 5. Zero-Sum Balance Mathematical Invariant Verification
-    const totalAmount = invoice.amount;
-    const rentalFee = invoice.rentalFee;
-    const depositAmount = invoice.depositAmount;
-    const platformFee = invoice.platformFee;
-    const shippingFee = invoice.shippingFeeCollected;
-    const deduction = Math.floor(Math.max(0, dispute.suggestedDeduction));
+    // 🛡️ 6. Zero-Sum Balance Mathematical Invariant Verification
+    const totalAmount = Number(invoice.amount) || 0;
+    const rentalFee = Number(invoice.rentalFee) || 0;
+    const depositAmount = Number(invoice.depositAmount) || 0;
+    const platformFee = Number(invoice.platformFee) || 0;
+    const shippingFee = Number(invoice.shippingFeeCollected) || 0;
+    const deduction = Math.floor(Math.max(0, Number(dispute.suggestedDeduction) || 0));
 
     if (deduction > depositAmount) {
       return { success: false, error: "Lỗi bảo mật: Số tiền khấu trừ vượt quá số tiền cọc." };
@@ -431,21 +444,11 @@ export async function acceptDisputeProposalAction(disputeId: string) {
       return { success: false, error: "LỖI KẾ TOÁN: Bất biến cân sổ tài chính bị lệch." };
     }
 
-    // 🛡️ 6. Atomic Execution (ACID Transaction)
+    // 🛡️ 7. Atomic Execution (ACID Transaction with Row-Level Optimistic Locks)
     await prisma.$transaction(async (tx) => {
-      // 6a. Atomic Row Lock & Order Update
-      const lockCount = await tx.rentalHistory.updateMany({
-        where: { id: rental.id, status: "DISPUTE" },
-        data: { status: "LENDER_COMPLETED" }
-      });
-
-      if (lockCount.count === 0) {
-        throw new Error("Xung đột dữ liệu: Đơn hàng đã được xử lý bởi tiến trình khác.");
-      }
-
-      // 6b. Update Dispute
-      await tx.dispute.update({
-        where: { id: disputeId },
+      // 7a. Atomic Row Lock on Dispute (Double-submit prevention)
+      const disputeLock = await tx.dispute.updateMany({
+        where: { id: disputeId, status: "PENDING_REVIEW" },
         data: {
           status: "RESOLVED",
           finalDeduction: deduction,
@@ -458,13 +461,27 @@ export async function acceptDisputeProposalAction(disputeId: string) {
         }
       });
 
-      // 6c. Update Invoice
+      if (disputeLock.count === 0) {
+        throw new Error("Xung đột dữ liệu: Đề xuất khiếu nại đã được giải quyết hoặc không còn ở trạng thái chờ phản hồi.");
+      }
+
+      // 7b. Atomic Row Lock on Order
+      const lockCount = await tx.rentalHistory.updateMany({
+        where: { id: rental.id, status: "DISPUTE" },
+        data: { status: "LENDER_COMPLETED" }
+      });
+
+      if (lockCount.count === 0) {
+        throw new Error("Xung đột dữ liệu: Đơn hàng đã được xử lý bởi tiến trình khác.");
+      }
+
+      // 7c. Update Invoice
       await tx.invoice.update({
         where: { id: invoice.id },
         data: { status: "PAID" }
       });
 
-      // 6d. Update User Wallets
+      // 7d. Update User Wallets
       if (refundDepositToRenter > 0) {
         await tx.user.update({
           where: { id: rental.renterId },
@@ -481,7 +498,7 @@ export async function acceptDisputeProposalAction(disputeId: string) {
         });
       }
 
-      // 6e. Record Immutable Double-Entry Ledger Transactions
+      // 7e. Record Immutable Double-Entry Ledger Transactions
       const ledgerRows: any[] = [];
 
       if (compensationToOwner > 0) {
@@ -543,7 +560,7 @@ export async function acceptDisputeProposalAction(disputeId: string) {
         await tx.ledgerTransaction.createMany({ data: ledgerRows });
       }
 
-      // 6f. Audit Log
+      // 7f. Audit Log
       await tx.auditLog.create({
         data: {
           adminId: userAuth.id,
@@ -590,7 +607,7 @@ export async function rejectAndEscalateDisputeAction(disputeId: string, reason: 
 
     const rental = dispute.rental;
     const isRenter = rental.renterId === userAuth.id;
-    const isOwner = rental.product.userId === userAuth.id;
+    const isOwner = rental.product.userId === userAuth.id || rental.ownerId === userAuth.id;
 
     if (!isRenter && !isOwner) {
       return { success: false, error: "Forbidden: Bạn không thuộc giao dịch này." };
@@ -613,8 +630,8 @@ export async function rejectAndEscalateDisputeAction(disputeId: string, reason: 
     }
 
     await prisma.$transaction(async (tx) => {
-      await tx.dispute.update({
-        where: { id: disputeId },
+      const disputeLock = await tx.dispute.updateMany({
+        where: { id: disputeId, status: "PENDING_REVIEW" },
         data: {
           status: "DISPUTED",
           adminNotes: JSON.stringify({
@@ -624,6 +641,10 @@ export async function rejectAndEscalateDisputeAction(disputeId: string, reason: 
           })
         }
       });
+
+      if (disputeLock.count === 0) {
+        throw new Error("Xung đột dữ liệu: Đề xuất khiếu nại đã được xử lý từ trước.");
+      }
 
       await tx.auditLog.create({
         data: {
