@@ -34,6 +34,10 @@ export default async function PaymentResultPage({
     );
   }
 
+  // 🛡️ Webhook Fallback: Chủ động đồng bộ với PayOS nếu webhook bị chậm mạng
+  const { checkAndSyncPaymentStatusAction } = await import("@/app/actions/payment");
+  await checkAndSyncPaymentStatusAction(Number(orderCode));
+
   const invoice = await prisma.invoice.findUnique({
     where: { orderCode: BigInt(orderCode) },
     include: {
