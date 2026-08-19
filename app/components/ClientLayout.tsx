@@ -48,21 +48,17 @@ function HeaderNavbar({ darkMode, setDarkMode, handleFeatureRequirement, current
     <header className={`sticky top-0 z-50 border-b px-4 lg:px-6 transition-all duration-500 backdrop-blur-md ${darkMode ? "bg-[#141E28]/90 border-[#2B3946]" : "bg-white border-[#ece7dc]"}`}>
       <div className="max-w-[1280px] mx-auto h-[88px] grid grid-cols-[auto_1fr_auto] items-center gap-4">
         
-        <Link href="/" className="flex items-center gap-3 shrink-0 cursor-pointer group select-none">
+        <Link href="/" className="flex items-center gap-3.5 shrink-0 cursor-pointer group select-none">
           <div className="relative">
-            <Image src="/loogo.png" alt="CLOOP Brand Logo" width={46} height={46} className="mix-blend-multiply transition-transform duration-500 group-hover:scale-105 animate-logo-glow" />
+            <Image src="/loogo.png" alt="CLOOP Brand Logo" width={48} height={48} className="mix-blend-multiply transition-transform duration-500 group-hover:scale-105 animate-logo-glow" />
           </div>
-          <div className="leading-none mt-0.5 text-left flex flex-col justify-center">
-            <div className="font-logo text-[30px] font-bold tracking-[0.22em] animate-brand-shimmer drop-shadow-xs transition-all duration-300">
+          <div className="flex flex-col items-center justify-center text-center">
+            <div className="font-brand-title text-[28px] font-extrabold tracking-[0.24em] leading-none animate-brand-shimmer drop-shadow-sm transition-all duration-300 pl-[0.24em]">
               CLOOP
             </div>
-            <div className="flex items-center gap-1 mt-1">
-              <span className="w-1.5 h-[1px] bg-[#34D399]/60 inline-block"></span>
-              <p className="font-fashion-tagline text-[8.5px] font-semibold tracking-[0.38em] uppercase text-[#1B5E20] dark:text-[#86EFAC] transition-colors">
-                Fashion In A Loop
-              </p>
-              <span className="w-1.5 h-[1px] bg-[#34D399]/60 inline-block"></span>
-            </div>
+            <p className="font-brand-sub text-[7.5px] font-bold tracking-[0.38em] uppercase text-[#1B5E20] dark:text-[#86EFAC] mt-1.5 w-full text-center pl-[0.38em] transition-colors">
+              FASHION IN A LOOP
+            </p>
           </div>
         </Link>
 
