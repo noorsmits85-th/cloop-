@@ -465,137 +465,50 @@ export default function Home() {
                 );
               })}
 
-            {/* FALLBACK MOCK DATA NẾU CHƯA CÓ ĐỦ SẢN PHẨM BOOST (Để lấp đầy Grid) */}
-            {boostedProducts.length < 4 && (
-              <>
-                {/* ITEM 1 */}
-                <div className="group flex flex-col cursor-pointer">
-                  <div className="relative w-full aspect-[4/5] md:aspect-[3/4] bg-stone-100 overflow-hidden mb-4">
-                    <Image src="/1.2.jpeg" alt="Item" fill className="absolute inset-0 w-full h-full object-cover transition-all duration-700 opacity-100 group-hover:opacity-0" unoptimized />
-                    <Image src="/1.2.jpg" alt="Item Hover" fill className="absolute inset-0 w-full h-full object-cover transition-all duration-700 scale-105 opacity-0 group-hover:opacity-100 group-hover:scale-100" unoptimized />
-                  </div>
-                  <div className="flex flex-col">
-                    <div className="flex justify-between items-center mb-1.5">
-                      <p className="text-[9px] text-stone-500 uppercase tracking-[0.2em] font-ui">@chic.street</p>
-                      <div className="flex items-center gap-3 text-stone-400">
-                        <button className="hover:text-red-500 transition-colors"><Heart size={16} strokeWidth={1.5} /></button>
-                        <button className="hover:text-black transition-colors"><Bookmark size={16} strokeWidth={1.5} /></button>
+              {/* FALLBACK MOCK DATA NẾU CHƯA CÓ ĐỦ SẢN PHẨM */}
+              {boostedProducts.length < 4 && (
+                <>
+                  <div className="group flex flex-col bg-white rounded-xl border border-stone-200/70 overflow-hidden shadow-2xs hover:shadow-xs transition-all duration-300">
+                    <div className="relative w-full aspect-[3/4] bg-stone-100 overflow-hidden">
+                      <Image src="/1.2.jpeg" alt="Set Tweed Dạ Cổ Điển" fill className="object-cover transition-transform duration-500 group-hover:scale-105" unoptimized />
+                    </div>
+                    <div className="p-2.5 sm:p-3.5 flex flex-col justify-between flex-1 gap-1.5">
+                      <div className="flex justify-between items-center">
+                        <p className="text-[9px] text-stone-400 uppercase tracking-wider font-ui truncate max-w-[90px]">@chic.street</p>
+                        <ProductLikeSaveButtons productId="mock-fallback-1" initialLikeCount={18} initialSaveCount={12} variant="compact" showCounts={true} />
+                      </div>
+                      <Link href="/shop">
+                        <h3 className="text-xs sm:text-sm font-semibold text-stone-900 line-clamp-1 group-hover:text-[#183A2D] transition-colors">Set Tweed Dạ Cổ Điển</h3>
+                      </Link>
+                      <div className="pt-1.5 border-t border-stone-100 flex items-center justify-between">
+                        <p className="text-xs sm:text-sm font-bold text-[#183A2D] font-ui">180.000đ <span className="text-[9px] text-stone-400 font-normal">/ngày</span></p>
                       </div>
                     </div>
-                    <h3 className="text-xs md:text-base font-heading text-black mb-2 line-clamp-1 font-semibold">Set Tweed Dạ Cổ Điển</h3>
-                    <div className="hidden md:flex items-center gap-2 mb-1">
-                      <span className="text-xs text-stone-400 line-through font-ui">1.800.000đ</span>
-                      <span className="text-[10px] text-red-700 font-medium tracking-wider font-ui">-90%</span>
+                  </div>
+
+                  <div className="group flex flex-col bg-white rounded-xl border border-stone-200/70 overflow-hidden shadow-2xs hover:shadow-xs transition-all duration-300">
+                    <div className="relative w-full aspect-[3/4] bg-stone-100 overflow-hidden">
+                      <Image src="/2.1.jpg" alt="Đầm Dạ Tiệc Tối Giản" fill className="object-cover transition-transform duration-500 group-hover:scale-105" unoptimized />
                     </div>
-                    <p className="text-sm font-bold text-black font-ui">
-                      180.000đ <span className="text-[10px] text-stone-500 font-normal">/ngày</span>
-                      <span className="md:hidden text-[10px] text-red-700 font-medium ml-1">· -90%</span>
-                    </p>
-                  </div>
-                </div>
-              </>
-            )}
-            {boostedProducts.length < 3 && (
-              <>
-                 {/* ITEM 2 */}
-                <div className="group flex flex-col cursor-pointer">
-                  <div className="relative w-full aspect-[4/5] md:aspect-[3/4] bg-stone-100 overflow-hidden mb-4">
-                    <Image src="/2.1.jpg" alt="Item" fill className="absolute inset-0 w-full h-full object-cover transition-all duration-700 opacity-100 group-hover:opacity-0" unoptimized />
-                    <Image src="/2.1 (1).jpg" alt="Item Hover" fill className="absolute inset-0 w-full h-full object-cover transition-all duration-700 scale-105 opacity-0 group-hover:opacity-100 group-hover:scale-100" unoptimized />
-                  </div>
-                  <div className="flex flex-col">
-                    <div className="flex justify-between items-center mb-1.5">
-                      <p className="text-[9px] text-stone-500 uppercase tracking-[0.2em] font-ui">@minimal.edit</p>
-                      <div className="flex items-center gap-3 text-stone-400">
-                        <button className="hover:text-red-500 transition-colors"><Heart size={16} strokeWidth={1.5} /></button>
-                        <button className="hover:text-black transition-colors"><Bookmark size={16} strokeWidth={1.5} /></button>
+                    <div className="p-2.5 sm:p-3.5 flex flex-col justify-between flex-1 gap-1.5">
+                      <div className="flex justify-between items-center">
+                        <p className="text-[9px] text-stone-400 uppercase tracking-wider font-ui truncate max-w-[90px]">@minimal.edit</p>
+                        <ProductLikeSaveButtons productId="mock-fallback-2" initialLikeCount={29} initialSaveCount={16} variant="compact" showCounts={true} />
+                      </div>
+                      <Link href="/shop">
+                        <h3 className="text-xs sm:text-sm font-semibold text-stone-900 line-clamp-1 group-hover:text-[#183A2D] transition-colors">Đầm Dạ Tiệc Tối Giản</h3>
+                      </Link>
+                      <div className="pt-1.5 border-t border-stone-100 flex items-center justify-between">
+                        <p className="text-xs sm:text-sm font-bold text-[#183A2D] font-ui">350.000đ <span className="text-[9px] text-stone-400 font-normal">/ngày</span></p>
                       </div>
                     </div>
-                    <h3 className="text-xs md:text-base font-heading text-black mb-2 line-clamp-1 font-semibold">Đầm Dạ Tiệc Tối Giản</h3>
-                    <div className="hidden md:flex items-center gap-2 mb-1">
-                      <span className="text-xs text-stone-400 line-through font-ui">2.500.000đ</span>
-                      <span className="text-[10px] text-red-700 font-medium tracking-wider font-ui">-85%</span>
-                    </div>
-                    <p className="text-sm font-bold text-black font-ui">
-                      350.000đ <span className="text-[10px] text-stone-500 font-normal">/ngày</span>
-                      <span className="md:hidden text-[10px] text-red-700 font-medium ml-1">· -85%</span>
-                    </p>
                   </div>
-                </div>
-              </>
-            )}
-
-
-            {/* ITEM 3 */}
-            <div className="group flex flex-col cursor-pointer">
-              <div className="relative w-full aspect-[4/5] md:aspect-[3/4] bg-stone-100 overflow-hidden mb-4">
-                <Image src="/2.2.jpg" alt="Item" fill className="absolute inset-0 w-full h-full object-cover transition-all duration-700 opacity-100 group-hover:opacity-0" unoptimized />
-                <Image src="/2.2 (1).jpg" alt="Item Hover" fill className="absolute inset-0 w-full h-full object-cover transition-all duration-700 scale-105 opacity-0 group-hover:opacity-100 group-hover:scale-100" unoptimized />
-              </div>
-              <div className="flex flex-col">
-                <div className="flex justify-between items-center mb-1.5">
-                  <p className="text-[9px] text-stone-500 uppercase tracking-[0.2em] font-ui">@leena.vintage</p>
-                  {/* ACTION ICONS */}
-                  <div className="flex items-center gap-3 text-stone-400">
-                    <button className="hover:text-red-500 transition-colors" title="Yêu thích">
-                      <Heart size={16} strokeWidth={1.5} />
-                    </button>
-                    <button className="hover:text-black transition-colors" title="Lưu tủ đồ">
-                      <Bookmark size={16} strokeWidth={1.5} />
-                    </button>
-                  </div>
-                </div>
-                <h3 className="text-xs md:text-base font-heading text-black mb-2 line-clamp-1 font-semibold">Đầm Lụa Đỏ Burgundy</h3>
-                
-                <div className="hidden md:flex items-center gap-2 mb-1">
-                  <span className="text-xs text-stone-400 line-through font-ui">2.000.000đ</span>
-                  <span className="text-[10px] text-red-700 font-medium tracking-wider font-ui">-90%</span>
-                </div>
-                <p className="text-sm font-bold text-black font-ui">
-                  200.000đ <span className="text-[10px] text-stone-500 font-normal">/ngày</span>
-                  <span className="md:hidden text-[10px] text-red-700 font-medium ml-1">· -90%</span>
-                </p>
-              </div>
+                </>
+              )}
             </div>
-
-            {/* ITEM 4 */}
-            <div className="group flex flex-col cursor-pointer">
-              <div className="relative w-full aspect-[4/5] md:aspect-[3/4] bg-stone-100 overflow-hidden mb-4">
-                <Image src="/3.1.jpg" alt="Item" fill className="absolute inset-0 w-full h-full object-cover transition-all duration-700 opacity-100 group-hover:opacity-0" unoptimized />
-                <Image src="/3.1 (1).jpg" alt="Item Hover" fill className="absolute inset-0 w-full h-full object-cover transition-all duration-700 scale-105 opacity-0 group-hover:opacity-100 group-hover:scale-100" unoptimized />
-                <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-700 z-10">
-                  <Link href="/shop" className="text-white text-xs uppercase tracking-widest border-b border-white pb-1 font-ui font-bold hover:text-stone-300 hover:border-stone-300">Xem Thêm Đồ</Link>
-                </div>
-              </div>
-              <div className="flex flex-col">
-                <div className="flex justify-between items-center mb-1.5">
-                  <p className="text-[9px] text-stone-500 uppercase tracking-[0.2em] font-ui">@street.hype</p>
-                  {/* ACTION ICONS */}
-                  <div className="flex items-center gap-3 text-stone-400">
-                    <button className="hover:text-black transition-colors" title="Lưu tủ đồ">
-                      <Bookmark size={16} strokeWidth={1.5} />
-                    </button>
-                    <button className="hover:text-red-500 transition-colors" title="Yêu thích">
-                      <Heart size={16} strokeWidth={1.5} />
-                    </button>
-                  </div>
-                </div>
-                <h3 className="text-xs md:text-base font-heading text-black mb-2 line-clamp-1 font-semibold">Túi Cầm Tay Da Thật</h3>
-                
-                <div className="hidden md:flex items-center gap-2 mb-1">
-                  <span className="text-xs text-stone-400 line-through font-ui">2.500.000đ</span>
-                  <span className="text-[10px] text-red-700 font-medium tracking-wider font-ui">-90%</span>
-                </div>
-                <p className="text-sm font-bold text-black font-ui">
-                  250.000đ <span className="text-[10px] text-stone-500 font-normal">/ngày</span>
-                  <span className="md:hidden text-[10px] text-red-700 font-medium ml-1">· -90%</span>
-                </p>
-              </div>
-            </div>
+            {/* ===== END RIGHT ===== */}
 
           </div>
-          {/* ===== END RIGHT ===== */}
-
         </div>
       </section>
 
