@@ -100,11 +100,21 @@ export default function DashboardLayout({
         } flex flex-col h-full`}
       >
         <div className="h-[88px] flex items-center px-6 border-b border-[#E9E2D8] shrink-0">
-          <Link href="/" className="flex items-center gap-3 shrink-0 cursor-pointer group">
-            <Image src="/loogo.png" alt="CLOOP Brand Logo" width={46} height={46} className="mix-blend-multiply" />
-            <div className="leading-none mt-0.5 text-left">
-              <div className="font-logo text-[28px] font-semibold tracking-[0.18em] text-[#183A2D] transition-colors">CLOOP</div>
-              <p className="font-body text-[8px] font-bold tracking-[0.3em] uppercase text-[#6BA37A] mt-1">Fashion In A Loop</p>
+          <Link href="/" className="flex items-center gap-3 shrink-0 cursor-pointer group select-none">
+            <div className="relative">
+              <Image src="/loogo.png" alt="CLOOP Brand Logo" width={46} height={46} className="mix-blend-multiply transition-transform duration-500 group-hover:scale-105 animate-logo-glow" />
+            </div>
+            <div className="leading-none mt-0.5 text-left flex flex-col justify-center">
+              <div className="font-logo text-[28px] font-bold tracking-[0.22em] animate-brand-shimmer text-[#183A2D] transition-colors">
+                CLOOP
+              </div>
+              <div className="flex items-center gap-1 mt-1">
+                <span className="w-1.5 h-[1px] bg-[#34D399]/60 inline-block"></span>
+                <p className="font-fashion-tagline text-[8px] font-semibold tracking-[0.35em] uppercase text-[#1B5E20] transition-colors">
+                  Fashion In A Loop
+                </p>
+                <span className="w-1.5 h-[1px] bg-[#34D399]/60 inline-block"></span>
+              </div>
             </div>
           </Link>
           <button

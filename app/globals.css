@@ -29,11 +29,72 @@
 }
 
 .font-logo {
-  font-family: 'Cinzel', serif !important;
+  font-family: 'Cinzel', 'Bodoni Moda', 'Italiana', serif !important;
+}
+
+.font-fashion-tagline {
+  font-family: 'Bodoni Moda', 'Italiana', 'Cinzel', 'Cormorant Garamond', serif !important;
 }
 
 .font-search {
   font-family: 'Be Vietnam Pro', 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif !important;
+}
+
+/* 🌟 Luxury Fashion Shimmer for Brand Logo */
+@keyframes luxuryShimmer {
+  0% {
+    background-position: -200% center;
+  }
+  30%, 100% {
+    background-position: 200% center;
+  }
+}
+
+.animate-brand-shimmer {
+  background: linear-gradient(
+    115deg,
+    #0E2E11 0%,
+    #183A2D 30%,
+    #34D399 50%,
+    #183A2D 70%,
+    #0E2E11 100%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: luxuryShimmer 5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.dark .animate-brand-shimmer {
+  background: linear-gradient(
+    115deg,
+    #E2E8F0 0%,
+    #A7F3D0 30%,
+    #FFFFFF 50%,
+    #A7F3D0 70%,
+    #E2E8F0 100%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: luxuryShimmer 5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes gentlePulseGlow {
+  0%, 100% {
+    filter: drop-shadow(0 0 0px rgba(74, 222, 128, 0));
+    transform: scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 8px rgba(74, 222, 128, 0.35));
+    transform: scale(1.02);
+  }
+}
+
+.animate-logo-glow {
+  animation: gentlePulseGlow 4s ease-in-out infinite;
 }
 
 /* Fix scale UI Desktop as requested by user */
