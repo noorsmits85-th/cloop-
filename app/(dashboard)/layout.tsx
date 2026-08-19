@@ -9,6 +9,7 @@ import {
   ArrowLeft,
   Shirt,
   Heart,
+  Store,
   ShoppingBag,
   Archive,
   Wallet,
@@ -170,6 +171,60 @@ export default function DashboardLayout({
           </div>
         </main>
       </div>
+
+      {/* 📱 LUXURY MOBILE BOTTOM DOCK (Thanh điều hướng dưới đáy chuẩn app điện thoại) */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#E9E2D8] px-3 py-2 flex items-center justify-around shadow-lg">
+        <Link
+          href="/"
+          className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-lg text-[10px] font-medium transition-all ${
+            pathname === "/" ? "text-[#183A2D] font-bold" : "text-stone-500 hover:text-stone-900"
+          }`}
+        >
+          <Store size={19} strokeWidth={pathname === "/" ? 2.2 : 1.5} />
+          <span>Khám phá</span>
+        </Link>
+
+        <Link
+          href="/my-closet/items"
+          className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-lg text-[10px] font-medium transition-all ${
+            pathname.startsWith("/my-closet/items") ? "text-[#183A2D] font-bold" : "text-stone-500 hover:text-stone-900"
+          }`}
+        >
+          <Shirt size={19} strokeWidth={pathname.startsWith("/my-closet/items") ? 2.2 : 1.5} />
+          <span>Tủ đồ</span>
+        </Link>
+
+        {/* Nút Đăng Đồ Nổi Bật Chính Giữa */}
+        <Link
+          href="/my-closet/create"
+          className="flex flex-col items-center -mt-5 group"
+        >
+          <div className="w-11 h-11 rounded-full bg-[#183A2D] text-white flex items-center justify-center shadow-md shadow-[#183A2D]/30 group-active:scale-95 transition-transform border-2 border-white">
+            <Plus size={22} strokeWidth={2.5} />
+          </div>
+          <span className="text-[10px] font-bold text-[#183A2D] mt-0.5">Đăng đồ</span>
+        </Link>
+
+        <Link
+          href="/my-closet/wishlist"
+          className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-lg text-[10px] font-medium transition-all relative ${
+            pathname.startsWith("/my-closet/wishlist") ? "text-rose-600 font-bold" : "text-stone-500 hover:text-stone-900"
+          }`}
+        >
+          <Heart size={19} strokeWidth={pathname.startsWith("/my-closet/wishlist") ? 2.2 : 1.5} className={pathname.startsWith("/my-closet/wishlist") ? "fill-rose-500" : ""} />
+          <span>Đã lưu</span>
+        </Link>
+
+        <Link
+          href="/my-closet/orders"
+          className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-lg text-[10px] font-medium transition-all ${
+            pathname.startsWith("/my-closet/orders") ? "text-[#183A2D] font-bold" : "text-stone-500 hover:text-stone-900"
+          }`}
+        >
+          <ShoppingBag size={19} strokeWidth={pathname.startsWith("/my-closet/orders") ? 2.2 : 1.5} />
+          <span>Đơn hàng</span>
+        </Link>
+      </nav>
     </div>
   );
 }

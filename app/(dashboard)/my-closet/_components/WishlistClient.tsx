@@ -71,29 +71,29 @@ export default function WishlistClient({ initialItems, counts }: WishlistClientP
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-stone-200/70 pb-5">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-stone-200/70 pb-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-serif font-bold text-[#183A2D] tracking-wide">
+          <h1 className="text-lg sm:text-2xl font-serif font-bold text-[#183A2D] tracking-wide">
             Đồ Đã Thích & Đã Lưu
           </h1>
-          <p className="text-xs text-stone-500 font-light mt-1">
-            Bộ sưu tập phong cách cá nhân — Dễ dàng theo dõi tình trạng sẵn sàng và thuê ngay khi cần.
+          <p className="text-[11px] sm:text-xs text-stone-500 font-light mt-0.5">
+            Bộ sưu tập cá nhân — Dễ dàng theo dõi tình trạng sẵn sàng và thuê ngay khi cần.
           </p>
         </div>
 
-        {/* Tab Filters (Chuẩn UX: Tab Đã Lưu lên đầu) */}
-        <div className="flex items-center gap-1.5 bg-stone-100 p-1 rounded-xl w-fit">
+        {/* Tab Filters (Chuẩn UX Mobile: Scrollable Pill Tabs) */}
+        <div className="flex items-center gap-1.5 bg-stone-100/80 p-1 rounded-xl w-full sm:w-fit overflow-x-auto no-scrollbar shrink-0">
           <button
             onClick={() => setActiveTab("SAVE")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all whitespace-nowrap cursor-pointer shrink-0 ${
               activeTab === "SAVE"
                 ? "bg-white text-[#183A2D] shadow-xs"
                 : "text-stone-500 hover:text-stone-800"
             }`}
           >
-            <Bookmark size={14} className={activeTab === "SAVE" ? "fill-[#183A2D]" : ""} />
+            <Bookmark size={13} className={activeTab === "SAVE" ? "fill-[#183A2D]" : ""} />
             Đã Lưu
             <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${activeTab === "SAVE" ? "bg-[#183A2D]/10 text-[#183A2D]" : "bg-stone-200 text-stone-600"}`}>
               {counts.save}
@@ -102,13 +102,13 @@ export default function WishlistClient({ initialItems, counts }: WishlistClientP
 
           <button
             onClick={() => setActiveTab("LIKE")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all whitespace-nowrap cursor-pointer shrink-0 ${
               activeTab === "LIKE"
                 ? "bg-white text-rose-600 shadow-xs"
                 : "text-stone-500 hover:text-stone-800"
             }`}
           >
-            <Heart size={14} className={activeTab === "LIKE" ? "fill-rose-500 text-rose-500" : ""} />
+            <Heart size={13} className={activeTab === "LIKE" ? "fill-rose-500 text-rose-500" : ""} />
             Đã Thả Tim
             <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${activeTab === "LIKE" ? "bg-rose-50 text-rose-600" : "bg-stone-200 text-stone-600"}`}>
               {counts.like}
@@ -117,7 +117,7 @@ export default function WishlistClient({ initialItems, counts }: WishlistClientP
 
           <button
             onClick={() => setActiveTab("ALL")}
-            className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all whitespace-nowrap cursor-pointer shrink-0 ${
               activeTab === "ALL"
                 ? "bg-white text-[#183A2D] shadow-xs"
                 : "text-stone-500 hover:text-stone-800"
@@ -128,9 +128,9 @@ export default function WishlistClient({ initialItems, counts }: WishlistClientP
         </div>
       </div>
 
-      {/* Grid Sản Phẩm */}
+      {/* Grid Sản Phẩm (2 Cột Cực Đẹp Trên Mobile, 3-4 Cột Trên Desktop) */}
       {filteredItems.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
           {filteredItems.map(({ favoriteId, type, product }) => (
             <div
               key={favoriteId}
@@ -147,14 +147,14 @@ export default function WishlistClient({ initialItems, counts }: WishlistClientP
                 />
 
                 {/* Tag Loại Tương Tác */}
-                <div className="absolute top-2.5 left-2.5 z-10">
+                <div className="absolute top-2 left-2 z-10">
                   {type === "SAVE" ? (
-                    <span className="bg-[#183A2D]/90 backdrop-blur-md text-white text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md flex items-center gap-1 shadow-xs">
-                      <Bookmark size={11} className="fill-white" /> Đã Lưu
+                    <span className="bg-[#183A2D]/90 backdrop-blur-md text-white text-[8.5px] sm:text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded flex items-center gap-1 shadow-xs">
+                      <Bookmark size={10} className="fill-white" /> Lưu
                     </span>
                   ) : (
-                    <span className="bg-rose-600/90 backdrop-blur-md text-white text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md flex items-center gap-1 shadow-xs">
-                      <Heart size={11} className="fill-white" /> Đã Thích
+                    <span className="bg-rose-600/90 backdrop-blur-md text-white text-[8.5px] sm:text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded flex items-center gap-1 shadow-xs">
+                      <Heart size={10} className="fill-white" /> Tim
                     </span>
                   )}
                 </div>
@@ -164,61 +164,63 @@ export default function WishlistClient({ initialItems, counts }: WishlistClientP
                   onClick={() => handleRemove(product.id, type as "LIKE" | "SAVE", favoriteId)}
                   disabled={isRemovingId === favoriteId}
                   title="Gỡ khỏi danh sách"
-                  className="absolute top-2.5 right-2.5 w-7 h-7 rounded-full bg-white/80 hover:bg-white text-stone-600 hover:text-red-600 backdrop-blur-md flex items-center justify-center transition-colors shadow-xs z-10 cursor-pointer"
+                  className="absolute top-2 right-2 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-black/40 hover:bg-black/70 text-white backdrop-blur-md flex items-center justify-center transition-colors shadow-xs z-10 cursor-pointer"
                 >
-                  <Trash2 size={13} />
+                  <Trash2 size={11} />
                 </button>
 
                 {/* Trạng Thái Tồn Kho / Sẵn Sàng (Airbnb/Shopee UX) */}
-                <div className="absolute bottom-2.5 left-2.5 right-2.5 z-10">
+                <div className="absolute bottom-2 left-2 right-2 z-10">
                   {product.isAvailable ? (
-                    <span className="inline-flex items-center gap-1 bg-emerald-600/90 backdrop-blur-md text-white text-[10px] font-semibold px-2.5 py-1 rounded-md shadow-xs">
-                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span> Sẵn sàng cho thuê
+                    <span className="inline-flex items-center gap-1 bg-emerald-700/90 backdrop-blur-md text-white text-[9px] sm:text-[10px] font-medium px-2 py-0.5 rounded shadow-xs w-fit">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse"></span> Sẵn sàng
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 bg-amber-800/90 backdrop-blur-md text-white text-[10px] font-semibold px-2.5 py-1 rounded-md shadow-xs">
-                      <Clock size={11} /> Đang bận đến {formatDate(product.busyUntil)}
+                    <span className="inline-flex items-center gap-1 bg-stone-900/90 backdrop-blur-md text-white text-[8.5px] sm:text-[9.5px] font-medium px-2 py-0.5 rounded shadow-xs w-fit">
+                      <Clock size={10} /> Bận đến {formatDate(product.busyUntil)}
                     </span>
                   )}
                 </div>
               </div>
 
               {/* Thông tin Sản Phẩm */}
-              <div className="p-4 flex flex-col flex-1 justify-between gap-3">
+              <div className="p-2.5 sm:p-4 flex flex-col flex-1 justify-between gap-2 sm:gap-3">
                 <div>
-                  <div className="flex items-center justify-between text-[10px] text-stone-500 uppercase tracking-wider mb-1">
-                    <span>{product.brand || product.category}</span>
-                    <span className="font-semibold text-stone-700">Size {product.size}</span>
+                  <div className="flex items-center justify-between text-[9px] sm:text-[10px] text-stone-500 uppercase tracking-wider mb-0.5">
+                    <span className="truncate max-w-[70px]">{product.brand || product.category}</span>
+                    <span className="font-semibold text-stone-700 shrink-0">Sz {product.size}</span>
                   </div>
-                  <h3 className="text-sm font-semibold text-stone-900 line-clamp-1 group-hover:text-[#183A2D] transition-colors">
-                    {product.title}
-                  </h3>
-                  <p className="text-xs text-stone-500 mt-0.5">
-                    Chủ tủ: <span className="font-medium text-stone-700">{product.owner?.name || "Member"}</span>
+                  <Link href={`/checkout/${product.id}`}>
+                    <h3 className="text-xs sm:text-sm font-semibold text-stone-900 line-clamp-1 group-hover:text-[#183A2D] transition-colors">
+                      {product.title}
+                    </h3>
+                  </Link>
+                  <p className="text-[10px] sm:text-xs text-stone-400 mt-0.5 truncate">
+                    @{product.owner?.name || "Member"}
                   </p>
                 </div>
 
-                <div className="pt-2 border-t border-stone-100 flex items-center justify-between">
+                <div className="pt-2 border-t border-stone-100 flex items-center justify-between gap-2">
                   <div>
-                    <p className="text-[10px] text-stone-400">Giá thuê</p>
-                    <p className="text-sm font-bold text-[#183A2D]">
-                      {product.basePrice.toLocaleString('vi-VN')}đ <span className="text-[10px] font-normal text-stone-500">/ngày</span>
+                    <p className="text-[9px] text-stone-400">Giá thuê</p>
+                    <p className="text-xs sm:text-sm font-bold text-[#183A2D]">
+                      {product.basePrice.toLocaleString('vi-VN')}đ
                     </p>
                   </div>
 
                   {product.isAvailable ? (
                     <Link
                       href={`/checkout/${product.id}`}
-                      className="inline-flex items-center gap-1 bg-[#183A2D] hover:bg-[#122b22] text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors shadow-xs"
+                      className="inline-flex items-center gap-1 bg-[#183A2D] hover:bg-[#122b22] text-white text-[11px] sm:text-xs font-semibold px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg transition-colors shadow-xs shrink-0"
                     >
-                      Thuê ngay <ArrowRight size={13} />
+                      Thuê <ArrowRight size={11} />
                     </Link>
                   ) : (
                     <Link
                       href={`/product/${product.id}`}
-                      className="inline-flex items-center gap-1 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-medium px-3 py-2 rounded-lg transition-colors"
+                      className="inline-flex items-center gap-1 bg-stone-100 hover:bg-stone-200 text-stone-700 text-[10px] sm:text-xs font-medium px-2 py-1.5 sm:py-2 rounded-lg transition-colors shrink-0"
                     >
-                      Xem lịch trống
+                      Xem lịch
                     </Link>
                   )}
                 </div>
