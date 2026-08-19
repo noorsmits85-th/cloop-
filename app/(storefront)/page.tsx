@@ -148,35 +148,34 @@ export default function Home() {
                     transition: { staggerChildren: 0.1 }
                   }
                 }}
-                className="font-heading text-[28px] sm:text-3xl md:text-[48px] lg:text-5xl font-extrabold text-[#0A2517] leading-snug md:leading-snug lg:leading-snug mb-5 tracking-wide whitespace-nowrap"
+                className="font-heading text-2xl sm:text-3xl md:text-[48px] lg:text-5xl font-extrabold text-[#0A2517] leading-tight md:leading-snug lg:leading-snug mb-4 md:mb-5 tracking-tight md:tracking-wide"
               >
                 {["Thuê", "&", "Sở", "Hữu"].map((word, i) => (
-                  <motion.span key={i} className="inline-block mr-3" variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } } }}>
+                  <motion.span key={i} className="inline-block mr-2 md:mr-3" variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } } }}>
                     {word}
                   </motion.span>
                 ))}
-                <br/>
+                <br className="hidden md:inline" />
+                {" "}
                 {["Thời", "Trang"].map((word, i) => (
-                  <motion.span key={i+10} className="inline-block mr-3" variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } } }}>
+                  <motion.span key={i+10} className="inline-block mr-2 md:mr-3" variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } } }}>
                     {word}
                   </motion.span>
                 ))}
-                <br/>
+                <br className="hidden md:inline" />
+                {" "}
                 {["Tuần", "Hoàn"].map((word, i) => (
-                  <motion.span key={i+20} className="inline-block mr-3" variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } } }}>
+                  <motion.span key={i+20} className="inline-block mr-2 md:mr-3" variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } } }}>
                     {word}
                   </motion.span>
                 ))}
-
-
-
               </motion.h1>
 
               <motion.p 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.8, duration: 0.8 }}
-                className="font-body text-base md:text-lg text-stone-700 leading-relaxed md:leading-loose mb-8 w-full lg:pr-4"
+                className="font-body text-xs sm:text-base md:text-lg text-stone-700 leading-relaxed md:leading-loose mb-6 md:mb-8 w-full lg:pr-4"
               >
                 Có những món đồ cất trong tủ kính mang theo cả một thời tuổi trẻ. Thay vì để chúng ngủ quên, hãy gửi gắm vào tủ đồ CLOOP. Chút hoài niệm của bạn hôm nay sẽ là sự rạng rỡ của một người khác ngày mai.
               </motion.p>
@@ -186,17 +185,17 @@ export default function Home() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 1, duration: 0.5 }}
-                className="w-full max-w-lg mb-10 relative group"
+                className="w-full max-w-lg mb-6 md:mb-10 relative group"
               >
                 <div className="absolute -inset-1 bg-gradient-to-r from-emerald-200 to-teal-100 rounded-lg blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
-                <div className="relative flex items-center bg-white border border-stone-200 rounded-lg p-2 shadow-sm focus-within:ring-2 focus-within:ring-[#0A2517]/20 transition-all">
-                  <Search size={18} className="text-stone-400 ml-2 mr-3" />
+                <div className="relative flex items-center bg-white border border-stone-200 rounded-lg p-1.5 md:p-2 shadow-sm focus-within:ring-2 focus-within:ring-[#0A2517]/20 transition-all">
+                  <Search size={18} className="text-stone-400 ml-2 mr-2 md:mr-3 shrink-0" />
                   <input 
                     type="text" 
                     placeholder="Bạn đang tìm chiếc Blazer cho tiệc cuối tuần?" 
-                    className="flex-1 bg-transparent border-none outline-none font-ui text-sm text-[#0A2517] placeholder:text-stone-400"
+                    className="flex-1 bg-transparent border-none outline-none font-ui text-xs md:text-sm text-[#0A2517] placeholder:text-stone-400"
                   />
-                  <button className="px-4 py-2 bg-[#0A2517] text-white rounded-md text-xs font-bold uppercase tracking-wider hover:bg-[#113a25] transition-colors">
+                  <button className="px-3 md:px-4 py-2 bg-[#0A2517] text-white rounded-md text-[11px] md:text-xs font-bold uppercase tracking-wider hover:bg-[#113a25] transition-colors shrink-0">
                     Tìm kiếm
                   </button>
                 </div>
@@ -206,16 +205,16 @@ export default function Home() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 1.2 }}
-                className="flex flex-col sm:flex-row w-full sm:w-auto items-stretch sm:items-center gap-4"
+                className="flex flex-row w-full sm:w-auto items-center gap-2.5 sm:gap-4"
               >
                 <MagneticButton>
-                  <Link href="/shop" className="group font-ui font-semibold text-xs md:text-sm px-6 h-[48px] bg-[#0A2517] text-white rounded hover:bg-[#113a25] transition-colors duration-300 tracking-wide flex items-center justify-center gap-2 relative z-10 w-full sm:w-auto">
-                    KHÁM PHÁ TỦ ĐỒ <ArrowRight size={16} className="opacity-0 -ml-4 group-hover:opacity-100 group-hover:ml-0 transition-all duration-300" />
+                  <Link href="/shop" className="group font-ui font-semibold text-xs md:text-sm px-4 md:px-6 h-[44px] md:h-[48px] bg-[#0A2517] text-white rounded hover:bg-[#113a25] transition-colors duration-300 tracking-wide flex items-center justify-center gap-1.5 md:gap-2 relative z-10 flex-1 sm:flex-initial">
+                    KHÁM PHÁ TỦ ĐỒ <ArrowRight size={15} className="hidden sm:inline opacity-0 -ml-4 group-hover:opacity-100 group-hover:ml-0 transition-all duration-300" />
                   </Link>
                 </MagneticButton>
                 
                 <MagneticButton>
-                  <Link href="/my-closet" className="font-ui font-semibold text-xs md:text-sm px-6 h-[48px] bg-transparent text-[#0A2517] border-2 border-[#0A2517] rounded hover:bg-[#0A2517] hover:text-white transition-colors duration-300 tracking-wide flex items-center justify-center relative z-10 w-full sm:w-auto bg-white/50 backdrop-blur-sm">
+                  <Link href="/my-closet" className="font-ui font-semibold text-xs md:text-sm px-4 md:px-6 h-[44px] md:h-[48px] bg-transparent text-[#0A2517] border-2 border-[#0A2517] rounded hover:bg-[#0A2517] hover:text-white transition-colors duration-300 tracking-wide flex items-center justify-center relative z-10 flex-1 sm:flex-initial bg-white/50 backdrop-blur-sm">
                     CHIA SẺ TỦ ĐỒ
                   </Link>
                 </MagneticButton>
@@ -223,7 +222,7 @@ export default function Home() {
             </div>
           </div>
         {/* Right: Tràn viền (Full-bleed) Image */}
-        <div className="w-full lg:w-1/2 relative min-h-[50vh] lg:min-h-auto z-0 overflow-hidden lg:pl-4 xl:pl-8">
+        <div className="w-full lg:w-1/2 relative min-h-[45vh] lg:min-h-auto z-0 overflow-hidden lg:pl-4 xl:pl-8">
           <Image 
             src="/anhbia.png" 
             alt="CLOOP Fashion Community" 
@@ -252,8 +251,34 @@ export default function Home() {
             </Link>
           </div>
 
-          {/* KHỐI ACCORDION - Chiều cao chuẩn 500px, không bị khổng lồ */}
-          <div className="flex flex-col md:flex-row w-full h-[600px] md:h-[500px] gap-3 lg:gap-4">
+          {/* 📱 MOBILE VIEW: Swipe Cards (Thoáng mắt, dễ lướt trên điện thoại) */}
+          <div className="md:hidden flex gap-3.5 overflow-x-auto no-scrollbar pb-2 -mx-4 px-4">
+            {featuredClosets.map((closet) => (
+              <div 
+                key={closet.id}
+                className="w-[240px] shrink-0 bg-white rounded-2xl border border-stone-200/70 overflow-hidden shadow-2xs flex flex-col"
+              >
+                <div className="relative aspect-[4/3] bg-stone-100 overflow-hidden">
+                  <Image src={closet.mainImg} alt={closet.username} fill className="object-cover" unoptimized />
+                  <div className="absolute top-2.5 left-2.5 bg-black/80 backdrop-blur-xs text-white text-[8.5px] font-bold uppercase tracking-wider px-2 py-0.5 rounded">
+                    {closet.tag}
+                  </div>
+                </div>
+                <div className="p-3.5 flex flex-col flex-1 justify-between gap-2">
+                  <div>
+                    <h3 className="font-heading font-bold text-sm text-[#0A2517]">@{closet.username}</h3>
+                    <p className="text-[11px] text-stone-500 line-clamp-2 mt-0.5 font-light leading-relaxed">{closet.bio}</p>
+                  </div>
+                  <Link href={`/closet/${closet.id}`} className="text-xs font-semibold text-[#183A2D] hover:underline flex items-center gap-1 pt-1 border-t border-stone-100">
+                    Vào xem tủ đồ <ArrowRight size={12} />
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* 🖥️ DESKTOP VIEW: KHỐI ACCORDION NGUYÊN BẢN (Chiều cao chuẩn 500px) */}
+          <div className="hidden md:flex flex-row w-full h-[500px] gap-3 lg:gap-4">
             
             {featuredClosets.map((closet, index) => {
               const isActive = activeCard === index;
@@ -783,8 +808,65 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Lưới 3 câu chuyện (3 Columns) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12">
+        {/* 📱 MOBILE VIEW: Lướt Ngang 3 Câu Chuyện */}
+        <div className="md:hidden flex gap-4 overflow-x-auto no-scrollbar -mx-4 px-4 pb-2">
+          {/* STORY 1 */}
+          <div className="w-[280px] shrink-0 group relative h-[380px] overflow-hidden cursor-pointer rounded-2xl shadow-sm">
+            <Image src="/vintage_coat.jpg" alt="Chiếc Blazer Năm 1998" fill className="object-cover" unoptimized />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent"></div>
+            <div className="absolute inset-0 flex flex-col justify-end p-5 text-white">
+              <h3 className="text-xl font-heading font-bold mb-2">Chiếc Blazer Năm 1998</h3>
+              <p className="text-xs text-stone-200 font-body italic mb-4 line-clamp-3 leading-relaxed">
+                "Chiếc áo này được mua bằng tháng lương đầu tiên của mẹ tôi. Nó đã chứng kiến những ngày tháng thanh xuân rực rỡ..."
+              </p>
+              <div className="flex items-center gap-2.5 pt-3 border-t border-white/20">
+                <div className="w-7 h-7 rounded-full bg-stone-300 overflow-hidden relative border border-white">
+                  <Image src="/avatar_1.jpg" alt="User" fill className="object-cover" unoptimized />
+                </div>
+                <span className="text-[11px] uppercase tracking-wider text-white/90 font-ui font-semibold">@olivia.style</span>
+              </div>
+            </div>
+          </div>
+
+          {/* STORY 2 */}
+          <div className="w-[280px] shrink-0 group relative h-[380px] overflow-hidden cursor-pointer rounded-2xl shadow-sm">
+            <Image src="/evening_dress.jpg" alt="Đêm Dạ Vũ Tỏa Sáng" fill className="object-cover" unoptimized />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent"></div>
+            <div className="absolute inset-0 flex flex-col justify-end p-5 text-white">
+              <h3 className="text-xl font-heading font-bold mb-2">Đêm Dạ Vũ Tỏa Sáng</h3>
+              <p className="text-xs text-stone-200 font-body italic mb-4 line-clamp-3 leading-relaxed">
+                "Mình chỉ mặc chiếc váy lụa đỏ này đúng một lần vào đêm Prom. Thanh xuân của mình đã trọn vẹn và lấp lánh cùng nó..."
+              </p>
+              <div className="flex items-center gap-2.5 pt-3 border-t border-white/20">
+                <div className="w-7 h-7 rounded-full bg-stone-300 overflow-hidden relative border border-white">
+                  <Image src="/avatar_2.jpg" alt="User" fill className="object-cover" unoptimized />
+                </div>
+                <span className="text-[11px] uppercase tracking-wider text-white/90 font-ui font-semibold">@chloe.vintage</span>
+              </div>
+            </div>
+          </div>
+
+          {/* STORY 3 */}
+          <div className="w-[280px] shrink-0 group relative h-[380px] overflow-hidden cursor-pointer rounded-2xl shadow-sm">
+            <Image src="/1.2.jpg" alt="Kẻ Lữ Hành Cô Độc" fill className="object-cover" unoptimized />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent"></div>
+            <div className="absolute inset-0 flex flex-col justify-end p-5 text-white">
+              <h3 className="text-xl font-heading font-bold mb-2">Kẻ Lữ Hành Cô Độc</h3>
+              <p className="text-xs text-stone-200 font-body italic mb-4 line-clamp-3 leading-relaxed">
+                "Chiếc áo da sờn vai đã cùng tôi rong ruổi khắp các cung đường Tây Bắc. Gửi lại cho những tâm hồn tự do..."
+              </p>
+              <div className="flex items-center gap-2.5 pt-3 border-t border-white/20">
+                <div className="w-7 h-7 rounded-full bg-stone-300 overflow-hidden relative border border-white">
+                  <Image src="/avatar_3.jpg" alt="User" fill className="object-cover" unoptimized />
+                </div>
+                <span className="text-[11px] uppercase tracking-wider text-white/90 font-ui font-semibold">@dustin.journey</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 🖥️ DESKTOP VIEW: Lưới 3 câu chuyện NGUYÊN BẢN (3 Columns) */}
+        <div className="hidden md:grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12">
           
           {/* ===== STORY 1: TÌNH CẢM GIA ĐÌNH ===== */}
           <div className="group relative w-full h-[500px] lg:h-[600px] overflow-hidden cursor-pointer rounded-2xl shadow-md">
