@@ -22,7 +22,10 @@ model User {
   completedOrders Int                @default(0)
   createdAt       DateTime           @default(now())
   walletBalance   Int                @default(0)
-  cloopCoins     Int                @default(1500)
+  cloopCoins      Int                @default(100)
+  coinTopUps      CoinTopUp[]
+  coinQuestClaims CoinQuestClaim[]
+  coinLedger      CoinLedgerEntry[]
   interactions    BlogInteraction[]
   blogs           BlogPost[]
   lifecycles      ProductLifecycle[]
@@ -454,6 +457,7 @@ model EcoMetric {
   @@map("eco_metrics")
 }
 
+
 enum TransactionStatus {
   VERIFIED
   PROCESSED
@@ -464,19 +468,19 @@ enum TransactionStatus {
 
 model TransactionHistory {
   id            String            @id @default(uuid())
-  eventId       String?           @unique // Mã Webhook từ PayOS (Chặn dội bom đúp)
-  orderCode     BigInt            @unique // Mã đơn hàng map với PayOS
+  eventId       String?           @unique
+  orderCode     BigInt            @unique
   invoiceId     String?
-  amount        Int               // Số tiền thực tế PayOS báo về
+  amount        Int
   currency      String            @default("VND")
-  invoiceAmount Int               // Số tiền cross-check từ bảng Invoice
+  invoiceAmount Int
   status        TransactionStatus
-  rawPayload    Json              // Lưu trữ toàn vẹn chứng cứ (Postgres JSONB)
-  processedAt   DateTime?         // Timestamp khi thực thi xong Atomic Transaction
+  rawPayload    Json
+  processedAt   DateTime?
   createdAt     DateTime          @default(now())
-  
+
   invoice       Invoice?          @relation(fields: [invoiceId], references: [id])
-  
+
   @@index([orderCode])
   @@index([eventId])
 }
@@ -502,23 +506,23 @@ model Shipment {
   id                   String            @id @default(uuid())
   rentalId             String
   direction            ShipmentDirection @default(DELIVERY)
-  provider             String?           // GHN, GHTK, MANUAL
+  provider             String?
   status               ShipmentStatus    @default(PENDING_BOOKING)
   trackingCode         String?
-  clientOrderCode      String?           @unique // Mã nội bộ tạo sự Idempotent khi gọi API đối tác (VD: rentalId-DELIVERY)
-  providerOrderCode    String?           // Mã vận đơn của đối tác
+  clientOrderCode      String?           @unique
+  providerOrderCode    String?
   shippingFeeCollected Int               @default(0)
   actualShippingFee    Int?
-  pickupAddress        Json?             // Snapshot địa chỉ lấy
-  deliveryAddress      Json?             // Snapshot địa chỉ giao
-  providerRawPayload   Json?             // Dữ liệu thô từ đối tác
+  pickupAddress        Json?
+  deliveryAddress      Json?
+  providerRawPayload   Json?
   bookedByAdminId      String?
   bookedByUserId       String?
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
-  
+
   rental               RentalHistory     @relation(fields: [rentalId], references: [id])
-  
+
   @@unique([rentalId, direction])
   @@unique([provider, providerOrderCode])
   @@index([rentalId])
@@ -531,15 +535,92 @@ model ProductFavorite {
   id        String   @id @default(uuid())
   userId    String
   productId String
-  type      String   @default("LIKE") // "LIKE" | "SAVE"
+  type      String   @default("LIKE")
   createdAt DateTime @default(now())
 
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId, type])
   @@index([userId])
   @@index([productId])
   @@index([type])
   @@map("product_favorites")
+}
+
+enum CoinLedgerType {
+  QUEST_REWARD
+  TOP_UP_IN
+  BOOST_SPEND
+  ADMIN_ADJUSTMENT
+}
+
+enum CoinTopUpStatus {
+  PENDING
+  PAID
+  CANCELLED
+  FAILED
+  AMOUNT_MISMATCH
+}
+
+model CoinTopUp {
+  id            String          @id @default(uuid())
+  userId        String
+  packageCode   String
+  orderCode     BigInt          @unique
+  paymentLinkId String?         @unique
+  amountVnd     Int
+  baseCoins     Int
+  bonusCoins    Int             @default(0)
+  totalCoins    Int
+  status        CoinTopUpStatus @default(PENDING)
+  payosStatus   String?
+  rawPayload    Json?
+  paidAt        DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ledgerEntries CoinLedgerEntry[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([orderCode])
+  @@map("coin_topups")
+}
+
+model CoinQuestClaim {
+  id        String   @id @default(uuid())
+  userId    String
+  questCode String
+  coins     Int
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, questCode])
+  @@index([userId])
+  @@index([questCode])
+  @@map("coin_quest_claims")
+}
+
+model CoinLedgerEntry {
+  id           String         @id @default(uuid())
+  userId       String
+  topUpId      String?
+  type         CoinLedgerType
+  amount       Int
+  balanceAfter Int
+  description  String?
+  metadata     Json?
+  createdAt    DateTime       @default(now())
+
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topUp        CoinTopUp?     @relation(fields: [topUpId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([type])
+  @@index([topUpId])
+  @@index([createdAt(sort: Desc)])
+  @@map("coin_ledger_entries")
 }

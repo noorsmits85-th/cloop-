@@ -28,16 +28,92 @@ export async function POST(req: Request) {
 
     const orderCode = verifiedData.orderCode;
 
-    // 2. Kiểm tra tính toàn vẹn của số tiền
+    // 2. Tìm kiếm Invoice (Đơn thuê) hoặc CoinTopUp (Mua gói Lá)
     const invoice = await prisma.invoice.findUnique({
       where: { orderCode: BigInt(orderCode) }
     });
 
+    // ===== NHÁNH 1: THANH TOÁN MUA GÓI ĐIỂM LÁ (CoinTopUp) =====
     if (!invoice) {
-      console.error(`❌ Webhook: Không tìm thấy Invoice cho orderCode ${orderCode}`);
-      return NextResponse.json({ success: true, message: "Invoice not found" }, { status: 200 });
+      const coinTopUp = await prisma.coinTopUp.findUnique({
+        where: { orderCode: BigInt(orderCode) }
+      });
+
+      if (!coinTopUp) {
+        console.error(`❌ Webhook: Không tìm thấy Invoice hoặc CoinTopUp cho orderCode ${orderCode}`);
+        return NextResponse.json({ success: true, message: "Order not found" }, { status: 200 });
+      }
+
+      // Kiểm tra số tiền
+      if (verifiedData.amount !== coinTopUp.amountVnd) {
+        console.error(`⚠️ CẢNH BÁO MUA LÁ: Lệch số tiền! Yêu cầu: ${coinTopUp.amountVnd}, Thực tế: ${verifiedData.amount}`);
+        await prisma.coinTopUp.update({
+          where: { id: coinTopUp.id },
+          data: { status: "AMOUNT_MISMATCH", rawPayload: body }
+        });
+        return NextResponse.json({ success: true, message: "Amount mismatch detected" }, { status: 200 });
+      }
+
+      // Idempotency: Nếu đã PAID thì bỏ qua
+      if (coinTopUp.status === "PAID") {
+        console.log(`ℹ️ CoinTopUp ${coinTopUp.id} đã hoàn tất từ trước. Bỏ qua webhook trùng.`);
+        return NextResponse.json({ success: true, message: "Already processed" }, { status: 200 });
+      }
+
+      // Atomic Transaction: Cập nhật CoinTopUp -> Tăng cloopCoins -> Ghi CoinLedgerEntry
+      try {
+        await prisma.$transaction(async (tx) => {
+          await tx.coinTopUp.update({
+            where: { id: coinTopUp.id },
+            data: {
+              status: "PAID",
+              payosStatus: "success",
+              paidAt: new Date(),
+              rawPayload: body
+            }
+          });
+
+          const updatedUser = await tx.user.update({
+            where: { id: coinTopUp.userId },
+            data: {
+              cloopCoins: { increment: coinTopUp.totalCoins }
+            },
+            select: { cloopCoins: true }
+          });
+
+          await tx.coinLedgerEntry.create({
+            data: {
+              userId: coinTopUp.userId,
+              topUpId: coinTopUp.id,
+              type: "TOP_UP_IN",
+              amount: coinTopUp.totalCoins,
+              balanceAfter: updatedUser.cloopCoins,
+              description: `Nạp gói ${coinTopUp.packageCode} (+${coinTopUp.totalCoins.toLocaleString()} Lá)`,
+              metadata: {
+                orderCode: Number(orderCode),
+                amountVnd: coinTopUp.amountVnd,
+                baseCoins: coinTopUp.baseCoins,
+                bonusCoins: coinTopUp.bonusCoins
+              }
+            }
+          });
+        });
+
+        console.log(`✅ [CoinTopUp] Đã cộng thành công ${coinTopUp.totalCoins} Lá cho User ${coinTopUp.userId}`);
+      } catch (coinDbErr) {
+        console.error("❌ Lỗi DB khi cộng Điểm Lá từ Webhook:", coinDbErr);
+        return NextResponse.json({ success: false, message: "Database Error" }, { status: 500 });
+      }
+
+      try {
+        const { revalidatePath } = require("next/cache");
+        revalidatePath("/my-closet/wallet");
+      } catch (_) {}
+
+      return NextResponse.json({ success: true, message: "Coin Top-up processed successfully" }, { status: 200 });
     }
 
+    // ===== NHÁNH 2: THANH TOÁN ĐƠN THUÊ TRANG PHỤC (Invoice) =====
     if (verifiedData.amount !== invoice.amount) {
       console.error(`⚠️ CẢNH BÁO: Lệch số tiền! Yêu cầu: ${invoice.amount}, Thực tế: ${verifiedData.amount}`);
       
