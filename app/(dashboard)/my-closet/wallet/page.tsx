@@ -95,14 +95,14 @@ export default async function WalletPage({ searchParams }: { searchParams: { [ke
       <div className="max-w-5xl mx-auto space-y-6">
         <div className="flex flex-col">
           <div className="flex items-center gap-2">
-            <span className="text-xs uppercase font-bold tracking-widest text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200/60">
+            <span className="text-[11px] uppercase font-bold tracking-wider text-emerald-800 bg-emerald-50/90 px-3 py-0.5 rounded-full border border-emerald-200/60">
               Fintech & Tokenomics
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#183A2D] font-heading mt-2">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-wide text-[#183A2D] mt-2.5">
             Hệ Thống Ví CLOOP
           </h1>
-          <p className="text-stone-500 text-xs sm:text-sm mt-1">
+          <p className="text-stone-500 text-xs sm:text-sm mt-1.5">
             Quản lý doanh thu tiền mặt (VNĐ) và Điểm Lá tuần hoàn (CloopCoins) của tủ đồ.
           </p>
         </div>
