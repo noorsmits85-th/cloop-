@@ -2,7 +2,7 @@
 
 import { prisma } from "@/src/lib/prisma";
 import { payos } from "@/lib/payos";
-import { supabase } from "@/src/lib/supabase";
+import { requireUser } from "@/src/lib/auth";
 import { COIN_PACKAGES, QUEST_DEFINITIONS } from "@/lib/coinPackages";
 import { revalidatePath } from "next/cache";
 
@@ -18,11 +18,13 @@ export async function createCoinTopUpPayment(packageCode: string) {
       return { success: false, message: "Cấu hình PayOS chưa sẵn sàng trên máy chủ." };
     }
 
-    const { data: { session } } = await supabase.auth.getSession();
-    const userId = session?.user?.id;
-    if (!userId) {
+    let authUser;
+    try {
+      authUser = await requireUser();
+    } catch {
       return { success: false, message: "Vui lòng đăng nhập để nạp Lá." };
     }
+    const userId = authUser.id;
 
     // Sinh orderCode ngẫu nhiên duy nhất
     const orderCode = Number(String(Date.now()).slice(-6) + Math.floor(100 + Math.random() * 900));
@@ -83,11 +85,13 @@ export async function claimQuestRewardAction(questCode: string) {
       return { success: false, message: "Nhiệm vụ không tồn tại." };
     }
 
-    const { data: { session } } = await supabase.auth.getSession();
-    const userId = session?.user?.id;
-    if (!userId) {
+    let authUser;
+    try {
+      authUser = await requireUser();
+    } catch {
       return { success: false, message: "Vui lòng đăng nhập." };
     }
+    const userId = authUser.id;
 
     // 1. Kiểm tra xem đã nhận trước đó chưa (Idempotency)
     const existingClaim = await prisma.coinQuestClaim.findUnique({
@@ -181,11 +185,13 @@ export async function claimQuestRewardAction(questCode: string) {
 // 3. Lấy dữ liệu tổng quan ví Điểm Lá & Nhiệm vụ của User
 export async function getUserCoinDashboardAction() {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    const userId = session?.user?.id;
-    if (!userId) {
+    let authUser;
+    try {
+      authUser = await requireUser();
+    } catch {
       return { success: false, message: "Chưa đăng nhập" };
     }
+    const userId = authUser.id;
 
     const user = await prisma.user.findUnique({
       where: { id: userId },

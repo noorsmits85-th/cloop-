@@ -1,7 +1,7 @@
 ﻿"use server";
 
 import { prisma } from "@/src/lib/prisma";
-import { supabase } from "@/src/lib/supabase";
+import { requireUser } from "@/src/lib/auth";
 import { revalidatePath } from "next/cache";
 
 export async function requestWithdrawalAction(data: {
@@ -12,11 +12,13 @@ export async function requestWithdrawalAction(data: {
   password?: string;
 }) {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    const userId = session?.user?.id;
-    if (!userId) {
+    let authUser;
+    try {
+      authUser = await requireUser();
+    } catch {
       return { success: false, message: "Vui lòng đăng nhập để thực hiện rút tiền." };
     }
+    const userId = authUser.id;
 
     const { amount, bankName, bankAccountNumber, bankAccountHolder } = data;
 

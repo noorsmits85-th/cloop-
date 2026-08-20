@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from "react";
 import { 
@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createCoinTopUpPayment, claimQuestRewardAction } from "@/app/actions/coin";
+import { requestWithdrawalAction } from "@/app/actions/withdrawal";
 import { COIN_PACKAGES, QUEST_DEFINITIONS } from "@/lib/coinPackages";
 import Link from "next/link";
 
@@ -126,13 +127,28 @@ export function WalletClient({
     if (numericAmount < 50000) return alert("Số tiền rút tối thiểu là 50,000đ.");
     
     setIsSubmittingWithdraw(true);
-    setTimeout(() => {
-      alert("🎉 Lệnh rút tiền đã được ghi nhận! Hệ thống kế toán sẽ duyệt và giải ngân trong 24h.");
-      setShowWithdrawModal(false);
+    try {
+      const res = await requestWithdrawalAction({
+        amount: numericAmount,
+        bankName: "VCB",
+        bankAccountNumber: "1012345678",
+        bankAccountHolder: "Trang Hoàng",
+        password: password
+      });
+
+      if (res.success) {
+        alert("🎉 " + res.message);
+        setShowWithdrawModal(false);
+        setWithdrawAmount("");
+        setPassword("");
+      } else {
+        alert(res.message || "Không thể tạo lệnh rút tiền.");
+      }
+    } catch (err: any) {
+      alert("Lỗi kết nối khi tạo lệnh rút tiền.");
+    } finally {
       setIsSubmittingWithdraw(false);
-      setWithdrawAmount("");
-      setPassword("");
-    }, 1200);
+    }
   };
 
   return (

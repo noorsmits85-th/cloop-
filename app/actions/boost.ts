@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/src/lib/prisma";
-import { supabase } from "@/src/lib/supabase";
+import { requireUser } from "@/src/lib/auth";
 import { revalidatePath } from "next/cache";
 
 export async function purchaseBoostPackage(productId: string, requestedUserId?: string, packageType: 'BOOST' | 'HIGHLIGHT' = 'BOOST') {
@@ -11,8 +11,13 @@ export async function purchaseBoostPackage(productId: string, requestedUserId?: 
     }
 
     // 1. Xác thực người dùng từ Server Session (Chống giả mạo userId từ Client)
-    const { data: { session } } = await supabase.auth.getSession();
-    const userId = session?.user?.id || requestedUserId;
+    let authUser;
+    try {
+      authUser = await requireUser();
+    } catch {
+      // fallback nếu có requestedUserId
+    }
+    const userId = authUser?.id || requestedUserId;
     if (!userId) {
       return { success: false, error: "Vui lòng đăng nhập để sử dụng tính năng Đẩy Top." };
     }

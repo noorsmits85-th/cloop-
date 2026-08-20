@@ -1,25 +1,25 @@
 import React from "react";
-import { supabase } from "@/src/lib/supabase";
+import { requireUser } from "@/src/lib/auth";
 import { WalletClient } from "../_components/WalletClient";
 import { prisma } from "@/src/lib/prisma";
+import { redirect } from "next/navigation";
 
 export const revalidate = 0;
 
 export default async function WalletPage({ searchParams }: { searchParams: { [key: string]: string | string[] | undefined } }) {
-  const { data: { session } } = await supabase.auth.getSession();
-  const userId = session?.user?.id;
-  const status = searchParams?.status as string;
-
-  if (!userId) {
-    return (
-      <div className="min-h-screen bg-[#FAF9F5] flex items-center justify-center p-6 text-center">
-        <div className="bg-white p-8 rounded-2xl border border-stone-200 shadow-sm max-w-sm">
-          <p className="font-heading font-bold text-lg text-[#183A2D] mb-2">Vui lòng đăng nhập</p>
-          <p className="text-xs text-stone-500 mb-4">Đăng nhập tài khoản CLOOP để truy cập Ví Tiền Mặt và Túi Điểm Lá của bạn.</p>
-        </div>
-      </div>
-    );
+  let userAuth;
+  try {
+    userAuth = await requireUser();
+  } catch (error) {
+    // Không tìm thấy session SSR
   }
+
+  if (!userAuth) {
+    redirect("/login");
+  }
+
+  const userId = userAuth.id;
+  const status = searchParams?.status as string;
 
   // 1. Lấy thông tin số dư
   const userProfile = await prisma.user.findUnique({
