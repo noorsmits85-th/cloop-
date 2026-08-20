@@ -134,35 +134,35 @@ export default function Home() {
         }
       `}</style>
 
-      {/* SECTION 1: HERO - CINEMATIC 16:9 VIDEO BACKGROUND WITH OVERLAY */}
-      <section className="relative w-full aspect-[16/9] min-h-[560px] md:min-h-[640px] lg:min-h-[720px] max-h-[88vh] flex items-center justify-center overflow-hidden bg-black">
-        {/* Background Video */}
+      {/* SECTION 1: HERO - CINEMATIC 16:9 LUXURY VIDEO BANNER */}
+      <section className="relative w-full aspect-[16/9] min-h-[500px] md:min-h-[580px] lg:min-h-[660px] max-h-[84vh] flex items-center justify-center overflow-hidden bg-stone-950">
+        {/* Background Video (Tự nhiên, không bị phóng to cắt mất đầu) */}
         <video
           autoPlay
           loop
           muted
           playsInline
           poster="/anhbia.png"
-          className="absolute inset-0 w-full h-full object-cover object-center scale-105 transition-transform duration-1000"
+          className="absolute inset-0 w-full h-full object-cover object-[center_30%]"
         >
           <source src="/hero-video.mp4" type="video/mp4" />
           <source src="/hero.mp4" type="video/mp4" />
         </video>
 
-        {/* Cinematic Gradient Scrim Overlay for Crystal-Clear Text Readability */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-black/30 z-10 pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30 z-10 pointer-events-none" />
+        {/* Lớp phủ điện ảnh trong suốt, sáng sủa giữ trọn ánh nắng tự nhiên */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/25 to-transparent z-10 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/15 z-10 pointer-events-none" />
 
         {/* Content Overlaid on Video */}
-        <div className="w-full max-w-7xl mx-auto px-4 md:px-8 lg:px-12 py-12 z-20 relative flex flex-col justify-center items-start text-left">
-          <div className="max-w-2xl">
+        <div className="w-full max-w-7xl mx-auto px-4 md:px-8 lg:px-12 py-10 z-20 relative flex flex-col justify-center items-start text-left">
+          <div className="max-w-2xl p-4 sm:p-6 md:p-8 rounded-3xl bg-black/20 backdrop-blur-[3px] border border-white/15 shadow-2xl">
             
             {/* Tagline Badge */}
             <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-emerald-300 text-xs font-bold uppercase tracking-widest mb-4 shadow-sm"
+              className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-950/60 backdrop-blur-md border border-emerald-400/30 text-emerald-300 text-xs font-bold uppercase tracking-widest mb-3.5 shadow-sm"
             >
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
               Thời Trang Tuần Hoàn Sinh Thái
@@ -178,7 +178,7 @@ export default function Home() {
                   transition: { staggerChildren: 0.08 }
                 }
               }}
-              className="font-heading text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-white leading-tight md:leading-[1.15] mb-4 md:mb-5 tracking-normal drop-shadow-md"
+              className="font-heading text-3xl sm:text-4xl md:text-5xl lg:text-5xl font-extrabold text-white leading-tight md:leading-[1.15] mb-3.5 tracking-normal drop-shadow-md"
             >
               {["Thuê", "&", "Sở", "Hữu"].map((word, i) => (
                 <motion.span key={i} className="inline-block mr-2 md:mr-3" variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } } }}>
@@ -204,7 +204,7 @@ export default function Home() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6, duration: 0.8 }}
-              className="font-body text-xs sm:text-sm md:text-base text-stone-200 leading-relaxed mb-6 md:mb-8 max-w-xl drop-shadow"
+              className="font-body text-xs sm:text-sm md:text-[15px] text-stone-200 leading-relaxed mb-5 md:mb-6 max-w-xl drop-shadow"
             >
               Có những món đồ cất trong tủ kính mang theo cả một thời tuổi trẻ. Thay vì để chúng ngủ quên, hãy gửi gắm vào tủ đồ CLOOP. Chút hoài niệm của bạn hôm nay sẽ là sự rạng rỡ của một người khác ngày mai.
             </motion.p>
@@ -214,7 +214,7 @@ export default function Home() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.8, duration: 0.5 }}
-              className="w-full max-w-lg mb-6 md:mb-8 relative group"
+              className="w-full max-w-lg mb-5 md:mb-6 relative group"
             >
               <div className="relative flex items-center bg-white/95 backdrop-blur-md border border-white/40 rounded-xl p-1.5 md:p-2 shadow-2xl focus-within:ring-2 focus-within:ring-emerald-400 transition-all">
                 <Search size={18} className="text-stone-400 ml-2 mr-2 md:mr-3 shrink-0" />
