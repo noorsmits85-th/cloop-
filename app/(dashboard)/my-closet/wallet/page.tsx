@@ -99,7 +99,7 @@ export default async function WalletPage({ searchParams }: { searchParams: { [ke
               Fintech & Tokenomics
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-wide text-[#183A2D] mt-2.5">
+          <h1 className="text-2xl sm:text-3xl font-extrabold font-heading tracking-normal text-[#183A2D] mt-2">
             Hệ Thống Ví CLOOP
           </h1>
           <p className="text-stone-500 text-xs sm:text-sm mt-1.5">
