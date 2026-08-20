@@ -134,102 +134,122 @@ export default function Home() {
         }
       `}</style>
 
-      {/* SECTION 1: HERO - TRỰC DIỆN THƯƠNG MẠI */}
-      <section className="relative w-full flex flex-col lg:flex-row items-stretch min-h-[80vh] bg-[#FAF9F6] overflow-hidden">
-        {/* Left: Text & CTAs */}
-        <div className="w-full lg:w-1/2 flex flex-col justify-start items-start px-4 md:px-8 lg:px-10 xl:px-12 py-16 lg:pt-[15vh] lg:pb-20 z-10 relative mt-16 lg:mt-0">
-          <div className="flex flex-col items-start justify-start w-full text-left max-w-2xl">
-              <motion.h1 
-                initial="hidden"
-                animate="visible"
-                variants={{
-                  hidden: {},
-                  visible: {
-                    transition: { staggerChildren: 0.1 }
-                  }
-                }}
-                className="font-heading text-2xl sm:text-3xl md:text-[48px] lg:text-5xl font-extrabold text-[#0A2517] leading-tight md:leading-snug lg:leading-snug mb-4 md:mb-5 tracking-tight md:tracking-wide"
-              >
-                {["Thuê", "&", "Sở", "Hữu"].map((word, i) => (
-                  <motion.span key={i} className="inline-block mr-2 md:mr-3" variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } } }}>
-                    {word}
-                  </motion.span>
-                ))}
-                <br className="hidden md:inline" />
-                {" "}
-                {["Thời", "Trang"].map((word, i) => (
-                  <motion.span key={i+10} className="inline-block mr-2 md:mr-3" variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } } }}>
-                    {word}
-                  </motion.span>
-                ))}
-                <br className="hidden md:inline" />
-                {" "}
-                {["Tuần", "Hoàn"].map((word, i) => (
-                  <motion.span key={i+20} className="inline-block mr-2 md:mr-3" variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } } }}>
-                    {word}
-                  </motion.span>
-                ))}
-              </motion.h1>
+      {/* SECTION 1: HERO - CINEMATIC 16:9 VIDEO BACKGROUND WITH OVERLAY */}
+      <section className="relative w-full aspect-[16/9] min-h-[560px] md:min-h-[640px] lg:min-h-[720px] max-h-[88vh] flex items-center justify-center overflow-hidden bg-black">
+        {/* Background Video */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          poster="/anhbia.png"
+          className="absolute inset-0 w-full h-full object-cover object-center scale-105 transition-transform duration-1000"
+        >
+          <source src="/hero-video.mp4" type="video/mp4" />
+          <source src="/hero.mp4" type="video/mp4" />
+        </video>
 
-              <motion.p 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.8, duration: 0.8 }}
-                className="font-body text-xs sm:text-base md:text-lg text-stone-700 leading-relaxed md:leading-loose mb-6 md:mb-8 w-full lg:pr-4"
-              >
-                Có những món đồ cất trong tủ kính mang theo cả một thời tuổi trẻ. Thay vì để chúng ngủ quên, hãy gửi gắm vào tủ đồ CLOOP. Chút hoài niệm của bạn hôm nay sẽ là sự rạng rỡ của một người khác ngày mai.
-              </motion.p>
+        {/* Cinematic Gradient Scrim Overlay for Crystal-Clear Text Readability */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-black/30 z-10 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30 z-10 pointer-events-none" />
 
-              {/* Generative UI Vibe: Smart Search Bar */}
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 1, duration: 0.5 }}
-                className="w-full max-w-lg mb-6 md:mb-10 relative group"
-              >
-                <div className="absolute -inset-1 bg-gradient-to-r from-emerald-200 to-teal-100 rounded-lg blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
-                <div className="relative flex items-center bg-white border border-stone-200 rounded-lg p-1.5 md:p-2 shadow-sm focus-within:ring-2 focus-within:ring-[#0A2517]/20 transition-all">
-                  <Search size={18} className="text-stone-400 ml-2 mr-2 md:mr-3 shrink-0" />
-                  <input 
-                    type="text" 
-                    placeholder="Bạn đang tìm chiếc Blazer cho tiệc cuối tuần?" 
-                    className="flex-1 bg-transparent border-none outline-none font-ui text-xs md:text-sm text-[#0A2517] placeholder:text-stone-400"
-                  />
-                  <button className="px-3 md:px-4 py-2 bg-[#0A2517] text-white rounded-md text-[11px] md:text-xs font-bold uppercase tracking-wider hover:bg-[#113a25] transition-colors shrink-0">
-                    Tìm kiếm
-                  </button>
-                </div>
-              </motion.div>
+        {/* Content Overlaid on Video */}
+        <div className="w-full max-w-7xl mx-auto px-4 md:px-8 lg:px-12 py-12 z-20 relative flex flex-col justify-center items-start text-left">
+          <div className="max-w-2xl">
+            
+            {/* Tagline Badge */}
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-emerald-300 text-xs font-bold uppercase tracking-widest mb-4 shadow-sm"
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              Thời Trang Tuần Hoàn Sinh Thái
+            </motion.div>
 
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 1.2 }}
-                className="flex flex-row w-full sm:w-auto items-center gap-2.5 sm:gap-4"
-              >
-                <MagneticButton>
-                  <Link href="/shop" className="group font-ui font-semibold text-xs md:text-sm px-4 md:px-6 h-[44px] md:h-[48px] bg-[#0A2517] text-white rounded hover:bg-[#113a25] transition-colors duration-300 tracking-wide flex items-center justify-center gap-1.5 md:gap-2 relative z-10 flex-1 sm:flex-initial">
-                    KHÁM PHÁ TỦ ĐỒ <ArrowRight size={15} className="hidden sm:inline opacity-0 -ml-4 group-hover:opacity-100 group-hover:ml-0 transition-all duration-300" />
-                  </Link>
-                </MagneticButton>
-                
-                <MagneticButton>
-                  <Link href="/my-closet" className="font-ui font-semibold text-xs md:text-sm px-4 md:px-6 h-[44px] md:h-[48px] bg-transparent text-[#0A2517] border-2 border-[#0A2517] rounded hover:bg-[#0A2517] hover:text-white transition-colors duration-300 tracking-wide flex items-center justify-center relative z-10 flex-1 sm:flex-initial bg-white/50 backdrop-blur-sm">
-                    CHIA SẺ TỦ ĐỒ
-                  </Link>
-                </MagneticButton>
-              </motion.div>
-            </div>
+            {/* Main Heading */}
+            <motion.h1 
+              initial="hidden"
+              animate="visible"
+              variants={{
+                hidden: {},
+                visible: {
+                  transition: { staggerChildren: 0.08 }
+                }
+              }}
+              className="font-heading text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-white leading-tight md:leading-[1.15] mb-4 md:mb-5 tracking-normal drop-shadow-md"
+            >
+              {["Thuê", "&", "Sở", "Hữu"].map((word, i) => (
+                <motion.span key={i} className="inline-block mr-2 md:mr-3" variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } } }}>
+                  {word}
+                </motion.span>
+              ))}
+              <br />
+              {["Thời", "Trang"].map((word, i) => (
+                <motion.span key={i+10} className="inline-block mr-2 md:mr-3 text-emerald-300" variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } } }}>
+                  {word}
+                </motion.span>
+              ))}
+              {" "}
+              {["Tuần", "Hoàn"].map((word, i) => (
+                <motion.span key={i+20} className="inline-block mr-2 md:mr-3" variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } } }}>
+                  {word}
+                </motion.span>
+              ))}
+            </motion.h1>
+
+            {/* Subtext */}
+            <motion.p 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6, duration: 0.8 }}
+              className="font-body text-xs sm:text-sm md:text-base text-stone-200 leading-relaxed mb-6 md:mb-8 max-w-xl drop-shadow"
+            >
+              Có những món đồ cất trong tủ kính mang theo cả một thời tuổi trẻ. Thay vì để chúng ngủ quên, hãy gửi gắm vào tủ đồ CLOOP. Chút hoài niệm của bạn hôm nay sẽ là sự rạng rỡ của một người khác ngày mai.
+            </motion.p>
+
+            {/* Smart Search Bar (Glassmorphism) */}
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.8, duration: 0.5 }}
+              className="w-full max-w-lg mb-6 md:mb-8 relative group"
+            >
+              <div className="relative flex items-center bg-white/95 backdrop-blur-md border border-white/40 rounded-xl p-1.5 md:p-2 shadow-2xl focus-within:ring-2 focus-within:ring-emerald-400 transition-all">
+                <Search size={18} className="text-stone-400 ml-2 mr-2 md:mr-3 shrink-0" />
+                <input 
+                  type="text" 
+                  placeholder="Bạn đang tìm chiếc Blazer cho tiệc cuối tuần?" 
+                  className="flex-1 bg-transparent border-none outline-none font-ui text-xs md:text-sm text-[#0A2517] placeholder:text-stone-500 font-medium"
+                />
+                <button className="px-4 py-2 bg-[#0A2517] text-white rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-emerald-900 transition-colors shrink-0 shadow-sm">
+                  Tìm kiếm
+                </button>
+              </div>
+            </motion.div>
+
+            {/* Action Buttons */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1 }}
+              className="flex flex-row w-full sm:w-auto items-center gap-3 sm:gap-4"
+            >
+              <MagneticButton>
+                <Link href="/shop" className="group font-ui font-bold text-xs md:text-sm px-5 md:px-7 h-[46px] md:h-[50px] bg-emerald-500 hover:bg-emerald-400 text-stone-950 rounded-xl shadow-lg shadow-emerald-500/20 transition-all duration-300 tracking-wide flex items-center justify-center gap-2 relative z-10 flex-1 sm:flex-initial">
+                  KHÁM PHÁ TỦ ĐỒ <ArrowRight size={16} className="transition-transform duration-300 group-hover:translate-x-1" />
+                </Link>
+              </MagneticButton>
+              
+              <MagneticButton>
+                <Link href="/my-closet" className="font-ui font-bold text-xs md:text-sm px-5 md:px-7 h-[46px] md:h-[50px] bg-white/10 hover:bg-white/20 text-white border border-white/30 backdrop-blur-md rounded-xl transition-all duration-300 tracking-wide flex items-center justify-center relative z-10 flex-1 sm:flex-initial">
+                  CHIA SẺ TỦ ĐỒ
+                </Link>
+              </MagneticButton>
+            </motion.div>
+
           </div>
-        {/* Right: Tràn viền (Full-bleed) Image */}
-        <div className="w-full lg:w-1/2 relative min-h-[45vh] lg:min-h-auto z-0 overflow-hidden lg:pl-4 xl:pl-8">
-          <Image 
-            src="/anhbia.png" 
-            alt="CLOOP Fashion Community" 
-            fill 
-            className="object-cover object-center animate-ken-burns rounded-none" 
-            unoptimized 
-          />
         </div>
       </section>
 
