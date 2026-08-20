@@ -11,7 +11,7 @@ import {
   Eye, 
   EyeOff, 
   Loader2, 
-  Sparkles, 
+  Leaf, 
   Zap, 
   Gift, 
   ShieldCheck, 
@@ -206,7 +206,7 @@ export function WalletClient({
           <div>
             <div className="flex justify-between items-center mb-4">
               <span className="text-white/80 text-[11px] font-bold uppercase tracking-widest flex items-center gap-1.5">
-                <Sparkles size={15} className="text-amber-300" /> Túi Điểm Lá (CloopCoins)
+                <Leaf size={15} className="text-amber-300 fill-amber-300" /> Túi Điểm Lá (CloopCoins)
               </span>
               <span className="text-[10px] bg-amber-400/20 backdrop-blur-md px-2.5 py-0.5 rounded-full text-amber-200 border border-amber-300/30 font-semibold flex items-center gap-1">
                 <Zap size={11} className="text-amber-300 fill-amber-300" /> Đẩy Top & Quyền Lợi
@@ -258,7 +258,7 @@ export function WalletClient({
                   : "text-stone-500 hover:text-stone-900 hover:bg-stone-100"
               }`}
             >
-              <Sparkles size={14} /> Sổ Cái Điểm Lá ({coinLedger.length})
+              <Leaf size={14} className={activeTab === "COINS" ? "text-emerald-400 fill-emerald-400" : "text-emerald-600"} /> Sổ Cái Điểm Lá ({coinLedger.length})
             </button>
             <button
               onClick={() => setActiveTab("VND")}
@@ -378,7 +378,7 @@ export function WalletClient({
               <div className="flex justify-between items-start mb-5">
                 <div>
                   <div className="flex items-center gap-1.5 text-xs uppercase font-bold tracking-wider text-emerald-700">
-                    <Sparkles size={14} /> Nạp Điểm Lá Tủ Đồ
+                    <Leaf size={14} className="text-emerald-700 fill-emerald-700" /> Nạp Điểm Lá Tủ Đồ
                   </div>
                   <h3 className="text-xl font-bold text-stone-800 font-heading mt-0.5">Chọn Gói Lá Nạp Nhanh</h3>
                   <p className="text-stone-500 text-xs mt-1">Quét mã VietQR PayOS tự động – Nhận Lá ngay sau 1 giây.</p>

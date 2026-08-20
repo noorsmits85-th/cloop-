@@ -49,11 +49,46 @@ export default async function WalletPage({ searchParams }: { searchParams: { [ke
     take: 10
   });
 
-  // 5. Lấy lịch sử giao dịch VNĐ
+  // 5. Lấy lịch sử giao dịch VNĐ THỰC TẾ từ Database (Không dùng mock)
+  const [realWithdrawals, realInvoices] = await Promise.all([
+    prisma.withdrawalRequest.findMany({
+      where: { userId: userId },
+      orderBy: { createdAt: "desc" },
+      take: 10
+    }),
+    prisma.invoice.findMany({
+      where: { 
+        rental: { ownerId: userId }, 
+        status: "PAID" 
+      },
+      include: { 
+        rental: { 
+          include: { product: true } 
+        } 
+      },
+      orderBy: { createdAt: "desc" },
+      take: 10
+    })
+  ]);
+
   const vndTransactions = [
-    { id: "TX1", type: "INCOME", amount: 150000, desc: "Thu nhập từ đơn cho thuê váy Boho", date: new Date().toISOString(), status: "SUCCESS" },
-    { id: "TX2", type: "WITHDRAW", amount: -50000, desc: "Rút tiền về ngân hàng VCB", date: new Date(Date.now() - 86400000).toISOString(), status: "PENDING" },
-  ];
+    ...realWithdrawals.map(w => ({
+      id: w.id,
+      type: "WITHDRAW",
+      amount: -w.amount,
+      desc: `Lệnh rút tiền về ${w.bankName} (${w.bankAccountNumber})`,
+      date: w.createdAt.toISOString(),
+      status: w.status === "COMPLETED" ? "SUCCESS" : w.status === "PENDING" ? "PENDING" : "FAILED"
+    })),
+    ...realInvoices.map(inv => ({
+      id: inv.id,
+      type: "INCOME",
+      amount: inv.amount,
+      desc: `Thu nhập cho thuê "${inv.rental?.product?.title || "Sản phẩm"}"`,
+      date: inv.createdAt.toISOString(),
+      status: "SUCCESS"
+    }))
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return (
     <div className="min-h-screen bg-[#FAF9F5] py-8 px-4 sm:px-8 text-stone-800 antialiased">
