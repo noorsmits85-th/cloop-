@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 const prisma = new PrismaClient();
 
 /**
- * Lấy User Session hiện tại từ Supabase HTTP-only Cookies
+ * Lấy User Session hiện tại từ Supabase HTTP-only Cookies và đồng bộ với bảng Prisma User
  */
 export async function requireUser() {
   const supabase = await createClient();
@@ -14,8 +14,47 @@ export async function requireUser() {
   if (error || !user) {
     throw new Error("Unauthorized: Không tìm thấy phiên đăng nhập.");
   }
+
+  // 1. Tìm trong DB Prisma theo ID
+  let dbUser = await prisma.user.findUnique({
+    where: { id: user.id }
+  });
+
+  // 2. Nếu chưa có theo ID, tìm theo email
+  if (!dbUser && user.email) {
+    dbUser = await prisma.user.findUnique({
+      where: { email: user.email }
+    });
+  }
+
+  // 3. Nếu chưa có bất kỳ bản ghi nào trong Prisma User, tạo mới tự động
+  if (!dbUser) {
+    try {
+      dbUser = await prisma.user.create({
+        data: {
+          id: user.id,
+          email: user.email || `${user.id}@cloop.vn`,
+          password: "supabase_auth_managed",
+          name: user.user_metadata?.name || user.email?.split("@")[0] || "Thành viên CLOOP",
+          walletBalance: 0,
+          cloopCoins: 100
+        }
+      });
+    } catch (createErr) {
+      if (user.email) {
+        dbUser = await prisma.user.findUnique({
+          where: { email: user.email }
+        });
+      }
+    }
+  }
   
-  return user;
+  return dbUser || {
+    id: user.id,
+    email: user.email || "",
+    name: user.user_metadata?.name || "Thành viên CLOOP",
+    role: "USER"
+  };
 }
 
 /**
