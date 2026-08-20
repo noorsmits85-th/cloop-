@@ -21,11 +21,13 @@ model User {
   totalListings   Int                @default(0)
   completedOrders Int                @default(0)
   createdAt       DateTime           @default(now())
-  walletBalance   Int                @default(0)
-  cloopCoins      Int                @default(100)
-  coinTopUps      CoinTopUp[]
-  coinQuestClaims CoinQuestClaim[]
-  coinLedger      CoinLedgerEntry[]
+  walletBalance           Int                @default(0)
+  pendingWithdrawalBalance Int               @default(0)
+  cloopCoins              Int                @default(100)
+  withdrawals             WithdrawalRequest[]
+  coinTopUps              CoinTopUp[]
+  coinQuestClaims         CoinQuestClaim[]
+  coinLedger              CoinLedgerEntry[]
   interactions    BlogInteraction[]
   blogs           BlogPost[]
   lifecycles      ProductLifecycle[]
@@ -435,6 +437,9 @@ enum LedgerType {
   SHIPPING_RETAINED
   COMPENSATION_OUT
   PENALTY_FEE_RETAINED
+  WITHDRAWAL_HOLD
+  WITHDRAWAL_PAYOUT
+  WITHDRAWAL_REFUND
   MONTHLY_CLOSING_REVENUE
   MONTHLY_CLOSING_EXPENSE
   YEARLY_RETAINED_EARNINGS
@@ -623,4 +628,36 @@ model CoinLedgerEntry {
   @@index([topUpId])
   @@index([createdAt(sort: Desc)])
   @@map("coin_ledger_entries")
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  PROCESSING
+  COMPLETED
+  REJECTED
+  FAILED
+}
+
+model WithdrawalRequest {
+  id                String           @id @default(uuid())
+  userId            String
+  amount            Int
+  bankName          String
+  bankAccountNumber String
+  bankAccountHolder String
+  status            WithdrawalStatus @default(PENDING)
+  adminNote         String?
+  rejectionReason   String?
+  processedBy       String?
+  processedAt       DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("withdrawal_requests")
 }
