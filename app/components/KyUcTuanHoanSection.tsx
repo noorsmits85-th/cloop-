@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Sparkles, Leaf, Users, Shirt, Droplet, ArrowRight } from "lucide-react";
+import { Heart, Leaf, Users, Shirt, Droplet, ArrowRight } from "lucide-react";
 
 interface BlogPreview {
   id: string;
@@ -143,7 +143,7 @@ export default function KyUcTuanHoanSection({ recentBlogs }: Props) {
         </span>
         <h2 className="kyuc-heading text-5xl sm:text-6xl font-medium text-[#1F3D2B] flex items-center justify-center gap-2 flex-wrap tracking-tight">
           Ký Ức <span className="text-[#7C9473] italic font-normal">Tuần Hoàn</span>
-          <Sparkles size={26} className="text-amber-400 fill-amber-300" />
+          <Heart size={24} className="text-rose-400 fill-rose-300" />
         </h2>
         <p className="kyuc-body text-stone-500 text-xs sm:text-sm max-w-xl mx-auto leading-relaxed">
           Mỗi nếp gấp áo là một câu chuyện chưa kể. Hãy để những kỷ niệm rực rỡ nhất được sống lại và viết tiếp vòng đời mới trên cuốn lưu bút của CLOOP.

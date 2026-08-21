@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Check, Star, Heart, Bookmark, Sparkles, Search, TrendingUp, Camera } from "lucide-react";
+import { ArrowRight, Check, Star, Heart, Bookmark, Flame, Search, TrendingUp, Camera } from "lucide-react";
 import { motion } from "framer-motion";
 import MagneticButton from "@/app/components/MagneticButton";
 import { supabase } from "@/lib/supabase";
@@ -506,7 +506,7 @@ export default function Home() {
                   {/* BADGE BOOST */}
                   {isBoosted && (
                     <div className="absolute -top-3 right-2 bg-rose-600 text-white font-ui text-[9px] font-bold uppercase px-3 py-1 rounded-full tracking-widest shadow-sm z-20 flex items-center gap-1">
-                      <Sparkles size={10} /> Top 1
+                      <Flame size={10} /> Top 1
                     </div>
                   )}
                   {/* BADGE HIGHLIGHT */}

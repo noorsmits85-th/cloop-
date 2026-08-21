@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Bot, CheckCircle2, CloudSun, MapPin, Send, ShoppingBag, Sparkles, X } from "lucide-react";
+import { Bot, CheckCircle2, CloudSun, MapPin, Send, ShoppingBag, Compass, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -343,7 +343,7 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
             <div className={`flex items-center justify-between border-b p-5 ${darkMode ? "border-[#2B3946] bg-[#14202A]" : "border-gray-100 bg-[#FAF8F3]"}`}>
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#183A2D] text-white shadow-md dark:bg-emerald-600">
-                  <Sparkles size={16} className="animate-pulse" />
+                  <Bot size={18} />
                 </div>
                 <div className="text-left">
                   <h3 className="text-xs font-bold uppercase tracking-wider">CLOOP AI Stylist</h3>

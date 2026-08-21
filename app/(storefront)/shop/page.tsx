@@ -4,8 +4,7 @@ import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-// Đã bảo chứng import đầy đủ tất cả icon hệ thống chống lỗi ts(2304)
-import { MapPin, Star, Filter, ArrowUpDown, ArrowLeft, Search, SlidersHorizontal, Shirt, X, Sparkles } from "lucide-react";
+import { MapPin, Star, Filter, ArrowUpDown, ArrowLeft, Search, SlidersHorizontal, Shirt, X, Flame } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { supabase } from "@/lib/supabase";
@@ -401,8 +400,8 @@ function ShopContent() {
                             {prod.condition}
                           </span>
                           {prod.isBoosted && (
-                            <span className="text-[8px] font-bold bg-amber-200/95 backdrop-blur-sm text-amber-900 px-2.5 py-1 rounded shadow-sm w-fit flex items-center gap-1 border border-amber-300">
-                              <Sparkles size={8} /> ĐỀ XUẤT
+                            <span className="text-[8px] font-bold bg-rose-100/95 backdrop-blur-sm text-rose-800 px-2.5 py-1 rounded shadow-sm w-fit flex items-center gap-1 border border-rose-300">
+                              <Flame size={9} className="text-rose-600" /> ĐỀ XUẤT
                             </span>
                           )}
                         </div>

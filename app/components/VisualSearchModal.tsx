@@ -4,7 +4,7 @@ import React, { useState, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Camera, Sparkles, X, UploadCloud, Search, ArrowRight, RefreshCw, CheckCircle2 } from "lucide-react";
+import { Camera, X, UploadCloud, Search, ArrowRight, RefreshCw, CheckCircle2, ScanSearch, Compass, Shirt, Layers } from "lucide-react";
 
 interface MatchedProduct {
   id: string;
@@ -193,7 +193,7 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-xs uppercase tracking-widest text-stone-400 font-bold flex items-center gap-1.5">
-                      <Sparkles size={14} className="text-amber-400" /> Hoặc thử nhanh với các Outfit mẫu:
+                      <Compass size={14} className="text-emerald-400" /> Thử nhanh với các Outfit mẫu:
                     </p>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -286,7 +286,7 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
                             🎨 Màu: {detectedInfo.dominantColor}
                           </span>
                           <span className="px-3 py-1 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-400/30 text-xs font-semibold">
-                            ✨ Phong cách: {detectedInfo.style}
+                            🏷️ Phong cách: {detectedInfo.style}
                           </span>
                         </div>
                       </motion.div>
@@ -302,7 +302,7 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
                     {/* Danh sách trang phục tương đồng trong kho */}
                     <div>
                       <h4 className="text-xs uppercase tracking-widest text-stone-400 font-bold mb-3 flex items-center gap-1.5">
-                        <Sparkles size={14} className="text-emerald-400" />
+                        <ScanSearch size={14} className="text-emerald-400" />
                         Trang phục tương đồng trong tủ đồ CLOOP ({matchedProducts.length}):
                       </h4>
 
