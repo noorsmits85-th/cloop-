@@ -11,7 +11,7 @@ const requestSchema = z.object({
   fileName: z.string().min(1, "Thiếu tên tệp"),
   contentType: z.string().refine(
     (ct) => ct.startsWith("video/") || ct.startsWith("image/"),
-    "Chỉ chấp nhận tệp video (mp4, mov...) hoặc hình ảnh bằng chứng"
+    "Chỉ chấp nhận tệp video (mp4, mov, webm) hoặc hình ảnh (jpg, png)"
   ),
 });
 
@@ -21,6 +21,9 @@ export async function POST(req: Request) {
     if (!user) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
+
+    const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown_ip";
+    const userAgent = req.headers.get("user-agent") || "unknown_ua";
 
     const body = await req.json();
     const parsed = requestSchema.safeParse(body);
@@ -34,7 +37,7 @@ export async function POST(req: Request) {
 
     const { rentalId, fileName, contentType } = parsed.data;
 
-    // 1. Kiểm tra quyền hạn (Authorization): User phải là người thuê hoặc chủ đồ của đơn thuê này
+    // 1. Anti-IDOR Authorization: Kiểm tra quyền hạn trực tiếp trong DB
     const rental = await prisma.rentalHistory.findUnique({
       where: { id: rentalId },
       include: {
@@ -57,7 +60,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2. Sinh Signed URL từ Google Cloud Storage
+    // 2. Sinh Signed URL từ Google Cloud Storage với đường dẫn do Server kiểm soát
     const uploadMeta = await generateDisputeVideoUploadUrl({
       rentalId,
       fileName,
@@ -65,8 +68,18 @@ export async function POST(req: Request) {
       userId: user.id,
     });
 
-    // 3. Ghi Audit Log cho hệ thống
-    console.log(`[AUDIT_LOG][USER:${user.id}][RENTAL:${rentalId}] Signed URL requested for evidence: ${uploadMeta.fileKey}`);
+    // 3. Structured Audit Log (KHÔNG log signed URL để tránh rò rỉ credential tạm thời)
+    console.log(JSON.stringify({
+      event: "DISPUTE_SIGNED_URL_REQUESTED",
+      traceId: uploadMeta.traceId,
+      rentalId,
+      actorId: user.id,
+      objectName: uploadMeta.objectName,
+      maxSizeBytes: uploadMeta.maxSizeBytes,
+      ip,
+      userAgent: userAgent.substring(0, 100),
+      timestamp: new Date().toISOString(),
+    }));
 
     return NextResponse.json({
       success: true,
