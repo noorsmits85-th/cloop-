@@ -19,11 +19,20 @@ export default async function SettingsPage() {
     .single();
 
   return (
-    <div className="min-h-screen bg-[#FAF9F5] py-10 px-4 sm:px-8 text-stone-800 antialiased">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex flex-col mb-6">
-          <h1 className="text-xl font-bold tracking-tight text-[#183A2D] uppercase font-mono">Cài đặt Cửa hàng</h1>
-          <p className="text-stone-500 text-xs mt-1">Cấu hình địa chỉ kho lấy hàng và liên kết thanh toán.</p>
+    <div className="min-h-screen bg-[#FAF9F5] py-8 px-4 sm:px-8 text-stone-800 antialiased">
+      <div className="max-w-5xl mx-auto space-y-6">
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] uppercase font-bold tracking-wider text-emerald-800 bg-emerald-50/90 px-3 py-0.5 rounded-full border border-emerald-200/60 font-ui">
+              HỆ THỐNG & CẤU HÌNH
+            </span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold font-heading tracking-normal text-[#183A2D] mt-2">
+            Cài Đặt Tủ Đồ
+          </h1>
+          <p className="text-stone-500 text-xs sm:text-sm mt-1.5 font-body">
+            Cấu hình địa chỉ kho lấy hàng, thông tin thanh toán ngân hàng và tùy chọn bảo mật.
+          </p>
         </div>
         
         <SettingsClient userProfile={userProfile} />

@@ -20,11 +20,20 @@ export default async function EcoPage() {
     .single();
 
   return (
-    <div className="min-h-screen bg-[#FAF9F5] py-10 px-4 sm:px-8 text-stone-800 antialiased">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex flex-col mb-6">
-          <h1 className="text-xl font-bold tracking-tight text-[#183A2D] uppercase font-mono">Thành tích ECO</h1>
-          <p className="text-stone-500 text-xs mt-1">Dấu chân sinh thái của bạn khi sử dụng thời trang tuần hoàn.</p>
+    <div className="min-h-screen bg-[#FAF9F5] py-8 px-4 sm:px-8 text-stone-800 antialiased">
+      <div className="max-w-5xl mx-auto space-y-6">
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] uppercase font-bold tracking-wider text-emerald-800 bg-emerald-50/90 px-3 py-0.5 rounded-full border border-emerald-200/60 font-ui">
+              BỀN VỮNG & SINH THÁI
+            </span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold font-heading tracking-normal text-[#183A2D] mt-2">
+            Thống Kê Sinh Thái ESG
+          </h1>
+          <p className="text-stone-500 text-xs sm:text-sm mt-1.5 font-body">
+            Dấu chân sinh thái tích cực của bạn khi chia sẻ và tái sử dụng thời trang tuần hoàn.
+          </p>
         </div>
         
         <EcoClient 

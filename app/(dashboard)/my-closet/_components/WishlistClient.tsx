@@ -71,15 +71,20 @@ export default function WishlistClient({ initialItems, counts }: WishlistClientP
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-6">
       {/* Header Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-stone-200/70 pb-4">
-        <div>
-          <h1 className="text-lg sm:text-2xl font-serif font-bold text-[#183A2D] tracking-wide">
-            Đồ Đã Thích & Đã Lưu
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] uppercase font-bold tracking-wider text-emerald-800 bg-emerald-50/90 px-3 py-0.5 rounded-full border border-emerald-200/60 font-ui">
+              BỘ SƯU TẬP CÁ NHÂN
+            </span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold font-heading tracking-normal text-[#183A2D] mt-2">
+            Đã Thích & Đã Lưu
           </h1>
-          <p className="text-[11px] sm:text-xs text-stone-500 font-light mt-0.5">
-            Bộ sưu tập cá nhân — Dễ dàng theo dõi tình trạng sẵn sàng và thuê ngay khi cần.
+          <p className="text-stone-500 text-xs sm:text-sm mt-1.5 font-body">
+            Theo dõi tình trạng sẵn sàng của outfit yêu thích và thuê ngay khi cần.
           </p>
         </div>
 

@@ -102,16 +102,20 @@ export default async function MyClosetOrdersPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#FAF9F5] py-10 px-4 sm:px-8 text-stone-800 antialiased">
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap" />
-      <style>{`body, h1, h2, h3, h4, table, th, td, button, span, p, label, input { font-family: 'Be Vietnam Pro', sans-serif !important; }`}</style>
-      
+    <div className="min-h-screen bg-[#FAF9F5] py-8 px-4 sm:px-8 text-stone-800 antialiased">
       <div className="max-w-5xl mx-auto space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between sm:items-end border-b border-stone-200/60 pb-6 gap-4">
-          <div className="text-left space-y-2">
-            <h1 className="text-xl font-bold tracking-tight text-[#183A2D]">Quản lý Giao dịch</h1>
-            <p className="text-stone-400 text-xs font-medium tracking-wide">Quản lý các yêu cầu thuê đồ và theo dõi đơn thuê của bạn.</p>
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] uppercase font-bold tracking-wider text-emerald-800 bg-emerald-50/90 px-3 py-0.5 rounded-full border border-emerald-200/60 font-ui">
+              QUẢN LÝ ĐƠN HÀNG & GIAO DỊCH
+            </span>
           </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold font-heading tracking-normal text-[#183A2D] mt-2">
+            Đơn Hàng & Giao Dịch
+          </h1>
+          <p className="text-stone-500 text-xs sm:text-sm mt-1.5 font-body">
+            Theo dõi tiến trình cho thuê, nhận đồ, đối soát ký quỹ và xử lý khiếu nại.
+          </p>
         </div>
         
         <Suspense fallback={<div className="p-8 text-center text-stone-400">Đang tải dữ liệu...</div>}>
