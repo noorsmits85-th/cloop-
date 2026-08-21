@@ -1,8 +1,6 @@
 import React from "react";
 import AccountingClient from "./AccountingClient";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/src/lib/prisma";
 
 export const dynamic = "force-dynamic";
 

@@ -1,8 +1,6 @@
 import { createClient } from "@/src/utils/supabase/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/src/lib/prisma";
 import { redirect } from "next/navigation";
-
-const prisma = new PrismaClient();
 
 /**
  * Lấy User Session hiện tại từ Supabase HTTP-only Cookies và đồng bộ với bảng Prisma User

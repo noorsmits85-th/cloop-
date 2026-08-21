@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/src/lib/prisma";
 import { verifyShippingQuoteToken } from "@/src/utils/shipping";
 import { payos } from "@/src/utils/payos";
 import { startOfDay, endOfDay, addDays, subDays } from "date-fns";
 import { z } from "zod";
-
-const prisma = new PrismaClient();
 
 // Schema Validate dữ liệu đầu vào chuẩn 2027
 const CheckoutSchema = z.object({

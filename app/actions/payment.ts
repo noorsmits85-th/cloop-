@@ -1,9 +1,7 @@
 "use server";
 
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/src/lib/prisma";
 import { payos } from "@/src/utils/payos";
-
-const prisma = new PrismaClient();
 
 import { createClient } from "@/src/utils/supabase/server";
 

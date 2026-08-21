@@ -1,9 +1,8 @@
 "use server";
 
-import { PrismaClient, AccountingPeriodStatus, LedgerType } from "@prisma/client";
+import { AccountingPeriodStatus, LedgerType } from "@prisma/client";
+import { prisma } from "@/src/lib/prisma";
 import { requireAdmin } from "@/src/lib/auth";
-
-const prisma = new PrismaClient();
 
 export async function executeMonthlyClosing(month: number, year: number, forceDemoMode = false) {
   try {

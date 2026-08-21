@@ -1,11 +1,10 @@
 "use server";
 
 import { createClient } from "@/src/utils/supabase/server";
-import { PrismaClient, ItemCondition, GenderCategory, ListingType } from "@prisma/client";
+import { ItemCondition, GenderCategory, ListingType } from "@prisma/client";
+import { prisma } from "@/src/lib/prisma";
 import { uploadProductSchema } from "@/lib/validations/product";
 import { revalidatePath } from "next/cache";
-
-const prisma = new PrismaClient();
 
 export async function createProductAction({
   product,

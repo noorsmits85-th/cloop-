@@ -1,8 +1,6 @@
 "use server";
 
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/src/lib/prisma";
 
 export async function getClosetProfile(userId: string) {
   const profile = await prisma.user.findUnique({

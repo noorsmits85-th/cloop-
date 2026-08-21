@@ -1,11 +1,9 @@
 "use server";
 
 import { createClient } from "@/src/utils/supabase/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/src/lib/prisma";
 
 import { Logger } from "next-axiom";
-
-const prisma = new PrismaClient();
 
 export async function createBooking({
   productId,

@@ -1,8 +1,6 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/src/lib/prisma";
 import Link from "next/link";
 import { CheckCircle2, XCircle, Clock } from "lucide-react";
-
-const prisma = new PrismaClient();
 
 export default async function PaymentResultPage({
   searchParams

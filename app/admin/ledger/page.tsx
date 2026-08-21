@@ -1,8 +1,6 @@
 import React from "react";
 import LedgerClient, { InvoiceData } from "./LedgerClient";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/src/lib/prisma";
 
 export const dynamic = "force-dynamic"; // Tắt cache, luôn lấy dữ liệu mới nhất từ Sổ cái
 

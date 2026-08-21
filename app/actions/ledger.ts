@@ -1,10 +1,9 @@
 "use server";
 
-import { PrismaClient, LedgerType } from "@prisma/client";
+import { LedgerType } from "@prisma/client";
+import { prisma } from "@/src/lib/prisma";
 import { createClient } from "@/src/utils/supabase/server";
 import { requireAdmin } from "@/src/lib/auth";
-
-const prisma = new PrismaClient();
 const FLAT_FEE = 10000; // 10,000 VNĐ phí cố định mỗi lượt thuê
 
 /**

@@ -1,10 +1,8 @@
 "use server";
 
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/src/lib/prisma";
 import { createClient } from "@/src/utils/supabase/server";
 import { revalidatePath } from "next/cache";
-
-const prisma = new PrismaClient();
 
 /**
  * Toggle Like or Save for a product with atomic increment/decrement and unique constraints
