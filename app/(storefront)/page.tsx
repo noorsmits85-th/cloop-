@@ -170,7 +170,7 @@ export default function Home() {
               Thời Trang Tuần Hoàn Sinh Thái
             </motion.div>
 
-            {/* Main Heading */}
+            {/* Main Heading (Co về 80% kích cỡ, font Fraunces chuẩn như Hệ Thống Ví CLOOP) */}
             <motion.h1 
               initial="hidden"
               animate="visible"
@@ -180,22 +180,22 @@ export default function Home() {
                   transition: { staggerChildren: 0.08 }
                 }
               }}
-              className="font-heading text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-white leading-tight md:leading-[1.12] mb-4 tracking-normal drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)]"
+              className="font-heading text-2xl sm:text-3xl md:text-4xl lg:text-[44px] font-extrabold text-white leading-snug md:leading-[1.18] mb-4 tracking-normal drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)]"
             >
               {["Thuê", "&", "Sở", "Hữu"].map((word, i) => (
-                <motion.span key={i} className="inline-block mr-2 md:mr-3" variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } } }}>
+                <motion.span key={i} className="inline-block mr-2 md:mr-2.5" variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } } }}>
                   {word}
                 </motion.span>
               ))}
               <br />
               {["Thời", "Trang"].map((word, i) => (
-                <motion.span key={i+10} className="inline-block mr-2 md:mr-3 text-emerald-300 drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)]" variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } } }}>
+                <motion.span key={i+10} className="inline-block mr-2 md:mr-2.5 text-emerald-300 drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)]" variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } } }}>
                   {word}
                 </motion.span>
               ))}
               {" "}
               {["Tuần", "Hoàn"].map((word, i) => (
-                <motion.span key={i+20} className="inline-block mr-2 md:mr-3" variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } } }}>
+                <motion.span key={i+20} className="inline-block mr-2 md:mr-2.5" variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } } }}>
                   {word}
                 </motion.span>
               ))}
