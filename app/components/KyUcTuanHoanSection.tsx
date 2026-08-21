@@ -71,21 +71,21 @@ export default function KyUcTuanHoanSection({ recentBlogs }: Props) {
     <section className="relative max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-12 py-20 overflow-hidden bg-[#FAF9F6]">
       
       <style>{`
-        .kyuc-heading { font-family: var(--font-fraunces), serif !important; }
-        .kyuc-hand { font-family: cursive !important; }
+        .kyuc-heading { font-family: var(--font-fraunces), Georgia, serif !important; }
+        .kyuc-hand { font-family: var(--font-caveat), cursive !important; }
         .kyuc-body { font-family: var(--font-be-vietnam-pro), sans-serif !important; }
 
-        /* 🎀 Dải lụa satin tơ tằm chuyển động mượt mà lót dưới nền[cite: 5] */
+        /* 🎀 Dải lụa satin tơ tằm chuyển động mượt mà lót dưới nền */
         .kyuc-silk {
           position: absolute;
           width: 160%;
           height: 220px;
           left: -30%;
           border-radius: 999px;
-          background: linear-gradient(100deg, #ffffff, #F3EEE1, #ffffff, #EDE6D3, #ffffff);
-          filter: blur(14px);
+          background: radial-gradient(ellipse at center, rgba(255,255,255,0.95) 0%, rgba(243,238,225,0.7) 50%, rgba(237,230,211,0) 80%);
           opacity: .85;
           animation: kyucSilkMove 14s ease-in-out infinite;
+          will-change: transform;
         }
         .kyuc-silk-1 { top: -40px; transform: rotate(-3deg); }
         .kyuc-silk-2 { top: 65%; transform: rotate(2deg); opacity: .6; animation-delay: -5s; }
@@ -95,12 +95,11 @@ export default function KyUcTuanHoanSection({ recentBlogs }: Props) {
           50% { transform: translateX(40px) rotate(-1.5deg); }
         }
 
-        /* Vân băng dính Washi xé rách mờ nghệ thuật[cite: 5] */
+        /* Vân băng dính Washi xé rách mờ nghệ thuật */
         .kyuc-tape {
           position: absolute;
           background: repeating-linear-gradient(45deg, rgba(217,199,158,0.45), rgba(217,199,158,0.45) 3px, rgba(232,220,190,0.45) 3px, rgba(232,220,190,0.45) 6px);
           box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-          backdrop-filter: blur(0.5px); /* 🛠️ ĐÃ SỬA: Chuyển đổi chuẩn xác về thuộc tính CSS thuần bọc mờ */
         }
 
         /* Nền họa tiết lưới tập vở sổ tay lưu bút[cite: 5] */

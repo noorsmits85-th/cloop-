@@ -1,13 +1,19 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { Fraunces, Be_Vietnam_Pro } from "next/font/google";
+import { 
+  Fraunces, 
+  Be_Vietnam_Pro, 
+  Dancing_Script, 
+  Caveat, 
+  Cormorant_Garamond 
+} from "next/font/google";
 import "./globals.css";
 import { AuthModalProvider } from "./AuthModalContext";
 import SmoothScroll from "./components/SmoothScroll";
 import ClientLayout from "./components/ClientLayout";
 import { Toaster } from "sonner";
 
-// 🌿 1. Font Tiêu Đề Lớn (Heading / Logo): Fraunces phong cách sang trọng & cao cấp
+// 🌿 1. Font Tiêu Đề Lớn & Logo: Fraunces (Chuẩn sang trọng 100% như mẫu Ví CLOOP)
 const fraunces = Fraunces({
   subsets: ["latin", "vietnamese"],
   display: "swap",
@@ -15,12 +21,36 @@ const fraunces = Fraunces({
   weight: ["400", "500", "600", "700", "800", "900"],
 });
 
-// 🌿 2. Font Nội Dung & Giao Diện (Body / Subtitle / UI): Be Vietnam Pro hiện đại, rõ nét tiếng Việt
+// 🌿 2. Font Nội Dung & Giao Diện: Be Vietnam Pro (Hiện đại, tối ưu tiếng Việt có dấu)
 const beVietnamPro = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
   display: "swap",
   variable: "--font-be-vietnam-pro",
   weight: ["300", "400", "500", "600", "700", "800"],
+});
+
+// 🌿 3. Font Chữ Viết Tay Nghệ Thuật (Scrapbook / Lookbook): Dancing Script
+const dancingScript = Dancing_Script({
+  subsets: ["latin", "vietnamese"],
+  display: "swap",
+  variable: "--font-dancing-script",
+  weight: ["500", "600", "700"],
+});
+
+// 🌿 4. Font Ghi Chú Sổ Tay Lưu Bút: Caveat
+const caveat = Caveat({
+  subsets: ["latin", "latin-ext"],
+  display: "swap",
+  variable: "--font-caveat",
+  weight: ["500", "600", "700"],
+});
+
+// 🌿 5. Font Cổ Điển Tạp Chí: Cormorant Garamond
+const cormorant = Cormorant_Garamond({
+  subsets: ["latin", "latin-ext"],
+  display: "swap",
+  variable: "--font-cormorant",
+  weight: ["400", "500", "600", "700"],
 });
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -69,7 +99,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   }
 
   return (
-    <html lang="vi" className={`${fraunces.variable} ${beVietnamPro.variable}`}>
+    <html 
+      lang="vi" 
+      className={`${fraunces.variable} ${beVietnamPro.variable} ${dancingScript.variable} ${caveat.variable} ${cormorant.variable}`}
+    >
       <head>
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#0A2517" />
@@ -77,9 +110,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="CLOOP" />
         <link rel="apple-touch-icon" href="/app-icon.jpg" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Fraunces:ital,opsz,wght@0,9..144,600..900;1,9..144,600..900&display=swap" />
       </head>
       <body className="font-body text-gray-800 antialiased">
         <Toaster position="top-right" richColors theme="light" closeButton />

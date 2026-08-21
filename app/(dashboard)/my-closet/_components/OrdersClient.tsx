@@ -370,6 +370,9 @@ export function OrdersClient({
         setDisputeImages([]);
         setSuggestedDeduction(0);
         router.refresh();
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("dispute-updated"));
+        }
       } else {
         toast.error("Lỗi gửi khiếu nại", { description: res.error });
       }
@@ -390,6 +393,9 @@ export function OrdersClient({
       if (res.success) {
         toast.success("Thỏa thuận thành công!", { description: "Đơn hàng đã được quyết toán và hoàn cọc an toàn vào ví." });
         router.refresh();
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("dispute-updated"));
+        }
       } else {
         toast.error("Lỗi xử lý", { description: res.error });
       }
@@ -411,6 +417,9 @@ export function OrdersClient({
       if (res.success) {
         toast.info("Đã chuyển lên Ban Quản Trị", { description: "BQT CLOOP sẽ tiếp nhận hồ sơ và làm trọng tài phân xử." });
         router.refresh();
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("dispute-updated"));
+        }
       } else {
         toast.error("Lỗi xử lý", { description: res.error });
       }

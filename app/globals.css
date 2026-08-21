@@ -1,13 +1,15 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Fraunces:ital,opsz,wght@0,9..144,600..900;1,9..144,600..900&display=swap');
 
 @theme {
-  --font-heading: 'Fraunces', serif;
-  --font-body: 'Be Vietnam Pro', sans-serif;
-  --font-ui: 'Be Vietnam Pro', sans-serif;
-  --font-logo: 'Fraunces', serif;
-  --font-search: 'Be Vietnam Pro', sans-serif;
-  --font-display: 'Fraunces', serif;
+  --font-heading: var(--font-fraunces), serif;
+  --font-body: var(--font-be-vietnam-pro), sans-serif;
+  --font-ui: var(--font-be-vietnam-pro), sans-serif;
+  --font-logo: var(--font-fraunces), serif;
+  --font-search: var(--font-be-vietnam-pro), sans-serif;
+  --font-display: var(--font-fraunces), serif;
+  --font-handwriting: var(--font-dancing-script), cursive;
+  --font-scrapbook: var(--font-caveat), cursive;
+  --font-cormorant: var(--font-cormorant), serif;
   
   --animate-shimmer: shimmer 1.5s infinite linear;
   @keyframes shimmer {
@@ -18,19 +20,31 @@
 
 /* Explicit class definitions for complete unified typography */
 .font-heading, h1, h2, h3, .font-serif {
-  font-family: 'Fraunces', Georgia, serif !important;
+  font-family: var(--font-fraunces), Georgia, serif !important;
 }
 
 .font-body, .font-ui, .font-search, .font-sans, p, span, button, input, label, a {
-  font-family: 'Be Vietnam Pro', system-ui, -apple-system, sans-serif !important;
+  font-family: var(--font-be-vietnam-pro), system-ui, -apple-system, sans-serif !important;
 }
 
 .font-logo, .font-brand-title {
-  font-family: 'Fraunces', Georgia, serif !important;
+  font-family: var(--font-fraunces), Georgia, serif !important;
 }
 
 .font-brand-sub {
-  font-family: 'Be Vietnam Pro', system-ui, sans-serif !important;
+  font-family: var(--font-be-vietnam-pro), system-ui, sans-serif !important;
+}
+
+.font-handwriting {
+  font-family: var(--font-dancing-script), cursive !important;
+}
+
+.font-scrapbook, .kyuc-hand {
+  font-family: var(--font-caveat), cursive !important;
+}
+
+.font-cormorant, .kyuc-heading {
+  font-family: var(--font-cormorant), Georgia, serif !important;
 }
 
 /* 🌟 High-Impact Luxury Shimmer for Brand Logo */
@@ -76,27 +90,3 @@
   background-clip: text;
   animation: luxuryShimmer 4.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
-
-@keyframes gentlePulseGlow {
-  0%, 100% {
-    filter: drop-shadow(0 0 0px rgba(74, 222, 128, 0));
-    transform: scale(1);
-  }
-  50% {
-    filter: drop-shadow(0 0 8px rgba(74, 222, 128, 0.35));
-    transform: scale(1.02);
-  }
-}
-
-.animate-logo-glow {
-  animation: gentlePulseGlow 4s ease-in-out infinite;
-}
-
-/* Fix scale UI Desktop as requested by user */
-@media (min-width: 1024px) {
-  body {
-    /* Sử dụng zoom để thu nhỏ toàn bộ web tương đương 80% trên Chrome/Edge/Safari */
-    zoom: 0.8;
-  }
-}
-

@@ -42,13 +42,29 @@ export default function DashboardLayout({
     async function loadStats() {
       try {
         const res = await getUserDisputeStats();
-        if (isMounted && res.success && res.count) {
+        if (isMounted && res.success && typeof res.count === "number") {
           setDisputeCount(res.count);
         }
-      } catch {}
+      } catch (err: any) {
+        console.error("⚠️ [Dashboard DisputeStats Fetch Error]:", err?.message || err);
+      }
     }
+
     loadStats();
-    return () => { isMounted = false; };
+
+    // 🔔 Đồng bộ badge khiếu nại tức thì khi có mutation hoặc focus lại tab
+    const handleDisputeUpdate = () => {
+      loadStats();
+    };
+
+    window.addEventListener("dispute-updated", handleDisputeUpdate);
+    window.addEventListener("focus", handleDisputeUpdate);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener("dispute-updated", handleDisputeUpdate);
+      window.removeEventListener("focus", handleDisputeUpdate);
+    };
   }, []);
 
   const getNavClass = (path: string) => {

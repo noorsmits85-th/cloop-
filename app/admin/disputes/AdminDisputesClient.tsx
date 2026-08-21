@@ -98,6 +98,9 @@ export default function AdminDisputesClient({ initialDisputes }: { initialDisput
         });
         setSelectedDispute(null);
         router.refresh();
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("dispute-updated"));
+        }
       } else {
         toast.error("Lỗi phân xử", { description: res.error });
       }
