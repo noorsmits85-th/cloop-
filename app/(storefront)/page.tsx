@@ -3,12 +3,13 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Check, Star, Heart, Bookmark, Sparkles, Search, TrendingUp } from "lucide-react";
+import { ArrowRight, Check, Star, Heart, Bookmark, Sparkles, Search, TrendingUp, Camera } from "lucide-react";
 import { motion } from "framer-motion";
 import MagneticButton from "@/app/components/MagneticButton";
 import { supabase } from "@/lib/supabase";
 import ProductLikeSaveButtons from "@/components/ProductLikeSaveButtons";
 import { getTrendingProductsAction } from "@/app/actions/favorite";
+import VisualSearchModal from "@/app/components/VisualSearchModal";
 
 export default function Home() {
   const [activeRentalCategory, setActiveRentalCategory] = useState("Tất cả");
@@ -18,6 +19,7 @@ export default function Home() {
   const resaleCategories = ["Tất cả", "Túi xách", "Phụ kiện", "Áo khoác", "Váy thiết kế"];
 
   const [activeCard, setActiveCard] = useState(0);
+  const [isVisualSearchOpen, setIsVisualSearchOpen] = useState(false);
 
   // --- LẤY DỮ LIỆU SẢN PHẨM THỊNH HÀNH & TOP TIM/LƯU THEO TIME-DECAY ---
   const [boostedProducts, setBoostedProducts] = useState<any[]>([]);
@@ -209,21 +211,37 @@ export default function Home() {
               Có những món đồ cất trong tủ kính mang theo cả một thời tuổi trẻ. Thay vì để chúng ngủ quên, hãy gửi gắm vào tủ đồ CLOOP. Chút hoài niệm của bạn hôm nay sẽ là sự rạng rỡ của một người khác ngày mai.
             </motion.p>
 
-            {/* Smart Search Bar (Glassmorphism) */}
+            {/* Smart Search Bar (Glassmorphism) with Prominent AI Visual Search Camera */}
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.8, duration: 0.5 }}
-              className="w-full max-w-lg mb-6 md:mb-8 relative group"
+              className="w-full max-w-xl mb-6 md:mb-8 relative group"
             >
-              <div className="relative flex items-center bg-white/95 backdrop-blur-md border border-white/40 rounded-xl p-1.5 md:p-2 shadow-2xl focus-within:ring-2 focus-within:ring-emerald-400 transition-all">
-                <Search size={18} className="text-stone-400 ml-2 mr-2 md:mr-3 shrink-0" />
+              <div className="relative flex items-center bg-white/95 backdrop-blur-md border border-white/50 rounded-2xl p-1.5 md:p-2 shadow-2xl focus-within:ring-2 focus-within:ring-emerald-400 transition-all gap-1">
+                <Search size={18} className="text-stone-400 ml-2 mr-1 shrink-0" />
                 <input 
                   type="text" 
-                  placeholder="Bạn đang tìm chiếc Blazer cho tiệc cuối tuần?" 
-                  className="flex-1 bg-transparent border-none outline-none font-ui text-xs md:text-sm text-[#0A2517] placeholder:text-stone-500 font-medium"
+                  placeholder="Tìm Blazer, đầm dạ tiệc, áo dài..." 
+                  className="flex-1 bg-transparent border-none outline-none font-ui text-xs md:text-sm text-[#0A2517] placeholder:text-stone-500 font-medium min-w-0"
                 />
-                <button className="px-4 py-2 bg-[#0A2517] text-white rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-emerald-900 transition-colors shrink-0 shadow-sm">
+
+                {/* NÚT TÌM BẰNG HÌNH ẢNH (AI LOOKBOOK CAMERA) CỰC KỲ NỔI BẬT */}
+                <button
+                  type="button"
+                  onClick={() => setIsVisualSearchOpen(true)}
+                  className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-ui text-xs font-bold transition-all shadow-sm group/cam shrink-0 hover:scale-105 active:scale-95"
+                  title="Tìm trang phục tương tự bằng ảnh Lookbook / Pinterest"
+                >
+                  <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                  </span>
+                  <Camera size={15} className="text-emerald-700 group-hover/cam:scale-110 transition-transform" />
+                  <span className="hidden sm:inline font-semibold">Tìm bằng ảnh</span>
+                </button>
+
+                <button className="px-4 py-2 bg-[#0A2517] text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-emerald-900 transition-colors shrink-0 shadow-sm">
                   Tìm kiếm
                 </button>
               </div>
@@ -986,6 +1004,11 @@ export default function Home() {
         </div>
       </section>
 
+      {/* MODAL TÌM KIẾM HÌNH ẢNH LOOKBOOK BẰNG AI */}
+      <VisualSearchModal 
+        isOpen={isVisualSearchOpen} 
+        onClose={() => setIsVisualSearchOpen(false)} 
+      />
 
     </main>
   );
