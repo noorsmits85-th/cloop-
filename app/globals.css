@@ -1,12 +1,13 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Fraunces:ital,opsz,wght@0,9..144,600..900;1,9..144,600..900&display=swap');
 
 @theme {
-  --font-heading: var(--font-fraunces), Georgia, serif;
-  --font-body: var(--font-be-vietnam-pro), system-ui, sans-serif;
-  --font-ui: var(--font-be-vietnam-pro), system-ui, sans-serif;
-  --font-logo: var(--font-fraunces), Georgia, serif;
-  --font-search: var(--font-be-vietnam-pro), system-ui, sans-serif;
-  --font-display: var(--font-fraunces), Georgia, serif;
+  --font-heading: 'Fraunces', serif;
+  --font-body: 'Be Vietnam Pro', sans-serif;
+  --font-ui: 'Be Vietnam Pro', sans-serif;
+  --font-logo: 'Fraunces', serif;
+  --font-search: 'Be Vietnam Pro', sans-serif;
+  --font-display: 'Fraunces', serif;
   
   --animate-shimmer: shimmer 1.5s infinite linear;
   @keyframes shimmer {
@@ -16,20 +17,20 @@
 }
 
 /* Explicit class definitions for complete unified typography */
-.font-heading, h1, h2, h3 {
-  font-family: var(--font-fraunces), Georgia, serif;
+.font-heading, h1, h2, h3, .font-serif {
+  font-family: 'Fraunces', Georgia, serif !important;
 }
 
-.font-body, .font-ui, .font-search, p, span, button, input, label, a {
-  font-family: var(--font-be-vietnam-pro), system-ui, -apple-system, sans-serif;
+.font-body, .font-ui, .font-search, .font-sans, p, span, button, input, label, a {
+  font-family: 'Be Vietnam Pro', system-ui, -apple-system, sans-serif !important;
 }
 
 .font-logo, .font-brand-title {
-  font-family: var(--font-fraunces), Georgia, serif !important;
+  font-family: 'Fraunces', Georgia, serif !important;
 }
 
 .font-brand-sub {
-  font-family: var(--font-be-vietnam-pro), system-ui, sans-serif !important;
+  font-family: 'Be Vietnam Pro', system-ui, sans-serif !important;
 }
 
 /* 🌟 High-Impact Luxury Shimmer for Brand Logo */
