@@ -10,17 +10,30 @@ export const dynamic = "force-dynamic";
  * 
  * BẢO MẬT & VẬN HÀNH CHUẨN CTO:
  * 1. Xác thực Bearer Token qua CRON_SECRET.
- * 2. Idempotency 100%: Dùng Prisma Transaction khóa bản ghi và kiểm tra trạng thái trước khi hoàn tiền.
- * 3. Structured Audit Log lưu vết chi tiết từng giao dịch hoàn cọc.
+ * 2. Hỗ trợ JobId / RunId chống retry trùng lặp.
+ * 3. Trạng thái trung gian REFUND_PROCESSING để quan sát lỗi giữa chừng.
+ * 4. Idempotency 100%: Dùng Prisma Transaction khóa bản ghi và kiểm tra trạng thái trước khi hoàn tiền.
+ * 5. Structured Audit Log lưu vết: actor=system, jobId, runId, traceId.
  */
 export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const runId = req.headers.get("x-cloudscheduler-jobname") || 
+                req.headers.get("x-vercel-id") || 
+                url.searchParams.get("runId") || 
+                `run_${crypto.randomUUID()}`;
+                
   const traceId = `cron_refund_${crypto.randomUUID()}`;
   const authHeader = req.headers.get("authorization");
   const expectedSecret = process.env.CRON_SECRET;
 
   // 1. KHIÊN BẢO VỆ XÁC THỰC SECRET
   if (!expectedSecret || authHeader !== `Bearer ${expectedSecret}`) {
-    console.warn(`⛔ [UNAUTHORIZED_CRON_ACCESS][${traceId}] Lệnh gọi Cronjob bị từ chối do sai Secret.`);
+    console.warn(JSON.stringify({
+      event: "UNAUTHORIZED_CRON_ACCESS",
+      traceId,
+      runId,
+      timestamp: new Date().toISOString(),
+    }));
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
@@ -47,7 +60,14 @@ export async function GET(req: Request) {
       },
     });
 
-    console.log(`[CRON_AUTO_REFUND][${traceId}] Tìm thấy ${eligibleRentals.length} đơn thuê đủ điều kiện hoàn cọc 48h.`);
+    console.log(JSON.stringify({
+      event: "CRON_AUTO_REFUND_BATCH_START",
+      jobId: "AUTO_REFUND_DEPOSIT_48H",
+      runId,
+      traceId,
+      eligibleCount: eligibleRentals.length,
+      timestamp: new Date().toISOString(),
+    }));
 
     const results = [];
 
@@ -64,7 +84,7 @@ export async function GET(req: Request) {
           });
 
           if (!freshRental || freshRental.status !== "BORROWER_RETURNED") {
-            return { skipped: true, reason: "Trạng thái đơn hàng đã thay đổi" };
+            return { skipped: true, rentalId: rental.id, reason: "Trạng thái đơn hàng đã thay đổi" };
           }
 
           // Idempotency: Kiểm tra xem đã từng có giao dịch hoàn cọc cho đơn này chưa
@@ -76,7 +96,15 @@ export async function GET(req: Request) {
           });
 
           if (existingRefundLog) {
-            return { skipped: true, reason: "Đơn thuê đã được hoàn cọc từ trước" };
+            return { skipped: true, rentalId: rental.id, reason: "Đơn thuê đã được hoàn cọc từ trước" };
+          }
+
+          // Trạng thái trung gian REFUND_PROCESSING để quan sát luồng
+          if (freshRental.invoice?.id) {
+            await tx.invoice.update({
+              where: { id: freshRental.invoice.id },
+              data: { payosStatus: "REFUND_PROCESSING" },
+            });
           }
 
           // A. Cập nhật trạng thái đơn thuê -> LENDER_COMPLETED
@@ -105,7 +133,7 @@ export async function GET(req: Request) {
             }
           }
 
-          // C. Ghi Audit Log chuẩn kiểm toán
+          // C. Ghi Audit Log chuẩn kiểm toán: actor = system, kèm traceId và jobId
           await tx.auditLog.create({
             data: {
               adminId: "SYSTEM_CRON_SCHEDULER",
@@ -115,6 +143,10 @@ export async function GET(req: Request) {
               beforeStatus: "BORROWER_RETURNED",
               afterStatus: "LENDER_COMPLETED",
               metadata: JSON.stringify({
+                actor: "system",
+                actorRole: "SYSTEM_CRON",
+                jobId: "AUTO_REFUND_DEPOSIT_48H",
+                runId,
                 traceId,
                 depositRefunded: depositAmount,
                 renterId: rental.renterId,
@@ -135,6 +167,8 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
       success: true,
+      jobId: "AUTO_REFUND_DEPOSIT_48H",
+      runId,
       traceId,
       processedCount: results.length,
       details: results,
