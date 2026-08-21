@@ -4,6 +4,7 @@ import { requireUser } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { moderateProductImage } from "@/src/services/imageModeration";
 
 // Zod schema for server-side validation
 const createProductSchema = z.object({
@@ -42,7 +43,7 @@ export async function createProductAction(data: any) {
   const user = await requireUser();
   if (!user) throw new Error("Unauthorized");
 
-  // SERVER-SIDE VALIDATION
+  // 1. SERVER-SIDE VALIDATION
   const parsed = createProductSchema.safeParse(data);
   if (!parsed.success) {
     return { 
@@ -52,6 +53,21 @@ export async function createProductAction(data: any) {
   }
   
   const v = parsed.data;
+
+  // 2. AI VISION MODERATION (Kiểm duyệt ảnh đồ thật server-side)
+  const primaryImage = v.uploadedImages[0];
+  const modResult = await moderateProductImage(primaryImage.url);
+
+  // Ghi Audit Log sạch sẽ phía Server cho Admin theo dõi
+  console.log(`[AUDIT_LOG][USER:${user.id}] ${modResult.adminAuditLog}`);
+
+  // Tầng 3: Chỉ từ chối khi là REJECTED (Rác/Spam 100%)
+  if (modResult.decision === "REJECTED") {
+    return {
+      success: false,
+      error: modResult.userMessage || "Ảnh tải lên chưa thấy rõ trang phục hoặc phụ kiện thời trang. Bạn vui lòng chụp rõ món đồ hơn giúp CLOOP nhé! ✨"
+    };
+  }
 
   try {
     await prisma.$transaction(async (tx) => {
