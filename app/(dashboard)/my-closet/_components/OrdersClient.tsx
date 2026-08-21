@@ -84,6 +84,7 @@ export function OrdersClient({
 
   const [escrowOrders, setEscrowOrders] = useState(initialEscrow);
   const [rentedOrders, setRentedOrders] = useState(initialRented);
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "RETURNED" | "DISPUTED" | "COMPLETED">("ALL");
   const [hasMoreEscrow, setHasMoreEscrow] = useState(initialHasMoreEscrow);
   const [hasMoreRented, setHasMoreRented] = useState(initialHasMoreRented);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -444,10 +445,79 @@ export function OrdersClient({
           </div>
         </div>
 
+        {/* SUB-FILTER STATUS TAB BAR */}
+        {(() => {
+          const currentList = isOwnerMode ? escrowOrders : rentedOrders;
+          const disputedList = currentList.filter(
+            (o) => o.status === "DISPUTE" || (o.disputes && o.disputes.some((d: any) => d.status === "PENDING_REVIEW" || d.status === "DISPUTED"))
+          );
+          const activeList = currentList.filter(
+            (o) => o.status === "PENDING_APPROVAL" || o.status === "OWNER_PACKED" || o.status === "LENDER_SHIPPED" || o.status === "BORROWER_RECEIVED"
+          );
+          const returnedList = currentList.filter((o) => o.status === "BORROWER_RETURNED");
+          const completedList = currentList.filter((o) => o.status === "LENDER_COMPLETED" || o.status === "CANCELLED");
+
+          return (
+            <div className="flex items-center gap-2 px-6 py-3 border-b border-stone-100 bg-stone-50/70 overflow-x-auto no-scrollbar">
+              <button
+                onClick={() => setStatusFilter("ALL")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                  statusFilter === "ALL"
+                    ? "bg-white text-stone-900 shadow-xs border border-stone-200"
+                    : "text-stone-500 hover:text-stone-900"
+                }`}
+              >
+                Tất cả ({currentList.length})
+              </button>
+              <button
+                onClick={() => setStatusFilter("ACTIVE")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                  statusFilter === "ACTIVE"
+                    ? "bg-white text-stone-900 shadow-xs border border-stone-200"
+                    : "text-stone-500 hover:text-stone-900"
+                }`}
+              >
+                Đang xử lý / Thuê ({activeList.length})
+              </button>
+              <button
+                onClick={() => setStatusFilter("RETURNED")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                  statusFilter === "RETURNED"
+                    ? "bg-white text-stone-900 shadow-xs border border-stone-200"
+                    : "text-stone-500 hover:text-stone-900"
+                }`}
+              >
+                Chờ nhận lại ({returnedList.length})
+              </button>
+              <button
+                onClick={() => setStatusFilter("DISPUTED")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-all ${
+                  statusFilter === "DISPUTED"
+                    ? "bg-rose-50 text-rose-700 border border-rose-200 shadow-xs"
+                    : "text-stone-500 hover:text-rose-600"
+                }`}
+              >
+                <AlertTriangle size={13} className={disputedList.length > 0 ? "text-rose-600 animate-pulse" : "text-stone-400"} />
+                Đang khiếu nại {disputedList.length > 0 && <span className="px-1.5 py-0.2 rounded-full bg-rose-600 text-white text-[10px]">{disputedList.length}</span>}
+              </button>
+              <button
+                onClick={() => setStatusFilter("COMPLETED")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                  statusFilter === "COMPLETED"
+                    ? "bg-white text-stone-900 shadow-xs border border-stone-200"
+                    : "text-stone-500 hover:text-stone-900"
+                }`}
+              >
+                Đã hoàn tất ({completedList.length})
+              </button>
+            </div>
+          );
+        })()}
+
         <div className="p-0">
           <AnimatePresence mode="wait">
             <motion.div
-              key={isOwnerMode ? "owner" : "renter"}
+              key={`${isOwnerMode ? "owner" : "renter"}_${statusFilter}`}
               initial={{ opacity: 0, filter: "blur(4px)" }}
               animate={{ opacity: 1, filter: "blur(0px)" }}
               exit={{ opacity: 0, filter: "blur(4px)" }}
@@ -455,9 +525,18 @@ export function OrdersClient({
             >
               {isOwnerMode ? (
                 <div>
-                  {escrowOrders.length > 0 ? (
-                    <div className="flex flex-col">
-                      {escrowOrders.map((order) => (
+                  {(() => {
+                    const displayedEscrow = escrowOrders.filter((order) => {
+                      if (statusFilter === "ACTIVE") return order.status === "PENDING_APPROVAL" || order.status === "OWNER_PACKED" || order.status === "LENDER_SHIPPED" || order.status === "BORROWER_RECEIVED";
+                      if (statusFilter === "RETURNED") return order.status === "BORROWER_RETURNED";
+                      if (statusFilter === "DISPUTED") return order.status === "DISPUTE" || (order.disputes && order.disputes.some((d: any) => d.status === "PENDING_REVIEW" || d.status === "DISPUTED"));
+                      if (statusFilter === "COMPLETED") return order.status === "LENDER_COMPLETED" || order.status === "CANCELLED";
+                      return true;
+                    });
+
+                    return displayedEscrow.length > 0 ? (
+                      <div className="flex flex-col">
+                        {displayedEscrow.map((order) => (
                         <div key={order.id} className="p-6 sm:p-8 border-b border-stone-100 hover:bg-[#183A2D]/[0.02] transition-colors duration-500 flex flex-col md:flex-row gap-6 md:gap-8">
                           <div className="flex-1 flex gap-5">
                             <img src={order.product?.images?.[0]?.url || PLACEHOLDER_IMG} className="w-24 h-32 rounded-md object-cover bg-stone-50 border border-stone-100 shrink-0 shadow-sm" />
@@ -616,17 +695,24 @@ export function OrdersClient({
                       </div>
                       <h3 className="text-sm sm:text-base font-medium text-[#183A2D] mb-3 tracking-wide">Tài sản thời trang đang ngủ đông</h3>
                       <p className="text-xs font-light text-stone-500 max-w-sm mb-10 leading-relaxed">Hàng ngàn thành viên CLOOP đang tìm kiếm phong cách của bạn. Lên sóng món đồ đầu tiên để đánh thức tủ đồ và kích hoạt dòng tiền ngay hôm nay.</p>
-                      <Link href="/my-closet/create" className="border border-[#183A2D] bg-[#183A2D] hover:bg-transparent text-white hover:text-[#183A2D] font-medium py-3.5 px-8 rounded-md transition-all duration-500 text-xs tracking-wide">
-                        + Đăng bán / Cho thuê ngay
-                      </Link>
                     </div>
-                  )}
-                </div>
-              ) : (
-                <div>
-                  {rentedOrders.length > 0 ? (
+                  );
+                })()}
+              </div>
+            ) : (
+              <div>
+                {(() => {
+                  const displayedRented = rentedOrders.filter((order) => {
+                    if (statusFilter === "ACTIVE") return order.status === "PENDING_APPROVAL" || order.status === "OWNER_PACKED" || order.status === "LENDER_SHIPPED" || order.status === "BORROWER_RECEIVED";
+                    if (statusFilter === "RETURNED") return order.status === "BORROWER_RETURNED";
+                    if (statusFilter === "DISPUTED") return order.status === "DISPUTE" || (order.disputes && order.disputes.some((d: any) => d.status === "PENDING_REVIEW" || d.status === "DISPUTED"));
+                    if (statusFilter === "COMPLETED") return order.status === "LENDER_COMPLETED" || order.status === "CANCELLED";
+                    return true;
+                  });
+
+                  return displayedRented.length > 0 ? (
                     <div className="flex flex-col">
-                      {rentedOrders.map((order) => (
+                      {displayedRented.map((order) => (
                         <div key={order.id} className="p-6 sm:p-8 border-b border-stone-100 hover:bg-slate-50/50 transition-colors duration-500 flex flex-col md:flex-row gap-6 md:gap-8">
                           <div className="flex-1 flex gap-5">
                             <img src={order.product?.images?.[0]?.url || PLACEHOLDER_IMG} className="w-24 h-32 rounded-md object-cover bg-stone-50 border border-stone-100 shrink-0 shadow-sm" />
@@ -783,9 +869,10 @@ export function OrdersClient({
                         Khám phá tủ đồ cộng đồng
                       </Link>
                     </div>
-                  )}
-                </div>
-              )}
+                  );
+                })()}
+              </div>
+            )}
             </motion.div>
           </AnimatePresence>
         </div>
