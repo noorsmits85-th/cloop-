@@ -294,12 +294,12 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       
       <style>{`
         html { scroll-behavior: smooth; }
-        .font-logo { font-family: 'Fraunces', serif; font-weight: 800; letter-spacing: -0.02em; }
-        .font-heading { font-family: 'Fraunces', serif; }
-        .font-body { font-family: 'Lora', serif; }
-        .font-slogan { font-family: 'Fraunces', serif; font-style: italic; }
-        .font-ui { font-family: 'Inter', sans-serif; }
-        .font-search { font-family: 'Inter', sans-serif; }
+        .font-logo { font-family: var(--font-fraunces), Georgia, serif; font-weight: 800; letter-spacing: -0.02em; }
+        .font-heading { font-family: var(--font-fraunces), Georgia, serif; }
+        .font-body { font-family: var(--font-be-vietnam-pro), system-ui, sans-serif; }
+        .font-slogan { font-family: var(--font-fraunces), Georgia, serif; font-style: italic; }
+        .font-ui { font-family: var(--font-be-vietnam-pro), system-ui, sans-serif; }
+        .font-search { font-family: var(--font-be-vietnam-pro), system-ui, sans-serif; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>

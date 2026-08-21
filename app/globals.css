@@ -1,12 +1,12 @@
 @import "tailwindcss";
 
 @theme {
-  --font-heading: 'Fraunces', 'Cormorant Garamond', 'Lora', 'Playfair Display', Georgia, serif;
-  --font-body: 'Be Vietnam Pro', 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
-  --font-ui: 'Be Vietnam Pro', 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
-  --font-logo: 'Cinzel', serif;
-  --font-search: 'Be Vietnam Pro', 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
-  --font-display: 'Fraunces', 'Cormorant Garamond', 'Lora', serif;
+  --font-heading: var(--font-fraunces), Georgia, serif;
+  --font-body: var(--font-be-vietnam-pro), system-ui, sans-serif;
+  --font-ui: var(--font-be-vietnam-pro), system-ui, sans-serif;
+  --font-logo: var(--font-fraunces), Georgia, serif;
+  --font-search: var(--font-be-vietnam-pro), system-ui, sans-serif;
+  --font-display: var(--font-fraunces), Georgia, serif;
   
   --animate-shimmer: shimmer 1.5s infinite linear;
   @keyframes shimmer {
@@ -15,33 +15,21 @@
   }
 }
 
-/* Explicit class definitions for complete typography styling */
-.font-heading {
-  font-family: 'Fraunces', 'Cormorant Garamond', 'Lora', 'Playfair Display', Georgia, serif !important;
+/* Explicit class definitions for complete unified typography */
+.font-heading, h1, h2, h3 {
+  font-family: var(--font-fraunces), Georgia, serif;
 }
 
-.font-body {
-  font-family: 'Be Vietnam Pro', 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif !important;
+.font-body, .font-ui, .font-search, p, span, button, input, label, a {
+  font-family: var(--font-be-vietnam-pro), system-ui, -apple-system, sans-serif;
 }
 
-.font-ui {
-  font-family: 'Be Vietnam Pro', 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif !important;
-}
-
-.font-logo {
-  font-family: 'Fraunces', 'Cormorant Garamond', 'Lora', 'Playfair Display', Georgia, serif !important;
-}
-
-.font-brand-title {
-  font-family: 'Fraunces', 'Cormorant Garamond', 'Lora', 'Playfair Display', Georgia, serif !important;
+.font-logo, .font-brand-title {
+  font-family: var(--font-fraunces), Georgia, serif !important;
 }
 
 .font-brand-sub {
-  font-family: 'Montserrat', 'Plus Jakarta Sans', 'Outfit', sans-serif !important;
-}
-
-.font-search {
-  font-family: 'Be Vietnam Pro', 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif !important;
+  font-family: var(--font-be-vietnam-pro), system-ui, sans-serif !important;
 }
 
 /* 🌟 High-Impact Luxury Shimmer for Brand Logo */
