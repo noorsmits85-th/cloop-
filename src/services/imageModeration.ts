@@ -1,6 +1,18 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import crypto from "node:crypto";
 
 export type ModerationDecision = "APPROVED" | "PENDING_REVIEW" | "REJECTED";
+
+export interface ModerationAuditDetails {
+  traceId: string;
+  decision: ModerationDecision;
+  confidence: number;
+  reason: string;
+  fallbackUsed: boolean;
+  detectedCategory?: string;
+  detectedColor?: string;
+  detectedStyle?: string;
+}
 
 export interface ModerationResult {
   decision: ModerationDecision;
@@ -11,8 +23,10 @@ export interface ModerationResult {
   detectedColor?: string;
   detectedStyle?: string;
   userMessage?: string; // Thông điệp lịch sự, sạch sẽ cho khách hàng
-  adminAuditLog: string; // Log chi tiết chuẩn cho Admin kiểm toán
+  adminAuditLog: string; // Chuỗi log chi tiết cho server console
+  auditDetails: ModerationAuditDetails; // Cấu trúc JSON chuẩn cho hệ thống quan sát (Observability/Sentry)
   isFallback: boolean; // True nếu AI timeout/lỗi và kích hoạt cứu hộ
+  traceId: string;
 }
 
 /**
@@ -21,18 +35,28 @@ export interface ModerationResult {
  * - PENDING_REVIEW: Ảnh biên, góc chụp khó, hoặc AI Timeout -> Cho lưu vào tủ, không chặn user.
  * - REJECTED: Chỉ chặn khi 100% là ảnh rác, spam, đĩa thức ăn, meme, văn bản, đồi trụy.
  */
-export async function moderateProductImage(imageUrl: string): Promise<ModerationResult> {
+export async function moderateProductImage(imageUrl: string, customTraceId?: string): Promise<ModerationResult> {
+  const traceId = customTraceId || `mod_${crypto.randomUUID()}`;
   const apiKey = process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_DEV;
 
   // 1. FALLBACK CỨU HỘ KHI THIẾU KEY: Cho lưu dạng PENDING_REVIEW
   if (!apiKey) {
+    const auditDetails: ModerationAuditDetails = {
+      traceId,
+      decision: "PENDING_REVIEW",
+      confidence: 0.5,
+      reason: "Missing GEMINI_API_KEY, gracefully routed to PENDING_REVIEW",
+      fallbackUsed: true,
+    };
     return {
+      traceId,
       decision: "PENDING_REVIEW",
       isApproved: true,
       isClothing: true,
       confidence: 0.5,
       isFallback: true,
-      adminAuditLog: "SYSTEM_FALLBACK: Missing GEMINI_API_KEY. Routed to PENDING_REVIEW queue.",
+      adminAuditLog: JSON.stringify(auditDetails),
+      auditDetails,
       userMessage: undefined,
     };
   }
@@ -44,13 +68,22 @@ export async function moderateProductImage(imageUrl: string): Promise<Moderation
     });
 
     if (!response.ok) {
+      const auditDetails: ModerationAuditDetails = {
+        traceId,
+        decision: "PENDING_REVIEW",
+        confidence: 0.5,
+        reason: `Image fetch HTTP error ${response.status}`,
+        fallbackUsed: true,
+      };
       return {
+        traceId,
         decision: "PENDING_REVIEW",
         isApproved: true,
         isClothing: true,
         confidence: 0.5,
         isFallback: true,
-        adminAuditLog: `FETCH_ERROR: HTTP status ${response.status} when fetching image. Routed to PENDING_REVIEW.`,
+        adminAuditLog: JSON.stringify(auditDetails),
+        auditDetails,
         userMessage: undefined,
       };
     }
@@ -115,24 +148,34 @@ Hãy trả về JSON theo schema:
     let isApproved = true;
     let userMessage: string | undefined = undefined;
 
-    if (isClothing && confidence >= 0.65) {
-      // Tầng 1: Đồ rõ ràng -> APPROVED
+    if (isClothing && confidence >= 0.60) {
+      // Tầng 1: Đồ rõ ràng -> APPROVED (Allow by default)
       decision = "APPROVED";
       isApproved = true;
-    } else if (!isClothing && confidence >= 0.85) {
-      // Tầng 3: Rác / Spam 100% rõ ràng -> REJECTED
+    } else if (!isClothing && confidence >= 0.90) {
+      // Tầng 3: Rác / Spam 100% rõ ràng không còn nghi ngờ -> REJECTED
       decision = "REJECTED";
       isApproved = false;
       userMessage = "Ảnh tải lên chưa thấy rõ trang phục hoặc phụ kiện thời trang. Bạn vui lòng chụp rõ món đồ hơn giúp CLOOP nhé! ✨";
     } else {
-      // Tầng 2: Ảnh biên, góc chụp khó, confidence thấp -> PENDING_REVIEW (Không chặn user)
+      // Tầng 2: Ảnh biên, góc chụp khó, lấn cấn hoặc confidence thấp -> PENDING_REVIEW (Không chặn user)
       decision = "PENDING_REVIEW";
       isApproved = true;
     }
 
-    const adminAuditLog = `[AI_MODERATION] Decision: ${decision} | isClothing: ${isClothing} | Confidence: ${(confidence * 100).toFixed(1)}% | Category: ${parsed.detectedCategory || "N/A"} | Detail: ${parsed.reasonDescription || "No detail"}`;
+    const auditDetails: ModerationAuditDetails = {
+      traceId,
+      decision,
+      confidence,
+      reason: parsed.reasonDescription || (isClothing ? "Valid clothing detected" : "Non-clothing detected"),
+      fallbackUsed: false,
+      detectedCategory: parsed.detectedCategory,
+      detectedColor: parsed.detectedColor,
+      detectedStyle: parsed.detectedStyle,
+    };
 
     return {
+      traceId,
       decision,
       isApproved,
       isClothing,
@@ -141,20 +184,30 @@ Hãy trả về JSON theo schema:
       detectedColor: parsed.detectedColor || "Tự nhiên",
       detectedStyle: parsed.detectedStyle || "Thời trang",
       userMessage,
-      adminAuditLog,
+      adminAuditLog: JSON.stringify(auditDetails),
+      auditDetails,
       isFallback: false,
     };
 
   } catch (error: any) {
-    console.warn("⚠️ [AI Moderation Fallback Triggered]:", error?.message || error);
-    // FALLBACK AN TOÀN TUYỆT ĐỐI: Lỗi mạng hoặc AI timeout -> PENDING_REVIEW, không chặn user
+    console.warn(`⚠️ [AI Moderation Fallback][${traceId}]:`, error?.message || error);
+    // FALLBACK AN TOÀN TUYỆT ĐỐI: Lỗi mạng hoặc AI timeout -> PENDING_REVIEW, không bao giờ làm hỏng flow user
+    const auditDetails: ModerationAuditDetails = {
+      traceId,
+      decision: "PENDING_REVIEW",
+      confidence: 0.5,
+      reason: `AI_TIMEOUT_OR_NETWORK_ERROR: ${error?.message || "Timeout"}`,
+      fallbackUsed: true,
+    };
     return {
+      traceId,
       decision: "PENDING_REVIEW",
       isApproved: true,
       isClothing: true,
       confidence: 0.5,
       isFallback: true,
-      adminAuditLog: `AI_TIMEOUT_FALLBACK: ${error?.message || "Timeout"}. Assigned PENDING_REVIEW.`,
+      adminAuditLog: JSON.stringify(auditDetails),
+      auditDetails,
       userMessage: undefined,
     };
   }
