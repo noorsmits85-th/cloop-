@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { useAuthModal } from "@/app/AuthModalContext";
 import { DashboardHeader } from "./_components/DashboardHeader";
+import { getUserDisputeStats } from "@/app/actions/getDisputeStats";
 
 export default function DashboardLayout({
   children,
@@ -34,6 +35,17 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const { currentUser, setCurrentUser } = useAuthModal();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [disputeCount, setDisputeCount] = useState(0);
+
+  useEffect(() => {
+    async function loadStats() {
+      const res = await getUserDisputeStats();
+      if (res.success && res.count) {
+        setDisputeCount(res.count);
+      }
+    }
+    loadStats();
+  }, [pathname]);
 
 
 
@@ -139,7 +151,12 @@ export default function DashboardLayout({
                     onClick={() => setIsSidebarOpen(false)}
                   >
                     {item.icon}
-                    {item.name}
+                    <span className="flex-1">{item.name}</span>
+                    {item.path === "/my-closet/orders" && disputeCount > 0 && (
+                      <span className="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse shadow-sm">
+                        {disputeCount}
+                      </span>
+                    )}
                   </Link>
                 ))}
               </nav>
