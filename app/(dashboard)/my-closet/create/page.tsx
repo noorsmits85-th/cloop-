@@ -249,9 +249,7 @@ export default function CreateProductListingPage() {
       style={{ backgroundColor: "#EBE6DA", backgroundImage: `url(${PAPER_BG})` }}
     >
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=Caveat:wght@400;500;600;700&display=swap');
-        h1, h2, h3, .font-heading { font-family: 'Cormorant Garamond', serif !important; }
-        .font-handwriting { font-family: 'Dancing Script', cursive !important; }
+        .font-handwriting { font-family: cursive !important; }
         
         .torn-paper {
             background: #FFFDF9;

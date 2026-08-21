@@ -38,22 +38,24 @@ export default function DashboardLayout({
   const [disputeCount, setDisputeCount] = useState(0);
 
   useEffect(() => {
+    let isMounted = true;
     async function loadStats() {
-      const res = await getUserDisputeStats();
-      if (res.success && res.count) {
-        setDisputeCount(res.count);
-      }
+      try {
+        const res = await getUserDisputeStats();
+        if (isMounted && res.success && res.count) {
+          setDisputeCount(res.count);
+        }
+      } catch {}
     }
     loadStats();
-  }, [pathname]);
-
-
+    return () => { isMounted = false; };
+  }, []);
 
   const getNavClass = (path: string) => {
     const isActive = pathname === path || (path !== "/my-closet" && pathname.startsWith(path));
-    return `flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium text-sm transition-all ${
+    return `flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium text-sm transition-colors ${
       isActive
-        ? "bg-[#183A2D] text-white shadow-md"
+        ? "bg-[#183A2D] text-white shadow-xs"
         : "text-gray-500 hover:bg-emerald-50 hover:text-[#183A2D]"
     }`;
   };
@@ -91,14 +93,7 @@ export default function DashboardLayout({
   ];
 
   return (
-    <div className="min-h-screen bg-stone-50 font-sans antialiased text-stone-800">
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap" />
-      <style>{`
-        /* Force Be Vietnam Pro for all dashboard UI except specific logos/headings if needed */
-        aside h3, aside span, aside a, main h1, main h2, main h3, main h4, main p, main span, main div, main button, main input, main label, main td, main th { 
-          font-family: 'Be Vietnam Pro', sans-serif !important; 
-        }
-      `}</style>
+    <div className="min-h-screen bg-stone-50 antialiased text-stone-800">
       
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (

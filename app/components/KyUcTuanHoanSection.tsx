@@ -70,13 +70,10 @@ export default function KyUcTuanHoanSection({ recentBlogs }: Props) {
   return (
     <section className="relative max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-12 py-20 overflow-hidden bg-[#FAF9F6]">
       
-      {/* 🔐 NHÚNG KHÓA HỆ PHÔNG CHỮ VÀ HIỆU ỨNG ĐỔ BÓNG TRANG TRÍ SCRAPBOOK[cite: 5] */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,500&family=Caveat:wght@500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
-
-        .kyuc-heading { font-family: 'Cormorant Garamond', serif !important; }
-        .kyuc-hand { font-family: 'Caveat', cursive !important; }
-        .kyuc-body { font-family: 'Inter', sans-serif !important; }
+        .kyuc-heading { font-family: var(--font-fraunces), serif !important; }
+        .kyuc-hand { font-family: cursive !important; }
+        .kyuc-body { font-family: var(--font-be-vietnam-pro), sans-serif !important; }
 
         /* 🎀 Dải lụa satin tơ tằm chuyển động mượt mà lót dưới nền[cite: 5] */
         .kyuc-silk {

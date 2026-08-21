@@ -124,9 +124,7 @@ export default function MemoriesDiaryPage() {
     <main ref={containerRef} className="min-h-screen bg-[#EAE4D8] py-8 md:py-16 px-2 sm:px-6 relative overflow-x-hidden selection:bg-[#183A2D] selection:text-white font-sans">
       
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=Caveat:wght@400;500;600;700&display=swap');
-        h1, h2, h3, .font-heading { font-family: 'Cormorant Garamond', serif !important; }
-        .font-handwriting { font-family: 'Dancing Script', cursive !important; }
+        .font-handwriting { font-family: cursive !important; }
         
         .torn-paper {
             background: #FFFDF9;

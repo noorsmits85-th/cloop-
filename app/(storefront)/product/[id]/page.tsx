@@ -346,8 +346,6 @@ export default function ProductDetailPage() {
         <p className="text-xs font-semibold text-green-800 tracking-wider">⚡ ĐANG KHỞI TẠO LUỒNG AN TOÀN...</p>
       </div>
     }>
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" />
-      <style>{`body, h1, h2, div, span, p, button, label { font-family: 'Plus Jakarta Sans', sans-serif !important; }`}</style>
       <ProductDetailContent />
     </Suspense>
   );

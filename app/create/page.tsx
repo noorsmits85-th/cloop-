@@ -94,9 +94,6 @@ export default function CreateProductPage() {
 
   return (
     <main className="min-h-screen bg-[#FAF8F3] text-[#183A2D] antialiased p-4 md:p-12 font-sans selection:bg-[#183A2D] selection:text-white">
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" />
-      <style>{`body, h1, h2, label, input, textarea, select, button { font-family: 'Plus Jakarta Sans', sans-serif !important; }`}</style>
-
       <div className="max-w-3xl mx-auto space-y-8">
         {/* THANH HEADER ĐIỀU HƯỚNG */}
         <div className="flex justify-between items-center">
