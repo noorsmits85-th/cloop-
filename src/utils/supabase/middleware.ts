@@ -9,9 +9,8 @@ export async function updateSession(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  // Fallback an toàn nếu thiếu biến môi trường Supabase
   if (!supabaseUrl || !supabaseAnonKey) {
-    return supabaseResponse;
+    return { response: supabaseResponse, user: null, error: new Error("Missing Supabase credentials") };
   }
 
   try {
@@ -36,12 +35,11 @@ export async function updateSession(request: NextRequest) {
       }
     );
 
-    // Không để lỗi kết nối auth làm sập toàn bộ routing
-    await supabase.auth.getUser().catch(() => ({ data: { user: null }, error: null }));
+    const { data: { user }, error } = await supabase.auth.getUser();
 
-    return supabaseResponse;
-  } catch (err) {
-    console.error("⚠️ [Middleware Supabase Error]:", err);
-    return NextResponse.next({ request });
+    return { response: supabaseResponse, user, error };
+  } catch (err: any) {
+    console.error("⚠️ [Middleware Supabase Error]:", err?.message || err);
+    return { response: supabaseResponse, user: null, error: err };
   }
 }
