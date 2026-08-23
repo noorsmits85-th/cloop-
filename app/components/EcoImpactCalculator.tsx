@@ -19,35 +19,36 @@ export default function EcoImpactCalculator() {
   const treesEquivalent = Math.max(1, Math.round(co2Saved / 22));
 
   return (
-    <div className="w-full bg-[#0A2517] text-white rounded-xl p-6 sm:p-8 md:p-10 border border-emerald-800/40 shadow-xl relative overflow-hidden font-ui">
+    <div className="w-full bg-[#FAF7F0] text-stone-800 rounded-xl p-6 sm:p-8 md:p-10 border border-[#E8E2D2] shadow-xs relative overflow-hidden font-ui">
+      
       {/* Subtle organic light accent */}
-      <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-100/40 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-80 h-80 bg-amber-100/30 rounded-full blur-3xl pointer-events-none" />
 
       <div className="relative z-10 flex flex-col lg:flex-row gap-8 lg:gap-12 items-center justify-between">
         
         {/* Left Side: Controls & Philosophy */}
         <div className="w-full lg:w-1/2 space-y-5">
           <div className="space-y-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-md bg-emerald-900/70 border border-emerald-700/40 text-emerald-300 text-[11px] font-bold uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5" /> Mô Phỏng Tác Động Tuần Hoàn
+            <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-md bg-emerald-100/80 border border-emerald-300/60 text-emerald-900 text-[11px] font-bold uppercase tracking-wider">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-700" /> Mô Phỏng Tác Động Tuần Hoàn
             </span>
-            <h3 className="font-heading text-xl sm:text-2xl md:text-3xl font-bold text-white leading-tight">
+            <h3 className="font-heading text-xl sm:text-2xl md:text-3xl font-extrabold text-[#183A2D] leading-tight">
               Mỗi Lần Thuê Đồ Là Một <br className="hidden sm:inline" />
-              <span className="text-emerald-400">Hành Động Vì Trái Đất</span>
+              <span className="text-emerald-700">Hành Động Vì Trái Đất</span>
             </h3>
-            <p className="text-stone-300 text-xs sm:text-sm font-light leading-relaxed">
+            <p className="text-stone-600 text-xs sm:text-sm font-light leading-relaxed">
               Bạn không cần mua sắm ít đi để sống xanh — chỉ cần chọn cách thông minh hơn: Chia sẻ, thuê lại và kéo dài vòng đời của từng thước vải.
             </p>
           </div>
 
           {/* Interactive Sliders */}
-          <div className="space-y-5 bg-black/25 p-4 sm:p-5 rounded-lg border border-emerald-900/40 backdrop-blur-xs">
+          <div className="space-y-5 bg-white/80 p-4 sm:p-5 rounded-lg border border-[#E5DEC9] shadow-2xs">
             {/* Slider 1: Outfits Rented per Year */}
             <div className="space-y-1.5">
               <div className="flex justify-between items-center text-xs sm:text-sm">
-                <span className="text-stone-300 font-medium">Số dịp đi tiệc / sự kiện cần đồ trong năm:</span>
-                <span className="font-bold text-emerald-300 text-sm sm:text-base">{rentCount} lần</span>
+                <span className="text-stone-700 font-medium">Số dịp đi tiệc / sự kiện cần đồ trong năm:</span>
+                <span className="font-bold text-emerald-800 text-sm sm:text-base">{rentCount} lần</span>
               </div>
               <input
                 type="range"
@@ -55,7 +56,7 @@ export default function EcoImpactCalculator() {
                 max={15}
                 value={rentCount}
                 onChange={(e) => setRentCount(Number(e.target.value))}
-                className="w-full h-1.5 bg-emerald-950 rounded-md appearance-none cursor-pointer accent-emerald-400"
+                className="w-full h-1.5 bg-stone-200 rounded-md appearance-none cursor-pointer accent-[#183A2D]"
               />
               <div className="flex justify-between text-[10px] text-stone-400 font-mono">
                 <span>1 lần</span>
@@ -67,8 +68,8 @@ export default function EcoImpactCalculator() {
             {/* Slider 2: Closet Items Shared */}
             <div className="space-y-1.5">
               <div className="flex justify-between items-center text-xs sm:text-sm">
-                <span className="text-stone-300 font-medium">Số món đồ ít mặc có thể chia sẻ lên CLOOP:</span>
-                <span className="font-bold text-amber-300 text-sm sm:text-base">{shareCount} món</span>
+                <span className="text-stone-700 font-medium">Số món đồ ít mặc có thể chia sẻ lên CLOOP:</span>
+                <span className="font-bold text-amber-800 text-sm sm:text-base">{shareCount} món</span>
               </div>
               <input
                 type="range"
@@ -76,7 +77,7 @@ export default function EcoImpactCalculator() {
                 max={10}
                 value={shareCount}
                 onChange={(e) => setShareCount(Number(e.target.value))}
-                className="w-full h-1.5 bg-emerald-950 rounded-md appearance-none cursor-pointer accent-amber-400"
+                className="w-full h-1.5 bg-stone-200 rounded-md appearance-none cursor-pointer accent-amber-600"
               />
               <div className="flex justify-between text-[10px] text-stone-400 font-mono">
                 <span>0 món</span>
@@ -92,81 +93,81 @@ export default function EcoImpactCalculator() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             
             {/* Card 1: Money Benefit */}
-            <div className="bg-emerald-950/70 border border-emerald-700/50 p-4 rounded-lg flex flex-col justify-between group hover:border-emerald-400 transition-all">
+            <div className="bg-white/90 border border-emerald-200/80 p-4 rounded-lg flex flex-col justify-between group hover:border-emerald-400 transition-all shadow-2xs">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[11px] text-stone-300 font-medium">Lợi ích tài chính ước tính</span>
-                <div className="w-7 h-7 rounded-md bg-emerald-900/80 flex items-center justify-center text-emerald-300">
+                <span className="text-[11px] text-stone-500 font-medium">Lợi ích tài chính ước tính</span>
+                <div className="w-7 h-7 rounded-md bg-emerald-50 text-emerald-800 flex items-center justify-center border border-emerald-100">
                   <DollarSign size={14} />
                 </div>
               </div>
               <div>
-                <div className="text-xl sm:text-2xl font-bold text-emerald-300 font-mono tracking-tight">
+                <div className="text-xl sm:text-2xl font-extrabold text-[#183A2D] font-mono tracking-tight">
                   ~{totalBenefit.toLocaleString("vi-VN")}đ
                 </div>
-                <p className="text-[10px] text-stone-400 mt-0.5">Tiết kiệm mua mới + Thu nhập thụ động</p>
+                <p className="text-[10px] text-stone-500 mt-0.5">Tiết kiệm mua mới + Thu nhập thụ động</p>
               </div>
             </div>
 
             {/* Card 2: Carbon Footprint */}
-            <div className="bg-emerald-950/70 border border-emerald-700/50 p-4 rounded-lg flex flex-col justify-between group hover:border-emerald-400 transition-all">
+            <div className="bg-white/90 border border-emerald-200/80 p-4 rounded-lg flex flex-col justify-between group hover:border-emerald-400 transition-all shadow-2xs">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[11px] text-stone-300 font-medium">Giảm phát thải CO₂</span>
-                <div className="w-7 h-7 rounded-md bg-emerald-900/80 flex items-center justify-center text-emerald-400">
+                <span className="text-[11px] text-stone-500 font-medium">Giảm phát thải CO₂</span>
+                <div className="w-7 h-7 rounded-md bg-emerald-50 text-emerald-800 flex items-center justify-center border border-emerald-100">
                   <Leaf size={14} />
                 </div>
               </div>
               <div>
-                <div className="text-xl sm:text-2xl font-bold text-white font-mono tracking-tight">
+                <div className="text-xl sm:text-2xl font-extrabold text-[#183A2D] font-mono tracking-tight">
                   {co2Saved.toFixed(0)} kg
                 </div>
-                <p className="text-[10px] text-stone-400 mt-0.5">Tránh khai thác & sản xuất thô mới</p>
+                <p className="text-[10px] text-stone-500 mt-0.5">Tránh khai thác & sản xuất thô mới</p>
               </div>
             </div>
 
             {/* Card 3: Clean Water */}
-            <div className="bg-emerald-950/70 border border-emerald-700/50 p-4 rounded-lg flex flex-col justify-between group hover:border-emerald-400 transition-all">
+            <div className="bg-white/90 border border-blue-200/80 p-4 rounded-lg flex flex-col justify-between group hover:border-blue-400 transition-all shadow-2xs">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[11px] text-stone-300 font-medium">Nước sạch bảo tồn</span>
-                <div className="w-7 h-7 rounded-md bg-blue-950/80 flex items-center justify-center text-blue-400">
+                <span className="text-[11px] text-stone-500 font-medium">Nước sạch bảo tồn</span>
+                <div className="w-7 h-7 rounded-md bg-blue-50 text-blue-800 flex items-center justify-center border border-blue-100">
                   <Droplet size={14} />
                 </div>
               </div>
               <div>
-                <div className="text-xl sm:text-2xl font-bold text-blue-200 font-mono tracking-tight">
+                <div className="text-xl sm:text-2xl font-extrabold text-blue-900 font-mono tracking-tight">
                   {waterSaved.toLocaleString("vi-VN")} L
                 </div>
-                <p className="text-[10px] text-stone-400 mt-0.5">Tương đương nước sinh hoạt 3 tháng</p>
+                <p className="text-[10px] text-stone-500 mt-0.5">Tương đương nước sinh hoạt 3 tháng</p>
               </div>
             </div>
 
             {/* Card 4: Trees Equivalent */}
-            <div className="bg-emerald-950/70 border border-emerald-700/50 p-4 rounded-lg flex flex-col justify-between group hover:border-emerald-400 transition-all">
+            <div className="bg-white/90 border border-emerald-200/80 p-4 rounded-lg flex flex-col justify-between group hover:border-emerald-400 transition-all shadow-2xs">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[11px] text-stone-300 font-medium">Tương đương trồng cây</span>
-                <div className="w-7 h-7 rounded-md bg-emerald-900/80 flex items-center justify-center text-emerald-400">
+                <span className="text-[11px] text-stone-500 font-medium">Tương đương trồng cây</span>
+                <div className="w-7 h-7 rounded-md bg-emerald-50 text-emerald-800 flex items-center justify-center border border-emerald-100">
                   <Trees size={14} />
                 </div>
               </div>
               <div>
-                <div className="text-xl sm:text-2xl font-bold text-emerald-300 font-mono tracking-tight">
+                <div className="text-xl sm:text-2xl font-extrabold text-[#183A2D] font-mono tracking-tight">
                   {treesEquivalent} Cây xanh
                 </div>
-                <p className="text-[10px] text-stone-400 mt-0.5">Hấp thụ carbon tự nhiên trọn vẹn 1 năm</p>
+                <p className="text-[10px] text-stone-500 mt-0.5">Hấp thụ carbon tự nhiên trọn vẹn 1 năm</p>
               </div>
             </div>
 
           </div>
 
-          <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
+          <div className="pt-1 flex flex-col sm:flex-row items-center gap-3">
             <Link
               href="/shop"
-              className="w-full sm:w-auto px-5 py-2.5 bg-emerald-400 hover:bg-emerald-300 text-stone-950 font-bold rounded-lg text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-md shrink-0"
+              className="w-full sm:w-auto px-5 py-2.5 bg-[#183A2D] hover:bg-emerald-900 text-white font-bold rounded-lg text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xs shrink-0 font-ui"
             >
               Bắt Đầu Thuê Xanh Ngay <ArrowRight size={13} />
             </Link>
             <Link
               href="/my-closet/items"
-              className="w-full sm:w-auto px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-lg text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 border border-white/20 shrink-0"
+              className="w-full sm:w-auto px-5 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-800 font-semibold rounded-lg text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 border border-stone-300/80 shrink-0 font-ui"
             >
               Đăng Tủ Đồ Nhận Thu Nhập
             </Link>

@@ -834,37 +834,34 @@ export default function Home() {
         </div>
       </section>
 
-      {/* SECTION 7: ECO-IMPACT LIVE SIMULATOR (Máy tính tác động sinh thái) */}
-      <section className="w-full max-w-7xl mx-auto px-4 md:px-8 lg:px-12 py-16">
+      {/* SECTION 7: ECO-IMPACT LIVE SIMULATOR (Máy tính tác động sinh thái nhẹ nhàng) */}
+      <section className="w-full max-w-7xl mx-auto px-4 md:px-8 lg:px-12 py-14">
         <EcoImpactCalculator />
       </section>
 
-      {/* SECTION 8: CHỢ XANH UPCYCLE BANNER (Sửa lỗi màu, nền xanh đậm sắc nét) */}
-      <section className="w-full max-w-7xl mx-auto px-4 md:px-8 lg:px-12 pb-16">
-        <div className="relative rounded-xl overflow-hidden min-h-[300px] sm:min-h-[340px] flex items-center justify-center text-center p-6 sm:p-10 bg-[#072114] border border-emerald-900/60 shadow-xl">
-          {/* Subtle ambient gradients */}
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-950 via-[#072114] to-emerald-950 pointer-events-none" />
-          <div className="absolute -top-24 -left-24 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
-          
-          <div className="relative z-10 max-w-2xl space-y-4 text-white">
-            <span className="inline-block text-[10.5px] uppercase font-bold tracking-widest text-emerald-300 bg-emerald-900/80 px-3 py-0.5 rounded-md border border-emerald-500/40 font-ui">
-              DỰ ÁN SÁNG TẠO XANH
-            </span>
-            <h2 className="font-heading text-2xl sm:text-3xl md:text-4xl font-bold leading-tight text-white">
-              Chợ Xanh CLOOP & Upcycling
-            </h2>
-            <p className="text-xs sm:text-sm text-stone-200 font-light leading-relaxed max-w-xl mx-auto">
-              Kéo dài vòng đời nguyên liệu vải thừa và phụ kiện pass nhanh. Không gian dành riêng cho sinh viên thiết kế thời trang và các local brand sáng tạo.
-            </p>
-            <div className="pt-2">
-              <Link 
-                href="/green-market" 
-                className="inline-flex items-center gap-1.5 px-6 py-2.5 bg-emerald-400 hover:bg-emerald-300 text-stone-950 font-bold rounded-lg text-xs uppercase tracking-wider transition-all font-ui shadow-md"
-              >
-                Khám Phá Nguyên Liệu Xanh <ArrowRight size={13} />
-              </Link>
-            </div>
+      {/* SECTION 8: CHỢ XANH UPCYCLE (Full-width, liền mạch 100% với Footer) */}
+      <section className="w-full bg-[#0A2517] text-white pt-16 pb-14 border-t border-emerald-900/50 relative overflow-hidden">
+        {/* Subtle ambient gradients */}
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-teal-500/5 rounded-full blur-3xl pointer-events-none" />
+        
+        <div className="max-w-4xl mx-auto px-4 md:px-8 text-center relative z-10 space-y-4">
+          <span className="inline-block text-[10.5px] uppercase font-bold tracking-widest text-emerald-300 bg-emerald-900/60 px-3 py-0.5 rounded-md border border-emerald-500/30 font-ui">
+            DỰ ÁN SÁNG TẠO XANH
+          </span>
+          <h2 className="font-heading text-2xl sm:text-3xl md:text-4xl font-bold leading-tight text-white">
+            Chợ Xanh CLOOP & Upcycling
+          </h2>
+          <p className="text-xs sm:text-sm text-stone-300 font-light leading-relaxed max-w-xl mx-auto">
+            Kéo dài vòng đời nguyên liệu vải thừa và phụ kiện pass nhanh. Không gian dành riêng cho sinh viên thiết kế thời trang và các local brand sáng tạo.
+          </p>
+          <div className="pt-2">
+            <Link 
+              href="/green-market" 
+              className="inline-flex items-center gap-1.5 px-6 py-2.5 bg-emerald-400 hover:bg-emerald-300 text-stone-950 font-bold rounded-lg text-xs uppercase tracking-wider transition-all font-ui shadow-md"
+            >
+              Khám Phá Nguyên Liệu Xanh <ArrowRight size={13} />
+            </Link>
           </div>
         </div>
       </section>
