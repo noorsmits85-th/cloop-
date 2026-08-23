@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Sparkles, Leaf, ShoppingBag, RotateCcw, Heart, ShieldCheck } from "lucide-react";
+import { Leaf, ShoppingBag, RotateCcw, Heart, ShieldCheck } from "lucide-react";
 
 interface PulseItem {
   id: string;
@@ -15,7 +15,7 @@ const PULSE_EVENTS: PulseItem[] = [
     id: "eco-stat",
     icon: <Leaf className="w-3.5 h-3.5 text-emerald-400" />,
     text: "1.450 kg CO₂ & 28.500 Lít nước đã được bảo tồn trong tuần này qua CLOOP",
-    tag: "ESG IMPACT"
+    tag: "TÁC ĐỘNG XANH"
   },
   {
     id: "rent-1",
@@ -27,19 +27,19 @@ const PULSE_EVENTS: PulseItem[] = [
     id: "circular-passport",
     icon: <RotateCcw className="w-3.5 h-3.5 text-teal-300" />,
     text: "Chiếc Blazer 1998 vừa bắt đầu vòng đời tuần hoàn thứ 5 cùng chủ nhân mới",
-    tag: "DIGITAL PASSPORT"
+    tag: "HỘ CHIẾU SỐ"
   },
   {
     id: "trust-closet",
     icon: <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />,
-    text: "Tủ đồ @the.archive vừa đạt điểm tín nhiệm TrustScore 99.4/100",
-    tag: "TOP CLOSET"
+    text: "Tủ đồ @the.archive vừa đạt điểm tín nhiệm cao 99.4/100",
+    tag: "TỦ ĐỒ UY TÍN"
   },
   {
     id: "community-active",
     icon: <Heart className="w-3.5 h-3.5 text-rose-400" />,
-    text: "Hơn 89 outfit thiết kế đang luân chuyển và tỏa sáng tại các sự kiện hôm nay",
-    tag: "LIVE CIRCLE"
+    text: "Hơn 89 trang phục thiết kế đang luân chuyển và tỏa sáng tại các sự kiện hôm nay",
+    tag: "VÒNG ĐỜI THỰC"
   }
 ];
 
@@ -56,42 +56,26 @@ export default function LivePulseTicker() {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
           </span>
-          <span>Circular Pulse</span>
+          <span>Nhịp Đập Tuần Hoàn</span>
         </div>
 
-        {/* Marquee Container */}
-        <div className="flex-1 overflow-hidden relative group/ticker">
-          <div className="flex items-center gap-10 whitespace-nowrap animate-[marquee_45s_linear_infinite] group-hover/ticker:[animation-play-state:paused] will-change-transform">
+        {/* Marquee Track Container */}
+        <div className="flex-1 overflow-hidden relative">
+          <div className="flex items-center gap-12 whitespace-nowrap animate-ticker pl-4">
             {displayItems.map((item, index) => (
-              <div key={`${item.id}-${index}`} className="inline-flex items-center gap-2.5 text-xs text-stone-200">
-                <span className="p-1 rounded-md bg-emerald-950/80 border border-emerald-800/40">
-                  {item.icon}
-                </span>
+              <div key={`${item.id}-${index}`} className="inline-flex items-center gap-2 text-stone-200 text-xs font-normal">
+                {item.icon}
                 {item.tag && (
-                  <span className="text-[9px] font-extrabold uppercase tracking-widest px-1.5 py-0.5 rounded bg-emerald-900/40 text-emerald-300 border border-emerald-700/30">
+                  <span className="bg-emerald-950/80 text-emerald-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-emerald-800/40 uppercase tracking-widest font-mono">
                     {item.tag}
                   </span>
                 )}
-                <span className="font-medium text-stone-300 hover:text-white transition-colors">
-                  {item.text}
-                </span>
-                <span className="text-emerald-800 mx-2">•</span>
+                <span className="tracking-wide">{item.text}</span>
               </div>
             ))}
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes marquee {
-          0% {
-            transform: translateX(0%);
-          }
-          100% {
-            transform: translateX(-50%);
-          }
-        }
-      `}</style>
     </div>
   );
 }

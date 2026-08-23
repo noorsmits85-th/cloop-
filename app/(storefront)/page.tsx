@@ -32,7 +32,7 @@ import EcoImpactCalculator from "@/app/components/EcoImpactCalculator";
 
 export default function Home() {
   const [activeRentalCategory, setActiveRentalCategory] = useState("Tất cả");
-  const rentalCategories = ["Tất cả", "Dạ hội & Gala", "Tiệc cưới", "Áo dài", "Vintage 90s", "Tối giản"];
+  const rentalCategories = ["Tất cả", "Dạ hội & Sự kiện", "Tiệc cưới", "Áo dài truyền thống", "Đồ hoài cổ 90s", "Tối giản"];
 
   const [activeResaleCategory, setActiveResaleCategory] = useState("Tất cả");
   const resaleCategories = ["Tất cả", "Túi xách", "Phụ kiện", "Áo khoác", "Váy thiết kế", "Giày & Boots"];
@@ -75,105 +75,105 @@ export default function Home() {
     { 
       id: "Gala", 
       title: "Dạ Hội & Tiệc Đêm", 
-      tag: "Silk & Evening Gala",
-      desc: "Lụa satin óng ả, sequin lấp lánh & dáng váy dạ vũ.", 
+      tag: "Lụa Satin & Dạ Hội",
+      desc: "Lụa satin óng ả, sequin lấp lánh & dáng váy dạ vũ thướt tha.", 
       image: "/evening_dress.jpg",
       link: "/shop?category=Dạ hội"
     },
     { 
       id: "Capsule", 
       title: "Tối Giản Thường Nhật", 
-      tag: "Organic Linen",
-      desc: "Sợi linen tự nhiên, blazer thanh lịch & set đồ capsule.", 
+      tag: "Sợi Linen Tự Nhiên",
+      desc: "Sợi linen tự nhiên, blazer thanh lịch & set đồ xoay vòng êm dịu.", 
       image: "/macro_fabric.jpg",
       link: "/shop?category=Đi tiệc"
     },
     { 
       id: "Archive", 
-      title: "Vintage & Di Sản", 
-      tag: "90s Rare Archive",
-      desc: "Archive thập niên 90s, dạ tweed & nét đẹp độc bản.", 
+      title: "Hoài Niệm & Di Sản", 
+      tag: "Bộ Sưu Tập 90s",
+      desc: "Kho báu thời trang thập niên 90s, dạ tweed & nét đẹp vượt thời gian.", 
       image: "/vintage_coat.jpg",
       link: "/shop?category=Vintage"
     },
     { 
       id: "Heritage", 
-      title: "Áo Dài Di Sản", 
-      tag: "Heritage Silk",
-      desc: "Gấm thêu tay & tơ tằm mềm mại cho dịp trang trọng.", 
+      title: "Áo Dài Truyền Thống", 
+      tag: "Lụa Tơ Tằm Di Sản",
+      desc: "Gấm thêu tay & tơ tằm mềm mại cho những dịp kỷ niệm trang trọng.", 
       image: "/anhbia.png",
       link: "/shop?category=Áo dài"
     }
   ];
 
   const communityLookbookReel = [
-    { src: "/1.1.jpg", hover: "/1.1 (1).jpg", title: "Đầm Lụa Satin", price: "350k/ngày", user: "@the.archive", tag: "Gala Prom" },
-    { src: "/1.2.jpeg", hover: "/step2_bag.jpg", title: "Set Dạ Tweed", price: "180k/ngày", user: "@leena.vintage", tag: "Paris Chic" },
-    { src: "/2.1.jpg", hover: "/2.1 (1).jpg", title: "Đầm Cúp Ngực", price: "220k/ngày", user: "@minimal.edit", tag: "Minimalist" },
-    { src: "/anhbia.png", hover: "/hero_warm.jpg", title: "Áo Dài Gấm Xưa", price: "280k/ngày", user: "@heritage.silk", tag: "Truyền Thống" },
-    { src: "/1.2.jpg", hover: "/step3_party.jpg", title: "Biker Jacket Da", price: "250k/ngày", user: "@dustin.style", tag: "Vintage 90s" },
-    { src: "/evening_dress.jpg", hover: "/step1_phone.jpg", title: "Váy Dạ Vũ Sequin", price: "380k/ngày", user: "@chloe.party", tag: "Cocktail" },
-    { src: "/vintage_coat.jpg", hover: "/macro_fabric.jpg", title: "Blazer Dạ 1998", price: "190k/ngày", user: "@olivia.chic", tag: "Rare Archive" },
-    { src: "/hero_group.jpg", hover: "/hero_warm.jpg", title: "Set Streetwear Tái Sinh", price: "160k/ngày", user: "@chic.street", tag: "Upcycled" },
+    { src: "/1.1.jpg", hover: "/1.1 (1).jpg", title: "Đầm Lụa Satin Đỏ", price: "350k/ngày", user: "@the.archive", tag: "Dạ Hội & Prom" },
+    { src: "/1.2.jpeg", hover: "/step2_bag.jpg", title: "Set Dạ Tweed Cổ Điển", price: "180k/ngày", user: "@leena.vintage", tag: "Thanh Lịch" },
+    { src: "/2.1.jpg", hover: "/2.1 (1).jpg", title: "Đầm Cúp Ngực Tối Giản", price: "220k/ngày", user: "@minimal.edit", tag: "Tiệc Tối" },
+    { src: "/anhbia.png", hover: "/hero_warm.jpg", title: "Áo Dài Gấm Dáng Xưa", price: "280k/ngày", user: "@heritage.silk", tag: "Di Sản" },
+    { src: "/1.2.jpg", hover: "/step3_party.jpg", title: "Áo Khoác Da Biker 90s", price: "250k/ngày", user: "@dustin.style", tag: "Hoài Cổ" },
+    { src: "/evening_dress.jpg", hover: "/step1_phone.jpg", title: "Váy Dạ Vũ Sequin", price: "380k/ngày", user: "@chloe.party", tag: "Dạ Tiệc" },
+    { src: "/vintage_coat.jpg", hover: "/macro_fabric.jpg", title: "Blazer Dạ Dáng Dài 1998", price: "190k/ngày", user: "@olivia.chic", tag: "Độc Bản" },
+    { src: "/hero_group.jpg", hover: "/hero_warm.jpg", title: "Set Đồ Tái Sinh Sáng Tạo", price: "160k/ngày", user: "@chic.street", tag: "Tái Sinh" },
   ];
 
   const featuredClosets = [
     {
       id: 0,
       username: 'leena.vintage',
-      tag: 'TOP ROTATOR',
+      tag: 'CHỦ TỦ TIÊU BIỂU',
       trustScore: '99.4/100',
-      ecoBadge: '🌿 180kg CO₂ Saved',
-      bio: 'Đam mê lụa Pháp & đồ Tweed. Tuyển chọn từng đường kim mũi chỉ.',
+      ecoBadge: '🌿 180kg CO₂ Giảm',
+      bio: 'Đam mê lụa Pháp & đồ Tweed. Tuyển chọn từng đường kim mũi chỉ cho các buổi tiệc.',
       mainImg: '/vintage_coat.jpg',
       items: ['/evening_dress.jpg', '/macro_fabric.jpg', '/step2_bag.jpg'],
     },
     {
       id: 1,
       username: 'chic.street',
-      tag: 'TRENDSETTER',
+      tag: 'DẪN ĐẦU XU HƯỚNG',
       trustScore: '98.8/100',
-      ecoBadge: '🌿 145kg CO₂ Saved',
-      bio: 'Streetwear cá tính, unisex và những món đồ upcycled độc bản.',
+      ecoBadge: '🌿 145kg CO₂ Giảm',
+      bio: 'Phong cách đường phố cá tính, tự do và những món đồ tái sinh độc bản.',
       mainImg: '/anhbia.png',
       items: ['/hero_group.jpg', '/hero_warm.jpg', '/step1_phone.jpg'],
     },
     {
       id: 2,
       username: 'the.archive',
-      tag: 'RARE ARCHIVE',
+      tag: 'BỘ SƯU TẬP HIẾM',
       trustScore: '99.8/100',
-      ecoBadge: '🌿 230kg CO₂ Saved',
-      bio: 'Kho báu vintage thập niên 90s từ các nhà mốt lớn.',
+      ecoBadge: '🌿 230kg CO₂ Giảm',
+      bio: 'Kho báu thời trang thập niên 90s từ các nhà mốt lớn với đầy đủ câu chuyện.',
       mainImg: '/hero_group.jpg',
       items: ['/vintage_coat.jpg', '/step2_bag.jpg', '/evening_dress.jpg'],
     },
     {
       id: 3,
       username: 'minimal.edit',
-      tag: 'SUSTAINABLE',
+      tag: 'LỐI SỐNG BỀN VỮNG',
       trustScore: '99.1/100',
-      ecoBadge: '🌿 190kg CO₂ Saved',
-      bio: 'Tối giản, thanh lịch. Tủ đồ capsule xoay vòng hiện đại.',
+      ecoBadge: '🌿 190kg CO₂ Giảm',
+      bio: 'Tối giản, thanh lịch. Tủ đồ xoay vòng tinh gọn dành cho quý cô hiện đại.',
       mainImg: '/evening_dress.jpg',
       items: ['/macro_fabric.jpg', '/vintage_coat.jpg', '/step2_bag.jpg'],
     },
   ];
 
   const rentalCatalog = [
-    { id: 101, title: "Váy Dạ Hội Xẻ Tà Lụa Satin", price: 350000, origPrice: 3500000, img: "/1.1.jpg", hoverImg: "/1.1 (1).jpg", user: "@the.archive", tag: "Top Rent" },
-    { id: 102, title: "Set Dạ Tweed Cổ Điển Parisienne", price: 180000, origPrice: 2200000, img: "/1.2.jpeg", hoverImg: "/step2_bag.jpg", user: "@leena.vintage", tag: "Chic" },
-    { id: 103, title: "Đầm Dạ Tiệc Tối Giản Cúp Ngực", price: 220000, origPrice: 2800000, img: "/2.1.jpg", hoverImg: "/2.1 (1).jpg", user: "@minimal.edit", tag: "Minimal" },
+    { id: 101, title: "Váy Dạ Hội Xẻ Tà Lụa Satin", price: 350000, origPrice: 3500000, img: "/1.1.jpg", hoverImg: "/1.1 (1).jpg", user: "@the.archive", tag: "Thuê Nhiều" },
+    { id: 102, title: "Set Dạ Tweed Cổ Điển Parisienne", price: 180000, origPrice: 2200000, img: "/1.2.jpeg", hoverImg: "/step2_bag.jpg", user: "@leena.vintage", tag: "Thanh Lịch" },
+    { id: 103, title: "Đầm Dạ Tiệc Tối Giản Cúp Ngực", price: 220000, origPrice: 2800000, img: "/2.1.jpg", hoverImg: "/2.1 (1).jpg", user: "@minimal.edit", tag: "Tối Giản" },
     { id: 104, title: "Áo Dài Tơ Tằm Gấm Thêu Tay", price: 280000, origPrice: 3800000, img: "/anhbia.png", hoverImg: "/hero_warm.jpg", user: "@heritage.silk", tag: "Di Sản" },
-    { id: 105, title: "Jacket Da Biker Bụi Bặm 90s", price: 250000, origPrice: 4200000, img: "/1.2.jpg", hoverImg: "/step3_party.jpg", user: "@dustin.style", tag: "Archive" },
-    { id: 106, title: "Đầm Sequin Kim Tuyến Đêm Prom", price: 320000, origPrice: 3900000, img: "/evening_dress.jpg", hoverImg: "/step1_phone.jpg", user: "@chloe.party", tag: "Gala" },
+    { id: 105, title: "Áo Khoác Da Biker Hoài Cổ 90s", price: 250000, origPrice: 4200000, img: "/1.2.jpg", hoverImg: "/step3_party.jpg", user: "@dustin.style", tag: "Hoài Cổ" },
+    { id: 106, title: "Đầm Sequin Kim Tuyến Đêm Dạ Vũ", price: 320000, origPrice: 3900000, img: "/evening_dress.jpg", hoverImg: "/step1_phone.jpg", user: "@chloe.party", tag: "Dạ Hội" },
   ];
 
   const resaleItems = [
-    { src: "/vintage_coat.jpg", hoverSrc: "/macro_fabric.jpg", title: "Túi Xách Da Cao Cấp (Pass Nhanh)", price: "2.500.000đ", originalPrice: "5.000.000đ", discount: "-50%", owner: "@emma.closet" },
-    { src: "/kinhgucci.webp", hoverSrc: "/anhbia.png", title: "Kính Râm Cat-Eye Cổ Điển", price: "300.000đ", originalPrice: "1.000.000đ", discount: "-70%", owner: "@lucy.vintage" },
+    { src: "/vintage_coat.jpg", hoverSrc: "/macro_fabric.jpg", title: "Túi Xách Da Cao Cấp (Chuyển Nhượng)", price: "2.500.000đ", originalPrice: "5.000.000đ", discount: "-50%", owner: "@emma.closet" },
+    { src: "/kinhgucci.webp", hoverSrc: "/anhbia.png", title: "Kính Râm Mắt Mèo Cổ Điển", price: "300.000đ", originalPrice: "1.000.000đ", discount: "-70%", owner: "@lucy.vintage" },
     { src: "/bootvanlentino.webp", hoverSrc: "/hero_warm.jpg", title: "Boots Cổ Cao Da Thật", price: "1.200.000đ", originalPrice: "3.000.000đ", discount: "-60%", owner: "@david.kicks" },
-    { src: "/evening_dress.jpg", hoverSrc: "/step3_party.jpg", title: "Jacket Da Biker Phong Trần", price: "1.800.000đ", originalPrice: "4.500.000đ", discount: "-60%", owner: "@sarah.style" },
+    { src: "/evening_dress.jpg", hoverSrc: "/step3_party.jpg", title: "Áo Khoác Da Phong Trần", price: "1.800.000đ", originalPrice: "4.500.000đ", discount: "-60%", owner: "@sarah.style" },
     { src: "/2.1.jpg", hoverSrc: "/2.1 (1).jpg", title: "Đầm Lụa Thiết Kế Độc Bản", price: "1.450.000đ", originalPrice: "3.200.000đ", discount: "-55%", owner: "@minimal.edit" },
     { src: "/1.2.jpeg", hoverSrc: "/step2_bag.jpg", title: "Áo Khoác Dạ Tweed Cao Cấp", price: "1.100.000đ", originalPrice: "2.600.000đ", discount: "-58%", owner: "@leena.vintage" },
   ];
@@ -181,7 +181,7 @@ export default function Home() {
   return (
     <main className="min-h-screen overflow-x-hidden antialiased bg-[#FAF9F5] text-[#0A2517] pb-28 md:pb-0 font-body">
 
-      {/* SECTION 1: HERO - CINEMATIC FULL-WIDTH FASHION BANNER */}
+      {/* SECTION 1: HERO - BANNER VIDEO THỜI TRANG TRÀN VIỀN */}
       <section className="relative w-full aspect-[16/9] min-h-[460px] md:min-h-[520px] lg:min-h-[560px] max-h-[75vh] flex items-center justify-start overflow-hidden bg-stone-900">
         
         {/* Background Video */}
@@ -268,7 +268,7 @@ export default function Home() {
                 <Search size={16} className="text-stone-400 ml-2 mr-1 shrink-0" />
                 <input 
                   type="text" 
-                  placeholder="Tìm Blazer linen, đầm dạ hội, áo dài gấm..." 
+                  placeholder="Tìm Áo khoác linen, đầm dạ hội, áo dài gấm..." 
                   className="flex-1 bg-transparent border-none outline-none font-ui text-xs md:text-sm text-[#0A2517] placeholder:text-stone-400 font-medium min-w-0"
                 />
 
@@ -277,7 +277,7 @@ export default function Home() {
                   type="button"
                   onClick={() => setIsVisualSearchOpen(true)}
                   className="relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#EBF3E8] hover:bg-[#D8EADB] text-[#244228] border border-[#BED7BC] font-ui text-xs font-bold transition-all shadow-xs group/cam shrink-0 hover:scale-105 active:scale-95"
-                  title="Tìm trang phục tương tự bằng ảnh Lookbook / Pinterest"
+                  title="Tìm trang phục tương tự bằng ảnh chụp hoặc Pinterest"
                 >
                   <Camera size={14} className="text-[#3F6B44] group-hover/cam:scale-110 transition-transform" />
                   <span className="hidden sm:inline font-semibold text-[11px]">Tìm bằng ảnh</span>
@@ -319,13 +319,13 @@ export default function Home() {
       {/* 🔴 LIVE CIRCULAR PULSE TICKER: Nhịp đập tuần hoàn */}
       <LivePulseTicker />
 
-      {/* 📸 BY ROTATION STYLE: INFINITE COMMUNITY LOOKBOOK REEL (DẢI TRANG PHỤC ĐANG ĐƯỢC THUÊ) */}
+      {/* 📸 DẢI CUỘN TRANG PHỤC THỊNH HÀNH ĐANG ĐƯỢC THUÊ */}
       <section className="w-full py-8 bg-[#F4F1EA] border-b border-stone-200/80 overflow-hidden">
         <div className="max-w-[1600px] mx-auto px-4 md:px-8 mb-4 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse"></span>
             <h3 className="font-heading text-sm sm:text-base font-bold text-[#183A2D] uppercase tracking-wider">
-              Trending On Rotators • Đang Được Mặc Nhiều Nhất
+              Xu Hướng Tủ Đồ • Được Thuê Nhiều Nhất
             </h3>
           </div>
           <Link href="/shop" className="text-xs font-semibold text-[#28422A] hover:underline font-ui">
@@ -363,7 +363,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* SECTION 2: CURATED MOOD CAPSULES (Khám phá phong cách theo cảm xúc & dịp sống) */}
+      {/* SECTION 2: BỘ SƯU TẬP THEO CẢM XÚC & DỊP SỰ KIỆN */}
       <section className="w-full max-w-[1600px] mx-auto px-4 md:px-8 lg:px-12 py-14">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-3 mb-6">
           <div>
@@ -423,7 +423,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* SECTION 3: SÀN CHO THUÊ TUYỂN CHỌN DENSE GRID (TRENDING RENTALS 6-COLUMN LOOKBOOK) */}
+      {/* SECTION 3: SÀN CHO THUÊ TUYỂN CHỌN DENSE GRID */}
       <section className="w-full max-w-[1600px] mx-auto px-4 md:px-8 lg:px-12 py-14 border-t border-stone-200/70">
         
         {/* Header */}
@@ -500,7 +500,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* SECTION 4: TỦ ĐỒ UY TÍN (TOP ROTATORS OF CLOOP) */}
+      {/* SECTION 4: TỦ ĐỒ CỦA CÁC CHỦ TỦ TIÊU BIỂU */}
       <section className="w-full py-14 bg-[#F3EFE6] border-y border-stone-200/70">
         <div className="w-full max-w-[1600px] mx-auto px-4 md:px-8 lg:px-12">
           
@@ -508,7 +508,7 @@ export default function Home() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-3 mb-6">
             <div>
               <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-800 bg-emerald-50/90 px-2.5 py-0.5 rounded-md border border-emerald-200/60 font-ui">
-                TOP ROTATORS
+                CHỦ TỦ TIÊU BIỂU
               </span>
               <h2 className="font-heading text-xl md:text-3xl text-[#0A2517] font-bold tracking-normal mt-1.5">
                 Khám Phá Tủ Đồ Các Nhà Sáng Tạo
@@ -573,7 +573,7 @@ export default function Home() {
                           {closet.tag}
                         </span>
                         <span className="bg-emerald-900/90 text-emerald-300 font-mono text-[8.5px] px-2 py-0.5 rounded-sm border border-emerald-500/30 flex items-center gap-1">
-                          <ShieldCheck size={10} /> TrustScore: {closet.trustScore}
+                          <ShieldCheck size={10} /> Tín nhiệm: {closet.trustScore}
                         </span>
                       </div>
                       <h3 className="font-heading font-extrabold text-2xl lg:text-3xl leading-none mb-1.5">
@@ -642,7 +642,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* SECTION 5: HÀNH TRÌNH TUẦN HOÀN 3 BƯỚC (HOW CLOOP WORKS) */}
+      {/* SECTION 5: HÀNH TRÌNH TUẦN HOÀN 3 BƯỚC */}
       <section className="w-full max-w-[1600px] mx-auto px-4 md:px-8 lg:px-12 py-14">
         <div className="text-center max-w-2xl mx-auto mb-10">
           <span className="text-[10px] uppercase font-bold tracking-widest text-[#2A4B2E] bg-[#E5EFE2] px-3 py-0.5 rounded-md border border-[#C5DAC2] font-ui">
@@ -663,7 +663,7 @@ export default function Home() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <h3 className="font-heading text-base font-bold text-[#183A2D]">Lướt & Đặt Thuê Trong 60s</h3>
+              <h3 className="font-heading text-base font-bold text-[#183A2D]">Lướt & Đặt Thuê Trong 60 Giây</h3>
               <p className="text-stone-600 text-xs font-light leading-relaxed">
                 Khám phá hàng ngàn món đồ độc bản từ các chủ tủ uy tín. Kiểm tra lịch rảnh và đặt lịch giao tận tay trước sự kiện.
               </p>
@@ -704,7 +704,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* SECTION 6: HỘ CHIẾU THỜI TRANG SỐ (DIGITAL GARMENT PASSPORT SPOTLIGHT) */}
+      {/* SECTION 6: HỘ CHIẾU THỜI TRANG SỐ */}
       <section className="w-full py-16 bg-[#F3EFE6] border-y border-stone-200/80">
         <div className="max-w-[1600px] mx-auto px-4 md:px-8 lg:px-12">
           
@@ -713,7 +713,7 @@ export default function Home() {
             <div className="w-full lg:w-1/2 relative">
               <div className="relative bg-white rounded-2xl p-6 sm:p-7 shadow-xl border border-stone-300/80 overflow-hidden">
                 <div className="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FAF7F0] border border-[#D5E4D1] text-[#28422A] text-[10px] font-mono font-bold uppercase tracking-wider">
-                  <ShieldCheck size={12} className="text-emerald-700" /> Digital Passport
+                  <ShieldCheck size={12} className="text-emerald-700" /> Hộ Chiếu Số
                 </div>
 
                 <div className="flex gap-4 sm:gap-6 items-start mb-5">
@@ -745,7 +745,7 @@ export default function Home() {
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs font-mono">
                     <div className="p-2 bg-[#FAF9F5] rounded-lg border border-stone-200/70">
                       <p className="font-bold text-[#183A2D]">Hà Nội</p>
-                      <span className="text-[9px] text-stone-400">Prom 2024</span>
+                      <span className="text-[9px] text-stone-400">Dạ Vũ 2024</span>
                     </div>
                     <div className="p-2 bg-[#FAF9F5] rounded-lg border border-stone-200/70">
                       <p className="font-bold text-[#183A2D]">Đà Lạt</p>
@@ -753,7 +753,7 @@ export default function Home() {
                     </div>
                     <div className="p-2 bg-[#FAF9F5] rounded-lg border border-stone-200/70">
                       <p className="font-bold text-[#183A2D]">TP.HCM</p>
-                      <span className="text-[9px] text-stone-400">Gala 2026</span>
+                      <span className="text-[9px] text-stone-400">Đại Tiệc 2026</span>
                     </div>
                     <div className="p-2 bg-emerald-50 rounded-lg border border-emerald-300 text-emerald-900">
                       <p className="font-bold text-emerald-900">Đà Nẵng</p>
@@ -796,13 +796,13 @@ export default function Home() {
         </div>
       </section>
 
-      {/* SECTION 7: TRANG PHỤC THANH LÝ & PASS ĐỒ DENSE 6-COLUMN GRID */}
+      {/* SECTION 7: TRANG PHỤC THANH LÝ & SỞ HỮU DENSE 6-COLUMN GRID */}
       <section className="w-full max-w-[1600px] mx-auto px-4 md:px-8 lg:px-12 py-14">
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4 border-b border-stone-200 pb-3">
           <div>
             <span className="text-[10px] uppercase font-bold tracking-wider text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-md border border-amber-200/60 font-ui">
-              PASS NHANH & CHUYỂN GIAO
+              CHUYỂN NHƯỢNG & PASS NHANH
             </span>
             <h2 className="text-xl md:text-3xl font-heading font-extrabold text-[#0A2517] tracking-normal mt-1.5">
               Trang Phục Thanh Lý & Sở Hữu
@@ -872,7 +872,7 @@ export default function Home() {
           {/* Header */}
           <div className="flex flex-col items-center text-center mb-10 max-w-2xl mx-auto">
             <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-800 bg-emerald-100/80 px-2.5 py-0.5 rounded-md border border-emerald-200 font-ui mb-1.5">
-              CLOOP STORIES & HERITAGE
+              KÝ ỨC & CÂU CHUYỆN CLOOP
             </span>
             <h2 className="text-2xl md:text-3xl font-heading font-extrabold text-[#0A2517] mb-1 tracking-normal">
               Bảo Tàng Ký Ức Tuần Hoàn
