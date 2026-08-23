@@ -13,14 +13,13 @@ import {
   Search, 
   TrendingUp, 
   Camera, 
-  Sparkles, 
   ShieldCheck, 
   RotateCcw, 
   Leaf, 
-  Quote, 
   Compass,
   SlidersHorizontal,
-  Tag
+  Tag,
+  Sparkles
 } from "lucide-react";
 import { motion } from "framer-motion";
 import MagneticButton from "@/app/components/MagneticButton";
@@ -43,7 +42,7 @@ export default function Home() {
       id: "Gala", 
       title: "Dạ Hội & Tiệc Đêm", 
       tag: "Silk & Gala Evening",
-      desc: "Đầm lụa satin óng ả, sequin lấp lánh và dáng váy dạ vũ thướt tha.", 
+      desc: "Lụa satin óng ả, sequin lấp lánh & dáng váy dạ vũ thướt tha.", 
       image: "/evening_dress.jpg",
       link: "/shop?category=Dạ hội"
     },
@@ -51,7 +50,7 @@ export default function Home() {
       id: "Capsule", 
       title: "Tối Giản Thường Nhật", 
       tag: "Organic Linen Capsule",
-      desc: "Sợi linen tự nhiên, blazer thanh lịch và set đồ capsule xoay vòng nhẹ nhàng.", 
+      desc: "Sợi linen tự nhiên, blazer thanh lịch & set đồ capsule xoay vòng.", 
       image: "/macro_fabric.jpg",
       link: "/shop?category=Đi tiệc"
     },
@@ -59,7 +58,7 @@ export default function Home() {
       id: "Archive", 
       title: "Vintage & Di Sản", 
       tag: "90s Rare Archive",
-      desc: "Kho báu vintage thập niên 90s, dạ tweed và những đường nét vượt thời gian.", 
+      desc: "Archive thập niên 90s, dạ tweed & nét đẹp vượt thời gian.", 
       image: "/vintage_coat.jpg",
       link: "/shop?category=Vintage"
     },
@@ -67,7 +66,7 @@ export default function Home() {
       id: "Heritage", 
       title: "Áo Dài Di Sản", 
       tag: "Heritage Silk Tradition",
-      desc: "Gấm thêu tay, tơ tằm mềm mại cho những dịp kỷ niệm trang trọng.", 
+      desc: "Gấm thêu tay & tơ tằm mềm mại cho dịp kỷ niệm trang trọng.", 
       image: "/anhbia.png",
       link: "/shop?category=Áo dài"
     }
@@ -114,7 +113,7 @@ export default function Home() {
       tag: 'TOP STYLIST',
       trustScore: '99.4/100',
       ecoBadge: '🌿 180kg CO₂ Saved',
-      bio: 'Đam mê lụa Pháp & đồ Tweed. Tuyển chọn từng đường kim mũi chỉ cho các bữa tiệc sang trọng.',
+      bio: 'Đam mê lụa Pháp & đồ Tweed. Tuyển chọn từng đường kim mũi chỉ.',
       mainImg: '/vintage_coat.jpg',
       items: ['/evening_dress.jpg', '/macro_fabric.jpg', '/step2_bag.jpg'],
     },
@@ -124,7 +123,7 @@ export default function Home() {
       tag: 'TRENDSETTER',
       trustScore: '98.8/100',
       ecoBadge: '🌿 145kg CO₂ Saved',
-      bio: 'Streetwear cá tính, unisex và những món đồ upcycled độc bản mang tinh thần tự do.',
+      bio: 'Streetwear cá tính, unisex và những món đồ upcycled độc bản.',
       mainImg: '/anhbia.png',
       items: ['/hero_group.jpg', '/hero_warm.jpg', '/step1_phone.jpg'],
     },
@@ -134,7 +133,7 @@ export default function Home() {
       tag: 'RARE ARCHIVE',
       trustScore: '99.8/100',
       ecoBadge: '🌿 230kg CO₂ Saved',
-      bio: 'Kho báu vintage thập niên 90s. Archive fashion từ các nhà mốt lớn với đầy đủ ký ức.',
+      bio: 'Kho báu vintage thập niên 90s từ các nhà mốt lớn.',
       mainImg: '/hero_group.jpg',
       items: ['/vintage_coat.jpg', '/step2_bag.jpg', '/evening_dress.jpg'],
     },
@@ -144,10 +143,58 @@ export default function Home() {
       tag: 'SUSTAINABLE',
       trustScore: '99.1/100',
       ecoBadge: '🌿 190kg CO₂ Saved',
-      bio: 'Tối giản, thanh lịch. Tủ đồ capsule xoay vòng dành cho quý cô văn phòng hiện đại.',
+      bio: 'Tối giản, thanh lịch. Tủ đồ capsule xoay vòng hiện đại.',
       mainImg: '/evening_dress.jpg',
       items: ['/macro_fabric.jpg', '/vintage_coat.jpg', '/step2_bag.jpg'],
     },
+  ];
+
+  const editorialLooks = [
+    {
+      src: "/1.1.jpg",
+      hoverSrc: "/1.1 (1).jpg",
+      title: "Đầm Lụa Satin Đỏ Rượu",
+      tag: "Evening Gala",
+      price: "350.000đ/ngày",
+      owner: "@the.archive",
+      span: "col-span-1 md:col-span-2 row-span-2 aspect-[3/4] md:aspect-auto"
+    },
+    {
+      src: "/1.2.jpeg",
+      hoverSrc: "/step2_bag.jpg",
+      title: "Set Dạ Tweed Parisienne",
+      tag: "Editorial Chic",
+      price: "220.000đ/ngày",
+      owner: "@leena.vintage",
+      span: "col-span-1 aspect-[3/4]"
+    },
+    {
+      src: "/2.1.jpg",
+      hoverSrc: "/2.1 (1).jpg",
+      title: "Đầm Cúp Ngực Minimalist",
+      tag: "Cocktail Party",
+      price: "280.000đ/ngày",
+      owner: "@minimal.edit",
+      span: "col-span-1 aspect-[3/4]"
+    },
+    {
+      src: "/anhbia.png",
+      hoverSrc: "/hero_warm.jpg",
+      title: "Áo Dài Tơ Tằm Dáng Xưa",
+      tag: "Heritage Silk",
+      price: "320.000đ/ngày",
+      owner: "@heritage.closet",
+      span: "col-span-1 aspect-[3/4]"
+    },
+    {
+      src: "/1.2.jpg",
+      hoverSrc: "/step3_party.jpg",
+      title: "Biker Jacket Da Sờn Bụi Bặm",
+      tag: "Street Icon",
+      price: "250.000đ/ngày",
+      owner: "@dustin.journey",
+      span: "col-span-1 aspect-[3/4]"
+    }
   ];
 
   const resaleItems = [
@@ -209,7 +256,7 @@ export default function Home() {
         </video>
 
         {/* Ambient Gradient Overlays */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent z-10 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/35 to-transparent z-10 pointer-events-none" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent z-10 pointer-events-none" />
 
         {/* Hero Content */}
@@ -221,13 +268,13 @@ export default function Home() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className="inline-flex items-center gap-2 px-3 py-0.5 rounded-md bg-emerald-950/80 backdrop-blur-md border border-emerald-400/40 text-emerald-300 text-[11px] font-bold uppercase tracking-widest mb-3 shadow-md font-ui"
+              className="inline-flex items-center gap-2 px-3 py-0.5 rounded-md bg-[#28422A]/90 backdrop-blur-md border border-[#A3E39F]/40 text-[#A3E39F] text-[11px] font-bold uppercase tracking-widest mb-3 shadow-md font-ui"
             >
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="w-2 h-2 rounded-full bg-[#A3E39F] animate-pulse"></span>
               Thời Trang Tuần Hoàn Sinh Thái
             </motion.div>
 
-            {/* Main Heading (Font Fraunces, kích thước vừa vặn tinh tế) */}
+            {/* Main Heading */}
             <motion.h1 
               initial="hidden"
               animate="visible"
@@ -246,7 +293,7 @@ export default function Home() {
               ))}
               <br />
               {["Thời", "Trang"].map((word, i) => (
-                <motion.span key={i+10} className="inline-block mr-2 text-emerald-300 drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)]" variants={{ hidden: { y: 15, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } } }}>
+                <motion.span key={i+10} className="inline-block mr-2 text-[#A3E39F] drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)]" variants={{ hidden: { y: 15, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } } }}>
                   {word}
                 </motion.span>
               ))}
@@ -263,9 +310,9 @@ export default function Home() {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5, duration: 0.7 }}
-              className="font-body text-xs sm:text-sm text-stone-100 leading-relaxed mb-5 md:mb-6 max-w-lg drop-shadow-[0_1px_6px_rgba(0,0,0,0.6)] font-light"
+              className="font-body text-xs sm:text-sm text-stone-200 leading-relaxed mb-5 md:mb-6 max-w-lg drop-shadow-[0_1px_6px_rgba(0,0,0,0.6)] font-light"
             >
-              Có những món đồ cất trong tủ kính mang theo cả một thời tuổi trẻ. Thay vì để chúng ngủ quên, hãy gửi gắm vào tủ đồ CLOOP để tiếp tục tỏa sáng cùng người khác.
+              Mỗi bộ cánh đều cất giữ một câu chuyện rực rỡ. Hãy để những món đồ ngủ quên tiếp tục tỏa sáng trong những khoảnh khắc tiếp theo.
             </motion.p>
 
             {/* Smart Search Bar with AI Visual Search */}
@@ -275,7 +322,7 @@ export default function Home() {
               transition={{ delay: 0.7, duration: 0.5 }}
               className="w-full max-w-lg mb-6 relative group"
             >
-              <div className="relative flex items-center bg-white/95 backdrop-blur-md border border-white/60 rounded-xl p-1.5 shadow-2xl focus-within:ring-2 focus-within:ring-emerald-400 transition-all gap-1.5">
+              <div className="relative flex items-center bg-white/95 backdrop-blur-md border border-white/60 rounded-xl p-1.5 shadow-2xl focus-within:ring-2 focus-within:ring-[#37503F] transition-all gap-1.5">
                 <Search size={16} className="text-stone-400 ml-2 mr-1 shrink-0" />
                 <input 
                   type="text" 
@@ -287,20 +334,16 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => setIsVisualSearchOpen(true)}
-                  className="relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-ui text-xs font-bold transition-all shadow-xs group/cam shrink-0 hover:scale-105 active:scale-95"
+                  className="relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#EBF3E8] hover:bg-[#D8EADB] text-[#244228] border border-[#BED7BC] font-ui text-xs font-bold transition-all shadow-xs group/cam shrink-0 hover:scale-105 active:scale-95"
                   title="Tìm trang phục tương tự bằng ảnh Lookbook / Pinterest"
                 >
-                  <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                  </span>
-                  <Camera size={14} className="text-emerald-700 group-hover/cam:scale-110 transition-transform" />
+                  <Camera size={14} className="text-[#3F6B44] group-hover/cam:scale-110 transition-transform" />
                   <span className="hidden sm:inline font-semibold text-[11px]">Tìm bằng ảnh</span>
                 </button>
 
                 <Link
                   href="/shop"
-                  className="px-3.5 py-1.5 bg-[#0A2517] text-white rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-emerald-900 transition-colors shrink-0 shadow-xs flex items-center justify-center font-ui"
+                  className="px-4 py-1.5 bg-[#37503F] text-white rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-[#2A4232] transition-colors shrink-0 shadow-xs flex items-center justify-center font-ui"
                 >
                   Tìm kiếm
                 </Link>
@@ -315,13 +358,13 @@ export default function Home() {
               className="flex flex-row w-full sm:w-auto items-center gap-3"
             >
               <MagneticButton>
-                <Link href="/shop" className="group font-ui font-bold text-xs px-5 h-[42px] bg-emerald-500 hover:bg-emerald-400 text-stone-950 rounded-lg shadow-lg shadow-emerald-500/25 transition-all duration-300 tracking-wide flex items-center justify-center gap-2 relative z-10 flex-1 sm:flex-initial">
+                <Link href="/shop" className="group font-ui font-bold text-xs px-5 h-[42px] bg-white text-[#183A2D] hover:bg-[#FAF7F0] rounded-lg shadow-lg transition-all duration-300 tracking-wide flex items-center justify-center gap-2 relative z-10 flex-1 sm:flex-initial">
                   KHÁM PHÁ TỦ ĐỒ <ArrowRight size={14} className="transition-transform duration-300 group-hover:translate-x-1" />
                 </Link>
               </MagneticButton>
               
               <MagneticButton>
-                <Link href="/my-closet" className="font-ui font-bold text-xs px-5 h-[42px] bg-black/35 hover:bg-black/50 text-white border border-white/30 backdrop-blur-md rounded-lg transition-all duration-300 tracking-wide flex items-center justify-center relative z-10 flex-1 sm:flex-initial shadow-md">
+                <Link href="/my-closet" className="font-ui font-bold text-xs px-5 h-[42px] bg-black/40 hover:bg-black/60 text-white border border-white/30 backdrop-blur-md rounded-lg transition-all duration-300 tracking-wide flex items-center justify-center relative z-10 flex-1 sm:flex-initial shadow-md">
                   CHIA SẺ TỦ ĐỒ
                 </Link>
               </MagneticButton>
@@ -402,12 +445,155 @@ export default function Home() {
         </div>
       </section>
 
-      {/* SECTION 3: TỦ ĐỒ UY TÍN (TRUSTED WARDROBES ACCORDION) */}
-      <section className="w-full py-14 bg-[#F3EFE6] border-y border-stone-200/70">
+      {/* SECTION 3: RUNWAY LOOKBOOK & STYLE FEED (CẢM HỨNG PHỐI ĐỒ TUẦN HOÀN - PHOTO-FIRST GALLERY) */}
+      <section className="w-full max-w-7xl mx-auto px-4 md:px-8 lg:px-12 py-16 border-t border-stone-200/70">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-3 mb-8">
+          <div>
+            <span className="text-[10.5px] uppercase font-bold tracking-widest text-[#2A4B2E] bg-[#E5EFE2] px-3 py-1 rounded-full border border-[#C5DAC2] font-ui">
+              EDITORIAL LOOKBOOK
+            </span>
+            <h2 className="font-heading text-xl md:text-3xl text-[#183A2D] font-extrabold tracking-normal mt-2">
+              Sàn Diễn Phong Cách Đời Thường
+            </h2>
+            <p className="text-stone-500 text-xs sm:text-sm mt-1 font-body">
+              Những bản phối thực tế từ cộng đồng người yêu thời trang tuần hoàn.
+            </p>
+          </div>
+
+          <Link 
+            href="/shop" 
+            className="font-ui text-xs font-bold uppercase tracking-widest text-[#2A4B2E] hover:text-[#183A2D] flex items-center gap-1.5 group shrink-0"
+          >
+            Khám phá trọn bộ Lookbook <ArrowRight size={13} className="group-hover:translate-x-1 transition-transform" />
+          </Link>
+        </div>
+
+        {/* Masonry / Magazine Lookbook Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
+          {editorialLooks.map((look, index) => (
+            <div 
+              key={index} 
+              className={`group relative overflow-hidden rounded-2xl bg-stone-100 border border-stone-200/80 shadow-xs hover:shadow-xl transition-all duration-700 ${look.span}`}
+            >
+              <Image 
+                src={look.src} 
+                alt={look.title} 
+                fill 
+                className="object-cover transition-opacity duration-700 opacity-100 group-hover:opacity-0" 
+                unoptimized 
+              />
+              <Image 
+                src={look.hoverSrc} 
+                alt={look.title} 
+                fill 
+                className="object-cover transition-transform duration-700 scale-105 opacity-0 group-hover:opacity-100 group-hover:scale-100" 
+                unoptimized 
+              />
+
+              {/* Gradient Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none" />
+
+              {/* Tag */}
+              <div className="absolute top-3 left-3 z-10">
+                <span className="text-[8.5px] uppercase font-bold tracking-widest bg-black/60 backdrop-blur-xs text-white px-2.5 py-1 rounded-sm">
+                  {look.tag}
+                </span>
+              </div>
+
+              {/* Bottom Details */}
+              <div className="absolute bottom-0 left-0 w-full p-4 sm:p-5 text-white transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500 z-10">
+                <p className="text-[9.5px] text-stone-300 font-ui uppercase tracking-wider">{look.owner}</p>
+                <h3 className="font-heading text-sm sm:text-base md:text-lg font-bold leading-tight mt-0.5 mb-2">
+                  {look.title}
+                </h3>
+                <div className="flex items-center justify-between pt-1 border-t border-white/20">
+                  <span className="text-xs sm:text-sm font-extrabold text-[#A3E39F] font-mono">
+                    {look.price}
+                  </span>
+                  <Link 
+                    href="/shop" 
+                    className="text-[10px] uppercase tracking-wider font-bold text-white bg-white/20 hover:bg-white hover:text-black px-2.5 py-1 rounded transition-all font-ui"
+                  >
+                    Thuê Look Này
+                  </Link>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* SECTION 4: HÀNH TRÌNH TUẦN HOÀN 3 BƯỚC (HOW CLOOP WORKS) */}
+      <section className="w-full max-w-7xl mx-auto px-4 md:px-8 lg:px-12 py-16 border-t border-stone-200/70">
+        <div className="text-center max-w-2xl mx-auto mb-12">
+          <span className="text-[10.5px] uppercase font-bold tracking-widest text-[#2A4B2E] bg-[#E5EFE2] px-3 py-1 rounded-full border border-[#C5DAC2] font-ui">
+            TRẢI NGHIỆM ĐỘC BẢN CLOOP
+          </span>
+          <h2 className="font-heading text-2xl sm:text-3xl md:text-4xl text-[#183A2D] font-bold tracking-normal mt-2">
+            Vận Hành Vòng Đời Thời Trang Trong 3 Bước
+          </h2>
+          <p className="text-stone-500 text-xs sm:text-sm mt-1 font-body">
+            Mặc đẹp mỗi ngày, tiết kiệm 90% chi phí và không cần bận tâm đến việc giặt ủi hay giữ đồ.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+          {/* Step 1 */}
+          <div className="group bg-white rounded-2xl p-5 border border-stone-200/80 hover:border-[#37503F] hover:shadow-lg transition-all flex flex-col justify-between">
+            <div className="relative aspect-[4/3] rounded-xl overflow-hidden mb-5 bg-stone-100">
+              <Image src="/step1_phone.jpg" alt="Lướt & Đặt Thuê" fill className="object-cover transition-transform duration-700 group-hover:scale-105" unoptimized />
+              <div className="absolute top-3 left-3 bg-[#37503F] text-white text-xs font-mono font-bold px-2.5 py-1 rounded-md shadow-xs">
+                01
+              </div>
+            </div>
+            <div className="space-y-2">
+              <h3 className="font-heading text-lg font-bold text-[#183A2D]">Lướt & Đặt Thuê Trong 60s</h3>
+              <p className="text-stone-600 text-xs sm:text-sm font-light leading-relaxed">
+                Khám phá hàng ngàn món đồ độc bản từ các chủ tủ uy tín. Kiểm tra lịch rảnh và đặt lịch giao tận tay trước sự kiện.
+              </p>
+            </div>
+          </div>
+
+          {/* Step 2 */}
+          <div className="group bg-white rounded-2xl p-5 border border-stone-200/80 hover:border-[#37503F] hover:shadow-lg transition-all flex flex-col justify-between">
+            <div className="relative aspect-[4/3] rounded-xl overflow-hidden mb-5 bg-stone-100">
+              <Image src="/step2_bag.jpg" alt="Nhận Đồ Chuẩn Spa" fill className="object-cover transition-transform duration-700 group-hover:scale-105" unoptimized />
+              <div className="absolute top-3 left-3 bg-[#37503F] text-white text-xs font-mono font-bold px-2.5 py-1 rounded-md shadow-xs">
+                02
+              </div>
+            </div>
+            <div className="space-y-2">
+              <h3 className="font-heading text-lg font-bold text-[#183A2D]">Nhận Đồ Tận Tay Chuẩn Spa</h3>
+              <p className="text-stone-600 text-xs sm:text-sm font-light leading-relaxed">
+                Trang phục được hấp sấy ozone tiệt trùng chuẩn sinh thái, đóng gói bằng bao bì tuần hoàn thơm tho, sẵn sàng để mặc ngay.
+              </p>
+            </div>
+          </div>
+
+          {/* Step 3 */}
+          <div className="group bg-white rounded-2xl p-5 border border-stone-200/80 hover:border-[#37503F] hover:shadow-lg transition-all flex flex-col justify-between">
+            <div className="relative aspect-[4/3] rounded-xl overflow-hidden mb-5 bg-stone-100">
+              <Image src="/step3_party.jpg" alt="Tỏa Sáng & Trả Đồ" fill className="object-cover transition-transform duration-700 group-hover:scale-105" unoptimized />
+              <div className="absolute top-3 left-3 bg-[#37503F] text-white text-xs font-mono font-bold px-2.5 py-1 rounded-md shadow-xs">
+                03
+              </div>
+            </div>
+            <div className="space-y-2">
+              <h3 className="font-heading text-lg font-bold text-[#183A2D]">Tỏa Sáng & Trả Đồ Tiện Lợi</h3>
+              <p className="text-stone-600 text-xs sm:text-sm font-light leading-relaxed">
+                Tự tin ghi dấu ấn tại sự kiện. Sau ngày thuê, shipper CLOOP đến nhận lại tận nơi mà bạn hoàn toàn không cần tự giặt ủi.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION 5: TỦ ĐỒ UY TÍN (TRUSTED WARDROBES ACCORDION) */}
+      <section className="w-full py-16 bg-[#F3EFE6] border-y border-stone-200/70">
         <div className="w-full max-w-7xl mx-auto px-4 md:px-8 lg:px-12">
           
           {/* Header */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-3 mb-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-3 mb-8">
             <div>
               <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-800 bg-emerald-50/90 px-2.5 py-0.5 rounded-md border border-emerald-200/60 font-ui">
                 NHỮNG TỦ ĐỒ TIÊU BIỂU
@@ -428,36 +614,7 @@ export default function Home() {
             </Link>
           </div>
 
-          {/* 📱 MOBILE VIEW: Horizontal Swipe Cards */}
-          <div className="md:hidden flex gap-3 overflow-x-auto no-scrollbar pb-2 -mx-4 px-4">
-            {featuredClosets.map((closet) => (
-              <div 
-                key={closet.id}
-                className="w-[240px] shrink-0 bg-white rounded-xl border border-stone-200/80 overflow-hidden shadow-xs flex flex-col"
-              >
-                <div className="relative aspect-[4/3] bg-stone-100 overflow-hidden">
-                  <Image src={closet.mainImg} alt={closet.username} fill className="object-cover" unoptimized />
-                  <div className="absolute top-2 left-2 bg-black/80 text-white text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-sm">
-                    {closet.tag}
-                  </div>
-                  <div className="absolute bottom-2 right-2 bg-emerald-900/90 text-emerald-200 text-[8px] font-mono px-1.5 py-0.5 rounded-sm flex items-center gap-1">
-                    <ShieldCheck size={10} /> {closet.trustScore}
-                  </div>
-                </div>
-                <div className="p-3 flex flex-col flex-1 justify-between gap-2">
-                  <div>
-                    <h3 className="font-heading font-bold text-sm text-[#0A2517]">@{closet.username}</h3>
-                    <p className="text-[11px] text-stone-500 line-clamp-2 mt-0.5 font-light leading-relaxed">{closet.bio}</p>
-                  </div>
-                  <Link href={`/closet/${closet.id}`} className="text-xs font-semibold text-[#183A2D] hover:underline flex items-center gap-1 pt-1 border-t border-stone-100">
-                    Vào xem tủ đồ <ArrowRight size={11} />
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* 🖥️ DESKTOP VIEW: Interactive Accordion (Chiều cao 460px) */}
+          {/* 🖥️ DESKTOP VIEW: Interactive Accordion */}
           <div className="hidden md:flex flex-row w-full h-[460px] gap-3 lg:gap-3.5">
             {featuredClosets.map((closet, index) => {
               const isActive = activeCard === index;
@@ -544,76 +701,40 @@ export default function Home() {
             })}
           </div>
 
+          {/* 📱 MOBILE VIEW: Horizontal Swipe Cards */}
+          <div className="md:hidden flex gap-3 overflow-x-auto no-scrollbar pb-2 -mx-4 px-4">
+            {featuredClosets.map((closet) => (
+              <div 
+                key={closet.id}
+                className="w-[240px] shrink-0 bg-white rounded-xl border border-stone-200/80 overflow-hidden shadow-xs flex flex-col"
+              >
+                <div className="relative aspect-[4/3] bg-stone-100 overflow-hidden">
+                  <Image src={closet.mainImg} alt={closet.username} fill className="object-cover" unoptimized />
+                  <div className="absolute top-2 left-2 bg-black/80 text-white text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-sm">
+                    {closet.tag}
+                  </div>
+                  <div className="absolute bottom-2 right-2 bg-emerald-900/90 text-emerald-200 text-[8px] font-mono px-1.5 py-0.5 rounded-sm flex items-center gap-1">
+                    <ShieldCheck size={10} /> {closet.trustScore}
+                  </div>
+                </div>
+                <div className="p-3 flex flex-col flex-1 justify-between gap-2">
+                  <div>
+                    <h3 className="font-heading font-bold text-sm text-[#0A2517]">@{closet.username}</h3>
+                    <p className="text-[11px] text-stone-500 line-clamp-2 mt-0.5 font-light leading-relaxed">{closet.bio}</p>
+                  </div>
+                  <Link href={`/closet/${closet.id}`} className="text-xs font-semibold text-[#183A2D] hover:underline flex items-center gap-1 pt-1 border-t border-stone-100">
+                    Vào xem tủ đồ <ArrowRight size={11} />
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+
         </div>
       </section>
 
-      {/* SECTION 4: HÀNH TRÌNH TUẦN HOÀN 3 BƯỚC (HOW CLOOP WORKS) */}
+      {/* SECTION 6: SÀN CHO THUÊ TUYỂN CHỌN (RENTAL HUB 50/50 SPLIT) */}
       <section className="w-full max-w-7xl mx-auto px-4 md:px-8 lg:px-12 py-16">
-        <div className="text-center max-w-2xl mx-auto mb-12">
-          <span className="text-[10.5px] uppercase font-bold tracking-widest text-[#2A4B2E] bg-[#E5EFE2] px-3 py-1 rounded-full border border-[#C5DAC2] font-ui">
-            TRẢI NGHIỆM ĐỘC BẢN CLOOP
-          </span>
-          <h2 className="font-heading text-2xl sm:text-3xl md:text-4xl text-[#183A2D] font-bold tracking-normal mt-2">
-            Vận Hành Vòng Đời Thời Trang Trong 3 Bước
-          </h2>
-          <p className="text-stone-500 text-xs sm:text-sm mt-1 font-body">
-            Mặc đẹp mỗi ngày, tiết kiệm 90% chi phí và không cần bận tâm đến việc giặt ủi hay giữ đồ.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-          {/* Step 1 */}
-          <div className="group bg-white rounded-2xl p-5 border border-stone-200/80 hover:border-[#37503F] hover:shadow-lg transition-all flex flex-col justify-between">
-            <div className="relative aspect-[4/3] rounded-xl overflow-hidden mb-5 bg-stone-100">
-              <Image src="/step1_phone.jpg" alt="Lướt & Đặt Thuê" fill className="object-cover transition-transform duration-700 group-hover:scale-105" unoptimized />
-              <div className="absolute top-3 left-3 bg-[#37503F] text-white text-xs font-mono font-bold px-2.5 py-1 rounded-md shadow-xs">
-                01
-              </div>
-            </div>
-            <div className="space-y-2">
-              <h3 className="font-heading text-lg font-bold text-[#183A2D]">Lướt & Đặt Thuê Trong 60s</h3>
-              <p className="text-stone-600 text-xs sm:text-sm font-light leading-relaxed">
-                Khám phá hàng ngàn món đồ độc bản từ các chủ tủ uy tín. Kiểm tra lịch rảnh và đặt lịch giao tận tay trước sự kiện.
-              </p>
-            </div>
-          </div>
-
-          {/* Step 2 */}
-          <div className="group bg-white rounded-2xl p-5 border border-stone-200/80 hover:border-[#37503F] hover:shadow-lg transition-all flex flex-col justify-between">
-            <div className="relative aspect-[4/3] rounded-xl overflow-hidden mb-5 bg-stone-100">
-              <Image src="/step2_bag.jpg" alt="Nhận Đồ Chuẩn Spa" fill className="object-cover transition-transform duration-700 group-hover:scale-105" unoptimized />
-              <div className="absolute top-3 left-3 bg-[#37503F] text-white text-xs font-mono font-bold px-2.5 py-1 rounded-md shadow-xs">
-                02
-              </div>
-            </div>
-            <div className="space-y-2">
-              <h3 className="font-heading text-lg font-bold text-[#183A2D]">Nhận Đồ Tận Tay Chuẩn Spa</h3>
-              <p className="text-stone-600 text-xs sm:text-sm font-light leading-relaxed">
-                Trang phục được hấp sấy ozone tiệt trùng chuẩn sinh thái, đóng gói bằng bao bì tuần hoàn thơm tho, sẵn sàng để mặc ngay.
-              </p>
-            </div>
-          </div>
-
-          {/* Step 3 */}
-          <div className="group bg-white rounded-2xl p-5 border border-stone-200/80 hover:border-[#37503F] hover:shadow-lg transition-all flex flex-col justify-between">
-            <div className="relative aspect-[4/3] rounded-xl overflow-hidden mb-5 bg-stone-100">
-              <Image src="/step3_party.jpg" alt="Tỏa Sáng & Trả Đồ" fill className="object-cover transition-transform duration-700 group-hover:scale-105" unoptimized />
-              <div className="absolute top-3 left-3 bg-[#37503F] text-white text-xs font-mono font-bold px-2.5 py-1 rounded-md shadow-xs">
-                03
-              </div>
-            </div>
-            <div className="space-y-2">
-              <h3 className="font-heading text-lg font-bold text-[#183A2D]">Tỏa Sáng & Trả Đồ Tiện Lợi</h3>
-              <p className="text-stone-600 text-xs sm:text-sm font-light leading-relaxed">
-                Tự tin ghi dấu ấn tại sự kiện. Sau ngày thuê, shipper CLOOP đến nhận lại tận nơi mà bạn hoàn toàn không cần tự giặt ủi.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* SECTION 5: SÀN CHO THUÊ TUYỂN CHỌN (RENTAL HUB 50/50 SPLIT) */}
-      <section className="w-full max-w-7xl mx-auto px-4 md:px-8 lg:px-12 py-16 border-t border-stone-200/70">
         
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4 border-b border-stone-200 pb-3">
@@ -622,7 +743,7 @@ export default function Home() {
               TIẾT KIỆM ĐẾN 90%
             </span>
             <h2 className="text-xl md:text-3xl font-heading font-extrabold text-[#0A2517] tracking-normal mt-1.5">
-              Trang Phục Cho Thuê
+              Trang Phục Cho Thuê Nổi Bật
             </h2>
           </div>
           
@@ -773,7 +894,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* SECTION 6: HỘ CHIẾU THỜI TRANG SỐ (DIGITAL GARMENT PASSPORT SPOTLIGHT) */}
+      {/* SECTION 7: HỘ CHIẾU THỜI TRANG SỐ (DIGITAL GARMENT PASSPORT SPOTLIGHT) */}
       <section className="w-full py-16 bg-[#F3EFE6] border-y border-stone-200/80">
         <div className="max-w-7xl mx-auto px-4 md:px-8 lg:px-12">
           
@@ -866,7 +987,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* SECTION 7: TRANG PHỤC THANH LÝ & PASS ĐỒ (RESALE MARKET) */}
+      {/* SECTION 8: TRANG PHỤC THANH LÝ & PASS ĐỒ (RESALE MARKET) */}
       <section className="w-full px-4 md:px-8 lg:px-12 py-16 bg-[#F8F6F0] border-t border-stone-200/70">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
@@ -937,7 +1058,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* SECTION 6: BẢO TÀNG KÝ ỨC TUẦN HOÀN (STORIES OF GARMENTS) */}
+      {/* SECTION 9: BẢO TÀNG KÝ ỨC TUẦN HOÀN (STORIES OF GARMENTS) */}
       <section className="w-full py-20 bg-[#F5F2EB] border-t border-stone-200/80">
         <div className="max-w-7xl mx-auto px-4 md:px-8 lg:px-12">
           
@@ -968,7 +1089,7 @@ export default function Home() {
               <div className="px-1 space-y-2">
                 <h3 className="font-heading text-base font-bold text-[#0A2517]">Chiếc Blazer Năm 1998</h3>
                 <p className="font-scrapbook text-sm text-stone-600 italic leading-relaxed">
-                  "Chiếc áo được mua bằng tháng lương đầu tiên của mẹ tôi. Nó đã chứng kiến những ngày thanh xuân rực rỡ và đầy kiêu hãnh..."
+                  "Chiếc áo được mua bằng tháng lương đầu tiên của mẹ tôi. Nó đã chứng kiến những ngày thanh xuân rực rỡ..."
                 </p>
                 <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-xs text-stone-500 font-ui">
                   <span className="font-semibold text-emerald-800 text-[11px]">@olivia.style</span>
@@ -988,7 +1109,7 @@ export default function Home() {
               <div className="px-1 space-y-2">
                 <h3 className="font-heading text-base font-bold text-[#0A2517]">Đêm Dạ Vũ Tỏa Sáng</h3>
                 <p className="font-scrapbook text-sm text-stone-600 italic leading-relaxed">
-                  "Mình mặc chiếc váy lụa này đúng một lần vào đêm Prom đại học. Mong nó sẽ tiếp tục thắp sáng một đêm diệu kỳ nữa..."
+                  "Mình mặc chiếc váy lụa này đúng một lần vào đêm Prom. Mong nó sẽ tiếp tục thắp sáng một đêm diệu kỳ nữa..."
                 </p>
                 <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-xs text-stone-500 font-ui">
                   <span className="font-semibold text-emerald-800 text-[11px]">@chloe.vintage</span>
@@ -1008,7 +1129,7 @@ export default function Home() {
               <div className="px-1 space-y-2">
                 <h3 className="font-heading text-base font-bold text-[#0A2517]">Kẻ Lữ Hành Cô Độc</h3>
                 <p className="font-scrapbook text-sm text-stone-600 italic leading-relaxed">
-                  "Chiếc áo da sờn vai đã cùng tôi rong ruổi khắp Tây Bắc. Mỗi vết xước là một dặm đường và một ánh lửa trại ấm áp..."
+                  "Chiếc áo da sờn vai đã cùng tôi rong ruổi khắp Tây Bắc. Mỗi vết xước là một dặm đường ấm áp..."
                 </p>
                 <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-xs text-stone-500 font-ui">
                   <span className="font-semibold text-emerald-800 text-[11px]">@dustin.journey</span>
@@ -1031,12 +1152,12 @@ export default function Home() {
         </div>
       </section>
 
-      {/* SECTION 7: ECO-IMPACT LIVE SIMULATOR (Máy tính tác động sinh thái nhẹ nhàng) */}
+      {/* SECTION 10: ECO-IMPACT LIVE SIMULATOR (Máy tính tác động sinh thái) */}
       <section className="w-full max-w-7xl mx-auto px-4 md:px-8 lg:px-12 py-14">
         <EcoImpactCalculator />
       </section>
 
-      {/* SECTION 8: CHỢ XANH CLOOP (Màu Xanh Rêu Matcha Mộc #37503F, Nút Trắng Tối Giản) */}
+      {/* SECTION 11: CHỢ XANH CLOOP (Màu Xanh Rêu Matcha Mộc #37503F, Nút Trắng Tối Giản) */}
       <section className="w-full bg-[#37503F] text-white pt-20 pb-16 relative overflow-hidden">
         <div className="max-w-4xl mx-auto px-4 md:px-8 text-center relative z-10 space-y-5">
           <h2 className="font-heading text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-normal text-white">
