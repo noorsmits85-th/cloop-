@@ -547,8 +547,73 @@ export default function Home() {
         </div>
       </section>
 
-      {/* SECTION 4: SÀN CHO THUÊ TUYỂN CHỌN (RENTAL HUB 50/50 SPLIT) */}
+      {/* SECTION 4: HÀNH TRÌNH TUẦN HOÀN 3 BƯỚC (HOW CLOOP WORKS) */}
       <section className="w-full max-w-7xl mx-auto px-4 md:px-8 lg:px-12 py-16">
+        <div className="text-center max-w-2xl mx-auto mb-12">
+          <span className="text-[10.5px] uppercase font-bold tracking-widest text-[#2A4B2E] bg-[#E5EFE2] px-3 py-1 rounded-full border border-[#C5DAC2] font-ui">
+            TRẢI NGHIỆM ĐỘC BẢN CLOOP
+          </span>
+          <h2 className="font-heading text-2xl sm:text-3xl md:text-4xl text-[#183A2D] font-bold tracking-normal mt-2">
+            Vận Hành Vòng Đời Thời Trang Trong 3 Bước
+          </h2>
+          <p className="text-stone-500 text-xs sm:text-sm mt-1 font-body">
+            Mặc đẹp mỗi ngày, tiết kiệm 90% chi phí và không cần bận tâm đến việc giặt ủi hay giữ đồ.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+          {/* Step 1 */}
+          <div className="group bg-white rounded-2xl p-5 border border-stone-200/80 hover:border-[#37503F] hover:shadow-lg transition-all flex flex-col justify-between">
+            <div className="relative aspect-[4/3] rounded-xl overflow-hidden mb-5 bg-stone-100">
+              <Image src="/step1_phone.jpg" alt="Lướt & Đặt Thuê" fill className="object-cover transition-transform duration-700 group-hover:scale-105" unoptimized />
+              <div className="absolute top-3 left-3 bg-[#37503F] text-white text-xs font-mono font-bold px-2.5 py-1 rounded-md shadow-xs">
+                01
+              </div>
+            </div>
+            <div className="space-y-2">
+              <h3 className="font-heading text-lg font-bold text-[#183A2D]">Lướt & Đặt Thuê Trong 60s</h3>
+              <p className="text-stone-600 text-xs sm:text-sm font-light leading-relaxed">
+                Khám phá hàng ngàn món đồ độc bản từ các chủ tủ uy tín. Kiểm tra lịch rảnh và đặt lịch giao tận tay trước sự kiện.
+              </p>
+            </div>
+          </div>
+
+          {/* Step 2 */}
+          <div className="group bg-white rounded-2xl p-5 border border-stone-200/80 hover:border-[#37503F] hover:shadow-lg transition-all flex flex-col justify-between">
+            <div className="relative aspect-[4/3] rounded-xl overflow-hidden mb-5 bg-stone-100">
+              <Image src="/step2_bag.jpg" alt="Nhận Đồ Chuẩn Spa" fill className="object-cover transition-transform duration-700 group-hover:scale-105" unoptimized />
+              <div className="absolute top-3 left-3 bg-[#37503F] text-white text-xs font-mono font-bold px-2.5 py-1 rounded-md shadow-xs">
+                02
+              </div>
+            </div>
+            <div className="space-y-2">
+              <h3 className="font-heading text-lg font-bold text-[#183A2D]">Nhận Đồ Tận Tay Chuẩn Spa</h3>
+              <p className="text-stone-600 text-xs sm:text-sm font-light leading-relaxed">
+                Trang phục được hấp sấy ozone tiệt trùng chuẩn sinh thái, đóng gói bằng bao bì tuần hoàn thơm tho, sẵn sàng để mặc ngay.
+              </p>
+            </div>
+          </div>
+
+          {/* Step 3 */}
+          <div className="group bg-white rounded-2xl p-5 border border-stone-200/80 hover:border-[#37503F] hover:shadow-lg transition-all flex flex-col justify-between">
+            <div className="relative aspect-[4/3] rounded-xl overflow-hidden mb-5 bg-stone-100">
+              <Image src="/step3_party.jpg" alt="Tỏa Sáng & Trả Đồ" fill className="object-cover transition-transform duration-700 group-hover:scale-105" unoptimized />
+              <div className="absolute top-3 left-3 bg-[#37503F] text-white text-xs font-mono font-bold px-2.5 py-1 rounded-md shadow-xs">
+                03
+              </div>
+            </div>
+            <div className="space-y-2">
+              <h3 className="font-heading text-lg font-bold text-[#183A2D]">Tỏa Sáng & Trả Đồ Tiện Lợi</h3>
+              <p className="text-stone-600 text-xs sm:text-sm font-light leading-relaxed">
+                Tự tin ghi dấu ấn tại sự kiện. Sau ngày thuê, shipper CLOOP đến nhận lại tận nơi mà bạn hoàn toàn không cần tự giặt ủi.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION 5: SÀN CHO THUÊ TUYỂN CHỌN (RENTAL HUB 50/50 SPLIT) */}
+      <section className="w-full max-w-7xl mx-auto px-4 md:px-8 lg:px-12 py-16 border-t border-stone-200/70">
         
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4 border-b border-stone-200 pb-3">
@@ -708,7 +773,100 @@ export default function Home() {
         </div>
       </section>
 
-      {/* SECTION 5: TRANG PHỤC THANH LÝ & PASS ĐỒ (RESALE MARKET) */}
+      {/* SECTION 6: HỘ CHIẾU THỜI TRANG SỐ (DIGITAL GARMENT PASSPORT SPOTLIGHT) */}
+      <section className="w-full py-16 bg-[#F3EFE6] border-y border-stone-200/80">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 lg:px-12">
+          
+          <div className="flex flex-col lg:flex-row gap-10 lg:gap-14 items-center">
+            {/* Left: Interactive Passport Card Preview */}
+            <div className="w-full lg:w-1/2 relative">
+              <div className="relative bg-white rounded-2xl p-6 sm:p-8 shadow-xl border border-stone-300/80 overflow-hidden">
+                {/* Gold passport seal watermark */}
+                <div className="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FAF7F0] border border-[#D5E4D1] text-[#28422A] text-[10px] font-mono font-bold uppercase tracking-wider">
+                  <ShieldCheck size={12} className="text-emerald-700" /> Digital Passport
+                </div>
+
+                <div className="flex gap-4 sm:gap-6 items-start mb-6">
+                  <div className="relative w-24 sm:w-28 aspect-[3/4] rounded-lg overflow-hidden shrink-0 border border-stone-200 shadow-xs">
+                    <Image src="/1.1.jpg" alt="Váy Dạ Hội" fill className="object-cover" unoptimized />
+                  </div>
+                  <div className="space-y-1.5 flex-1">
+                    <span className="text-[10px] uppercase tracking-widest text-emerald-800 font-bold font-mono">#CLOOP-VN-0892</span>
+                    <h3 className="font-heading text-lg sm:text-xl font-bold text-[#183A2D] leading-tight">
+                      Váy Dạ Hội Xẻ Tà Lụa Satin
+                    </h3>
+                    <p className="text-xs text-stone-500 font-ui">Chủ nhân ban đầu: <span className="font-semibold text-stone-800">@the.archive</span></p>
+                    <div className="pt-2 flex flex-wrap gap-2">
+                      <span className="text-[10px] bg-emerald-50 text-emerald-900 px-2 py-0.5 rounded font-mono font-semibold">
+                        🔄 8 Vòng đời
+                      </span>
+                      <span className="text-[10px] bg-amber-50 text-amber-900 px-2 py-0.5 rounded font-mono font-semibold">
+                        🌿 196kg CO₂ Tránh Thải
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Travel route stamp milestones */}
+                <div className="pt-4 border-t border-stone-100 space-y-2.5">
+                  <div className="text-[11px] font-bold text-stone-400 uppercase tracking-wider font-ui">
+                    Hành Trình Du Ngoạn Của Chiếc Váy:
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs font-mono">
+                    <div className="p-2 bg-[#FAF9F5] rounded-lg border border-stone-200/70">
+                      <p className="font-bold text-[#183A2D]">Hà Nội</p>
+                      <span className="text-[9px] text-stone-400">Prom Night 2024</span>
+                    </div>
+                    <div className="p-2 bg-[#FAF9F5] rounded-lg border border-stone-200/70">
+                      <p className="font-bold text-[#183A2D]">Đà Lạt</p>
+                      <span className="text-[9px] text-stone-400">Bộ Ảnh Cưới 2025</span>
+                    </div>
+                    <div className="p-2 bg-[#FAF9F5] rounded-lg border border-stone-200/70">
+                      <p className="font-bold text-[#183A2D]">TP.HCM</p>
+                      <span className="text-[9px] text-stone-400">Gala Techfest 2026</span>
+                    </div>
+                    <div className="p-2 bg-emerald-50 rounded-lg border border-emerald-300 text-emerald-900">
+                      <p className="font-bold text-emerald-900">Đà Nẵng</p>
+                      <span className="text-[9px] text-emerald-700">Đang sẵn sàng ✨</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Emotional diary note */}
+                <div className="mt-4 p-3 bg-[#FAF7F0] rounded-lg border border-[#E5DEC9] text-xs text-stone-600 italic font-scrapbook leading-relaxed">
+                  "Chiếc váy lụa này đã cùng mình nhận giải thưởng lớn tại đêm tiệc hôm qua. Cảm ơn người bạn xa lạ đã chia sẻ nó!"
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Storytelling & USP */}
+            <div className="w-full lg:w-1/2 space-y-5">
+              <span className="text-[10.5px] uppercase font-bold tracking-widest text-[#2A4B2E] bg-[#E5EFE2] px-3 py-1 rounded-full border border-[#C5DAC2] font-ui">
+                CÔNG NGHỆ THỜI TRANG MINH BẠCH
+              </span>
+              <h2 className="font-heading text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#183A2D] leading-tight">
+                Mỗi Món Đồ Đều Có <br />
+                <span className="text-emerald-800">Một Cuốn Hộ Chiếu Riêng</span>
+              </h2>
+              <p className="text-stone-600 text-xs sm:text-sm font-light leading-relaxed">
+                Tại CLOOP, quần áo không chỉ là vải vóc — chúng là những nhân chứng của kỷ niệm. Nhờ Hộ Chiếu Thời Trang (Digital Garment Passport), bạn có thể quét mã để biết món đồ đã đi qua những thành phố nào, được yêu thương ra sao và đã đóng góp bao nhiêu cho mẹ Trái Đất.
+              </p>
+
+              <div className="pt-2 flex items-center gap-4">
+                <Link
+                  href="/shop"
+                  className="px-6 py-3 bg-[#37503F] hover:bg-[#2C4233] text-white font-bold rounded-lg text-xs uppercase tracking-wider transition-all font-ui shadow-sm inline-flex items-center gap-2"
+                >
+                  Khám Phá Các Tủ Đồ Có Hộ Chiếu <ArrowRight size={13} />
+                </Link>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      {/* SECTION 7: TRANG PHỤC THANH LÝ & PASS ĐỒ (RESALE MARKET) */}
       <section className="w-full px-4 md:px-8 lg:px-12 py-16 bg-[#F8F6F0] border-t border-stone-200/70">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
