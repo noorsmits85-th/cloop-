@@ -38,12 +38,39 @@ export default function Home() {
   const [activeResaleCategory, setActiveResaleCategory] = useState("Tất cả");
   const resaleCategories = ["Tất cả", "Túi xách", "Phụ kiện", "Áo khoác", "Váy thiết kế"];
 
-  const [activeMoodCapsule, setActiveMoodCapsule] = useState("Gala");
   const moodCapsules = [
-    { id: "Gala", title: "Dạ Hội & Tiệc Đêm", icon: "🥂", desc: "Đầm lụa satin, sequin lấp lánh và váy dạ vũ quyến rũ." },
-    { id: "Capsule", title: "Tối Giản Thường Nhật", icon: "🌿", desc: "Linen tự nhiên, blazer thanh lịch và set đồ capsule xoay vòng." },
-    { id: "Archive", title: "Vintage & Di Sản", icon: "🕰️", desc: "Archive thập niên 90s, áo khoác dạ tweed và đồ độc bản." },
-    { id: "Heritage", title: "Áo Dài Truyền Thống", icon: "🌸", desc: "Áo dài lụa tơ tằm, gấm thêu tay cho dịp lễ tết và kỷ niệm." }
+    { 
+      id: "Gala", 
+      title: "Dạ Hội & Tiệc Đêm", 
+      tag: "Silk & Gala Evening",
+      desc: "Đầm lụa satin óng ả, sequin lấp lánh và dáng váy dạ vũ thướt tha.", 
+      image: "/evening_dress.jpg",
+      link: "/shop?category=Dạ hội"
+    },
+    { 
+      id: "Capsule", 
+      title: "Tối Giản Thường Nhật", 
+      tag: "Organic Linen Capsule",
+      desc: "Sợi linen tự nhiên, blazer thanh lịch và set đồ capsule xoay vòng nhẹ nhàng.", 
+      image: "/macro_fabric.jpg",
+      link: "/shop?category=Đi tiệc"
+    },
+    { 
+      id: "Archive", 
+      title: "Vintage & Di Sản", 
+      tag: "90s Rare Archive",
+      desc: "Kho báu vintage thập niên 90s, dạ tweed và những đường nét vượt thời gian.", 
+      image: "/vintage_coat.jpg",
+      link: "/shop?category=Vintage"
+    },
+    { 
+      id: "Heritage", 
+      title: "Áo Dài Di Sản", 
+      tag: "Heritage Silk Tradition",
+      desc: "Gấm thêu tay, tơ tằm mềm mại cho những dịp kỷ niệm trang trọng.", 
+      image: "/anhbia.png",
+      link: "/shop?category=Áo dài"
+    }
   ];
 
   const [activeCard, setActiveCard] = useState(0);
@@ -307,59 +334,71 @@ export default function Home() {
       {/* 🔴 LIVE CIRCULAR PULSE TICKER: Nhịp đập tuần hoàn */}
       <LivePulseTicker />
 
-      {/* SECTION 2: CURATED MOOD CAPSULES (Khám phá theo dịp sống) */}
-      <section className="w-full max-w-7xl mx-auto px-4 md:px-8 lg:px-12 py-14">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-3 mb-6">
+      {/* SECTION 2: CURATED MOOD CAPSULES (Khám phá phong cách theo cảm xúc & dịp sống) */}
+      <section className="w-full max-w-7xl mx-auto px-4 md:px-8 lg:px-12 py-16">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-3 mb-8">
           <div>
-            <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200/60 font-ui">
-              BỘ SƯU TẬP THEO DỊP
+            <span className="text-[10.5px] uppercase font-bold tracking-widest text-[#2A4B2E] bg-[#E5EFE2] px-3 py-1 rounded-full border border-[#C5DAC2] font-ui">
+              BỘ SƯU TẬP THEO CẢM XÚC
             </span>
-            <h2 className="font-heading text-xl md:text-3xl text-[#0A2517] font-bold tracking-normal mt-1.5">
+            <h2 className="font-heading text-xl md:text-3xl text-[#183A2D] font-extrabold tracking-normal mt-2">
               Phong Cách Dành Riêng Cho Dịp Của Bạn
             </h2>
-            <p className="text-stone-500 text-xs sm:text-sm mt-0.5 font-body">
-              Chọn tâm trạng và sự kiện sắp tới để CLOOP gợi ý outfit chuẩn nhất.
+            <p className="text-[#5A6E5C] text-xs sm:text-sm mt-1 font-body font-light">
+              Lựa chọn không gian và tâm trạng — Để CLOOP mở ra những bộ sưu tập trang phục êm ái, trọn vẹn nhất.
             </p>
           </div>
 
           <Link 
             href="/shop" 
-            className="font-ui text-xs font-bold uppercase tracking-widest text-[#183A2D] hover:text-emerald-700 flex items-center gap-1.5 group shrink-0"
+            className="font-ui text-xs font-bold uppercase tracking-widest text-[#2A4B2E] hover:text-[#183A2D] flex items-center gap-1.5 group shrink-0"
           >
             Tất cả phong cách <ArrowRight size={13} className="group-hover:translate-x-1 transition-transform" />
           </Link>
         </div>
 
-        {/* Capsule Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-          {moodCapsules.map((capsule) => {
-            const isSelected = activeMoodCapsule === capsule.id;
-            return (
-              <div
-                key={capsule.id}
-                onClick={() => setActiveMoodCapsule(capsule.id)}
-                className={`p-4 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
-                  isSelected 
-                    ? "bg-[#183A2D] text-white border-[#183A2D] shadow-lg ring-1 ring-emerald-400/30" 
-                    : "bg-white text-stone-800 border-stone-200/70 hover:border-emerald-300 hover:shadow-xs"
-                }`}
-              >
-                <div>
-                  <div className="text-2xl mb-2.5">{capsule.icon}</div>
-                  <h3 className={`font-heading font-bold text-base mb-1 ${isSelected ? "text-white" : "text-[#0A2517]"}`}>
-                    {capsule.title}
-                  </h3>
-                  <p className={`text-xs leading-relaxed ${isSelected ? "text-stone-300" : "text-stone-500"}`}>
-                    {capsule.desc}
-                  </p>
-                </div>
-                <div className={`mt-3 pt-2.5 border-t text-[10.5px] font-bold uppercase tracking-wider flex items-center justify-between ${isSelected ? "border-emerald-800/80 text-emerald-300" : "border-stone-100 text-emerald-800"}`}>
-                  <span>Xem 40+ Món</span>
-                  <ArrowRight size={12} />
+        {/* 4 Graceful Visual Portrait Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
+          {moodCapsules.map((capsule) => (
+            <Link
+              key={capsule.id}
+              href={capsule.link}
+              className="group relative aspect-[3/4] sm:aspect-[4/5] rounded-2xl overflow-hidden shadow-xs hover:shadow-xl transition-all duration-700 flex flex-col justify-end p-5 cursor-pointer border border-[#E0ECE0]/80"
+            >
+              {/* Background Photography with Gentle Slow Zoom */}
+              <Image 
+                src={capsule.image} 
+                alt={capsule.title} 
+                fill 
+                className="object-cover transition-transform duration-1000 ease-out group-hover:scale-108 brightness-[0.82] group-hover:brightness-[0.75]" 
+                unoptimized 
+              />
+
+              {/* Soft Gradient Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0C1E12]/95 via-[#0C1E12]/35 to-transparent pointer-events-none" />
+
+              {/* Top Subtle Pill */}
+              <div className="absolute top-3.5 left-3.5 z-10">
+                <span className="text-[8.5px] uppercase tracking-widest font-bold text-[#234227] bg-[#F3F7F1]/90 backdrop-blur-xs px-2.5 py-0.5 rounded-full border border-[#D5E4D1]">
+                  {capsule.tag}
+                </span>
+              </div>
+
+              {/* Content */}
+              <div className="relative z-10 space-y-1.5 transform translate-y-1 group-hover:translate-y-0 transition-transform duration-500">
+                <h3 className="font-heading text-lg sm:text-xl font-bold text-white leading-snug drop-shadow-sm">
+                  {capsule.title}
+                </h3>
+                <p className="text-[11.5px] text-stone-200 font-body font-light leading-relaxed line-clamp-2 italic drop-shadow-xs">
+                  {capsule.desc}
+                </p>
+                <div className="pt-2 flex items-center gap-1.5 text-xs font-semibold text-[#A8D3A3] group-hover:text-white transition-colors font-ui">
+                  <span className="uppercase text-[10px] tracking-wider">Khám Phá Tủ Đồ</span>
+                  <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
                 </div>
               </div>
-            );
-          })}
+            </Link>
+          ))}
         </div>
       </section>
 
