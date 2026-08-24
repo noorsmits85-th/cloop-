@@ -44,7 +44,7 @@ const FULL_MOSAIC_COLUMNS = [
     { id: "m5-3", img: "/vintage_coat.jpg", tag: "Di Sản", title: "Túi Xách Da Archive", price: "Pass 2.5Tr", aspect: "aspect-[3/4]" },
     { id: "m5-4", img: "/evening_dress.jpg", tag: "Prom", title: "Váy Sequin Lấp Lánh", price: "380k/ngày", aspect: "aspect-square" },
   ],
-  // Cột 6: Trôi xuống (mở rộng màn hình rộng)
+  // Cột 6: Trôi xuống
   [
     { id: "m6-1", img: "/1.3.jpeg", tag: "Cá Tính", title: "Blazer Oversized", price: "210k/ngày", aspect: "aspect-[3/4]" },
     { id: "m6-2", img: "/2.2 (1).jpg", tag: "Thanh Lịch", title: "Đầm Dạ Hội Ren", price: "340k/ngày", aspect: "aspect-[4/5]" },
@@ -77,37 +77,40 @@ export default function GoogleFlowFashionHero() {
               className={`flex flex-col gap-2.5 md:gap-3 ${colIdx === 5 ? 'hidden lg:flex' : ''} ${colIdx === 4 ? 'hidden md:flex' : ''}`}
             >
               {column.map((card) => (
-                <div
+                <Link
                   key={card.id}
-                  className={`group relative w-full ${card.aspect} rounded-2xl overflow-hidden bg-stone-900 border border-white/25 shadow-lg hover:shadow-2xl transition-all duration-500 hover:scale-105 cursor-pointer`}
+                  href="/shop"
+                  className={`group relative w-full ${card.aspect} rounded-2xl overflow-hidden bg-stone-900 border border-white/20 hover:border-[#A3E39F] shadow-lg hover:shadow-[0_0_35px_rgba(163,227,159,0.85)] hover:ring-2 hover:ring-[#A3E39F]/80 transition-all duration-500 hover:scale-110 hover:z-50 cursor-pointer block`}
                 >
+                  {/* Glowing & Brightening Image */}
                   <Image
                     src={card.img}
                     alt={card.title}
                     fill
-                    className="object-cover transition-transform duration-700 group-hover:scale-110 brightness-110 opacity-95 group-hover:opacity-100"
+                    className="object-cover transition-all duration-700 group-hover:scale-115 brightness-105 group-hover:brightness-130 group-hover:contrast-105 opacity-90 group-hover:opacity-100"
                     unoptimized
                   />
-                  {/* Subtle Gradient */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-transparent pointer-events-none" />
 
-                  {/* Tag Pill */}
+                  {/* Gradient Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-transparent pointer-events-none group-hover:opacity-75 transition-opacity" />
+
+                  {/* Glowing Tag Pill */}
                   <div className="absolute top-2 left-2 z-10">
-                    <span className="text-[7.5px] uppercase font-bold tracking-wider bg-black/70 backdrop-blur-md text-[#A3E39F] px-2 py-0.5 rounded-full border border-white/15 font-ui shadow-xs">
+                    <span className="text-[7.5px] uppercase font-bold tracking-wider bg-black/70 group-hover:bg-[#A3E39F] text-[#A3E39F] group-hover:text-[#07190F] group-hover:shadow-[0_0_15px_rgba(163,227,159,0.9)] px-2.5 py-0.5 rounded-full border border-white/15 group-hover:border-[#A3E39F] font-ui shadow-xs transition-all duration-300">
                       {card.tag}
                     </span>
                   </div>
 
-                  {/* Bottom Text */}
+                  {/* Bottom Glowing Text Info */}
                   <div className="absolute bottom-0 left-0 w-full p-2 text-white transform translate-y-0.5 group-hover:translate-y-0 transition-transform">
-                    <p className="text-[10px] font-heading font-bold leading-tight line-clamp-1">
+                    <p className="text-[10px] sm:text-[11px] font-heading font-bold leading-tight line-clamp-1 group-hover:text-white group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.9)] transition-colors">
                       {card.title}
                     </p>
-                    <p className="text-[9px] text-[#A3E39F] font-mono font-semibold">
+                    <p className="text-[9px] sm:text-[9.5px] text-[#A3E39F] group-hover:text-[#C5FFC2] font-mono font-bold group-hover:drop-shadow-[0_0_8px_rgba(163,227,159,0.9)] transition-colors">
                       {card.price}
                     </p>
                   </div>
-                </div>
+                </Link>
               ))}
             </motion.div>
           );
