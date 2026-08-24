@@ -29,6 +29,7 @@ import { getTrendingProductsAction } from "@/app/actions/favorite";
 import VisualSearchModal from "@/app/components/VisualSearchModal";
 import LivePulseTicker from "@/app/components/LivePulseTicker";
 import EcoImpactCalculator from "@/app/components/EcoImpactCalculator";
+import GoogleFlowFashionHero from "@/app/components/GoogleFlowFashionHero";
 
 export default function Home() {
   const [activeRentalCategory, setActiveRentalCategory] = useState("Tất cả");
@@ -181,145 +182,13 @@ export default function Home() {
   return (
     <main className="min-h-screen overflow-x-hidden antialiased bg-[#FAF9F5] text-[#0A2517] pb-28 md:pb-0 font-body">
 
-      {/* SECTION 1: HERO - BANNER VIDEO THỜI TRANG CO GỌN 80% */}
-      <section className="relative w-full aspect-[16/9] min-h-[420px] md:min-h-[480px] lg:min-h-[510px] max-h-[70vh] flex items-center justify-start overflow-hidden bg-stone-900">
-        
-        {/* Background Video */}
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          poster="/anhbia.png"
-          className="absolute inset-0 w-full h-full object-cover object-[center_20%]"
-        >
-          <source src="/hero-video.mp4" type="video/mp4" />
-          <source src="/hero.mp4" type="video/mp4" />
-        </video>
-
-        {/* Ambient Gradient Overlays */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/35 to-transparent z-10 pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent z-10 pointer-events-none" />
-
-        {/* Hero Content */}
-        <div className="w-full max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-6 z-20 relative flex flex-col justify-center items-start text-left">
-          <div className="max-w-xl">
-            
-            {/* Tagline Badge */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[#28422A]/90 backdrop-blur-md border border-[#A3E39F]/40 text-[#A3E39F] text-[10px] font-bold uppercase tracking-widest mb-2.5 shadow-sm font-ui"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-[#A3E39F] animate-pulse"></span>
-              Thời Trang Tuần Hoàn Sinh Thái
-            </motion.div>
-
-            {/* Main Heading (Co về 80% tinh gọn) */}
-            <motion.h1 
-              initial="hidden"
-              animate="visible"
-              variants={{
-                hidden: {},
-                visible: {
-                  transition: { staggerChildren: 0.08 }
-                }
-              }}
-              className="font-heading text-xl sm:text-2xl md:text-3xl lg:text-[34px] font-extrabold text-white leading-snug md:leading-[1.18] mb-2.5 tracking-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.6)]"
-            >
-              {["Thuê", "&", "Sở", "Hữu"].map((word, i) => (
-                <motion.span key={i} className="inline-block mr-1.5" variants={{ hidden: { y: 12, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } } }}>
-                  {word}
-                </motion.span>
-              ))}
-              <br />
-              {["Thời", "Trang"].map((word, i) => (
-                <motion.span key={i+10} className="inline-block mr-1.5 text-[#A3E39F] drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]" variants={{ hidden: { y: 12, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } } }}>
-                  {word}
-                </motion.span>
-              ))}
-              {" "}
-              {["Tuần", "Hoàn"].map((word, i) => (
-                <motion.span key={i+20} className="inline-block mr-1.5" variants={{ hidden: { y: 12, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } } }}>
-                  {word}
-                </motion.span>
-              ))}
-            </motion.h1>
-
-            {/* Subtext */}
-            <motion.p 
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5, duration: 0.7 }}
-              className="font-body text-[11.5px] sm:text-xs text-stone-200 leading-relaxed mb-4 max-w-md drop-shadow-[0_1px_4px_rgba(0,0,0,0.6)] font-light"
-            >
-              Tủ đồ xoay vòng vô tận từ những người sành thời trang. Tiết kiệm 90% chi phí mua mới & bảo tồn tài nguyên sinh thái.
-            </motion.p>
-
-            {/* Smart Search Bar with AI Visual Search */}
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.7, duration: 0.5 }}
-              className="w-full max-w-md mb-4 relative group"
-            >
-              <div className="relative flex items-center bg-white/95 backdrop-blur-md border border-white/60 rounded-lg p-1 shadow-xl focus-within:ring-1.5 focus-within:ring-[#37503F] transition-all gap-1">
-                <Search size={14} className="text-stone-400 ml-2 mr-1 shrink-0" />
-                <input 
-                  type="text" 
-                  placeholder="Tìm Áo khoác linen, đầm dạ hội, áo dài gấm..." 
-                  className="flex-1 bg-transparent border-none outline-none font-ui text-xs text-[#0A2517] placeholder:text-stone-400 font-medium min-w-0"
-                />
-
-                {/* AI Visual Search Button */}
-                <button
-                  type="button"
-                  onClick={() => setIsVisualSearchOpen(true)}
-                  className="relative flex items-center gap-1 px-2 py-1 rounded-md bg-[#EBF3E8] hover:bg-[#D8EADB] text-[#244228] border border-[#BED7BC] font-ui text-[11px] font-bold transition-all shadow-2xs group/cam shrink-0 hover:scale-105 active:scale-95"
-                  title="Tìm trang phục tương tự bằng ảnh chụp hoặc Pinterest"
-                >
-                  <Camera size={13} className="text-[#3F6B44] group-hover/cam:scale-110 transition-transform" />
-                  <span className="hidden sm:inline font-semibold text-[10px]">Tìm bằng ảnh</span>
-                </button>
-
-                <Link
-                  href="/shop"
-                  className="px-3.5 py-1 bg-[#37503F] text-white rounded-md text-[11px] font-bold uppercase tracking-wider hover:bg-[#2A4232] transition-colors shrink-0 shadow-2xs flex items-center justify-center font-ui"
-                >
-                  Tìm kiếm
-                </Link>
-              </div>
-            </motion.div>
-
-            {/* Action Buttons */}
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.9 }}
-              className="flex flex-row w-full sm:w-auto items-center gap-2.5"
-            >
-              <MagneticButton>
-                <Link href="/shop" className="group font-ui font-bold text-[11px] px-4 h-[38px] bg-white text-[#183A2D] hover:bg-[#FAF7F0] rounded-md shadow-md transition-all duration-300 tracking-wide flex items-center justify-center gap-1.5 relative z-10 flex-1 sm:flex-initial">
-                  KHÁM PHÁ TỦ ĐỒ <ArrowRight size={13} className="transition-transform duration-300 group-hover:translate-x-1" />
-                </Link>
-              </MagneticButton>
-              
-              <MagneticButton>
-                <Link href="/my-closet" className="font-ui font-bold text-[11px] px-4 h-[38px] bg-black/40 hover:bg-black/60 text-white border border-white/30 backdrop-blur-md rounded-md transition-all duration-300 tracking-wide flex items-center justify-center relative z-10 flex-1 sm:flex-initial shadow-sm">
-                  CHIA SẺ TỦ ĐỒ
-                </Link>
-              </MagneticButton>
-            </motion.div>
-
-          </div>
-        </div>
-      </section>
+      {/* SECTION 1: HERO - GOOGLE FLOW LIVING FASHION MOSAIC GRID */}
+      <GoogleFlowFashionHero />
 
       {/* 🔴 LIVE CIRCULAR PULSE TICKER: Nhịp đập tuần hoàn */}
       <LivePulseTicker />
 
-      {/* 📸 DẢI CUỘN TRANG PHỤC THỊNH HÀNH ĐANG ĐƯỢC THUÊ */}
+      {/* 📸 DẢI CUỘN TRANG PHỤC THỊNH HÀNG ĐANG ĐƯỢC THUÊ */}
       <section className="w-full py-6 bg-[#F4F1EA] border-b border-stone-200/80 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 md:px-6 mb-3 flex justify-between items-center">
           <div className="flex items-center gap-2">
