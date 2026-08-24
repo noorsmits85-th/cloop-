@@ -7,37 +7,37 @@ import { motion } from "framer-motion";
 import { ArrowRight, Camera, Search, Sparkles } from "lucide-react";
 import VisualSearchModal from "@/app/components/VisualSearchModal";
 
-// 18 bức ảnh thời trang phong phú lấp kín toàn bộ không gian nền
+// 20 bức ảnh thời trang sắc nét lấp kín 100% không gian nền xung quanh
 const DENSE_FASHION_COLUMNS = [
-  // Cột 1: Trôi chậm lên
+  // Cột 1
   [
     { id: "c1-1", img: "/evening_dress.jpg", tag: "Dạ Hội", title: "Váy Lụa Sequin", price: "380k/ngày", aspect: "aspect-[3/4]" },
     { id: "c1-2", img: "/1.2.jpeg", tag: "Thanh Lịch", title: "Set Dạ Tweed", price: "180k/ngày", aspect: "aspect-[4/5]" },
     { id: "c1-3", img: "/step1_phone.jpg", tag: "Trải Nghiệm", title: "Đặt Thuê Nhanh", price: "Tiện Lợi", aspect: "aspect-square" },
     { id: "c1-4", img: "/vintage_coat.jpg", tag: "Hoài Cổ", title: "Blazer Dạ 1998", price: "190k/ngày", aspect: "aspect-[3/4]" },
   ],
-  // Cột 2: Trôi chậm xuống
+  // Cột 2
   [
     { id: "c2-1", img: "/1.1.jpg", tag: "Prom Gala", title: "Đầm Lụa Satin", price: "350k/ngày", aspect: "aspect-[3/4]" },
     { id: "c2-2", img: "/macro_fabric.jpg", tag: "Chất Liệu", title: "Sợi Linen Tự Nhiên", price: "Eco Silk", aspect: "aspect-square" },
     { id: "c2-3", img: "/2.1.jpg", tag: "Tối Giản", title: "Đầm Cúp Ngực", price: "220k/ngày", aspect: "aspect-[4/5]" },
     { id: "c2-4", img: "/hero_warm.jpg", tag: "Ấm Áp", title: "Sắc Nắng Mùa Thu", price: "Outfit Thu", aspect: "aspect-[3/4]" },
   ],
-  // Cột 3: Trôi chậm lên
+  // Cột 3
   [
     { id: "c3-1", img: "/anhbia.png", tag: "Di Sản", title: "Áo Dài Tơ Tằm", price: "280k/ngày", aspect: "aspect-[3/4]" },
     { id: "c3-2", img: "/step2_bag.jpg", tag: "Bao Bì Xanh", title: "Đóng Gói Tuần Hoàn", price: "Chuẩn Xanh", aspect: "aspect-[4/5]" },
     { id: "c3-3", img: "/1.2.jpg", tag: "Streetwear", title: "Áo Khoác Da Biker", price: "250k/ngày", aspect: "aspect-[3/4]" },
     { id: "c3-4", img: "/2.2.jpg", tag: "Dạ Tiệc", title: "Đầm Xòe Công Chúa", price: "320k/ngày", aspect: "aspect-[4/5]" },
   ],
-  // Cột 4: Trôi chậm xuống
+  // Cột 4
   [
     { id: "c4-1", img: "/hero_group.jpg", tag: "Tái Sinh", title: "Set Đồ Upcycled", price: "160k/ngày", aspect: "aspect-[16/10]" },
     { id: "c4-2", img: "/1.1 (1).jpg", tag: "Gala Night", title: "Đầm Xẻ Tà Sang Trọng", price: "350k/ngày", aspect: "aspect-[3/4]" },
     { id: "c4-3", img: "/step3_party.jpg", tag: "Tỏa Sáng", title: "Khoảnh Khắc Đêm Tiệc", price: "Kỷ Niệm", aspect: "aspect-[4/5]" },
     { id: "c4-4", img: "/kinhgucci.webp", tag: "Phụ Kiện", title: "Kính Mắt Cat-Eye", price: "Pass 300k", aspect: "aspect-square" },
   ],
-  // Cột 5: Cột mép phải
+  // Cột 5
   [
     { id: "c5-1", img: "/2.1 (1).jpg", tag: "Cocktail", title: "Đầm Tiệc Trắng", price: "220k/ngày", aspect: "aspect-[3/4]" },
     { id: "c5-2", img: "/bootvanlentino.webp", tag: "Phụ Kiện", title: "Boots Da Thật", price: "Pass 1.2Tr", aspect: "aspect-[4/5]" },
@@ -53,14 +53,14 @@ export default function GoogleFlowFashionHero() {
     <section className="relative w-full min-h-[580px] sm:min-h-[640px] md:min-h-[700px] lg:min-h-[750px] bg-[#F7F5EE] overflow-hidden flex items-center justify-center select-none border-b border-stone-200/80">
       
       {/* 🖼️ FULL-BLEED DENSE LIVING PHOTO WALL: 5 Cột Ảnh Đan Xen Trôi Nhẹ Lấp Kín 100% Không Gian */}
-      <div className="absolute inset-0 w-full h-full overflow-hidden grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4 p-2 sm:p-3 opacity-80 md:opacity-85 pointer-events-auto">
+      <div className="absolute inset-0 w-full h-full overflow-hidden grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4 p-2 sm:p-3 opacity-75 md:opacity-85 pointer-events-auto">
         {DENSE_FASHION_COLUMNS.map((column, colIdx) => {
           const isOdd = colIdx % 2 !== 0;
           return (
             <motion.div
               key={colIdx}
               animate={{
-                y: isOdd ? [-20, 20, -20] : [20, -20, 20],
+                y: isOdd ? [-25, 25, -25] : [25, -25, 25],
               }}
               transition={{
                 duration: 12 + colIdx * 2,
@@ -72,7 +72,7 @@ export default function GoogleFlowFashionHero() {
               {column.map((card) => (
                 <div
                   key={card.id}
-                  className={`group relative w-full ${card.aspect} rounded-2xl overflow-hidden bg-white border border-white/80 shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-xl transition-all duration-500 hover:scale-105 cursor-pointer`}
+                  className={`group relative w-full ${card.aspect} rounded-2xl overflow-hidden bg-white border border-white/90 shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-xl transition-all duration-500 hover:scale-105 cursor-pointer`}
                 >
                   <Image
                     src={card.img}
@@ -107,27 +107,23 @@ export default function GoogleFlowFashionHero() {
         })}
       </div>
 
-      {/* 🌟 FROSTED GLASS EDITORIAL CENTERPIECE: Tôn chữ sắc nét trên nền ảnh ngập tràn */}
-      <div className="relative z-30 max-w-2xl mx-auto px-4 sm:px-6 text-center pointer-events-auto">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8 }}
-          className="bg-white/85 backdrop-blur-xl border border-white/90 rounded-3xl p-6 sm:p-8 md:p-10 shadow-[0_16px_40px_rgba(10,37,23,0.12)] flex flex-col items-center"
-        >
+      {/* 🌟 FROSTED GLASS EDITORIAL CENTERPIECE: Tôn chữ cực kỳ sắc nét và nổi bật */}
+      <div className="relative z-40 max-w-2xl mx-auto px-4 sm:px-6 text-center pointer-events-auto my-auto">
+        <div className="bg-white/92 backdrop-blur-2xl border-2 border-white rounded-3xl p-6 sm:p-8 md:p-10 shadow-[0_20px_60px_rgba(10,37,23,0.18)] flex flex-col items-center">
+          
           {/* Top Matcha Badge */}
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E5EFE2] border border-[#C5DAC2] text-[#2A4B2E] text-[10px] font-bold uppercase tracking-widest mb-3 shadow-2xs font-ui">
-            <span className="w-2 h-2 rounded-full bg-[#37503F] animate-pulse"></span>
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#E5EFE2] border border-[#C5DAC2] text-[#2A4B2E] text-[10.5px] font-bold uppercase tracking-widest mb-3 shadow-2xs font-ui">
+            <span className="w-2 h-2 rounded-full bg-[#2A4B2E] animate-pulse"></span>
             Tủ Đồ Tuần Hoàn Sinh Thái 2026
           </div>
 
           {/* Brand Name */}
-          <h1 className="font-heading text-4xl sm:text-5xl md:text-6xl font-extrabold text-[#0A2517] tracking-tight leading-none mb-3">
+          <h1 className="font-heading text-4xl sm:text-5xl md:text-6xl font-extrabold text-[#0A2517] tracking-tight leading-none mb-3 drop-shadow-xs">
             CLOOP
           </h1>
 
-          {/* Poetic & High-Fashion Tagline (Đã đổi câu hay hơn, bỏ chuẩn spa) */}
-          <p className="font-body text-xs sm:text-sm md:text-base text-stone-700 font-normal leading-relaxed max-w-lg mx-auto mb-6">
+          {/* Poetic & High-Fashion Tagline */}
+          <p className="font-body text-xs sm:text-sm md:text-[15px] text-stone-800 font-medium leading-relaxed max-w-lg mx-auto mb-6">
             Mở khóa tủ đồ vô tận từ cộng đồng sành phong cách. Tự do biến hóa diện mạo mỗi ngày, tiết kiệm 90% chi phí và lan tỏa lối sống xanh.
           </p>
 
@@ -155,7 +151,7 @@ export default function GoogleFlowFashionHero() {
 
           {/* Micro Search Bar */}
           <div className="mt-5 w-full max-w-md">
-            <div className="relative flex items-center bg-stone-50/90 border border-stone-200/90 rounded-full px-3 py-1.5 shadow-inner focus-within:ring-2 focus-within:ring-[#37503F] transition-all">
+            <div className="relative flex items-center bg-stone-50 border border-stone-300/90 rounded-full px-3 py-1.5 shadow-inner focus-within:ring-2 focus-within:ring-[#37503F] transition-all">
               <Search size={14} className="text-stone-400 ml-1 mr-2 shrink-0" />
               <input
                 type="text"
@@ -170,7 +166,8 @@ export default function GoogleFlowFashionHero() {
               </Link>
             </div>
           </div>
-        </motion.div>
+
+        </div>
       </div>
 
       {/* MODAL TÌM KIẾM HÌNH ẢNH LOOKBOOK BẰNG AI */}
