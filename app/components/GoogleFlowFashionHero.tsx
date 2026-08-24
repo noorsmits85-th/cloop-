@@ -44,7 +44,7 @@ const FULL_MOSAIC_COLUMNS = [
     { id: "m5-3", img: "/vintage_coat.jpg", tag: "Di Sản", title: "Túi Xách Da Archive", price: "Pass 2.5Tr", aspect: "aspect-[3/4]" },
     { id: "m5-4", img: "/evening_dress.jpg", tag: "Prom", title: "Váy Sequin Lấp Lánh", price: "380k/ngày", aspect: "aspect-square" },
   ],
-  // Cột 6: Trôi xuống
+  // Cột 6: Trôi xuống (mở rộng màn hình rộng)
   [
     { id: "m6-1", img: "/1.3.jpeg", tag: "Cá Tính", title: "Blazer Oversized", price: "210k/ngày", aspect: "aspect-[3/4]" },
     { id: "m6-2", img: "/2.2 (1).jpg", tag: "Thanh Lịch", title: "Đầm Dạ Hội Ren", price: "340k/ngày", aspect: "aspect-[4/5]" },
@@ -57,63 +57,68 @@ export default function GoogleFlowFashionHero() {
   const [isVisualSearchOpen, setIsVisualSearchOpen] = useState(false);
 
   return (
-    <section className="relative w-full min-h-[600px] sm:min-h-[660px] md:min-h-[720px] lg:min-h-[780px] bg-[#07190F] overflow-hidden flex items-center justify-center select-none border-b border-emerald-950/80">
+    <section 
+      className="relative w-full min-h-[600px] sm:min-h-[660px] md:min-h-[720px] lg:min-h-[780px] bg-[#07190F] overflow-hidden flex items-center justify-center select-none border-b border-emerald-950/80 transform-gpu"
+      style={{ contain: "content" }}
+    >
       
       {/* 🖼️ FULL-BLEED DENSE LIVING PHOTO WALL: Tràn ngập 100% diện tích không gian */}
-      <div className="absolute inset-0 w-full h-full overflow-hidden grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2.5 md:gap-3 p-2 sm:p-3 pointer-events-auto">
+      <div className="absolute inset-0 w-full h-full overflow-hidden grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2.5 md:gap-3 p-2 sm:p-3 pointer-events-auto transform-gpu">
         {FULL_MOSAIC_COLUMNS.map((column, colIdx) => {
           const isOdd = colIdx % 2 !== 0;
           return (
             <motion.div
               key={colIdx}
               animate={{
-                y: isOdd ? [-28, 28, -28] : [28, -28, 28],
+                y: isOdd ? [-24, 24, -24] : [24, -24, 24],
               }}
               transition={{
-                duration: 14 + colIdx * 2,
+                duration: 16 + colIdx * 2,
                 repeat: Infinity,
                 ease: "easeInOut",
               }}
-              className={`flex flex-col gap-2.5 md:gap-3 ${colIdx === 5 ? 'hidden lg:flex' : ''} ${colIdx === 4 ? 'hidden md:flex' : ''}`}
+              style={{ willChange: "transform", backfaceVisibility: "hidden" }}
+              className={`flex flex-col gap-2.5 md:gap-3 transform-gpu ${colIdx === 5 ? 'hidden lg:flex' : ''} ${colIdx === 4 ? 'hidden md:flex' : ''}`}
             >
               {column.map((card) => (
-                <div key={card.id} className="relative group">
+                <div key={card.id} className="relative group transform-gpu">
                   
                   {/* ✨ PULSING NEON MATCHA GLOW HALO (Hào quang bừng sáng sau thẻ) */}
-                  <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-[#A3E39F] via-white to-[#A3E39F] opacity-0 group-hover:opacity-100 blur-md transition-all duration-500 pointer-events-none z-0" />
+                  <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-[#A3E39F] via-white to-[#A3E39F] opacity-0 group-hover:opacity-100 blur-md transition-opacity duration-300 pointer-events-none z-0" />
 
                   <Link
                     href="/shop"
-                    className={`relative w-full ${card.aspect} rounded-2xl overflow-hidden bg-stone-900 border-2 border-white/20 hover:border-[#A3E39F] shadow-lg hover:shadow-[0_0_50px_rgba(163,227,159,0.95),_0_0_20px_rgba(255,255,255,0.8)] hover:ring-2 hover:ring-white transition-all duration-500 hover:scale-112 hover:z-50 cursor-pointer block z-10`}
+                    className={`relative w-full ${card.aspect} rounded-2xl overflow-hidden bg-stone-900 border-2 border-white/20 hover:border-[#A3E39F] shadow-lg hover:shadow-[0_0_45px_rgba(163,227,159,0.9),_0_0_18px_rgba(255,255,255,0.75)] hover:ring-2 hover:ring-white transition-all duration-300 hover:scale-110 hover:z-50 cursor-pointer block z-10`}
                   >
                     {/* Glowing & Brightening Image */}
                     <Image
                       src={card.img}
                       alt={card.title}
                       fill
-                      className="object-cover transition-all duration-700 group-hover:scale-120 brightness-105 group-hover:brightness-140 group-hover:contrast-110 group-hover:saturate-120 opacity-90 group-hover:opacity-100"
+                      sizes="(max-width: 640px) 33vw, (max-width: 1024px) 25vw, 18vw"
+                      className="object-cover transition-all duration-500 group-hover:scale-115 brightness-105 group-hover:brightness-135 group-hover:contrast-110 opacity-90 group-hover:opacity-100"
                       unoptimized
                     />
 
-                    {/* ✨ LUMINOUS GLASS SHIMMER OVERLAY (Lớp ánh sáng kim cương quét qua khi chạm) */}
-                    <div className="absolute inset-0 bg-gradient-to-tr from-[#A3E39F]/35 via-white/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none mix-blend-overlay" />
+                    {/* ✨ LUMINOUS GLASS SHIMMER OVERLAY */}
+                    <div className="absolute inset-0 bg-gradient-to-tr from-[#A3E39F]/35 via-white/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none mix-blend-overlay" />
 
                     {/* Gradient Overlay */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-transparent pointer-events-none group-hover:opacity-60 transition-opacity" />
 
                     {/* Glowing Tag Pill */}
                     <div className="absolute top-2 left-2 z-20">
-                      <span className="text-[7.5px] uppercase font-bold tracking-wider bg-black/70 group-hover:bg-[#A3E39F] text-[#A3E39F] group-hover:text-[#07190F] group-hover:shadow-[0_0_20px_rgba(163,227,159,1)] px-2.5 py-0.5 rounded-full border border-white/15 group-hover:border-white font-ui shadow-xs transition-all duration-300">
+                      <span className="text-[7.5px] uppercase font-bold tracking-wider bg-black/70 group-hover:bg-[#A3E39F] text-[#A3E39F] group-hover:text-[#07190F] group-hover:shadow-[0_0_15px_rgba(163,227,159,1)] px-2.5 py-0.5 rounded-full border border-white/15 group-hover:border-white font-ui shadow-xs transition-colors duration-200">
                         {card.tag}
                       </span>
                     </div>
 
                     {/* Bottom Glowing Text Info */}
                     <div className="absolute bottom-0 left-0 w-full p-2.5 text-white transform translate-y-0.5 group-hover:translate-y-0 transition-transform z-20">
-                      <p className="text-[10px] sm:text-[11px] font-heading font-bold leading-tight line-clamp-1 group-hover:text-white group-hover:drop-shadow-[0_0_10px_rgba(255,255,255,1)] transition-all">
+                      <p className="text-[10px] sm:text-[11px] font-heading font-bold leading-tight line-clamp-1 group-hover:text-white group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,1)] transition-all">
                         {card.title}
                       </p>
-                      <p className="text-[9px] sm:text-[9.5px] text-[#A3E39F] group-hover:text-[#D4FFD0] font-mono font-bold group-hover:drop-shadow-[0_0_10px_rgba(163,227,159,1)] transition-all">
+                      <p className="text-[9px] sm:text-[9.5px] text-[#A3E39F] group-hover:text-[#D4FFD0] font-mono font-bold group-hover:drop-shadow-[0_0_8px_rgba(163,227,159,1)] transition-all">
                         {card.price}
                       </p>
                     </div>
