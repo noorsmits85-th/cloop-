@@ -30,11 +30,14 @@ export interface VisualSearchResult {
   isFallback?: boolean;
 }
 
-// Danh sách Model Gemini Flash Lite / Fast Vision theo thứ tự ưu tiên tốc độ & độ thông minh
+// Danh sách Model Gemini 2026 Mới Nhất theo thứ tự ưu tiên tốc độ & độ thông minh
 const CANDIDATE_GEMINI_MODELS = [
+  "gemini-3.5-flash-lite",
+  "gemini-3.6-flash",
+  "gemini-3.1-pro",
+  "gemini-2.5-flash",
   "gemini-2.0-flash-lite",
   "gemini-2.0-flash",
-  "gemini-2.5-flash",
   "gemini-1.5-flash",
   "gemini-flash-latest",
 ];
