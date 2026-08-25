@@ -626,7 +626,7 @@ export default function Home() {
                     </div>
                     <div className="p-1.5 bg-emerald-50 rounded-md border border-emerald-300 text-emerald-900">
                       <p className="font-bold text-emerald-900">Đà Nẵng</p>
-                      <span className="text-[8px] text-emerald-700">Sẵn sàng ✨</span>
+                      <span className="text-[8px] text-emerald-700">Sẵn sàng</span>
                     </div>
                   </div>
                 </div>

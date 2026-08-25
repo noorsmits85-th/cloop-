@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { 
   Bot, CheckCircle2, CloudSun, MapPin, Send, 
   ShoppingBag, X, PhoneCall, MessageCircle, 
-  Sparkles, HelpCircle, ArrowRight, Clock, ShieldCheck, Headphones
+  HelpCircle, ArrowRight, Clock, ShieldCheck, Headphones
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -39,10 +39,10 @@ const INITIAL_MESSAGES: Message[] = [
     text: "Chào bạn! Mình là AI Stylist của CLOOP. Bạn chuẩn bị đi đâu, phong cách thế nào? Nhắn cho mình để tìm ngay set đồ phù hợp nhé!",
     subNote: "Nếu cần hỗ trợ đơn hàng hoặc đổi size, bạn chọn tab Chat với CSKH bên trên nhé.",
     suggestions: [
-      "✨ Đi tiệc & Sự kiện", 
-      "🌊 Du lịch & Đi biển", 
-      "☕ Cà phê dạo phố",
-      "🎧 Gặp nhân viên CSKH"
+      "Đi tiệc & Sự kiện", 
+      "Du lịch & Đi biển", 
+      "Cà phê dạo phố",
+      "Gặp nhân viên CSKH"
     ],
   },
   {
@@ -260,7 +260,7 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
               id: crypto.randomUUID(),
               role: "ai",
               text: `Mình đã nhận diện thời tiết tại khu vực của bạn: ${context}. Bạn định đi dịp gì để mình phối đồ sát nhất nhé?`,
-              suggestions: ["✨ Đi tiệc & Sự kiện", "🌊 Du lịch & Đi biển", "☕ Cà phê dạo phố"],
+              suggestions: ["Đi tiệc & Sự kiện", "Du lịch & Đi biển", "Cà phê dạo phố"],
             },
           ]);
         } catch (error) {
@@ -284,7 +284,7 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
             id: crypto.randomUUID(),
             role: "ai",
             text: "Bạn chưa bật quyền định vị. Không sao cả, bạn chỉ cần nhắn dịp và sở thích là mình tìm đồ được ngay!",
-            suggestions: ["✨ Đi tiệc & Sự kiện", "🌊 Du lịch & Đi biển", "☕ Cà phê dạo phố", "🎧 Gặp nhân viên CSKH"],
+            suggestions: ["Đi tiệc & Sự kiện", "Du lịch & Đi biển", "Cà phê dạo phố", "Gặp nhân viên CSKH"],
           },
         ]);
         setIsTyping(false);
@@ -440,7 +440,7 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
                       : "text-stone-500 hover:text-stone-800 dark:text-stone-400"
                   }`}
                 >
-                  <Sparkles size={12} className="text-[#2A6E46] dark:text-[#A3E39F]" />
+                  <Bot size={12} className="text-[#2A6E46] dark:text-[#A3E39F]" />
                   AI Stylist
                 </button>
 
