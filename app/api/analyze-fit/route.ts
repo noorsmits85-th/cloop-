@@ -26,8 +26,8 @@ export async function POST(req: Request) {
       userBase64 = parts[1];
     }
 
-    // 3. Khởi tạo Gemini Vision model
-    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+    // 3. Khởi tạo Gemini Flash Lite model
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
 
     const prompt = `Bạn là một AI Stylist chuyên nghiệp của CLOOP (nền tảng thời trang tuần hoàn). 
 Dưới đây là 2 bức ảnh: Ảnh 1 là người dùng, Ảnh 2 là trang phục. 
