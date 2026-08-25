@@ -266,11 +266,11 @@ export default function GoogleFlowFashionHero() {
       ref={containerRef}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      className="relative w-full min-h-[600px] sm:min-h-[660px] md:min-h-[720px] lg:min-h-[780px] bg-[#0A1810] overflow-hidden flex items-center justify-center select-none border-b border-stone-800 transform-gpu perspective-[1200px]"
+      className="relative w-full min-h-[600px] sm:min-h-[660px] md:min-h-[720px] lg:min-h-[800px] bg-[#05150C] overflow-hidden flex items-center justify-center select-none border-b border-[#0C2B1A] transform-gpu perspective-[1200px]"
       style={{ contain: "content" }}
     >
       
-      {/* 🖼️ LIVING PHOTO MOSAIC WALL (Trôi chậm, dịu êm, màu ảnh tự nhiên) */}
+      {/* 🖼️ 3D MAGNETIC LIVING PHOTO WALL (24 Cards nghiêng theo con trỏ chuột) */}
       <motion.div 
         animate={{
           rotateX: mousePos.y * -3,
@@ -278,7 +278,7 @@ export default function GoogleFlowFashionHero() {
           scale: 1.01,
         }}
         transition={{ type: "spring", stiffness: 80, damping: 30 }}
-        className="absolute inset-0 w-full h-full overflow-hidden grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2.5 md:gap-3 p-2 sm:p-3 pointer-events-auto transform-gpu opacity-70 hover:opacity-85 transition-opacity duration-700"
+        className="absolute inset-0 w-full h-full overflow-hidden grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2.5 md:gap-3 p-2 sm:p-3 pointer-events-auto transform-gpu"
       >
         {FULL_MOSAIC_COLUMNS.map((column, colIdx) => {
           const isOdd = colIdx % 2 !== 0;
@@ -286,10 +286,10 @@ export default function GoogleFlowFashionHero() {
             <motion.div
               key={colIdx}
               animate={{
-                y: isOdd ? [-20, 20, -20] : [20, -20, 20],
+                y: isOdd ? [-22, 22, -22] : [22, -22, 22],
               }}
               transition={{
-                duration: 24 + colIdx * 3, // Chuyển động cực kỳ chậm rãi, không gây chóng mặt
+                duration: 20 + colIdx * 2,
                 repeat: Infinity,
                 ease: "easeInOut",
               }}
@@ -299,41 +299,56 @@ export default function GoogleFlowFashionHero() {
               {column.map((card) => (
                 <div key={card.id} className="relative group transform-gpu">
                   
-                  {/* Subtle Glow Halo on Hover */}
-                  <div className="absolute -inset-1 rounded-2xl bg-[#A3E39F] opacity-0 group-hover:opacity-60 blur-md transition-opacity duration-300 pointer-events-none z-0" />
+                  {/* ✨ PULSING NEON MATCHA GLOW HALO */}
+                  <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-[#A3E39F] via-white to-[#A3E39F] opacity-0 group-hover:opacity-100 blur-md transition-opacity duration-300 pointer-events-none z-0" />
 
                   <div
                     onClick={() => setSelectedItem(card)}
-                    className={`relative w-full ${card.aspect} rounded-2xl overflow-hidden bg-stone-900 border border-white/20 hover:border-[#A3E39F] shadow-md hover:shadow-xl transition-all duration-300 hover:scale-108 hover:z-50 cursor-pointer block z-10`}
+                    className={`relative w-full ${card.aspect} rounded-2xl overflow-hidden bg-[#0B2014] border-2 border-white/20 hover:border-[#A3E39F] shadow-lg hover:shadow-[0_0_45px_rgba(163,227,159,0.9),_0_0_18px_rgba(255,255,255,0.75)] hover:ring-2 hover:ring-white transition-all duration-300 hover:scale-110 hover:z-50 cursor-pointer block z-10`}
                   >
-                    {/* Natural High-Quality Image */}
+                    {/* Glowing & Brightening Image */}
                     <Image
                       src={card.img}
                       alt={card.title}
                       fill
                       sizes="(max-width: 640px) 33vw, (max-width: 1024px) 25vw, 18vw"
-                      className="object-cover transition-transform duration-500 group-hover:scale-110 brightness-100 group-hover:brightness-110"
+                      className="object-cover transition-all duration-500 group-hover:scale-115 brightness-105 group-hover:brightness-140 group-hover:contrast-110 opacity-90 group-hover:opacity-100"
                       unoptimized
                     />
 
-                    {/* Clean Bottom Gradient for readable labels */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+                    {/* ✨ LUMINOUS GLASS SHIMMER OVERLAY */}
+                    <div className="absolute inset-0 bg-gradient-to-tr from-[#A3E39F]/35 via-white/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none mix-blend-overlay" />
 
-                    {/* Tag Pill */}
+                    {/* Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent pointer-events-none group-hover:opacity-50 transition-opacity" />
+
+                    {/* Top Left: Tag Pill */}
                     <div className="absolute top-2 left-2 z-20">
-                      <span className="text-[7.5px] uppercase font-bold tracking-wider bg-black/70 text-[#A3E39F] px-2 py-0.5 rounded-full border border-white/15 font-ui shadow-xs">
+                      <span className="text-[7.5px] uppercase font-bold tracking-wider bg-black/70 group-hover:bg-[#A3E39F] text-[#A3E39F] group-hover:text-[#07190F] group-hover:shadow-[0_0_15px_rgba(163,227,159,1)] px-2.5 py-0.5 rounded-full border border-white/20 group-hover:border-white font-ui shadow-xs transition-colors duration-200">
                         {card.tag}
                       </span>
                     </div>
 
-                    {/* Bottom Info */}
+                    {/* Top Right: Live Eco Impact Chip (Reveals on hover) */}
+                    <div className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <span className="text-[7px] uppercase font-bold tracking-wider bg-[#0A2517]/95 text-[#A3E39F] px-2 py-0.5 rounded-full border border-[#A3E39F]/60 font-ui shadow-xs flex items-center gap-1">
+                        <Leaf size={7} /> {card.eco}
+                      </span>
+                    </div>
+
+                    {/* Bottom Info: Title, Price & Live Rentals */}
                     <div className="absolute bottom-0 left-0 w-full p-2.5 text-white transform translate-y-0.5 group-hover:translate-y-0 transition-transform z-20">
-                      <p className="text-[10px] sm:text-[11px] font-heading font-bold leading-tight line-clamp-1">
+                      <p className="text-[10px] sm:text-[11px] font-heading font-bold leading-tight line-clamp-1 group-hover:text-white group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,1)] transition-all">
                         {card.title}
                       </p>
-                      <p className="text-[9px] sm:text-[9.5px] text-[#A3E39F] font-mono font-bold mt-0.5">
-                        {card.price}
-                      </p>
+                      <div className="flex items-center justify-between mt-0.5">
+                        <p className="text-[9px] sm:text-[9.5px] text-[#A3E39F] group-hover:text-[#D4FFD0] font-mono font-bold group-hover:drop-shadow-[0_0_8px_rgba(163,227,159,1)] transition-all">
+                          {card.price}
+                        </p>
+                        <span className="text-[8px] text-stone-300 font-ui opacity-0 group-hover:opacity-100 transition-opacity">
+                          {card.rentals}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -344,77 +359,75 @@ export default function GoogleFlowFashionHero() {
         })}
       </motion.div>
 
-      {/* 🌫️ SOFT TRANSLUCENT RADIAL VIGNETTE: Tạo độ êm dịu, không ám xanh gắt */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(10,24,16,0.85)_0%,_rgba(10,24,16,0.65)_40%,_rgba(7,17,11,0.92)_100%)] pointer-events-none z-20" />
+      {/* 🍵 DEEP FOREST EMERALD VIGNETTE: Nền xanh rừng đậm sâu thẳm, sang trọng */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(8,26,16,0.72)_0%,_rgba(6,20,12,0.58)_45%,_rgba(4,14,8,0.92)_100%)] pointer-events-none z-20" />
 
-      {/* 🌟 FROSTED GLASS EDITORIAL CAPSULE: Tâm điểm trong trẻo, êm mắt, bảo vệ tầm nhìn */}
+      {/* 🌟 SPATIAL CENTERPIECE: Đặt trực tiếp nổi bật giữa biển ảnh thời trang với hiệu ứng Parallax */}
       <motion.div 
         animate={{
-          x: mousePos.x * -6,
-          y: mousePos.y * -6,
+          x: mousePos.x * -8,
+          y: mousePos.y * -8,
         }}
-        transition={{ type: "spring", stiffness: 100, damping: 25 }}
-        className="relative z-30 max-w-2xl mx-auto px-4 sm:px-6 text-center pointer-events-auto my-auto"
+        transition={{ type: "spring", stiffness: 120, damping: 20 }}
+        className="relative z-30 max-w-3xl mx-auto px-4 text-center flex flex-col items-center justify-center pointer-events-auto my-auto"
       >
-        <div className="bg-[#0D2417]/85 backdrop-blur-2xl border border-white/18 rounded-3xl p-6 sm:p-8 md:p-9 shadow-[0_20px_60px_rgba(0,0,0,0.45)] flex flex-col items-center">
-          
-          {/* Top Matcha Badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/10 border border-[#A3E39F]/30 text-[#A3E39F] text-[10px] font-bold uppercase tracking-widest mb-3 shadow-2xs font-ui">
-            <span className="w-2 h-2 rounded-full bg-[#A3E39F] animate-pulse"></span>
-            Tủ Đồ Tuần Hoàn Sinh Thái 2026
-          </div>
+        
+        {/* Top Matcha Badge */}
+        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/15 backdrop-blur-md border border-[#A3E39F]/50 text-[#A3E39F] text-[10.5px] font-bold uppercase tracking-widest mb-3.5 shadow-lg font-ui">
+          <span className="w-2 h-2 rounded-full bg-[#A3E39F] animate-pulse"></span>
+          Tủ Đồ Tuần Hoàn Sinh Thái 2026
+        </div>
 
-          {/* Big Bold Clean Title */}
-          <h1 className="font-heading text-4xl sm:text-5xl md:text-6xl font-extrabold text-white tracking-tight leading-none mb-3 drop-shadow-sm">
-            CLOOP
-          </h1>
+        {/* Big Bold Shimmering White Title */}
+        <h1 className="font-heading text-5xl sm:text-6xl md:text-7xl lg:text-[84px] font-extrabold text-transparent bg-clip-text bg-gradient-to-b from-white via-[#F5FFF2] to-[#D4EBD0] tracking-tight leading-none mb-3.5 drop-shadow-[0_4px_24px_rgba(0,0,0,0.9)]">
+          CLOOP
+        </h1>
 
-          {/* Poetic & High-Fashion Tagline */}
-          <p className="font-body text-xs sm:text-sm text-stone-200 font-light leading-relaxed max-w-md mx-auto mb-6">
-            Mở khóa tủ đồ vô tận từ cộng đồng sành phong cách. Tự do biến hóa diện mạo mỗi ngày, tiết kiệm 90% chi phí và lan tỏa lối sống xanh.
-          </p>
+        {/* Poetic & High-Fashion Tagline */}
+        <p className="font-body text-xs sm:text-sm md:text-[15px] text-stone-100 font-normal leading-relaxed max-w-lg mx-auto mb-7 drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]">
+          Mở khóa tủ đồ vô tận từ cộng đồng sành phong cách. Tự do biến hóa diện mạo mỗi ngày, tiết kiệm 90% chi phí và lan tỏa lối sống xanh.
+        </p>
 
-          {/* Action Buttons Row */}
-          <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-            {/* Primary Giant White Pill Button */}
+        {/* Action Buttons Row */}
+        <div className="flex flex-col sm:flex-row items-center gap-3.5 w-full sm:w-auto">
+          {/* Primary Giant White Pill Button */}
+          <Link
+            href="/shop"
+            className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-white text-[#0A2517] hover:bg-[#FAF7F0] font-heading font-extrabold text-xs sm:text-sm tracking-wider uppercase transition-all duration-300 shadow-[0_6px_25px_rgba(255,255,255,0.35)] hover:scale-105 active:scale-95 flex items-center justify-center gap-2 group font-ui"
+          >
+            Khám Phá Tủ Đồ
+            <ArrowRight size={15} className="group-hover:translate-x-1 transition-transform" />
+          </Link>
+
+          {/* AI Visual Search Button */}
+          <button
+            type="button"
+            onClick={() => setIsVisualSearchOpen(true)}
+            className="w-full sm:w-auto px-6 py-3.5 rounded-full bg-white/20 hover:bg-white/30 text-white border border-white/35 backdrop-blur-md font-heading font-bold text-xs sm:text-sm tracking-wider uppercase transition-all duration-300 shadow-md hover:scale-105 active:scale-95 flex items-center justify-center gap-2 group font-ui"
+          >
+            <Camera size={15} className="text-[#A3E39F] group-hover:scale-110 transition-transform" />
+            <span>Tìm Bằng Ảnh AI</span>
+          </button>
+        </div>
+
+        {/* Micro Search Bar */}
+        <div className="mt-5 w-full max-w-md">
+          <div className="relative flex items-center bg-black/50 backdrop-blur-md border border-white/25 rounded-full px-3.5 py-1.5 shadow-inner focus-within:border-white/60 transition-all">
+            <Search size={14} className="text-stone-300 ml-1 mr-2 shrink-0" />
+            <input
+              type="text"
+              placeholder="Tìm Đầm dạ hội, Blazer linen, Áo dài gấm..."
+              className="flex-1 bg-transparent border-none outline-none font-ui text-xs text-white placeholder:text-stone-300 font-medium min-w-0"
+            />
             <Link
               href="/shop"
-              className="w-full sm:w-auto px-7 py-3 rounded-full bg-white text-[#0A2517] hover:bg-[#FAF7F0] font-heading font-extrabold text-xs sm:text-sm tracking-wider uppercase transition-all duration-300 shadow-md hover:scale-105 active:scale-95 flex items-center justify-center gap-2 group font-ui"
+              className="px-3.5 py-1 bg-white/25 hover:bg-white text-white hover:text-black rounded-full text-[10px] font-bold uppercase tracking-wider transition-all shrink-0 font-ui"
             >
-              Khám Phá Tủ Đồ
-              <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+              Tìm
             </Link>
-
-            {/* AI Visual Search Button */}
-            <button
-              type="button"
-              onClick={() => setIsVisualSearchOpen(true)}
-              className="w-full sm:w-auto px-6 py-3 rounded-full bg-white/12 hover:bg-white/20 text-white border border-white/25 backdrop-blur-md font-heading font-bold text-xs sm:text-sm tracking-wider uppercase transition-all duration-300 shadow-2xs hover:scale-105 active:scale-95 flex items-center justify-center gap-2 group font-ui"
-            >
-              <Camera size={14} className="text-[#A3E39F] group-hover:scale-110 transition-transform" />
-              <span>Tìm Bằng Ảnh AI</span>
-            </button>
           </div>
-
-          {/* Micro Search Bar */}
-          <div className="mt-5 w-full max-w-md">
-            <div className="relative flex items-center bg-black/40 backdrop-blur-md border border-white/20 rounded-full px-3.5 py-1.5 shadow-inner focus-within:border-white/50 transition-all">
-              <Search size={14} className="text-stone-400 ml-1 mr-2 shrink-0" />
-              <input
-                type="text"
-                placeholder="Tìm Đầm dạ hội, Blazer linen, Áo dài gấm..."
-                className="flex-1 bg-transparent border-none outline-none font-ui text-xs text-white placeholder:text-stone-400 font-medium min-w-0"
-              />
-              <Link
-                href="/shop"
-                className="px-3.5 py-1 bg-white/20 hover:bg-white text-white hover:text-black rounded-full text-[10px] font-bold uppercase tracking-wider transition-all shrink-0 font-ui"
-              >
-                Tìm
-              </Link>
-            </div>
-          </div>
-
         </div>
+
       </motion.div>
 
       {/* 👗 INSTANT FIT-CHECK & DIGITAL PASSPORT MODAL */}
