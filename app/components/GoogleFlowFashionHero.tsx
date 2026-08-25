@@ -27,7 +27,7 @@ interface FashionItem {
   occasion: string;
 }
 
-// 24 bức ảnh thời trang tràn ngập 100% kèm dữ liệu Hộ Chiếu Số & Tác Động Xanh
+// 24 bức ảnh thời trang phong phú phủ kín không gian
 const FULL_MOSAIC_COLUMNS: FashionItem[][] = [
   // Cột 1: Trôi lên
   [
@@ -266,7 +266,7 @@ export default function GoogleFlowFashionHero() {
       ref={containerRef}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      className="relative w-full min-h-[600px] sm:min-h-[660px] md:min-h-[720px] lg:min-h-[800px] bg-[#05150C] overflow-hidden flex items-center justify-center select-none border-b border-[#0C2B1A] transform-gpu perspective-[1200px]"
+      className="relative w-full min-h-[600px] sm:min-h-[660px] md:min-h-[720px] lg:min-h-[800px] bg-[#071C12] overflow-hidden flex items-center justify-center select-none border-b border-[#0F3120] transform-gpu perspective-[1200px]"
       style={{ contain: "content" }}
     >
       
@@ -278,7 +278,7 @@ export default function GoogleFlowFashionHero() {
           scale: 1.01,
         }}
         transition={{ type: "spring", stiffness: 80, damping: 30 }}
-        className="absolute inset-0 w-full h-full overflow-hidden grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2.5 md:gap-3 p-2 sm:p-3 pointer-events-auto transform-gpu"
+        className="absolute inset-0 w-full h-full overflow-hidden grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2.5 md:gap-3 p-2 sm:p-3 pointer-events-auto transform-gpu opacity-85 hover:opacity-95 transition-opacity duration-500"
       >
         {FULL_MOSAIC_COLUMNS.map((column, colIdx) => {
           const isOdd = colIdx % 2 !== 0;
@@ -289,7 +289,7 @@ export default function GoogleFlowFashionHero() {
                 y: isOdd ? [-22, 22, -22] : [22, -22, 22],
               }}
               transition={{
-                duration: 20 + colIdx * 2,
+                duration: 18 + colIdx * 2,
                 repeat: Infinity,
                 ease: "easeInOut",
               }}
@@ -304,7 +304,7 @@ export default function GoogleFlowFashionHero() {
 
                   <div
                     onClick={() => setSelectedItem(card)}
-                    className={`relative w-full ${card.aspect} rounded-2xl overflow-hidden bg-[#0B2014] border-2 border-white/20 hover:border-[#A3E39F] shadow-lg hover:shadow-[0_0_45px_rgba(163,227,159,0.9),_0_0_18px_rgba(255,255,255,0.75)] hover:ring-2 hover:ring-white transition-all duration-300 hover:scale-110 hover:z-50 cursor-pointer block z-10`}
+                    className={`relative w-full ${card.aspect} rounded-2xl overflow-hidden bg-[#0A2215] border border-white/20 hover:border-[#A3E39F] shadow-lg hover:shadow-[0_0_45px_rgba(163,227,159,0.9),_0_0_18px_rgba(255,255,255,0.75)] hover:ring-2 hover:ring-white transition-all duration-300 hover:scale-110 hover:z-50 cursor-pointer block z-10`}
                   >
                     {/* Glowing & Brightening Image */}
                     <Image
@@ -312,7 +312,7 @@ export default function GoogleFlowFashionHero() {
                       alt={card.title}
                       fill
                       sizes="(max-width: 640px) 33vw, (max-width: 1024px) 25vw, 18vw"
-                      className="object-cover transition-all duration-500 group-hover:scale-115 brightness-105 group-hover:brightness-140 group-hover:contrast-110 opacity-90 group-hover:opacity-100"
+                      className="object-cover transition-all duration-500 group-hover:scale-115 brightness-105 group-hover:brightness-135 group-hover:contrast-105 opacity-90 group-hover:opacity-100"
                       unoptimized
                     />
 
@@ -324,7 +324,7 @@ export default function GoogleFlowFashionHero() {
 
                     {/* Top Left: Tag Pill */}
                     <div className="absolute top-2 left-2 z-20">
-                      <span className="text-[7.5px] uppercase font-bold tracking-wider bg-black/70 group-hover:bg-[#A3E39F] text-[#A3E39F] group-hover:text-[#07190F] group-hover:shadow-[0_0_15px_rgba(163,227,159,1)] px-2.5 py-0.5 rounded-full border border-white/20 group-hover:border-white font-ui shadow-xs transition-colors duration-200">
+                      <span className="text-[7.5px] uppercase font-bold tracking-wider bg-black/70 group-hover:bg-[#A3E39F] text-[#A3E39F] group-hover:text-[#07190F] group-hover:shadow-[0_0_15px_rgba(163,227,159,1)] px-2.5 py-0.5 rounded-full border border-white/18 group-hover:border-white font-ui shadow-xs transition-colors duration-200">
                         {card.tag}
                       </span>
                     </div>
@@ -359,8 +359,8 @@ export default function GoogleFlowFashionHero() {
         })}
       </motion.div>
 
-      {/* 🍵 DEEP FOREST EMERALD VIGNETTE: Nền xanh rừng đậm sâu thẳm, sang trọng */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(8,26,16,0.72)_0%,_rgba(6,20,12,0.58)_45%,_rgba(4,14,8,0.92)_100%)] pointer-events-none z-20" />
+      {/* 🍵 MATCHA SAGE GLOW OVERLAY: Tone màu xanh matcha trầm dịu đúng chuẩn ảnh mẫu */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(12,38,24,0.72)_0%,_rgba(8,26,16,0.60)_45%,_rgba(6,20,12,0.90)_100%)] pointer-events-none z-20" />
 
       {/* 🌟 SPATIAL CENTERPIECE: Đặt trực tiếp nổi bật giữa biển ảnh thời trang với hiệu ứng Parallax */}
       <motion.div 
@@ -378,8 +378,8 @@ export default function GoogleFlowFashionHero() {
           Tủ Đồ Tuần Hoàn Sinh Thái 2026
         </div>
 
-        {/* Big Bold Shimmering White Title */}
-        <h1 className="font-heading text-5xl sm:text-6xl md:text-7xl lg:text-[84px] font-extrabold text-transparent bg-clip-text bg-gradient-to-b from-white via-[#F5FFF2] to-[#D4EBD0] tracking-tight leading-none mb-3.5 drop-shadow-[0_4px_24px_rgba(0,0,0,0.9)]">
+        {/* Big Bold Solid White Title */}
+        <h1 className="font-heading text-5xl sm:text-6xl md:text-7xl lg:text-[84px] font-extrabold text-white tracking-tight leading-none mb-3.5 drop-shadow-[0_4px_24px_rgba(0,0,0,0.9)]">
           CLOOP
         </h1>
 
