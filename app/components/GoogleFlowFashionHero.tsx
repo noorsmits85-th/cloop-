@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -245,51 +245,24 @@ export default function GoogleFlowFashionHero() {
   const [isVisualSearchOpen, setIsVisualSearchOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<FashionItem | null>(null);
 
-  // 3D Magnetic Parallax Ref & State
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
-    const y = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
-    setMousePos({ x, y });
-  };
-
-  const handleMouseLeave = () => {
-    setMousePos({ x: 0, y: 0 });
-  };
-
   return (
     <section 
-      ref={containerRef}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      className="relative w-full min-h-[600px] sm:min-h-[660px] md:min-h-[720px] lg:min-h-[800px] bg-[#071C12] overflow-hidden flex items-center justify-center select-none border-b border-[#0F3120] transform-gpu perspective-[1200px]"
+      className="relative w-full min-h-[600px] sm:min-h-[660px] md:min-h-[720px] lg:min-h-[800px] bg-[#071C12] overflow-hidden flex items-center justify-center select-none border-b border-[#0F3120] transform-gpu"
       style={{ contain: "content" }}
     >
       
-      {/* 🖼️ 3D MAGNETIC LIVING PHOTO WALL (24 Cards nghiêng theo con trỏ chuột) */}
-      <motion.div 
-        animate={{
-          rotateX: mousePos.y * -3,
-          rotateY: mousePos.x * 3,
-          scale: 1.01,
-        }}
-        transition={{ type: "spring", stiffness: 80, damping: 30 }}
-        className="absolute inset-0 w-full h-full overflow-hidden grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2.5 md:gap-3 p-2 sm:p-3 pointer-events-auto transform-gpu opacity-85 hover:opacity-95 transition-opacity duration-500"
-      >
+      {/* 🖼️ STEADY LIVING PHOTO WALL: Trôi êm dịu, không rung lắc, không nghiêng 3D */}
+      <div className="absolute inset-0 w-full h-full overflow-hidden grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2.5 md:gap-3 p-2 sm:p-3 pointer-events-auto transform-gpu opacity-85 hover:opacity-95 transition-opacity duration-500">
         {FULL_MOSAIC_COLUMNS.map((column, colIdx) => {
           const isOdd = colIdx % 2 !== 0;
           return (
             <motion.div
               key={colIdx}
               animate={{
-                y: isOdd ? [-22, 22, -22] : [22, -22, 22],
+                y: isOdd ? [-20, 20, -20] : [20, -20, 20],
               }}
               transition={{
-                duration: 18 + colIdx * 2,
+                duration: 20 + colIdx * 2,
                 repeat: Infinity,
                 ease: "easeInOut",
               }}
@@ -304,7 +277,7 @@ export default function GoogleFlowFashionHero() {
 
                   <div
                     onClick={() => setSelectedItem(card)}
-                    className={`relative w-full ${card.aspect} rounded-2xl overflow-hidden bg-[#0A2215] border border-white/20 hover:border-[#A3E39F] shadow-lg hover:shadow-[0_0_45px_rgba(163,227,159,0.9),_0_0_18px_rgba(255,255,255,0.75)] hover:ring-2 hover:ring-white transition-all duration-300 hover:scale-110 hover:z-50 cursor-pointer block z-10`}
+                    className={`relative w-full ${card.aspect} rounded-2xl overflow-hidden bg-[#0A2215] border border-white/20 hover:border-[#A3E39F] shadow-lg hover:shadow-[0_0_45px_rgba(163,227,159,0.9),_0_0_18px_rgba(255,255,255,0.75)] hover:ring-2 hover:ring-white transition-all duration-300 hover:scale-108 hover:z-50 cursor-pointer block z-10`}
                   >
                     {/* Glowing & Brightening Image */}
                     <Image
@@ -312,7 +285,7 @@ export default function GoogleFlowFashionHero() {
                       alt={card.title}
                       fill
                       sizes="(max-width: 640px) 33vw, (max-width: 1024px) 25vw, 18vw"
-                      className="object-cover transition-all duration-500 group-hover:scale-115 brightness-105 group-hover:brightness-135 group-hover:contrast-105 opacity-90 group-hover:opacity-100"
+                      className="object-cover transition-all duration-500 group-hover:scale-112 brightness-105 group-hover:brightness-135 group-hover:contrast-105 opacity-90 group-hover:opacity-100"
                       unoptimized
                     />
 
@@ -357,20 +330,13 @@ export default function GoogleFlowFashionHero() {
             </motion.div>
           );
         })}
-      </motion.div>
+      </div>
 
       {/* 🍵 MATCHA SAGE GLOW OVERLAY: Tone màu xanh matcha trầm dịu đúng chuẩn ảnh mẫu */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(12,38,24,0.72)_0%,_rgba(8,26,16,0.60)_45%,_rgba(6,20,12,0.90)_100%)] pointer-events-none z-20" />
 
-      {/* 🌟 SPATIAL CENTERPIECE: Đặt trực tiếp nổi bật giữa biển ảnh thời trang với hiệu ứng Parallax */}
-      <motion.div 
-        animate={{
-          x: mousePos.x * -8,
-          y: mousePos.y * -8,
-        }}
-        transition={{ type: "spring", stiffness: 120, damping: 20 }}
-        className="relative z-30 max-w-3xl mx-auto px-4 text-center flex flex-col items-center justify-center pointer-events-auto my-auto"
-      >
+      {/* 🌟 STEADY ELEGANT CENTERPIECE: Đặt trực tiếp nổi bật giữa biển ảnh thời trang */}
+      <div className="relative z-30 max-w-3xl mx-auto px-4 text-center flex flex-col items-center justify-center pointer-events-auto my-auto">
         
         {/* Top Matcha Badge */}
         <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/15 backdrop-blur-md border border-[#A3E39F]/50 text-[#A3E39F] text-[10.5px] font-bold uppercase tracking-widest mb-3.5 shadow-lg font-ui">
@@ -428,7 +394,7 @@ export default function GoogleFlowFashionHero() {
           </div>
         </div>
 
-      </motion.div>
+      </div>
 
       {/* 👗 INSTANT FIT-CHECK & DIGITAL PASSPORT MODAL */}
       <AnimatePresence>
