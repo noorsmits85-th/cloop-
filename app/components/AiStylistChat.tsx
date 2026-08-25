@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { 
   Bot, CheckCircle2, CloudSun, MapPin, Send, 
   ShoppingBag, X, PhoneCall, MessageCircle, 
-  HelpCircle, ArrowRight, Clock, ShieldCheck, Headphones
+  ArrowRight, ShieldCheck, Headphones
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -37,7 +37,7 @@ const INITIAL_MESSAGES: Message[] = [
     id: "welcome",
     role: "ai",
     text: "Chào bạn! Mình là AI Stylist của CLOOP. Bạn chuẩn bị đi đâu, phong cách thế nào? Nhắn cho mình để tìm ngay set đồ phù hợp nhé!",
-    subNote: "Nếu cần hỗ trợ đơn hàng hoặc đổi size, bạn chọn tab Chat với CSKH bên trên nhé.",
+    subNote: "Nếu cần hỗ trợ đơn hàng hoặc đổi size, bạn chọn tab CSKH bên trên nhé.",
     suggestions: [
       "Đi tiệc & Sự kiện", 
       "Du lịch & Đi biển", 
@@ -74,52 +74,47 @@ function ProductCardMini({ product }: { product: ProductMini }) {
   return (
     <Link
       href={`/product/${product.id}`}
-      className="my-2.5 block w-full rounded-2xl border border-stone-200 bg-white p-3 shadow-md transition-all hover:border-[#2A6E46] hover:shadow-lg dark:border-[#2B3946] dark:bg-[#14202A] group text-left"
+      className="my-1.5 block w-full rounded-xl border border-stone-200/90 bg-white p-2 shadow-xs transition-all hover:border-[#183A2D] hover:shadow-sm dark:border-stone-800 dark:bg-[#14202A] group text-left"
     >
-      <div className="flex gap-3 items-center">
-        {/* Product Image */}
-        <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-xl bg-stone-100 border border-stone-100 dark:border-stone-800">
+      <div className="flex gap-2.5 items-center">
+        {/* Product Image - Compact */}
+        <div className="relative h-16 w-13 shrink-0 overflow-hidden rounded-lg bg-stone-100 border border-stone-100 dark:border-stone-800">
           <Image 
             src={product.image} 
             alt={product.title} 
             fill 
             unoptimized 
-            className="object-cover object-top transition-transform duration-500 group-hover:scale-108" 
-            sizes="80px" 
+            className="object-cover object-top transition-transform duration-300 group-hover:scale-105" 
+            sizes="60px" 
           />
-          <span className="absolute left-1 top-1 rounded-md bg-[#183A2D] px-1.5 py-0.5 text-[7.5px] font-bold uppercase text-white shadow-xs">
+          <span className="absolute left-1 top-1 rounded bg-[#183A2D] px-1 py-0.2 text-[6.5px] font-bold uppercase text-white">
             {listingLabel}
           </span>
         </div>
 
-        {/* Product Details */}
-        <div className="flex min-w-0 flex-1 flex-col justify-between space-y-1">
-          <div>
-            <h4 className="text-xs font-heading font-extrabold text-[#183A2D] dark:text-white line-clamp-2 group-hover:text-emerald-700 transition-colors leading-tight">
-              {product.title}
-            </h4>
-            <p className="text-xs font-mono font-extrabold text-[#2A6E46] dark:text-[#A3E39F] mt-0.5">
-              {product.priceText}
-            </p>
-          </div>
+        {/* Product Details - Compact */}
+        <div className="flex min-w-0 flex-1 flex-col justify-between py-0.5 space-y-0.5">
+          <h4 className="text-[11px] font-heading font-bold text-[#183A2D] dark:text-white line-clamp-1 group-hover:text-emerald-700 transition-colors">
+            {product.title}
+          </h4>
 
-          <div className="flex flex-wrap gap-1 items-center text-[9px] text-stone-500 dark:text-stone-400">
-            <span className="bg-stone-100 dark:bg-stone-800 px-1.5 py-0.5 rounded font-medium">
-              {product.category}
+          <div className="flex items-center gap-1.5 text-[10px]">
+            <span className="font-mono font-extrabold text-[#2A6E46] dark:text-[#A3E39F]">
+              {product.priceText}
             </span>
             {product.size && (
-              <span className="bg-stone-100 dark:bg-stone-800 px-1.5 py-0.5 rounded font-medium">
-                Size {product.size}
+              <span className="text-[8.5px] text-stone-400 font-medium">
+                • Size {product.size}
               </span>
             )}
           </div>
 
-          <div className="flex items-center justify-between gap-2 pt-1 border-t border-stone-100 dark:border-stone-800">
-            <span className="flex min-w-0 items-center gap-1 truncate text-[9px] font-semibold text-emerald-800 dark:text-emerald-400">
-              <MapPin size={10} className="shrink-0" /> {product.province || "Toàn quốc"}
+          <div className="flex items-center justify-between gap-1 pt-0.5 border-t border-stone-100 dark:border-stone-800/80">
+            <span className="flex min-w-0 items-center gap-0.5 truncate text-[8.5px] font-medium text-stone-500 dark:text-stone-400">
+              <MapPin size={8.5} className="shrink-0 text-emerald-700" /> {product.province || "Toàn quốc"}
             </span>
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#183A2D] group-hover:bg-[#2A6E46] px-2.5 py-1 text-[8px] font-bold uppercase tracking-wider text-white transition-colors">
-              <ShoppingBag size={9} /> Thuê Ngay
+            <span className="inline-flex shrink-0 items-center gap-0.5 rounded-md bg-[#183A2D] group-hover:bg-emerald-800 px-1.5 py-0.5 text-[7.5px] font-bold uppercase tracking-wider text-white transition-colors">
+              Xem <ArrowRight size={7} />
             </span>
           </div>
         </div>
@@ -151,7 +146,7 @@ function MessageContent({ text, subNote, products }: { text: string; subNote?: s
   }, [text]);
 
   return (
-    <div className="space-y-1.5 text-left leading-relaxed">
+    <div className="space-y-1 text-left leading-relaxed">
       {nodes.map((part, index) => {
         if (part.type === "product") {
           const product = products[part.value];
@@ -166,7 +161,7 @@ function MessageContent({ text, subNote, products }: { text: string; subNote?: s
       })}
 
       {subNote && (
-        <p className="pt-2 text-[10.5px] italic text-stone-400 dark:text-stone-500 border-t border-stone-100 dark:border-stone-800/60 mt-2">
+        <p className="pt-1.5 text-[9.5px] italic text-stone-400 dark:text-stone-500 border-t border-stone-100 dark:border-stone-800/60 mt-1">
           {subNote}
         </p>
       )}
@@ -185,7 +180,6 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
   const abortRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-  // Tự động cuộn xuống cuối khi có tin nhắn mới hoặc streaming
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -227,7 +221,7 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
         {
           id: crypto.randomUUID(),
           role: "ai",
-          text: "Trình duyệt chưa hỗ trợ định vị. Bạn cứ nói rõ khu vực hoặc thời tiết trong tin nhắn, mình vẫn tư vấn được chuẩn xác.",
+          text: "Trình duyệt chưa hỗ trợ định vị. Bạn cứ nói rõ khu vực hoặc thời tiết trong tin nhắn nhé.",
         },
       ]);
       return;
@@ -249,7 +243,7 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
           let weatherText = "trời nắng dịu";
 
           if (code >= 1 && code <= 3) weatherText = "trời nhiều mây mát mẻ";
-          else if (code >= 51 && code <= 67) weatherText = "trời đang có mưa";
+          else if (code >= 51 && code <= 67) weatherText = "trời có mưa";
           else if (code >= 71) weatherText = "trời se lạnh";
 
           const context = `${weatherText}, khoảng ${temp}°C`;
@@ -259,7 +253,7 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
             {
               id: crypto.randomUUID(),
               role: "ai",
-              text: `Mình đã nhận diện thời tiết tại khu vực của bạn: ${context}. Bạn định đi dịp gì để mình phối đồ sát nhất nhé?`,
+              text: `Mình đã nhận diện thời tiết nơi bạn: ${context}. Bạn định đi dịp gì để mình phối đồ nhé?`,
               suggestions: ["Đi tiệc & Sự kiện", "Du lịch & Đi biển", "Cà phê dạo phố"],
             },
           ]);
@@ -270,7 +264,7 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
             {
               id: crypto.randomUUID(),
               role: "ai",
-              text: "Đã kết nối vị trí! Bạn nhắn trực tiếp dịp, tỉnh thành và gu mặc của bạn nhé.",
+              text: "Đã kết nối vị trí! Bạn nhắn trực tiếp dịp, tỉnh thành và gu mặc nhé.",
             },
           ]);
         } finally {
@@ -283,13 +277,13 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
           {
             id: crypto.randomUUID(),
             role: "ai",
-            text: "Bạn chưa bật quyền định vị. Không sao cả, bạn chỉ cần nhắn dịp và sở thích là mình tìm đồ được ngay!",
+            text: "Bạn chưa bật quyền định vị. Không sao cả, bạn nhắn dịp và sở thích là mình tìm đồ được ngay!",
             suggestions: ["Đi tiệc & Sự kiện", "Du lịch & Đi biển", "Cà phê dạo phố", "Gặp nhân viên CSKH"],
           },
         ]);
         setIsTyping(false);
       },
-      { enableHighAccuracy: true, timeout: 6000 }
+      { enableHighAccuracy: true, timeout: 5000 }
     );
   };
 
@@ -297,7 +291,6 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
     const userText = rawText.trim();
     if (!userText || isTyping) return;
 
-    // Nếu bấm nút CSKH từ suggestion chip -> chuyển thẳng qua tab CSKH
     if (userText.includes("Gặp nhân viên CSKH") || userText.includes("CSKH")) {
       setActiveTab("cskh");
       return;
@@ -322,7 +315,7 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
           message: weatherContext ? `${userText}\nNgữ cảnh thời tiết: ${weatherContext}` : userText,
           history: messages
             .filter((message) => !message.isWeatherButton && message.text)
-            .slice(-8)
+            .slice(-6)
             .map((message) => ({ role: message.role, text: message.text })),
         }),
         signal: abortRef.current.signal,
@@ -372,7 +365,7 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
       console.error(error);
       updateStreamingMessage(
         aiMessageId,
-        "Bộ não AI đang xử lý. Nếu bạn cần hỗ trợ đơn hàng gấp, hãy chọn tab 'Chat với CSKH' ở trên nhé.",
+        "Bộ não AI đang xử lý. Nếu cần gấp, bạn chọn tab 'CSKH' ở trên nhé.",
         true
       );
     } finally {
@@ -385,37 +378,34 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
   };
 
   return (
-    <div className="fixed bottom-24 right-4 z-50 flex flex-col items-end gap-3 font-body md:bottom-6 md:right-6">
+    <div className="fixed bottom-20 right-3 z-50 flex flex-col items-end gap-2 font-body md:bottom-5 md:right-5">
       <AnimatePresence>
         {showChat && (
           <motion.div
-            initial={{ opacity: 0, y: 30, scale: 0.95 }}
+            initial={{ opacity: 0, y: 20, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 30, scale: 0.95 }}
-            className={`flex h-[600px] max-h-[85vh] w-[92vw] sm:w-[410px] md:w-[430px] flex-col overflow-hidden rounded-[2rem] border shadow-2xl backdrop-blur-xl transition-all duration-300 ${
+            exit={{ opacity: 0, y: 20, scale: 0.96 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className={`flex h-[490px] max-h-[82vh] w-[320px] sm:w-[350px] flex-col overflow-hidden rounded-2xl border shadow-xl backdrop-blur-md transition-all duration-300 ${
               darkMode 
-                ? "border-[#2B3946] bg-[#0F1720]/98 text-white shadow-[0_20px_60px_rgba(0,0,0,0.8)]" 
-                : "border-[#D5E5D2] bg-white/98 text-[#183A2D] shadow-[0_20px_60px_rgba(0,0,0,0.25)]"
+                ? "border-stone-800 bg-[#0F1720]/98 text-white shadow-[0_15px_40px_rgba(0,0,0,0.6)]" 
+                : "border-stone-200/90 bg-white/98 text-[#183A2D] shadow-[0_15px_40px_rgba(0,0,0,0.12)]"
             }`}
           >
-            {/* 👑 HEADER: REBRANDED TO 'CLOOP AI Stylist' WITH CLEAN SUBTITLE */}
-            <div className={`border-b p-4 sm:p-4.5 ${darkMode ? "border-[#2B3946] bg-[#14202A]" : "border-stone-200/80 bg-[#F4F8F3]"}`}>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-[#183A2D] text-white shadow-md">
-                    <Bot size={20} className="text-[#A3E39F]" />
-                    <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-black animate-pulse" />
+            {/* 👑 COMPACT HEADER */}
+            <div className={`border-b p-3 px-3.5 ${darkMode ? "border-stone-800 bg-[#14202A]" : "border-stone-100 bg-[#FAF9F5]"}`}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <div className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-[#183A2D] text-white">
+                    <Bot size={15} className="text-[#A3E39F]" />
+                    <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 border border-white dark:border-black" />
                   </div>
                   <div className="text-left">
-                    <h3 className="text-xs sm:text-sm font-heading font-extrabold uppercase tracking-wide flex items-center gap-1.5">
-                      CLOOP AI Stylist
-                      <span className="text-[9px] uppercase font-mono font-bold px-2 py-0.2 rounded-full bg-[#A3E39F]/20 text-[#2A6E46] dark:text-[#A3E39F] border border-[#A3E39F]/30">
-                        24/7
-                      </span>
+                    <h3 className="text-xs font-heading font-bold uppercase tracking-wider text-[#183A2D] dark:text-white leading-tight">
+                      TRỢ LÝ CLOOP
                     </h3>
-                    <p className="flex items-center gap-1 text-[10.5px] text-stone-500 dark:text-stone-400 font-ui">
-                      <CheckCircle2 size={11} className="text-emerald-600" />
-                      Hoạt động 24/7 • Sẵn sàng tìm đồ chuẩn gu cho bạn
+                    <p className="text-[9.5px] text-stone-500 dark:text-stone-400 font-ui leading-tight">
+                      Hoạt động 24/7 • Tìm đồ chuẩn gu
                     </p>
                   </div>
                 </div>
@@ -423,38 +413,38 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
                 <button 
                   type="button" 
                   onClick={() => setShowChat(false)} 
-                  className="w-8 h-8 rounded-full bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/20 flex items-center justify-center text-stone-500 hover:text-stone-800 dark:text-stone-300 dark:hover:text-white transition-colors"
+                  className="w-6 h-6 rounded-full bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 flex items-center justify-center text-stone-500 hover:text-stone-800 dark:text-stone-300 transition-colors cursor-pointer"
                 >
-                  <X size={16} />
+                  <X size={13} />
                 </button>
               </div>
 
-              {/* TAB SELECTOR: [ 👗 AI Stylist ] | [ 🎧 Chat với CSKH ] */}
-              <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-black/5 dark:bg-black/30 border border-black/5 dark:border-white/5 text-[11px] font-ui font-bold">
+              {/* SLIM 2-TAB SWITCHER */}
+              <div className="grid grid-cols-2 gap-1 p-0.5 rounded-lg bg-stone-200/60 dark:bg-stone-800/80 text-[10px] font-ui font-semibold">
                 <button
                   type="button"
                   onClick={() => setActiveTab("stylist")}
-                  className={`py-1.5 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  className={`py-1 rounded-md transition-all flex items-center justify-center gap-1 cursor-pointer ${
                     activeTab === "stylist"
-                      ? "bg-white dark:bg-[#183A2D] text-[#183A2D] dark:text-white shadow-xs"
-                      : "text-stone-500 hover:text-stone-800 dark:text-stone-400"
+                      ? "bg-white dark:bg-[#183A2D] text-[#183A2D] dark:text-white shadow-2xs font-bold"
+                      : "text-stone-600 hover:text-stone-900 dark:text-stone-400"
                   }`}
                 >
-                  <Bot size={12} className="text-[#2A6E46] dark:text-[#A3E39F]" />
+                  <Bot size={11} className="text-[#2A6E46] dark:text-[#A3E39F]" />
                   AI Stylist
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setActiveTab("cskh")}
-                  className={`py-1.5 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  className={`py-1 rounded-md transition-all flex items-center justify-center gap-1 cursor-pointer ${
                     activeTab === "cskh"
-                      ? "bg-[#183A2D] text-white shadow-xs"
-                      : "text-stone-500 hover:text-stone-800 dark:text-stone-400"
+                      ? "bg-[#183A2D] text-white shadow-2xs font-bold"
+                      : "text-stone-600 hover:text-stone-900 dark:text-stone-400"
                   }`}
                 >
-                  <Headphones size={12} className="text-amber-300" />
-                  Chat với CSKH
+                  <Headphones size={11} />
+                  CSKH 24/7
                 </button>
               </div>
             </div>
@@ -462,25 +452,25 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
             {/* TAB 1: AI STYLIST CHAT STREAM */}
             {activeTab === "stylist" ? (
               <>
-                <div className="flex-1 space-y-4 overflow-y-auto p-4 text-left scrollbar-thin">
+                <div className="flex-1 space-y-3 overflow-y-auto p-3 text-left scrollbar-thin">
                   {messages.map((message) => (
-                    <div key={message.id} className="space-y-2">
+                    <div key={message.id} className="space-y-1.5">
                       <div className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
                         {message.isWeatherButton ? (
                           <button
                             type="button"
                             onClick={handleFetchGpsAndWeather}
-                            className="mx-auto inline-flex cursor-pointer items-center gap-2 rounded-full bg-[#183A2D] hover:bg-[#2A6E46] px-5 py-2 text-[10.5px] font-bold uppercase tracking-widest text-white shadow-sm transition-all hover:scale-102"
+                            className="mx-auto inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-[#183A2D] hover:bg-[#2A6E46] px-3.5 py-1.5 text-[9.5px] font-bold uppercase tracking-wider text-white shadow-2xs transition-all hover:scale-102"
                           >
-                            <CloudSun size={14} className="text-[#A3E39F] animate-pulse" /> Nhận diện thời tiết khu vực bạn
+                            <CloudSun size={12} className="text-[#A3E39F]" /> Nhận diện thời tiết nơi bạn
                           </button>
                         ) : message.role === "user" ? (
-                          <div className="max-w-[82%] rounded-2xl rounded-tr-none bg-[#183A2D] px-4 py-2.5 text-xs font-medium text-white shadow-sm">
+                          <div className="max-w-[85%] rounded-xl rounded-tr-none bg-[#183A2D] px-3 py-2 text-[11px] font-medium text-white shadow-2xs">
                             {message.text}
                           </div>
                         ) : (
-                          <div className={`w-full max-w-[95%] rounded-2xl rounded-tl-none border p-3.5 text-xs font-normal leading-relaxed shadow-xs ${
-                            darkMode ? "border-[#2B3946] bg-[#14202A]" : "border-stone-200/90 bg-[#FAF9F6]"
+                          <div className={`w-full max-w-[96%] rounded-xl rounded-tl-none border p-2.5 text-[11px] font-normal leading-relaxed shadow-2xs ${
+                            darkMode ? "border-stone-800 bg-[#14202A]" : "border-stone-200/80 bg-[#FAF9F5]"
                           }`}>
                             {message.text ? (
                               <MessageContent 
@@ -490,20 +480,20 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
                               />
                             ) : null}
                             {message.isStreaming && (
-                              <span className="ml-1 inline-block h-3.5 w-1.5 animate-pulse rounded bg-emerald-500 align-middle" />
+                              <span className="ml-1 inline-block h-3 w-1 animate-pulse rounded bg-emerald-500 align-middle" />
                             )}
                           </div>
                         )}
                       </div>
 
                       {message.suggestions && message.role === "ai" && (
-                        <div className="flex flex-wrap justify-start gap-1.5 pl-1 pt-1">
+                        <div className="flex flex-wrap justify-start gap-1 pl-0.5 pt-0.5">
                           {message.suggestions.map((suggestion) => (
                             <button
                               key={suggestion}
                               type="button"
                               onClick={() => handleProcessWorkflow(suggestion)}
-                              className="cursor-pointer rounded-full border border-emerald-600/30 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1.5 text-[10.5px] font-bold text-[#183A2D] dark:text-[#A3E39F] shadow-2xs transition hover:bg-[#183A2D] hover:text-white"
+                              className="cursor-pointer rounded-full border border-emerald-600/30 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 text-[9.5px] font-medium text-[#183A2D] dark:text-[#A3E39F] shadow-2xs transition hover:bg-[#183A2D] hover:text-white"
                             >
                               {suggestion}
                             </button>
@@ -515,13 +505,13 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
 
                   {isTyping && !messages.some((message) => message.isStreaming) && (
                     <div className="flex justify-start">
-                      <div className={`flex items-center gap-1.5 rounded-2xl rounded-tl-none px-4 py-3 border ${
-                        darkMode ? "bg-[#14202A] border-[#2B3946]" : "border-stone-200 bg-[#FAF9F6]"
+                      <div className={`flex items-center gap-1 rounded-xl rounded-tl-none px-3 py-2 border ${
+                        darkMode ? "bg-[#14202A] border-stone-800" : "border-stone-200 bg-[#FAF9F5]"
                       }`}>
-                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#183A2D] dark:bg-emerald-400" />
-                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#183A2D] dark:bg-emerald-400" style={{ animationDelay: "150ms" }} />
-                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#183A2D] dark:bg-emerald-400" style={{ animationDelay: "300ms" }} />
-                        <span className="text-[10px] text-stone-400 ml-1">Đang tìm set đồ chuẩn gu cho bạn...</span>
+                        <span className="h-1 w-1 animate-bounce rounded-full bg-[#183A2D] dark:bg-emerald-400" />
+                        <span className="h-1 w-1 animate-bounce rounded-full bg-[#183A2D] dark:bg-emerald-400" style={{ animationDelay: "150ms" }} />
+                        <span className="h-1 w-1 animate-bounce rounded-full bg-[#183A2D] dark:bg-emerald-400" style={{ animationDelay: "300ms" }} />
+                        <span className="text-[9.5px] text-stone-400 ml-1 font-ui">Đang tìm đồ chuẩn gu...</span>
                       </div>
                     </div>
                   )}
@@ -529,61 +519,61 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
                   <div ref={messagesEndRef} />
                 </div>
 
-                {/* INPUT BAR */}
-                <div className={`flex items-center gap-2 border-t p-3.5 transition-colors ${
-                  darkMode ? "border-[#2B3946] bg-[#14202A]" : "border-stone-200 bg-white"
+                {/* COMPACT INPUT BAR */}
+                <div className={`flex items-center gap-1.5 border-t p-2.5 transition-colors ${
+                  darkMode ? "border-stone-800 bg-[#14202A]" : "border-stone-100 bg-white"
                 }`}>
                   <input
                     type="text"
                     value={chatInput}
                     onChange={(event) => setChatInput(event.target.value)}
                     onKeyDown={(event) => event.key === "Enter" && handleInputSendButton()}
-                    placeholder="Ví dụ: Mình tìm đầm dạ hội màu đen size M..."
-                    className={`min-w-0 flex-1 rounded-full border px-4 py-2.5 text-xs font-semibold outline-none transition-all ${
+                    placeholder="Ví dụ: Đầm dạ hội đen size M..."
+                    className={`min-w-0 flex-1 rounded-full border px-3 py-1.5 text-[11px] outline-none transition-all ${
                       darkMode 
-                        ? "border-[#2B3946] bg-[#0F1720] text-white focus:border-emerald-500" 
-                        : "border-stone-300 bg-[#FAF8F3] text-[#183A2D] focus:border-[#183A2D]"
+                        ? "border-stone-700 bg-[#0F1720] text-white focus:border-emerald-500" 
+                        : "border-stone-200 bg-[#FAF8F3] text-[#183A2D] focus:border-[#183A2D]"
                     }`}
                   />
                   <button
                     type="button"
                     onClick={handleInputSendButton}
                     disabled={isTyping || !chatInput.trim()}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#183A2D] text-white shadow-md transition hover:bg-[#2A6E46] disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#183A2D] text-white shadow-xs transition hover:bg-[#2A6E46] disabled:cursor-not-allowed disabled:opacity-30 cursor-pointer"
                   >
-                    <Send size={14} />
+                    <Send size={11} />
                   </button>
                 </div>
               </>
             ) : (
-              /* TAB 2: CSKH & HOTLINE HỖ TRỢ TRỰC TIẾP */
-              <div className="flex-1 overflow-y-auto p-5 space-y-4 text-left">
-                <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 space-y-2">
-                  <div className="flex items-center gap-2 text-xs font-bold text-[#183A2D] dark:text-[#A3E39F] uppercase tracking-wider">
-                    <ShieldCheck size={16} /> Đội Ngũ CSKH CLOOP Sẵn Sàng
+              /* TAB 2: CSKH 24/7 */
+              <div className="flex-1 overflow-y-auto p-3.5 space-y-3 text-left">
+                <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/40 space-y-1">
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#183A2D] dark:text-[#A3E39F] uppercase tracking-wider">
+                    <ShieldCheck size={14} /> CSKH CLOOP Sẵn Sàng
                   </div>
-                  <p className="text-xs text-stone-600 dark:text-stone-300 font-light leading-relaxed">
-                    Bạn gặp sự cố về kích cỡ trang phục, cần giao gấp trong 2H tại 34 tỉnh thành hoặc khiếu nại cọc? Đội ngũ chúng tôi hỗ trợ ngay trong 5 phút!
+                  <p className="text-[10.5px] text-stone-600 dark:text-stone-300 font-light leading-relaxed">
+                    Hỗ trợ nhanh về đổi size, giao gấp 2H hoặc xử lý cọc. Phản hồi trong 3 phút!
                   </p>
                 </div>
 
                 {/* Contact Action Cards */}
-                <div className="space-y-2.5">
+                <div className="space-y-2">
                   <a
                     href="tel:0987654321"
-                    className="flex items-center justify-between p-3.5 rounded-2xl border border-stone-200 hover:border-[#183A2D] bg-white dark:bg-[#14202A] dark:border-stone-700 shadow-xs hover:shadow-md transition-all group"
+                    className="flex items-center justify-between p-2.5 rounded-xl border border-stone-200 hover:border-[#183A2D] bg-white dark:bg-[#14202A] dark:border-stone-800 shadow-2xs hover:shadow-xs transition-all group"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 flex items-center justify-center">
-                        <PhoneCall size={18} />
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 flex items-center justify-center">
+                        <PhoneCall size={14} />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-stone-800 dark:text-white">Hotline Khẩn Cấp</p>
-                        <p className="text-xs font-mono font-extrabold text-emerald-700 dark:text-emerald-400">098.765.4321 (24/7)</p>
+                        <p className="text-[11px] font-bold text-stone-800 dark:text-white leading-tight">Hotline Khẩn Cấp</p>
+                        <p className="text-[10px] font-mono font-bold text-emerald-700 dark:text-emerald-400">098.765.4321</p>
                       </div>
                     </div>
-                    <span className="text-xs font-bold text-stone-400 group-hover:text-[#183A2D] font-ui flex items-center gap-1">
-                      Gọi ngay <ArrowRight size={12} />
+                    <span className="text-[10px] font-semibold text-stone-400 group-hover:text-[#183A2D] font-ui flex items-center gap-0.5">
+                      Gọi <ArrowRight size={10} />
                     </span>
                   </a>
 
@@ -591,45 +581,30 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
                     href="https://zalo.me"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-between p-3.5 rounded-2xl border border-stone-200 hover:border-blue-600 bg-white dark:bg-[#14202A] dark:border-stone-700 shadow-xs hover:shadow-md transition-all group"
+                    className="flex items-center justify-between p-2.5 rounded-xl border border-stone-200 hover:border-blue-600 bg-white dark:bg-[#14202A] dark:border-stone-800 shadow-2xs hover:shadow-xs transition-all group"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 flex items-center justify-center">
-                        <MessageCircle size={18} />
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 flex items-center justify-center">
+                        <MessageCircle size={14} />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-stone-800 dark:text-white">Zalo Hỗ Trợ Đơn Hàng</p>
-                        <p className="text-[11px] text-stone-500 dark:text-stone-400">Nhắn tin nhận phản hồi &lt; 3 phút</p>
+                        <p className="text-[11px] font-bold text-stone-800 dark:text-white leading-tight">Zalo Hỗ Trợ</p>
+                        <p className="text-[9.5px] text-stone-500 dark:text-stone-400">Phản hồi &lt; 3 phút</p>
                       </div>
                     </div>
-                    <span className="text-xs font-bold text-blue-600 font-ui flex items-center gap-1">
-                      Mở Zalo <ArrowRight size={12} />
+                    <span className="text-[10px] font-semibold text-blue-600 font-ui flex items-center gap-0.5">
+                      Chat <ArrowRight size={10} />
                     </span>
                   </a>
-                </div>
-
-                {/* FAQ Quick Links */}
-                <div className="pt-2 border-t border-stone-200 dark:border-stone-800 space-y-2">
-                  <p className="text-[10px] uppercase font-bold text-stone-400 tracking-wider">Hỗ Trợ Thường Gặp:</p>
-                  <div className="grid grid-cols-1 gap-1.5 text-xs">
-                    <div className="p-2.5 rounded-xl bg-stone-50 dark:bg-stone-800/60 flex items-center justify-between text-stone-700 dark:text-stone-300">
-                      <span>🔄 Chính sách đổi trả size trong 24H</span>
-                      <span className="text-[10px] font-bold text-emerald-700">Miễn phí</span>
-                    </div>
-                    <div className="p-2.5 rounded-xl bg-stone-50 dark:bg-stone-800/60 flex items-center justify-between text-stone-700 dark:text-stone-300">
-                      <span>🧼 Tiệt trùng Ozone chuẩn Spa</span>
-                      <span className="text-[10px] font-bold text-emerald-700">Cam kết 100%</span>
-                    </div>
-                  </div>
                 </div>
 
                 <div className="pt-2 text-center">
                   <button
                     type="button"
                     onClick={() => setActiveTab("stylist")}
-                    className="text-xs font-bold text-[#183A2D] dark:text-[#A3E39F] hover:underline font-ui inline-flex items-center gap-1"
+                    className="text-[10.5px] font-semibold text-[#183A2D] dark:text-[#A3E39F] hover:underline font-ui inline-flex items-center gap-1 cursor-pointer"
                   >
-                    ← Quay lại chat cùng AI Stylist
+                    ← Quay lại tìm đồ cùng AI
                   </button>
                 </div>
               </div>
@@ -638,26 +613,21 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
         )}
       </AnimatePresence>
 
-      {/* 🚀 FLOATING LAUNCHER BUTTON: GỌI TÊN 'TRỢ LÝ CLOOP' DUY NHẤT */}
+      {/* 🚀 SLEEK COMPACT LAUNCHER BUTTON */}
       <motion.button
         type="button"
         onClick={() => setShowChat(!showChat)}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        className="flex items-center gap-2.5 px-4 py-3 rounded-full bg-[#183A2D] hover:bg-[#2A6E46] text-white shadow-[0_10px_30px_rgba(24,58,45,0.4)] border border-emerald-500/30 transition-all duration-300 cursor-pointer"
+        className="flex items-center gap-2 h-9 px-3 rounded-full bg-[#183A2D] hover:bg-[#2A6E46] text-white shadow-lg border border-emerald-500/20 transition-all duration-200 cursor-pointer"
       >
         <div className="relative flex items-center justify-center">
-          <Bot className="w-5 h-5 text-[#A3E39F]" />
-          <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 border border-black animate-pulse" />
+          <Bot className="w-4 h-4 text-[#A3E39F]" />
+          <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
         </div>
-        <div className="text-left font-ui">
-          <p className="text-[11px] font-extrabold uppercase tracking-wider leading-none text-white">
-            TRỢ LÝ CLOOP
-          </p>
-          <p className="text-[8.5px] text-[#A3E39F] font-semibold leading-none mt-0.5">
-            Online 24/7 • Stylist & CSKH
-          </p>
-        </div>
+        <span className="text-[10.5px] font-extrabold uppercase tracking-wider font-ui">
+          TRỢ LÝ CLOOP
+        </span>
       </motion.button>
     </div>
   );
