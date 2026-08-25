@@ -23,8 +23,10 @@ interface DetectedInfo {
   category: string;
   dominantColor: string;
   style: string;
+  material?: string;
   itemDescription: string;
   searchKeywords: string[];
+  aiModelUsed?: string;
 }
 
 interface VisualSearchModalProps {
@@ -139,12 +141,12 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
               <div>
                 <h3 className="font-heading text-xl sm:text-2xl font-bold tracking-wide flex items-center gap-2">
                   AI Lookbook Visual Search
-                  <span className="text-[10px] uppercase font-bold tracking-widest px-2.5 py-0.5 rounded-full bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
-                    Pro Vision
+                  <span className="text-[10px] uppercase font-extrabold tracking-widest px-2.5 py-0.5 rounded-full bg-emerald-400/20 text-emerald-300 border border-emerald-400/30 font-ui flex items-center gap-1">
+                    ⚡ Gemini Flash Lite
                   </span>
                 </h3>
                 <p className="text-xs text-stone-400">
-                  Tải ảnh từ Pinterest/Instagram để tìm trang phục tương tự trong tủ đồ CLOOP
+                  Phân tích phong cách bằng Google Gemini Flash Lite siêu tốc để tìm đồ tương tự
                 </p>
               </div>
             </div>
@@ -288,6 +290,11 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
                           <span className="px-3 py-1 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-400/30 text-xs font-semibold">
                             🏷️ Phong cách: {detectedInfo.style}
                           </span>
+                          {detectedInfo.material && (
+                            <span className="px-3 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-400/30 text-xs font-semibold">
+                              🧵 Chất liệu: {detectedInfo.material}
+                            </span>
+                          )}
                         </div>
                       </motion.div>
                     )}

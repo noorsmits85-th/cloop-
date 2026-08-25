@@ -92,10 +92,10 @@ export async function moderateProductImage(imageUrl: string, customTraceId?: str
     const base64Data = Buffer.from(arrayBuffer).toString("base64");
     const mimeType = response.headers.get("content-type") || "image/jpeg";
 
-    // 3. Khởi tạo Gemini AI Model
+    // 3. Khởi tạo Gemini AI Model (Flash Lite / 2.5 Flash)
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      model: "gemini-3.6-flash",
+      model: "gemini-2.0-flash-lite",
       generationConfig: {
         responseMimeType: "application/json",
         temperature: 0.1,
