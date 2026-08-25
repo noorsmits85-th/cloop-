@@ -42,14 +42,9 @@ const INITIAL_MESSAGES: Message[] = [
       "Đi tiệc & Sự kiện", 
       "Du lịch & Đi biển", 
       "Cà phê dạo phố",
+      "🌤️ Thêm thời tiết",
       "Gặp nhân viên CSKH"
     ],
-  },
-  {
-    id: "weather",
-    role: "ai",
-    text: "",
-    isWeatherButton: true,
   },
 ];
 
@@ -74,27 +69,27 @@ function ProductCardMini({ product }: { product: ProductMini }) {
   return (
     <Link
       href={`/product/${product.id}`}
-      className="my-1.5 block w-full rounded-xl border border-stone-200/90 bg-white p-2 shadow-xs transition-all hover:border-[#183A2D] hover:shadow-sm dark:border-stone-800 dark:bg-[#14202A] group text-left"
+      className="my-1.5 block w-full rounded-xl border border-stone-200 bg-white p-2 shadow-xs transition-all hover:border-[#183A2D] hover:shadow-sm dark:border-stone-700 dark:bg-[#14202A] group text-left"
     >
       <div className="flex gap-2.5 items-center">
         {/* Product Image - Compact */}
-        <div className="relative h-16 w-13 shrink-0 overflow-hidden rounded-lg bg-stone-100 border border-stone-100 dark:border-stone-800">
+        <div className="relative h-14 w-12 shrink-0 overflow-hidden rounded-lg bg-stone-100 border border-stone-200 dark:border-stone-800">
           <Image 
             src={product.image} 
             alt={product.title} 
             fill 
             unoptimized 
             className="object-cover object-top transition-transform duration-300 group-hover:scale-105" 
-            sizes="60px" 
+            sizes="50px" 
           />
-          <span className="absolute left-1 top-1 rounded bg-[#183A2D] px-1 py-0.2 text-[6.5px] font-bold uppercase text-white">
+          <span className="absolute left-0.5 top-0.5 rounded bg-[#183A2D] px-1 py-0.2 text-[6.5px] font-bold uppercase text-white">
             {listingLabel}
           </span>
         </div>
 
         {/* Product Details - Compact */}
         <div className="flex min-w-0 flex-1 flex-col justify-between py-0.5 space-y-0.5">
-          <h4 className="text-[11px] font-heading font-bold text-[#183A2D] dark:text-white line-clamp-1 group-hover:text-emerald-700 transition-colors">
+          <h4 className="text-[11px] font-heading font-bold text-[#183A2D] dark:text-white line-clamp-1 group-hover:text-emerald-700 transition-colors leading-tight">
             {product.title}
           </h4>
 
@@ -113,7 +108,7 @@ function ProductCardMini({ product }: { product: ProductMini }) {
             <span className="flex min-w-0 items-center gap-0.5 truncate text-[8.5px] font-medium text-stone-500 dark:text-stone-400">
               <MapPin size={8.5} className="shrink-0 text-emerald-700" /> {product.province || "Toàn quốc"}
             </span>
-            <span className="inline-flex shrink-0 items-center gap-0.5 rounded-md bg-[#183A2D] group-hover:bg-emerald-800 px-1.5 py-0.5 text-[7.5px] font-bold uppercase tracking-wider text-white transition-colors">
+            <span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-[#183A2D] group-hover:bg-emerald-800 px-1.5 py-0.5 text-[7.5px] font-bold uppercase tracking-wider text-white transition-colors">
               Xem <ArrowRight size={7} />
             </span>
           </div>
@@ -146,7 +141,7 @@ function MessageContent({ text, subNote, products }: { text: string; subNote?: s
   }, [text]);
 
   return (
-    <div className="space-y-1 text-left leading-relaxed">
+    <div className="space-y-1 text-left leading-relaxed text-[#183A2D] dark:text-stone-100">
       {nodes.map((part, index) => {
         if (part.type === "product") {
           const product = products[part.value];
@@ -161,7 +156,7 @@ function MessageContent({ text, subNote, products }: { text: string; subNote?: s
       })}
 
       {subNote && (
-        <p className="pt-1.5 text-[9.5px] italic text-stone-400 dark:text-stone-500 border-t border-stone-100 dark:border-stone-800/60 mt-1">
+        <p className="pt-1.5 text-[9.5px] italic text-stone-500 dark:text-stone-400 border-t border-stone-100 dark:border-stone-800/80 mt-1">
           {subNote}
         </p>
       )}
@@ -217,18 +212,17 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
   const handleFetchGpsAndWeather = () => {
     if (!navigator.geolocation) {
       setMessages((prev) => [
-        ...prev.filter((message) => !message.isWeatherButton),
+        ...prev,
         {
           id: crypto.randomUUID(),
           role: "ai",
-          text: "Trình duyệt chưa hỗ trợ định vị. Bạn cứ nói rõ khu vực hoặc thời tiết trong tin nhắn nhé.",
+          text: "Trình duyệt chưa hỗ trợ định vị. Bạn cứ nhắn khu vực hoặc thời tiết trong tin nhắn nhé.",
         },
       ]);
       return;
     }
 
     setIsTyping(true);
-    setMessages((prev) => prev.filter((message) => !message.isWeatherButton));
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -278,7 +272,7 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
             id: crypto.randomUUID(),
             role: "ai",
             text: "Bạn chưa bật quyền định vị. Không sao cả, bạn nhắn dịp và sở thích là mình tìm đồ được ngay!",
-            suggestions: ["Đi tiệc & Sự kiện", "Du lịch & Đi biển", "Cà phê dạo phố", "Gặp nhân viên CSKH"],
+            suggestions: ["Đi tiệc & Sự kiện", "Du lịch & Đi biển", "Cà phê dạo phố"],
           },
         ]);
         setIsTyping(false);
@@ -293,6 +287,11 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
 
     if (userText.includes("Gặp nhân viên CSKH") || userText.includes("CSKH")) {
       setActiveTab("cskh");
+      return;
+    }
+
+    if (userText.includes("Thêm thời tiết") || userText.includes("thời tiết")) {
+      handleFetchGpsAndWeather();
       return;
     }
 
@@ -314,7 +313,7 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
         body: JSON.stringify({
           message: weatherContext ? `${userText}\nNgữ cảnh thời tiết: ${weatherContext}` : userText,
           history: messages
-            .filter((message) => !message.isWeatherButton && message.text)
+            .filter((message) => message.text)
             .slice(-6)
             .map((message) => ({ role: message.role, text: message.text })),
         }),
@@ -378,33 +377,33 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
   };
 
   return (
-    <div className="fixed bottom-20 right-3 z-50 flex flex-col items-end gap-2 font-body md:bottom-5 md:right-5">
+    <div className="fixed bottom-16 right-3 z-50 flex flex-col items-end gap-2 font-body md:bottom-5 md:right-5">
       <AnimatePresence>
         {showChat && (
           <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.96 }}
+            initial={{ opacity: 0, y: 15, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.96 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
-            className={`flex h-[490px] max-h-[82vh] w-[320px] sm:w-[350px] flex-col overflow-hidden rounded-2xl border shadow-xl backdrop-blur-md transition-all duration-300 ${
+            exit={{ opacity: 0, y: 15, scale: 0.96 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className={`flex h-[470px] max-h-[76vh] w-[320px] sm:w-[345px] flex-col overflow-hidden rounded-2xl border shadow-2xl transition-all duration-300 ${
               darkMode 
-                ? "border-stone-800 bg-[#0F1720]/98 text-white shadow-[0_15px_40px_rgba(0,0,0,0.6)]" 
-                : "border-stone-200/90 bg-white/98 text-[#183A2D] shadow-[0_15px_40px_rgba(0,0,0,0.12)]"
+                ? "border-stone-700 bg-[#0F1720] text-white shadow-[0_15px_40px_rgba(0,0,0,0.8)]" 
+                : "border-stone-300 bg-white text-[#183A2D] shadow-[0_15px_40px_rgba(0,0,0,0.2)]"
             }`}
           >
-            {/* 👑 COMPACT HEADER */}
-            <div className={`border-b p-3 px-3.5 ${darkMode ? "border-stone-800 bg-[#14202A]" : "border-stone-100 bg-[#FAF9F5]"}`}>
+            {/* 👑 SOLID HIGH-CONTRAST FOREST GREEN HEADER (Không bao giờ bị mờ hay mất chữ) */}
+            <div className="bg-[#183A2D] p-3 px-3.5 text-white border-b border-[#0F281E] shadow-xs">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <div className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-[#183A2D] text-white">
+                  <div className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-white/15 text-white border border-white/20">
                     <Bot size={15} className="text-[#A3E39F]" />
-                    <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 border border-white dark:border-black" />
+                    <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 border border-[#183A2D]" />
                   </div>
                   <div className="text-left">
-                    <h3 className="text-xs font-heading font-bold uppercase tracking-wider text-[#183A2D] dark:text-white leading-tight">
+                    <h3 className="text-xs font-heading font-extrabold uppercase tracking-wider text-white leading-tight">
                       TRỢ LÝ CLOOP
                     </h3>
-                    <p className="text-[9.5px] text-stone-500 dark:text-stone-400 font-ui leading-tight">
+                    <p className="text-[9.5px] text-[#A3E39F] font-ui leading-tight font-medium">
                       Hoạt động 24/7 • Tìm đồ chuẩn gu
                     </p>
                   </div>
@@ -413,24 +412,25 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
                 <button 
                   type="button" 
                   onClick={() => setShowChat(false)} 
-                  className="w-6 h-6 rounded-full bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 flex items-center justify-center text-stone-500 hover:text-stone-800 dark:text-stone-300 transition-colors cursor-pointer"
+                  className="w-6 h-6 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center text-white transition-colors cursor-pointer"
+                  title="Đóng chat"
                 >
                   <X size={13} />
                 </button>
               </div>
 
               {/* SLIM 2-TAB SWITCHER */}
-              <div className="grid grid-cols-2 gap-1 p-0.5 rounded-lg bg-stone-200/60 dark:bg-stone-800/80 text-[10px] font-ui font-semibold">
+              <div className="grid grid-cols-2 gap-1 p-0.5 rounded-lg bg-black/25 text-[10px] font-ui font-semibold">
                 <button
                   type="button"
                   onClick={() => setActiveTab("stylist")}
                   className={`py-1 rounded-md transition-all flex items-center justify-center gap-1 cursor-pointer ${
                     activeTab === "stylist"
-                      ? "bg-white dark:bg-[#183A2D] text-[#183A2D] dark:text-white shadow-2xs font-bold"
-                      : "text-stone-600 hover:text-stone-900 dark:text-stone-400"
+                      ? "bg-white text-[#183A2D] shadow-2xs font-extrabold"
+                      : "text-stone-300 hover:text-white"
                   }`}
                 >
-                  <Bot size={11} className="text-[#2A6E46] dark:text-[#A3E39F]" />
+                  <Bot size={11} className={activeTab === "stylist" ? "text-[#183A2D]" : "text-[#A3E39F]"} />
                   AI Stylist
                 </button>
 
@@ -439,8 +439,8 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
                   onClick={() => setActiveTab("cskh")}
                   className={`py-1 rounded-md transition-all flex items-center justify-center gap-1 cursor-pointer ${
                     activeTab === "cskh"
-                      ? "bg-[#183A2D] text-white shadow-2xs font-bold"
-                      : "text-stone-600 hover:text-stone-900 dark:text-stone-400"
+                      ? "bg-white text-[#183A2D] shadow-2xs font-extrabold"
+                      : "text-stone-300 hover:text-white"
                   }`}
                 >
                   <Headphones size={11} />
@@ -452,25 +452,17 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
             {/* TAB 1: AI STYLIST CHAT STREAM */}
             {activeTab === "stylist" ? (
               <>
-                <div className="flex-1 space-y-3 overflow-y-auto p-3 text-left scrollbar-thin">
+                <div className="flex-1 space-y-2.5 overflow-y-auto p-3 text-left scrollbar-thin bg-[#FDFBF7] dark:bg-[#0C141C]">
                   {messages.map((message) => (
                     <div key={message.id} className="space-y-1.5">
                       <div className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                        {message.isWeatherButton ? (
-                          <button
-                            type="button"
-                            onClick={handleFetchGpsAndWeather}
-                            className="mx-auto inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-[#183A2D] hover:bg-[#2A6E46] px-3.5 py-1.5 text-[9.5px] font-bold uppercase tracking-wider text-white shadow-2xs transition-all hover:scale-102"
-                          >
-                            <CloudSun size={12} className="text-[#A3E39F]" /> Nhận diện thời tiết nơi bạn
-                          </button>
-                        ) : message.role === "user" ? (
+                        {message.role === "user" ? (
                           <div className="max-w-[85%] rounded-xl rounded-tr-none bg-[#183A2D] px-3 py-2 text-[11px] font-medium text-white shadow-2xs">
                             {message.text}
                           </div>
                         ) : (
                           <div className={`w-full max-w-[96%] rounded-xl rounded-tl-none border p-2.5 text-[11px] font-normal leading-relaxed shadow-2xs ${
-                            darkMode ? "border-stone-800 bg-[#14202A]" : "border-stone-200/80 bg-[#FAF9F5]"
+                            darkMode ? "border-stone-700 bg-[#14202A] text-stone-100" : "border-stone-200 bg-white text-[#183A2D]"
                           }`}>
                             {message.text ? (
                               <MessageContent 
@@ -493,7 +485,7 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
                               key={suggestion}
                               type="button"
                               onClick={() => handleProcessWorkflow(suggestion)}
-                              className="cursor-pointer rounded-full border border-emerald-600/30 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 text-[9.5px] font-medium text-[#183A2D] dark:text-[#A3E39F] shadow-2xs transition hover:bg-[#183A2D] hover:text-white"
+                              className="cursor-pointer rounded-full border border-emerald-600/30 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 text-[9.5px] font-semibold text-[#183A2D] dark:text-[#A3E39F] shadow-2xs transition hover:bg-[#183A2D] hover:text-white"
                             >
                               {suggestion}
                             </button>
@@ -506,7 +498,7 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
                   {isTyping && !messages.some((message) => message.isStreaming) && (
                     <div className="flex justify-start">
                       <div className={`flex items-center gap-1 rounded-xl rounded-tl-none px-3 py-2 border ${
-                        darkMode ? "bg-[#14202A] border-stone-800" : "border-stone-200 bg-[#FAF9F5]"
+                        darkMode ? "bg-[#14202A] border-stone-700 text-stone-300" : "border-stone-200 bg-white text-stone-600"
                       }`}>
                         <span className="h-1 w-1 animate-bounce rounded-full bg-[#183A2D] dark:bg-emerald-400" />
                         <span className="h-1 w-1 animate-bounce rounded-full bg-[#183A2D] dark:bg-emerald-400" style={{ animationDelay: "150ms" }} />
@@ -521,7 +513,7 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
 
                 {/* COMPACT INPUT BAR */}
                 <div className={`flex items-center gap-1.5 border-t p-2.5 transition-colors ${
-                  darkMode ? "border-stone-800 bg-[#14202A]" : "border-stone-100 bg-white"
+                  darkMode ? "border-stone-800 bg-[#14202A]" : "border-stone-200 bg-white"
                 }`}>
                   <input
                     type="text"
@@ -529,10 +521,10 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
                     onChange={(event) => setChatInput(event.target.value)}
                     onKeyDown={(event) => event.key === "Enter" && handleInputSendButton()}
                     placeholder="Ví dụ: Đầm dạ hội đen size M..."
-                    className={`min-w-0 flex-1 rounded-full border px-3 py-1.5 text-[11px] outline-none transition-all ${
+                    className={`min-w-0 flex-1 rounded-full border px-3 py-1.5 text-[11px] font-medium outline-none transition-all ${
                       darkMode 
                         ? "border-stone-700 bg-[#0F1720] text-white focus:border-emerald-500" 
-                        : "border-stone-200 bg-[#FAF8F3] text-[#183A2D] focus:border-[#183A2D]"
+                        : "border-stone-300 bg-[#FAF8F3] text-[#183A2D] focus:border-[#183A2D]"
                     }`}
                   />
                   <button
@@ -547,7 +539,7 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
               </>
             ) : (
               /* TAB 2: CSKH 24/7 */
-              <div className="flex-1 overflow-y-auto p-3.5 space-y-3 text-left">
+              <div className="flex-1 overflow-y-auto p-3.5 space-y-3 text-left bg-[#FDFBF7] dark:bg-[#0C141C]">
                 <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/40 space-y-1">
                   <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#183A2D] dark:text-[#A3E39F] uppercase tracking-wider">
                     <ShieldCheck size={14} /> CSKH CLOOP Sẵn Sàng
