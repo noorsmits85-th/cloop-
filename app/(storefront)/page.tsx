@@ -30,6 +30,7 @@ import VisualSearchModal from "@/app/components/VisualSearchModal";
 import LivePulseTicker from "@/app/components/LivePulseTicker";
 import EcoImpactCalculator from "@/app/components/EcoImpactCalculator";
 import GoogleFlowFashionHero from "@/app/components/GoogleFlowFashionHero";
+import SignatureLoopExperience from "@/app/components/SignatureLoopExperience";
 
 export default function Home() {
   const [activeRentalCategory, setActiveRentalCategory] = useState("Tất cả");
@@ -231,6 +232,9 @@ export default function Home() {
           ))}
         </div>
       </section>
+
+      {/* 🌿 SIGNATURE BRAND MOMENT: MỘT MÓN ĐỒ. VÔ TẬN VÒNG ĐỜI. (Fashion In A Loop) */}
+      <SignatureLoopExperience />
 
       {/* SECTION 2: BỘ SƯU TẬP THEO CẢM XÚC & DỊP SỰ KIỆN */}
       <section className="w-full max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-10 md:py-12">
