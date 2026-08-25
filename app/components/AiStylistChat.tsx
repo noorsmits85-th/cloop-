@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { 
   Bot, CheckCircle2, CloudSun, MapPin, Send, 
   ShoppingBag, X, PhoneCall, MessageCircle, 
-  Sparkles, HelpCircle, ArrowRight, Clock, ShieldCheck
+  Sparkles, HelpCircle, ArrowRight, Clock, ShieldCheck, Headphones
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -26,6 +26,7 @@ type Message = {
   id: string;
   role: "user" | "ai";
   text: string;
+  subNote?: string;
   isStreaming?: boolean;
   suggestions?: string[];
   isWeatherButton?: boolean;
@@ -35,13 +36,13 @@ const INITIAL_MESSAGES: Message[] = [
   {
     id: "welcome",
     role: "ai",
-    text: "Chào bạn, mình là CLOOP Stylist & Trợ Lý CSKH 24/7. Bạn cứ nói tự nhiên dịp sắp đi, khu vực tỉnh thành (trong 34 tỉnh toàn quốc) hoặc gu thời trang, mình sẽ quét kho đồ thật để tìm cho bạn.\n\nNếu bạn cần hỗ trợ về đơn hàng, đổi size hay khiếu nại, bạn cũng có thể bấm tab 'Gặp CSKH' ngay bên trên nhé!",
+    text: "Chào bạn! Mình là AI Stylist của CLOOP. Bạn chuẩn bị đi đâu, phong cách thế nào? Nhắn cho mình để tìm ngay set đồ phù hợp nhé!",
+    subNote: "Nếu cần hỗ trợ đơn hàng hoặc đổi size, bạn chọn tab Chat với CSKH bên trên nhé.",
     suggestions: [
-      "Đi tiệc ở Vinh (Nghệ An)", 
-      "Đi biển Nha Trang", 
-      "Dạ hội ở TP. Hồ Chí Minh",
-      "Kỷ yếu tại Hà Nội",
-      "Hẹn hò Đà Lạt (Lâm Đồng)"
+      "✨ Đi tiệc & Sự kiện", 
+      "🌊 Du lịch & Đi biển", 
+      "☕ Cà phê dạo phố",
+      "🎧 Gặp nhân viên CSKH"
     ],
   },
   {
@@ -127,7 +128,7 @@ function ProductCardMini({ product }: { product: ProductMini }) {
   );
 }
 
-function MessageContent({ text, products }: { text: string; products: Record<string, ProductMini> }) {
+function MessageContent({ text, subNote, products }: { text: string; subNote?: string; products: Record<string, ProductMini> }) {
   const nodes = useMemo(() => {
     const parts: Array<{ type: "text"; value: string } | { type: "product"; value: string }> = [];
     const regex = /\[PRODUCT:([^\]]+)\]/g;
@@ -163,6 +164,12 @@ function MessageContent({ text, products }: { text: string; products: Record<str
           </span>
         );
       })}
+
+      {subNote && (
+        <p className="pt-2 text-[10.5px] italic text-stone-400 dark:text-stone-500 border-t border-stone-100 dark:border-stone-800/60 mt-2">
+          {subNote}
+        </p>
+      )}
     </div>
   );
 }
@@ -253,7 +260,7 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
               id: crypto.randomUUID(),
               role: "ai",
               text: `Mình đã nhận diện thời tiết tại khu vực của bạn: ${context}. Bạn định đi dịp gì để mình phối đồ sát nhất nhé?`,
-              suggestions: ["Đi tiệc tối", "Đi dạo phố", "Sự kiện gala trang trọng"],
+              suggestions: ["✨ Đi tiệc & Sự kiện", "🌊 Du lịch & Đi biển", "☕ Cà phê dạo phố"],
             },
           ]);
         } catch (error) {
@@ -263,7 +270,7 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
             {
               id: crypto.randomUUID(),
               role: "ai",
-              text: "Đã kết nối vị trí! Bạn nhắn trực tiếp dịp, tỉnh thành trong 34 tỉnh và gu mặc của bạn nhé.",
+              text: "Đã kết nối vị trí! Bạn nhắn trực tiếp dịp, tỉnh thành và gu mặc của bạn nhé.",
             },
           ]);
         } finally {
@@ -276,8 +283,8 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
           {
             id: crypto.randomUUID(),
             role: "ai",
-            text: "Bạn chưa bật quyền định vị. Không sao cả, bạn chỉ cần nhắn kiểu: 'đi tiệc ở Vinh, thích đầm lụa, size M' là mình lọc đồ được ngay!",
-            suggestions: ["Đi tiệc ở Vinh (Nghệ An)", "Đi biển Nha Trang", "Kỷ yếu ở Hà Nội"],
+            text: "Bạn chưa bật quyền định vị. Không sao cả, bạn chỉ cần nhắn dịp và sở thích là mình tìm đồ được ngay!",
+            suggestions: ["✨ Đi tiệc & Sự kiện", "🌊 Du lịch & Đi biển", "☕ Cà phê dạo phố", "🎧 Gặp nhân viên CSKH"],
           },
         ]);
         setIsTyping(false);
@@ -289,6 +296,12 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
   const handleProcessWorkflow = async (rawText: string) => {
     const userText = rawText.trim();
     if (!userText || isTyping) return;
+
+    // Nếu bấm nút CSKH từ suggestion chip -> chuyển thẳng qua tab CSKH
+    if (userText.includes("Gặp nhân viên CSKH") || userText.includes("CSKH")) {
+      setActiveTab("cskh");
+      return;
+    }
 
     abortRef.current?.abort();
     abortRef.current = new AbortController();
@@ -359,7 +372,7 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
       console.error(error);
       updateStreamingMessage(
         aiMessageId,
-        "Bộ não AI đang hoàn thiện phản hồi. Nếu bạn cần xử lý đơn hàng gấp, hãy bấm nút 'Gặp CSKH' ở trên nhé.",
+        "Bộ não AI đang xử lý. Nếu bạn cần hỗ trợ đơn hàng gấp, hãy chọn tab 'Chat với CSKH' ở trên nhé.",
         true
       );
     } finally {
@@ -385,7 +398,7 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
                 : "border-[#D5E5D2] bg-white/98 text-[#183A2D] shadow-[0_20px_60px_rgba(0,0,0,0.25)]"
             }`}
           >
-            {/* 👑 HEADER: REBRANDED CLOOP STYLIST & CSKH 24/7 */}
+            {/* 👑 HEADER: REBRANDED TO 'CLOOP AI Stylist' WITH CLEAN SUBTITLE */}
             <div className={`border-b p-4 sm:p-4.5 ${darkMode ? "border-[#2B3946] bg-[#14202A]" : "border-stone-200/80 bg-[#F4F8F3]"}`}>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
@@ -395,14 +408,14 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
                   </div>
                   <div className="text-left">
                     <h3 className="text-xs sm:text-sm font-heading font-extrabold uppercase tracking-wide flex items-center gap-1.5">
-                      CLOOP Stylist & CSKH
+                      CLOOP AI Stylist
                       <span className="text-[9px] uppercase font-mono font-bold px-2 py-0.2 rounded-full bg-[#A3E39F]/20 text-[#2A6E46] dark:text-[#A3E39F] border border-[#A3E39F]/30">
                         24/7
                       </span>
                     </h3>
                     <p className="flex items-center gap-1 text-[10.5px] text-stone-500 dark:text-stone-400 font-ui">
                       <CheckCircle2 size={11} className="text-emerald-600" />
-                      Đọc vị 34 Tỉnh Thành • RAG Kho Đồ Thật
+                      Hoạt động 24/7 • Sẵn sàng tìm đồ chuẩn gu cho bạn
                     </p>
                   </div>
                 </div>
@@ -416,7 +429,7 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
                 </button>
               </div>
 
-              {/* TAB SELECTOR: [ 👗 AI Stylist 3.6 ] | [ 📞 Gặp CSKH 24/7 ] */}
+              {/* TAB SELECTOR: [ 👗 AI Stylist ] | [ 🎧 Chat với CSKH ] */}
               <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-black/5 dark:bg-black/30 border border-black/5 dark:border-white/5 text-[11px] font-ui font-bold">
                 <button
                   type="button"
@@ -428,7 +441,7 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
                   }`}
                 >
                   <Sparkles size={12} className="text-[#2A6E46] dark:text-[#A3E39F]" />
-                  AI Stylist 3.6
+                  AI Stylist
                 </button>
 
                 <button
@@ -440,8 +453,8 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
                       : "text-stone-500 hover:text-stone-800 dark:text-stone-400"
                   }`}
                 >
-                  <PhoneCall size={12} className="text-amber-300" />
-                  Gặp CSKH 24/7
+                  <Headphones size={12} className="text-amber-300" />
+                  Chat với CSKH
                 </button>
               </div>
             </div>
@@ -459,7 +472,7 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
                             onClick={handleFetchGpsAndWeather}
                             className="mx-auto inline-flex cursor-pointer items-center gap-2 rounded-full bg-[#183A2D] hover:bg-[#2A6E46] px-5 py-2 text-[10.5px] font-bold uppercase tracking-widest text-white shadow-sm transition-all hover:scale-102"
                           >
-                            <CloudSun size={14} className="text-[#A3E39F] animate-pulse" /> Nhận diện thời tiết vị trí bạn
+                            <CloudSun size={14} className="text-[#A3E39F] animate-pulse" /> Nhận diện thời tiết khu vực bạn
                           </button>
                         ) : message.role === "user" ? (
                           <div className="max-w-[82%] rounded-2xl rounded-tr-none bg-[#183A2D] px-4 py-2.5 text-xs font-medium text-white shadow-sm">
@@ -469,7 +482,13 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
                           <div className={`w-full max-w-[95%] rounded-2xl rounded-tl-none border p-3.5 text-xs font-normal leading-relaxed shadow-xs ${
                             darkMode ? "border-[#2B3946] bg-[#14202A]" : "border-stone-200/90 bg-[#FAF9F6]"
                           }`}>
-                            {message.text ? <MessageContent text={message.text} products={productsById} /> : null}
+                            {message.text ? (
+                              <MessageContent 
+                                text={message.text} 
+                                subNote={message.subNote} 
+                                products={productsById} 
+                              />
+                            ) : null}
                             {message.isStreaming && (
                               <span className="ml-1 inline-block h-3.5 w-1.5 animate-pulse rounded bg-emerald-500 align-middle" />
                             )}
@@ -484,7 +503,7 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
                               key={suggestion}
                               type="button"
                               onClick={() => handleProcessWorkflow(suggestion)}
-                              className="cursor-pointer rounded-full border border-emerald-600/30 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1.5 text-[10px] font-bold text-[#183A2D] dark:text-[#A3E39F] shadow-2xs transition hover:bg-[#183A2D] hover:text-white"
+                              className="cursor-pointer rounded-full border border-emerald-600/30 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1.5 text-[10.5px] font-bold text-[#183A2D] dark:text-[#A3E39F] shadow-2xs transition hover:bg-[#183A2D] hover:text-white"
                             >
                               {suggestion}
                             </button>
@@ -502,7 +521,7 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
                         <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#183A2D] dark:bg-emerald-400" />
                         <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#183A2D] dark:bg-emerald-400" style={{ animationDelay: "150ms" }} />
                         <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#183A2D] dark:bg-emerald-400" style={{ animationDelay: "300ms" }} />
-                        <span className="text-[10px] text-stone-400 ml-1">AI đang đọc vị 34 tỉnh & quét kho...</span>
+                        <span className="text-[10px] text-stone-400 ml-1">Đang tìm set đồ chuẩn gu cho bạn...</span>
                       </div>
                     </div>
                   )}
@@ -519,7 +538,7 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
                     value={chatInput}
                     onChange={(event) => setChatInput(event.target.value)}
                     onKeyDown={(event) => event.key === "Enter" && handleInputSendButton()}
-                    placeholder="Ví dụ: đi tiệc ở Vinh, size M, thích màu đen..."
+                    placeholder="Ví dụ: Mình tìm đầm dạ hội màu đen size M..."
                     className={`min-w-0 flex-1 rounded-full border px-4 py-2.5 text-xs font-semibold outline-none transition-all ${
                       darkMode 
                         ? "border-[#2B3946] bg-[#0F1720] text-white focus:border-emerald-500" 
@@ -619,7 +638,7 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
         )}
       </AnimatePresence>
 
-      {/* 🚀 FLOATING LAUNCHER BUTTON: REBRANDED CLOOP STYLIST & CSKH */}
+      {/* 🚀 FLOATING LAUNCHER BUTTON: GỌI TÊN 'TRỢ LÝ CLOOP' DUY NHẤT */}
       <motion.button
         type="button"
         onClick={() => setShowChat(!showChat)}
@@ -633,10 +652,10 @@ export default function AiStylistChat({ darkMode }: { darkMode: boolean }) {
         </div>
         <div className="text-left font-ui">
           <p className="text-[11px] font-extrabold uppercase tracking-wider leading-none text-white">
-            Stylist & CSKH
+            TRỢ LÝ CLOOP
           </p>
           <p className="text-[8.5px] text-[#A3E39F] font-semibold leading-none mt-0.5">
-            Online 24/7 • 34 Tỉnh
+            Online 24/7 • Stylist & CSKH
           </p>
         </div>
       </motion.button>
