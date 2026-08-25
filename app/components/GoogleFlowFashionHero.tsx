@@ -6,7 +6,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowRight, Camera, Search, Sparkles, X, 
-  ShieldCheck, Leaf, Heart, Users, Star, ChevronRight
+  ShieldCheck, Leaf, Star
 } from "lucide-react";
 import VisualSearchModal from "@/app/components/VisualSearchModal";
 
@@ -27,11 +27,12 @@ interface FashionItem {
   occasion: string;
 }
 
-// 12 bức ảnh Cánh Trái (Left Runway Wing)
-const LEFT_RUNWAY_COLUMNS: FashionItem[][] = [
+// 24 bức ảnh thời trang tràn ngập 100% diện tích không gian
+const FULL_MOSAIC_COLUMNS: FashionItem[][] = [
+  // Cột 1: Trôi lên
   [
     { 
-      id: "l1-1", img: "/evening_dress.jpg", tag: "Dạ Hội", title: "Váy Lụa Sequin Prom", 
+      id: "m1-1", img: "/evening_dress.jpg", tag: "Dạ Hội", title: "Váy Lụa Sequin Prom", 
       price: "380k/ngày", originalPrice: "5.200.000đ", aspect: "aspect-[3/4]",
       eco: "-14.2kg CO₂", passport: "CLP-8821", rentals: "18 lượt", rating: "5.0★",
       modelFit: "Cao 1m68 • Nặng 48kg • Size S",
@@ -39,7 +40,7 @@ const LEFT_RUNWAY_COLUMNS: FashionItem[][] = [
       occasion: "Gala Night, Dạ Tiệc Cuối Năm, Prom"
     },
     { 
-      id: "l1-2", img: "/1.2.jpeg", tag: "Thanh Lịch", title: "Set Dạ Tweed Paris", 
+      id: "m1-2", img: "/1.2.jpeg", tag: "Thanh Lịch", title: "Set Dạ Tweed Paris", 
       price: "180k/ngày", originalPrice: "2.800.000đ", aspect: "aspect-[4/5]",
       eco: "-8.5kg CO₂", passport: "CLP-4019", rentals: "12 lượt", rating: "4.9★",
       modelFit: "Cao 1m62 • Nặng 46kg • Size S",
@@ -47,17 +48,26 @@ const LEFT_RUNWAY_COLUMNS: FashionItem[][] = [
       occasion: "Hẹn Hò, Chụp Ảnh Vintage, Tiệc Trà"
     },
     { 
-      id: "l1-3", img: "/step1_phone.jpg", tag: "Trải Nghiệm", title: "App Thuê 60s", 
+      id: "m1-3", img: "/step1_phone.jpg", tag: "Trải Nghiệm", title: "App Thuê Tốc Độ 60s", 
       price: "Tiện Lợi", originalPrice: "Miễn Phí", aspect: "aspect-square",
-      eco: "100% Digital", passport: "CLP-APP", rentals: "500+ lượt", rating: "5.0★",
+      eco: "100% Digital", passport: "CLP-APP", rentals: "500+ lượt/ngày", rating: "5.0★",
       modelFit: "Giao nhận tận nơi 2H tại HN & HCM",
       description: "Ứng dụng thông minh hỗ trợ thử đồ bằng AI và nhận đồ giặt sấy chuẩn spa.",
       occasion: "Mọi Dịp Sự Kiện"
     },
+    { 
+      id: "m1-4", img: "/vintage_coat.jpg", tag: "Hoài Cổ", title: "Blazer Dạ 1998 Archive", 
+      price: "190k/ngày", originalPrice: "3.500.000đ", aspect: "aspect-[3/4]",
+      eco: "-12.0kg CO₂", passport: "CLP-1998", rentals: "9 lượt", rating: "4.9★",
+      modelFit: "Cao 1m70 • Nặng 52kg • Size M",
+      description: "Form vai quyền lực vintage thập niên 90, chất len cashmere nguyên bản.",
+      occasion: "Fashion Week, Triển Lãm Nghệ Thuật"
+    },
   ],
+  // Cột 2: Trôi xuống
   [
     { 
-      id: "l2-1", img: "/1.1.jpg", tag: "Prom Gala", title: "Đầm Satin Đỏ Rượu", 
+      id: "m2-1", img: "/1.1.jpg", tag: "Prom Gala", title: "Đầm Lụa Satin Đỏ Rượu", 
       price: "350k/ngày", originalPrice: "4.500.000đ", aspect: "aspect-[3/4]",
       eco: "-11.8kg CO₂", passport: "CLP-7734", rentals: "16 lượt", rating: "5.0★",
       modelFit: "Cao 1m65 • Nặng 47kg • Size S",
@@ -65,37 +75,15 @@ const LEFT_RUNWAY_COLUMNS: FashionItem[][] = [
       occasion: "Khiêu Vũ, Tiệc Rượu, Event Thảm Đỏ"
     },
     { 
-      id: "l2-2", img: "/macro_fabric.jpg", tag: "Chất Liệu", title: "Sợi Linen Eco Hữu Cơ", 
-      price: "Chuẩn Xanh", originalPrice: "Eco-Silk", aspect: "aspect-square",
+      id: "m2-2", img: "/macro_fabric.jpg", tag: "Chất Liệu", title: "Sợi Linen Eco Tự Nhiên", 
+      price: "Chuẩn Xanh", originalPrice: "Hữu Cơ", aspect: "aspect-square",
       eco: "-6.4kg CO₂", passport: "CLP-ECO", rentals: "Chứng Nhận", rating: "5.0★",
       modelFit: "Vải dệt từ 100% sợi thực vật",
       description: "Chất liệu thân thiện với làn da và phân hủy sinh học hoàn toàn.",
       occasion: "Thời Trang Bền Vững"
     },
     { 
-      id: "l2-3", img: "/vintage_coat.jpg", tag: "Hoài Cổ", title: "Blazer Dạ 1998 Archive", 
-      price: "190k/ngày", originalPrice: "3.500.000đ", aspect: "aspect-[3/4]",
-      eco: "-12.0kg CO₂", passport: "CLP-1998", rentals: "9 lượt", rating: "4.9★",
-      modelFit: "Cao 1m70 • Nặng 52kg • Size M",
-      description: "Form vai quyền lực vintage thập niên 90, chất len cashmere nguyên bản.",
-      occasion: "Fashion Week, Triển Lãm Nghệ Thuật"
-    },
-  ]
-];
-
-// 12 bức ảnh Cánh Phải (Right Runway Wing)
-const RIGHT_RUNWAY_COLUMNS: FashionItem[][] = [
-  [
-    { 
-      id: "r1-1", img: "/anhbia.png", tag: "Di Sản", title: "Áo Dài Tơ Tằm Thêu Sen", 
-      price: "280k/ngày", originalPrice: "3.800.000đ", aspect: "aspect-[3/4]",
-      eco: "-15.0kg CO₂", passport: "CLP-0015", rentals: "22 lượt", rating: "5.0★",
-      modelFit: "Cao 1m60 - 1m68 • Size S/M",
-      description: "Lụa tơ tằm truyền thống thêu tay hoa sen tinh xảo gìn giữ 15 năm.",
-      occasion: "Lễ Tết, Cưới Hỏi, Du Xuân Hội An"
-    },
-    { 
-      id: "r1-2", img: "/2.1.jpg", tag: "Tối Giản", title: "Đầm Cúp Ngực Tinh Khôi", 
+      id: "m2-3", img: "/2.1.jpg", tag: "Tối Giản", title: "Đầm Cúp Ngực Tinh Khôi", 
       price: "220k/ngày", originalPrice: "2.900.000đ", aspect: "aspect-[4/5]",
       eco: "-7.9kg CO₂", passport: "CLP-5520", rentals: "14 lượt", rating: "4.8★",
       modelFit: "Cao 1m64 • Nặng 48kg • Size S",
@@ -103,25 +91,96 @@ const RIGHT_RUNWAY_COLUMNS: FashionItem[][] = [
       occasion: "Sinh Nhật, Tiệc Bãi Biển, Cocktail"
     },
     { 
-      id: "r1-3", img: "/hero_group.jpg", tag: "Tái Sinh", title: "Set Đồ Upcycled Denim", 
-      price: "160k/ngày", originalPrice: "2.200.000đ", aspect: "aspect-square",
+      id: "m2-4", img: "/hero_warm.jpg", tag: "Ấm Áp", title: "Sắc Nắng Mùa Thu Vintage", 
+      price: "Outfit Thu", originalPrice: "3.200.000đ", aspect: "aspect-[3/4]",
+      eco: "-9.3kg CO₂", passport: "CLP-9912", rentals: "8 lượt", rating: "4.9★",
+      modelFit: "Cao 1m66 • Nặng 50kg • Size M",
+      description: "Tone màu beige ấm áp, hoàn hảo cho những chuyến du lịch Đà Lạt, Sa Pa.",
+      occasion: "Du Lịch, Lookbook Ngoại Cảnh"
+    },
+  ],
+  // Cột 3: Trôi lên (ở giữa)
+  [
+    { 
+      id: "m3-1", img: "/anhbia.png", tag: "Di Sản", title: "Áo Dài Tơ Tằm Thêu Sen", 
+      price: "280k/ngày", originalPrice: "3.800.000đ", aspect: "aspect-[3/4]",
+      eco: "-15.0kg CO₂", passport: "CLP-0015", rentals: "22 lượt", rating: "5.0★",
+      modelFit: "Cao 1m60 - 1m68 • Size S/M",
+      description: "Lụa tơ tằm truyền thống thêu tay hoa sen tinh xảo gìn giữ 15 năm.",
+      occasion: "Lễ Tết, Cưới Hỏi, Du Xuân Hội An"
+    },
+    { 
+      id: "m3-2", img: "/step2_bag.jpg", tag: "Bao Bì", title: "Túi Đóng Gói Tuần Hoàn", 
+      price: "Tái Sử Dụng", originalPrice: "Zero-Waste", aspect: "aspect-[4/5]",
+      eco: "-3.2kg Rác Thải", passport: "CLP-BAG", rentals: "Tái Sinh", rating: "5.0★",
+      modelFit: "Chất liệu chống thấm tái chế",
+      description: "Bao bì thời trang thay thế hoàn toàn túi nilon một lần.",
+      occasion: "Bảo Vệ Sinh Thái"
+    },
+    { 
+      id: "m3-3", img: "/1.2.jpg", tag: "Streetwear", title: "Áo Khoác Da Biker 90s", 
+      price: "250k/ngày", originalPrice: "4.200.000đ", aspect: "aspect-[3/4]",
+      eco: "-18.5kg CO₂", passport: "CLP-6612", rentals: "11 lượt", rating: "4.9★",
+      modelFit: "Cao 1m65 - 1m75 • Size L",
+      description: "Da thật lên màu patina thời gian cực chất, khóa kéo kim loại cổ điển.",
+      occasion: "Dạo Phố, Concert, Night Club"
+    },
+    { 
+      id: "m3-4", img: "/2.2.jpg", tag: "Dạ Tiệc", title: "Đầm Xòe Công Chúa", 
+      price: "320k/ngày", originalPrice: "4.800.000đ", aspect: "aspect-[4/5]",
+      eco: "-10.5kg CO₂", passport: "CLP-3341", rentals: "15 lượt", rating: "5.0★",
+      modelFit: "Cao 1m63 • Nặng 47kg • Size S",
+      description: "Tùng váy phồng nhiều lớp lót voan bồng bềnh như truyện cổ tích.",
+      occasion: "Sinh Nhật, Prom, Kỷ Niệm"
+    },
+  ],
+  // Cột 4: Trôi xuống (ở giữa)
+  [
+    { 
+      id: "m4-1", img: "/hero_group.jpg", tag: "Tái Sinh", title: "Set Đồ Upcycled Denim", 
+      price: "160k/ngày", originalPrice: "2.200.000đ", aspect: "aspect-[16/10]",
       eco: "-22.1kg CO₂", passport: "CLP-UPCY", rentals: "20 lượt", rating: "5.0★",
       modelFit: "Free size • Unisex cá tính",
       description: "Tái chế từ 12 mảnh vải denim quần jean cũ, độc bản duy nhất.",
       occasion: "Biểu Diễn, Fashion Show, Chụp Ảnh"
     },
-  ],
-  [
     { 
-      id: "r2-1", img: "/step3_party.jpg", tag: "Tỏa Sáng", title: "Khoảnh Khắc Đêm Tiệc", 
-      price: "Kỷ Niệm", originalPrice: "Vô Giá", aspect: "aspect-[3/4]",
+      id: "m4-2", img: "/1.1 (1).jpg", tag: "Gala Night", title: "Đầm Xẻ Tà Hoàng Gia", 
+      price: "350k/ngày", originalPrice: "5.000.000đ", aspect: "aspect-[3/4]",
+      eco: "-13.0kg CO₂", passport: "CLP-8812", rentals: "13 lượt", rating: "5.0★",
+      modelFit: "Cao 1m67 • Nặng 49kg • Size S",
+      description: "Dáng đầm xẻ cao khoe trọn đôi chân thon thả, đính ngọc trai tinh tế.",
+      occasion: "Tiệc Tối Sang Trọng, Gala"
+    },
+    { 
+      id: "m4-3", img: "/step3_party.jpg", tag: "Tỏa Sáng", title: "Khoảnh Khắc Đêm Tiệc", 
+      price: "Kỷ Niệm", originalPrice: "Vô Giá", aspect: "aspect-[4/5]",
       eco: "100% Cảm Xúc", passport: "CLP-MEM", rentals: "Vòng Đời Mới", rating: "5.0★",
       modelFit: "Cùng hàng ngàn cô gái tỏa sáng",
       description: "Những nụ cười và khoảnh khắc đáng nhớ nhất cùng tủ đồ CLOOP.",
       occasion: "Mọi Khoảnh Khắc Đẹp"
     },
     { 
-      id: "r2-2", img: "/bootvanlentino.webp", tag: "Phụ Kiện", title: "Boots Da Thật Cao Cổ", 
+      id: "m4-4", img: "/kinhgucci.webp", tag: "Phụ Kiện", title: "Kính Mắt Cat-Eye Vintage", 
+      price: "Pass 300k", originalPrice: "1.800.000đ", aspect: "aspect-square",
+      eco: "-2.1kg CO₂", passport: "CLP-ACC1", rentals: "Pass Lại", rating: "4.8★",
+      modelFit: "Gọng đồi mồi chính hãng",
+      description: "Phụ kiện hoàn thiện phong cách cổ điển thanh lịch.",
+      occasion: "Dạo Phố, Cafe Cuối Tuần"
+    },
+  ],
+  // Cột 5: Trôi lên
+  [
+    { 
+      id: "m5-1", img: "/2.1 (1).jpg", tag: "Cocktail", title: "Đầm Tiệc Trắng Lụa Ren", 
+      price: "220k/ngày", originalPrice: "3.100.000đ", aspect: "aspect-[3/4]",
+      eco: "-8.7kg CO₂", passport: "CLP-2114", rentals: "10 lượt", rating: "4.9★",
+      modelFit: "Cao 1m64 • Nặng 47kg • Size S",
+      description: "Chi tiết ren thêu tay thủ công mềm mại, tôn vẻ đẹp thuần khiết.",
+      occasion: "Tiệc Cưới, Hẹn Hò Lãng Mạn"
+    },
+    { 
+      id: "m5-2", img: "/bootvanlentino.webp", tag: "Phụ Kiện", title: "Boots Da Thật Cao Cổ", 
       price: "Pass 1.2Tr", originalPrice: "6.500.000đ", aspect: "aspect-[4/5]",
       eco: "-16.4kg CO₂", passport: "CLP-BOT1", rentals: "Pass Mới 98%", rating: "5.0★",
       modelFit: "Size 37 - 38",
@@ -129,7 +188,50 @@ const RIGHT_RUNWAY_COLUMNS: FashionItem[][] = [
       occasion: "Mùa Đông, Chụp Ảnh Lookbook"
     },
     { 
-      id: "r2-3", img: "/hero_warm.jpg", tag: "Mùa Thu", title: "Áo Khoác Trench Coat", 
+      id: "m5-3", img: "/vintage_coat.jpg", tag: "Di Sản", title: "Túi Xách Da Archive", 
+      price: "Pass 2.5Tr", originalPrice: "8.000.000đ", aspect: "aspect-[3/4]",
+      eco: "-19.0kg CO₂", passport: "CLP-BAG2", rentals: "Bộ Sưu Tập", rating: "5.0★",
+      modelFit: "Da thật nguyên tấm",
+      description: "Mẫu túi hiếm thập niên 90 được bảo quản hoàn hảo.",
+      occasion: "Sưu Tầm, Đi Tiệc"
+    },
+    { 
+      id: "m5-4", img: "/evening_dress.jpg", tag: "Prom", title: "Váy Sequin Lấp Lánh Emerald", 
+      price: "380k/ngày", originalPrice: "5.500.000đ", aspect: "aspect-square",
+      eco: "-14.5kg CO₂", passport: "CLP-9923", rentals: "17 lượt", rating: "5.0★",
+      modelFit: "Cao 1m65 - 1m70 • Size S",
+      description: "Sắc xanh ngọc lục bảo huyền bí, lấp lánh như viên ngọc trong đêm.",
+      occasion: "Dạ Hội, Thảm Đỏ"
+    },
+  ],
+  // Cột 6: Trôi xuống
+  [
+    { 
+      id: "m6-1", img: "/1.3.jpeg", tag: "Cá Tính", title: "Blazer Oversized Phong Cách Hàn", 
+      price: "210k/ngày", originalPrice: "2.900.000đ", aspect: "aspect-[3/4]",
+      eco: "-9.1kg CO₂", passport: "CLP-1309", rentals: "11 lượt", rating: "4.9★",
+      modelFit: "Free size • Rộng rãi thoải mái",
+      description: "Form suông thời thượng dễ phối cùng váy lụa hoặc quần ống rộng.",
+      occasion: "Đi Làm, Đi Chơi, Sự Kiện"
+    },
+    { 
+      id: "m6-2", img: "/2.2 (1).jpg", tag: "Thanh Lịch", title: "Đầm Dạ Hội Ren Pháp", 
+      price: "340k/ngày", originalPrice: "4.600.000đ", aspect: "aspect-[4/5]",
+      eco: "-11.4kg CO₂", passport: "CLP-2281", rentals: "14 lượt", rating: "5.0★",
+      modelFit: "Cao 1m66 • Nặng 49kg • Size S",
+      description: "Chất ren hoa dập nổi cao cấp, lót lụa satin êm ái.",
+      occasion: "Dạ Tiệc, Lễ Đính Hôn"
+    },
+    { 
+      id: "m6-3", img: "/3.1.jpg", tag: "Tối Giản", title: "Set Váy Satin Minimalist", 
+      price: "260k/ngày", originalPrice: "3.400.000đ", aspect: "aspect-[3/4]",
+      eco: "-8.3kg CO₂", passport: "CLP-3105", rentals: "8 lượt", rating: "4.8★",
+      modelFit: "Cao 1m63 • Nặng 46kg • Size S",
+      description: "Thiết kế tối giản thời thượng với đường nhún eo tinh xảo.",
+      occasion: "Tiệc Trà Chiều, Dạo Phố"
+    },
+    { 
+      id: "m6-4", img: "/hero_warm.jpg", tag: "Mùa Thu", title: "Áo Khoác Trench Coat", 
       price: "230k/ngày", originalPrice: "3.800.000đ", aspect: "aspect-square",
       eco: "-10.8kg CO₂", passport: "CLP-4402", rentals: "12 lượt", rating: "4.9★",
       modelFit: "Cao 1m65 • Nặng 50kg • Size M",
@@ -144,47 +246,85 @@ export default function GoogleFlowFashionHero() {
   const [selectedItem, setSelectedItem] = useState<FashionItem | null>(null);
 
   return (
-    <section className="relative w-full min-h-[620px] sm:min-h-[680px] md:min-h-[740px] lg:min-h-[780px] bg-[#071A10] overflow-hidden flex items-center justify-center select-none border-b border-[#0F3120]">
+    <section 
+      className="relative w-full min-h-[620px] sm:min-h-[680px] md:min-h-[740px] lg:min-h-[800px] bg-[#071C12] overflow-hidden flex items-center justify-center select-none border-b border-[#0F3120] transform-gpu"
+      style={{ contain: "content" }}
+    >
       
-      {/* 🍵 AMBIENT MATCHA GLOW: Vầng sáng matcha mềm mại lan tỏa ở trung tâm */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(16,48,30,0.65)_0%,_rgba(10,30,18,0.75)_50%,_rgba(5,18,10,0.96)_100%)] pointer-events-none z-0" />
-
-      {/* 🖼️ CÁNH TRÁI: Dải Băng Chuyền Lookbook Trôi Êm Ả (Left Flank) */}
-      <div className="absolute left-0 top-0 bottom-0 w-[24%] sm:w-[26%] lg:w-[28%] overflow-hidden grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 pointer-events-auto z-10 opacity-75 hover:opacity-95 transition-opacity duration-500 hidden md:grid">
-        {LEFT_RUNWAY_COLUMNS.map((col, colIdx) => {
+      {/* 🖼️ WALL-TO-WALL LIVING PHOTO CANVAS: 6 Cột Ảnh Kín Toàn Bộ Màn Hình (Không Trống Trải) */}
+      <div className="absolute inset-0 w-full h-full overflow-hidden grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2.5 md:gap-3 p-2 sm:p-3 pointer-events-auto transform-gpu opacity-90 hover:opacity-100 transition-opacity duration-500">
+        {FULL_MOSAIC_COLUMNS.map((column, colIdx) => {
           const isOdd = colIdx % 2 !== 0;
           return (
             <motion.div
               key={colIdx}
-              animate={{ y: isOdd ? [-18, 18, -18] : [18, -18, 18] }}
-              transition={{ duration: 22 + colIdx * 3, repeat: Infinity, ease: "easeInOut" }}
-              className="flex flex-col gap-3"
+              animate={{
+                y: isOdd ? [-20, 20, -20] : [20, -20, 20],
+              }}
+              transition={{
+                duration: 20 + colIdx * 2,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+              style={{ willChange: "transform", backfaceVisibility: "hidden" }}
+              className={`flex flex-col gap-2.5 md:gap-3 transform-gpu ${colIdx === 5 ? 'hidden lg:flex' : ''} ${colIdx === 4 ? 'hidden md:flex' : ''}`}
             >
-              {col.map((card) => (
-                <div
-                  key={card.id}
-                  onClick={() => setSelectedItem(card)}
-                  className={`group relative w-full ${card.aspect} rounded-2xl overflow-hidden bg-[#0A2215] border border-white/18 hover:border-[#A3E39F] shadow-lg hover:shadow-[0_0_35px_rgba(163,227,159,0.85)] transition-all duration-300 hover:scale-105 cursor-pointer block`}
-                >
-                  <Image
-                    src={card.img}
-                    alt={card.title}
-                    fill
-                    className="object-cover transition-transform duration-500 group-hover:scale-110 brightness-100 group-hover:brightness-115"
-                    unoptimized
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+              {column.map((card) => (
+                <div key={card.id} className="relative group transform-gpu">
                   
-                  <div className="absolute top-2 left-2 z-10">
-                    <span className="text-[7.5px] uppercase font-bold tracking-wider bg-black/70 text-[#A3E39F] px-2 py-0.5 rounded-full border border-white/15 font-ui">
-                      {card.tag}
-                    </span>
+                  {/* ✨ PULSING NEON MATCHA GLOW HALO */}
+                  <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-[#A3E39F] via-white to-[#A3E39F] opacity-0 group-hover:opacity-100 blur-md transition-opacity duration-300 pointer-events-none z-0" />
+
+                  <div
+                    onClick={() => setSelectedItem(card)}
+                    className={`relative w-full ${card.aspect} rounded-2xl overflow-hidden bg-[#0A2215] border border-white/20 hover:border-[#A3E39F] shadow-lg hover:shadow-[0_0_45px_rgba(163,227,159,0.9),_0_0_18px_rgba(255,255,255,0.75)] hover:ring-2 hover:ring-white transition-all duration-300 hover:scale-108 hover:z-50 cursor-pointer block z-10`}
+                  >
+                    {/* Glowing & Brightening Image */}
+                    <Image
+                      src={card.img}
+                      alt={card.title}
+                      fill
+                      sizes="(max-width: 640px) 33vw, (max-width: 1024px) 25vw, 18vw"
+                      className="object-cover transition-all duration-500 group-hover:scale-112 brightness-105 group-hover:brightness-135 group-hover:contrast-105 opacity-90 group-hover:opacity-100"
+                      unoptimized
+                    />
+
+                    {/* ✨ LUMINOUS GLASS SHIMMER OVERLAY */}
+                    <div className="absolute inset-0 bg-gradient-to-tr from-[#A3E39F]/35 via-white/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none mix-blend-overlay" />
+
+                    {/* Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent pointer-events-none group-hover:opacity-50 transition-opacity" />
+
+                    {/* Top Left: Tag Pill */}
+                    <div className="absolute top-2 left-2 z-20">
+                      <span className="text-[7.5px] uppercase font-bold tracking-wider bg-black/70 group-hover:bg-[#A3E39F] text-[#A3E39F] group-hover:text-[#07190F] group-hover:shadow-[0_0_15px_rgba(163,227,159,1)] px-2.5 py-0.5 rounded-full border border-white/18 group-hover:border-white font-ui shadow-xs transition-colors duration-200">
+                        {card.tag}
+                      </span>
+                    </div>
+
+                    {/* Top Right: Live Eco Impact Chip (Reveals on hover) */}
+                    <div className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <span className="text-[7px] uppercase font-bold tracking-wider bg-[#0A2517]/95 text-[#A3E39F] px-2 py-0.5 rounded-full border border-[#A3E39F]/60 font-ui shadow-xs flex items-center gap-1">
+                        <Leaf size={7} /> {card.eco}
+                      </span>
+                    </div>
+
+                    {/* Bottom Info: Title, Price & Live Rentals */}
+                    <div className="absolute bottom-0 left-0 w-full p-2.5 text-white transform translate-y-0.5 group-hover:translate-y-0 transition-transform z-20">
+                      <p className="text-[10px] sm:text-[11px] font-heading font-bold leading-tight line-clamp-1 group-hover:text-white group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,1)] transition-all">
+                        {card.title}
+                      </p>
+                      <div className="flex items-center justify-between mt-0.5">
+                        <p className="text-[9px] sm:text-[9.5px] text-[#A3E39F] group-hover:text-[#D4FFD0] font-mono font-bold group-hover:drop-shadow-[0_0_8px_rgba(163,227,159,1)] transition-all">
+                          {card.price}
+                        </p>
+                        <span className="text-[8px] text-stone-300 font-ui opacity-0 group-hover:opacity-100 transition-opacity">
+                          {card.rentals}
+                        </span>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="absolute bottom-0 left-0 w-full p-2 text-white transform translate-y-0.5 group-hover:translate-y-0 transition-transform">
-                    <p className="text-[10px] font-heading font-bold leading-tight line-clamp-1">{card.title}</p>
-                    <p className="text-[9px] text-[#A3E39F] font-mono font-bold">{card.price}</p>
-                  </div>
                 </div>
               ))}
             </motion.div>
@@ -192,65 +332,25 @@ export default function GoogleFlowFashionHero() {
         })}
       </div>
 
-      {/* 🖼️ CÁNH PHẢI: Dải Băng Chuyền Lookbook Trôi Êm Ả (Right Flank) */}
-      <div className="absolute right-0 top-0 bottom-0 w-[24%] sm:w-[26%] lg:w-[28%] overflow-hidden grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 pointer-events-auto z-10 opacity-75 hover:opacity-95 transition-opacity duration-500 hidden md:grid">
-        {RIGHT_RUNWAY_COLUMNS.map((col, colIdx) => {
-          const isOdd = colIdx % 2 === 0;
-          return (
-            <motion.div
-              key={colIdx}
-              animate={{ y: isOdd ? [18, -18, 18] : [-18, 18, -18] }}
-              transition={{ duration: 24 + colIdx * 3, repeat: Infinity, ease: "easeInOut" }}
-              className="flex flex-col gap-3"
-            >
-              {col.map((card) => (
-                <div
-                  key={card.id}
-                  onClick={() => setSelectedItem(card)}
-                  className={`group relative w-full ${card.aspect} rounded-2xl overflow-hidden bg-[#0A2215] border border-white/18 hover:border-[#A3E39F] shadow-lg hover:shadow-[0_0_35px_rgba(163,227,159,0.85)] transition-all duration-300 hover:scale-105 cursor-pointer block`}
-                >
-                  <Image
-                    src={card.img}
-                    alt={card.title}
-                    fill
-                    className="object-cover transition-transform duration-500 group-hover:scale-110 brightness-100 group-hover:brightness-115"
-                    unoptimized
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
-                  
-                  <div className="absolute top-2 left-2 z-10">
-                    <span className="text-[7.5px] uppercase font-bold tracking-wider bg-black/70 text-[#A3E39F] px-2 py-0.5 rounded-full border border-white/15 font-ui">
-                      {card.tag}
-                    </span>
-                  </div>
+      {/* 🍵 DEEP CENTER SPOTLIGHT MASK: Đè chìm ảnh ở tâm xuống để chữ trắng nổi bần bật, xung quanh vẫn sáng rõ */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(7,24,15,0.92)_0%,_rgba(7,24,15,0.82)_35%,_rgba(7,24,15,0.35)_70%,_rgba(5,18,10,0.85)_100%)] pointer-events-none z-20" />
 
-                  <div className="absolute bottom-0 left-0 w-full p-2 text-white transform translate-y-0.5 group-hover:translate-y-0 transition-transform">
-                    <p className="text-[10px] font-heading font-bold leading-tight line-clamp-1">{card.title}</p>
-                    <p className="text-[9px] text-[#A3E39F] font-mono font-bold">{card.price}</p>
-                  </div>
-                </div>
-              ))}
-            </motion.div>
-          );
-        })}
-      </div>
-
-      {/* 🌟 TÂM ĐIỂM SÂN KHẤU (Center Runway Stage): Hoàn Toàn Trong Trẻo, Êm Mắt, Đọc Chữ Cực Đã */}
-      <div className="relative z-30 max-w-2xl mx-auto px-4 sm:px-6 text-center flex flex-col items-center justify-center pointer-events-auto py-10">
+      {/* 🌟 CENTERPIECE CONTENT: Chữ Trắng Bật Sắc Nét, Không Bị Chìm, Đầy Đủ Tính Năng */}
+      <div className="relative z-30 max-w-3xl mx-auto px-4 text-center flex flex-col items-center justify-center pointer-events-auto my-auto py-8">
         
         {/* Top Matcha Badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/12 backdrop-blur-md border border-[#A3E39F]/40 text-[#A3E39F] text-[10.5px] font-bold uppercase tracking-widest mb-4 shadow-lg font-ui">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/15 backdrop-blur-md border border-[#A3E39F]/50 text-[#A3E39F] text-[10.5px] font-bold uppercase tracking-widest mb-3.5 shadow-lg font-ui">
           <span className="w-2 h-2 rounded-full bg-[#A3E39F] animate-pulse"></span>
           Tủ Đồ Tuần Hoàn Sinh Thái 2026
         </div>
 
-        {/* Big Bold Elegant Title */}
-        <h1 className="font-heading text-5xl sm:text-6xl md:text-7xl lg:text-[84px] font-extrabold text-white tracking-tight leading-none mb-4 drop-shadow-[0_4px_30px_rgba(0,0,0,0.85)]">
+        {/* Big Bold Solid White Title */}
+        <h1 className="font-heading text-5xl sm:text-6xl md:text-7xl lg:text-[84px] font-extrabold text-white tracking-tight leading-none mb-3.5 drop-shadow-[0_4px_30px_rgba(0,0,0,0.95)]">
           CLOOP
         </h1>
 
         {/* Poetic & High-Fashion Tagline */}
-        <p className="font-body text-xs sm:text-sm md:text-base text-stone-200 font-light leading-relaxed max-w-lg mx-auto mb-7 drop-shadow-md">
+        <p className="font-body text-xs sm:text-sm md:text-[15px] text-stone-100 font-normal leading-relaxed max-w-lg mx-auto mb-6 drop-shadow-[0_2px_14px_rgba(0,0,0,0.9)]">
           Mở khóa tủ đồ phong cách vô tận từ cộng đồng sành thời trang. Tự do biến hóa diện mạo mỗi ngày, tiết kiệm 90% chi phí và lan tỏa lối sống xanh.
         </p>
 
@@ -269,16 +369,16 @@ export default function GoogleFlowFashionHero() {
           <button
             type="button"
             onClick={() => setIsVisualSearchOpen(true)}
-            className="w-full sm:w-auto px-6 py-3.5 rounded-full bg-white/18 hover:bg-white/28 text-white border border-white/30 backdrop-blur-md font-heading font-bold text-xs sm:text-sm tracking-wider uppercase transition-all duration-300 shadow-md hover:scale-105 active:scale-95 flex items-center justify-center gap-2 group font-ui"
+            className="w-full sm:w-auto px-6 py-3.5 rounded-full bg-white/20 hover:bg-white/30 text-white border border-white/35 backdrop-blur-md font-heading font-bold text-xs sm:text-sm tracking-wider uppercase transition-all duration-300 shadow-md hover:scale-105 active:scale-95 flex items-center justify-center gap-2 group font-ui"
           >
             <Camera size={15} className="text-[#A3E39F] group-hover:scale-110 transition-transform" />
             <span>Tìm Bằng Ảnh AI</span>
           </button>
         </div>
 
-        {/* Micro Search Bar with Quick Filter Tags */}
+        {/* Micro Search Bar with Quick Trending Tags */}
         <div className="mt-6 w-full max-w-md space-y-2.5">
-          <div className="relative flex items-center bg-black/45 backdrop-blur-md border border-white/25 rounded-full px-3.5 py-1.5 shadow-inner focus-within:border-white/60 transition-all">
+          <div className="relative flex items-center bg-black/55 backdrop-blur-md border border-white/30 rounded-full px-3.5 py-1.5 shadow-inner focus-within:border-white/70 transition-all">
             <Search size={14} className="text-stone-300 ml-1 mr-2 shrink-0" />
             <input
               type="text"
@@ -295,7 +395,7 @@ export default function GoogleFlowFashionHero() {
 
           {/* Quick Trending Tags */}
           <div className="flex items-center justify-center gap-1.5 flex-wrap">
-            <span className="text-[9px] uppercase font-bold text-stone-400 font-ui">Xu hướng:</span>
+            <span className="text-[9px] uppercase font-bold text-stone-300 font-ui">Xu hướng:</span>
             {[
               { label: "Đầm Dạ Hội", q: "dạ hội" },
               { label: "Set Tweed", q: "tweed" },
@@ -305,7 +405,7 @@ export default function GoogleFlowFashionHero() {
               <Link
                 key={idx}
                 href={`/shop?q=${encodeURIComponent(chip.q)}`}
-                className="text-[9px] font-bold text-stone-300 hover:text-white bg-white/10 hover:bg-white/20 px-2.5 py-0.5 rounded-full border border-white/10 transition-colors font-ui"
+                className="text-[9px] font-bold text-stone-200 hover:text-white bg-black/40 hover:bg-white/20 px-2.5 py-0.5 rounded-full border border-white/15 transition-colors font-ui"
               >
                 #{chip.label}
               </Link>
@@ -314,22 +414,22 @@ export default function GoogleFlowFashionHero() {
         </div>
 
         {/* 🌿 Live ESG Mini Metrics Ticker */}
-        <div className="mt-8 pt-5 border-t border-white/10 grid grid-cols-3 gap-4 sm:gap-8 text-center w-full max-w-lg">
+        <div className="mt-7 pt-4 border-t border-white/15 grid grid-cols-3 gap-4 sm:gap-8 text-center w-full max-w-lg">
           <div>
             <p className="font-heading font-extrabold text-base sm:text-lg text-white">2.450+</p>
-            <p className="text-[9px] uppercase font-bold text-stone-400 font-ui">Trang Phục</p>
+            <p className="text-[9px] uppercase font-bold text-stone-300 font-ui">Trang Phục</p>
           </div>
           <div>
             <p className="font-heading font-extrabold text-base sm:text-lg text-[#A3E39F] flex items-center justify-center gap-1">
               <Leaf size={13} className="text-[#A3E39F]" /> -18.2 Tấn
             </p>
-            <p className="text-[9px] uppercase font-bold text-stone-400 font-ui">Giảm CO₂</p>
+            <p className="text-[9px] uppercase font-bold text-stone-300 font-ui">Giảm CO₂</p>
           </div>
           <div>
             <p className="font-heading font-extrabold text-base sm:text-lg text-amber-300 flex items-center justify-center gap-1">
               <Star size={13} className="fill-current text-amber-400" /> 4.9★
             </p>
-            <p className="text-[9px] uppercase font-bold text-stone-400 font-ui">1.8k Đánh Giá</p>
+            <p className="text-[9px] uppercase font-bold text-stone-300 font-ui">1.8k Đánh Giá</p>
           </div>
         </div>
 
