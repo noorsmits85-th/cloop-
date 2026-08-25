@@ -266,7 +266,7 @@ export default function GoogleFlowFashionHero() {
       ref={containerRef}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      className="relative w-full min-h-[600px] sm:min-h-[660px] md:min-h-[720px] lg:min-h-[800px] bg-[#143323] overflow-hidden flex items-center justify-center select-none border-b border-[#214D36] transform-gpu perspective-[1200px]"
+      className="relative w-full min-h-[600px] sm:min-h-[660px] md:min-h-[720px] lg:min-h-[800px] bg-[#0C2418] overflow-hidden flex items-center justify-center select-none border-b border-[#183D28] transform-gpu perspective-[1200px]"
       style={{ contain: "content" }}
     >
       
@@ -304,7 +304,7 @@ export default function GoogleFlowFashionHero() {
 
                   <div
                     onClick={() => setSelectedItem(card)}
-                    className={`relative w-full ${card.aspect} rounded-2xl overflow-hidden bg-[#183626] border-2 border-white/25 hover:border-[#A3E39F] shadow-lg hover:shadow-[0_0_45px_rgba(163,227,159,0.9),_0_0_18px_rgba(255,255,255,0.75)] hover:ring-2 hover:ring-white transition-all duration-300 hover:scale-110 hover:z-50 cursor-pointer block z-10`}
+                    className={`relative w-full ${card.aspect} rounded-2xl overflow-hidden bg-[#102A1C] border-2 border-white/25 hover:border-[#A3E39F] shadow-lg hover:shadow-[0_0_45px_rgba(163,227,159,0.9),_0_0_18px_rgba(255,255,255,0.75)] hover:ring-2 hover:ring-white transition-all duration-300 hover:scale-110 hover:z-50 cursor-pointer block z-10`}
                   >
                     {/* Glowing & Brightening Image */}
                     <Image
@@ -359,8 +359,8 @@ export default function GoogleFlowFashionHero() {
         })}
       </motion.div>
 
-      {/* 🍵 MATCHA SAGE GLOW OVERLAY: Xanh matcha thanh nhẹ, êm dịu, không hề nặng nề */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(27,62,44,0.60)_0%,_rgba(33,76,54,0.45)_45%,_rgba(20,48,34,0.78)_100%)] pointer-events-none z-20" />
+      {/* 🍵 MATCHA SAGE GLOW OVERLAY: Xanh rêu đậm sâu lắng, sang trọng */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(16,45,30,0.68)_0%,_rgba(20,54,36,0.52)_45%,_rgba(11,31,20,0.85)_100%)] pointer-events-none z-20" />
 
       {/* 🌟 SPATIAL CENTERPIECE: Đặt trực tiếp nổi bật giữa biển ảnh thời trang với hiệu ứng Parallax */}
       <motion.div 
