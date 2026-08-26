@@ -9,12 +9,23 @@ import { SmartSellerOnboardingCard } from "./_components/SmartSellerOnboardingCa
 import { redirect } from "next/navigation";
 import { unstable_cache } from "next/cache";
 
+export const revalidate = 0;
+
+// Cache EcoMetrics
+const getCachedEcoMetrics = unstable_cache(
+  async () => {
+    return await prisma.ecoMetric.findMany();
+  },
+  ['eco-metrics'],
+  { revalidate: 86400 }
+);
+
 export default async function MyClosetOverviewPage() {
   let userAuth;
   try {
     userAuth = await requireUser();
   } catch (error) {
-    // Bắt lỗi an toàn, thực hiện redirect bên ngoài catch block
+    // Không tìm thấy session SSR
   }
 
   if (!userAuth) {
@@ -23,34 +34,82 @@ export default async function MyClosetOverviewPage() {
 
   const userId = userAuth.id;
 
-  // 1. Fetch User Coins
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { cloopCoins: true }
+  const today = new Date();
+  const past7Days = Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() - (6 - i));
+    d.setHours(0, 0, 0, 0);
+    return {
+      dateObj: d,
+      name: `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`,
+      rent: 0,
+      sell: 0
+    };
   });
+  const sevenDaysAgo = past7Days[0].dateObj;
+
+  // ⚡ TỐI ƯU SIÊU TỐC: Gom toàn bộ 7 truy vấn Dashboard chạy song song cùng lúc (Parallel Fetching)
+  const [
+    user,
+    products,
+    dbMetrics,
+    categoryGroups,
+    profileRes,
+    completedRentals,
+    soldItems
+  ] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { cloopCoins: true }
+    }),
+    prisma.product.findMany({
+      where: { userId },
+      select: { category: true, material: true }
+    }),
+    getCachedEcoMetrics(),
+    prisma.product.groupBy({
+      by: ['category'],
+      where: { userId },
+      _count: { id: true }
+    }),
+    supabase
+      .from("profiles")
+      .select("id, pickup_address, phone, bank_name, bank_account, bank_owner")
+      .eq("id", userId)
+      .maybeSingle(),
+    prisma.rentalHistory.findMany({
+      where: {
+        product: { userId },
+        status: "LENDER_COMPLETED",
+        updatedAt: { gte: sevenDaysAgo }
+      },
+      include: { 
+        product: {
+          include: {
+            listings: {
+              where: { listingType: "RENT" },
+              take: 1
+            }
+          }
+        }
+      }
+    }),
+    prisma.listing.findMany({
+      where: {
+        product: { userId },
+        status: "SOLD",
+        listingType: { in: ["SELL", "RECYCLE"] },
+        updatedAt: { gte: sevenDaysAgo }
+      }
+    })
+  ]);
+
+  const userProfile = profileRes?.data;
   const cloopCoins = user?.cloopCoins || 0;
 
-  // 2. Fetch all products to calculate Eco Stats using DB Matrix
-  const products = await prisma.product.findMany({
-    where: { userId },
-    select: { category: true, material: true }
-  });
-
-  // Fetch EcoMetrics from Database with Cache (Lá bùa 1: Chống bóp nghẹt DB)
-  const getCachedEcoMetrics = unstable_cache(
-    async () => {
-      return await prisma.ecoMetric.findMany();
-    },
-    ['eco-metrics'],
-    { revalidate: 86400 } // 24 hours TTL
-  );
-  
-  const dbMetrics = await getCachedEcoMetrics();
-  
   // Convert array to Dictionary for fast lookup
   const ECO_MATRIX: Record<string, { water: number; co2: number; pts: number }> = {};
-  dbMetrics.forEach(m => {
-    // Lưu trữ từ khóa chuẩn (lowercase, trim)
+  dbMetrics.forEach((m: any) => {
     ECO_MATRIX[m.keyword.toLowerCase().trim()] = { water: m.waterFactor, co2: m.co2Factor, pts: m.greenPts };
   });
 
@@ -58,12 +117,10 @@ export default async function MyClosetOverviewPage() {
   let waterSaved = 0;
   let greenPoints = 0;
 
-  products.forEach((product) => {
-    // Lá bùa 2: Chuẩn hóa chuỗi dữ liệu đầu vào (trim & lowercase)
+  products.forEach((product: any) => {
     const cat = (product.category || "").toLowerCase().trim();
     const mat = (product.material || "").toLowerCase().trim();
     
-    // Look for a match in the matrix
     let match = null;
     for (const key of Object.keys(ECO_MATRIX)) {
       if (cat.includes(key) || mat.includes(key)) {
@@ -72,90 +129,29 @@ export default async function MyClosetOverviewPage() {
       }
     }
 
-    // Fallback baseline if no match
     const metrics = match || { water: 2000, co2: 15, pts: 100 };
-
     co2Saved += metrics.co2;
     waterSaved += metrics.water;
     greenPoints += metrics.pts;
   });
 
   const ecoStats = { co2Saved, waterSaved, greenPoints };
-
-  // Tự động tính tổng sản phẩm cho các thống kê khác
   const totalProducts = products.length;
 
-  // 3. Prisma Aggregation cho Pie Chart (Phân bổ danh mục)
-  // 🔒 Bảo mật IDOR: where: { userId } đảm bảo chỉ tính tài sản của chính user này
-  const categoryGroups = await prisma.product.groupBy({
-    by: ['category'],
-    where: { userId },
-    _count: {
-      id: true
-    }
-  });
-
-  const categoryData = categoryGroups.length > 0 ? categoryGroups.map(g => ({
+  const categoryData = categoryGroups.length > 0 ? categoryGroups.map((g: any) => ({
     name: g.category,
     value: g._count.id
   })) : [
     { name: 'Chưa có dữ liệu', value: 1 }
   ];
 
-  // 4. Prisma Fetch Thống kê doanh thu (Rent & Sale)
-  // 🔒 Bảo mật IDOR: where: { product: { userId } }
-  // Khởi tạo mảng 7 ngày gần nhất (từ hôm nay lùi về 6 ngày trước)
-  const today = new Date();
-  const past7Days = Array.from({ length: 7 }).map((_, i) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() - (6 - i));
-    d.setHours(0, 0, 0, 0); // Đặt về đầu ngày để so sánh dễ dàng
-    return {
-      dateObj: d,
-      name: `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`,
-      rent: 0,
-      sell: 0
-    };
-  });
-  
-  const sevenDaysAgo = past7Days[0].dateObj;
-
-  const completedRentals = await prisma.rentalHistory.findMany({
-    where: {
-      product: { userId },
-      status: "LENDER_COMPLETED",
-      updatedAt: { gte: sevenDaysAgo }
-    },
-    include: { 
-      product: {
-        include: {
-          listings: {
-            where: { listingType: "RENT" },
-            take: 1
-          }
-        }
-      }
-    }
-  });
-
-  const soldItems = await prisma.listing.findMany({
-    where: {
-      product: { userId },
-      status: "SOLD",
-      listingType: { in: ["SELL", "RECYCLE"] },
-      updatedAt: { gte: sevenDaysAgo }
-    }
-  });
-
   // Gom nhóm dữ liệu doanh thu
-  completedRentals.forEach(rental => {
+  completedRentals.forEach((rental: any) => {
     const rentalDate = new Date(rental.updatedAt);
     rentalDate.setHours(0, 0, 0, 0);
     
-    // Tìm ngày tương ứng trong mảng past7Days
     const dayData = past7Days.find(d => d.dateObj.getTime() === rentalDate.getTime());
     if (dayData) {
-      // Tính doanh thu: basePrice * số ngày thuê
       const basePrice = rental.product.listings[0]?.basePrice || 0;
       const days = Math.ceil((new Date(rental.end_date).getTime() - new Date(rental.start_date).getTime()) / (1000 * 60 * 60 * 24));
       const rentalDays = days > 0 ? days : 1;
@@ -163,7 +159,7 @@ export default async function MyClosetOverviewPage() {
     }
   });
 
-  soldItems.forEach(item => {
+  soldItems.forEach((item: any) => {
     const soldDate = new Date(item.updatedAt);
     soldDate.setHours(0, 0, 0, 0);
     
@@ -179,12 +175,6 @@ export default async function MyClosetOverviewPage() {
     rent: d.rent,
     sell: d.sell
   }));
-
-  const { data: userProfile } = await supabase
-    .from("profiles")
-    .select("id, pickup_address, phone, bank_name, bank_account, bank_owner")
-    .eq("id", userId)
-    .maybeSingle();
 
   return (
     <div className="min-h-screen bg-[#FAF9F5] py-8 px-4 sm:px-8 text-stone-800 antialiased">
@@ -234,7 +224,6 @@ export default async function MyClosetOverviewPage() {
 
           {/* Card: Điểm Green Pts */}
           <div className="group bg-white border border-stone-200/50 p-5 rounded-2xl shadow-sm flex items-center gap-4 text-left hover:border-emerald-200 transition-colors cursor-pointer relative overflow-hidden">
-            {/* Shimmer effect inside the card */}
             <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent group-hover:animate-[shimmer_1.5s_infinite] skew-x-[-20deg] z-10 pointer-events-none" />
             <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 shrink-0 group-hover:rotate-12 group-hover:scale-110 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
               <Sprout size={18} />

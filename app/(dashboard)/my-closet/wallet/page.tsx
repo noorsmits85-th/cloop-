@@ -22,8 +22,17 @@ export default async function WalletPage({ searchParams }: { searchParams: { [ke
   const userId = userAuth.id;
   const status = searchParams?.status as string;
 
-  // 1. Lấy thông tin số dư và thông tin ngân hàng thực tế
-  const [userProfile, profileRecord] = await Promise.all([
+  // ⚡ TỐI ƯU SIÊU TỐC: Gom toàn bộ 7 truy vấn Database chạy song song cùng lúc (Parallel Fetching)
+  const [
+    userProfile,
+    profileRecord,
+    claims,
+    productCount,
+    fiveStarCount,
+    coinLedger,
+    realWithdrawals,
+    realInvoices
+  ] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: { walletBalance: true, cloopCoins: true, name: true }
@@ -32,39 +41,22 @@ export default async function WalletPage({ searchParams }: { searchParams: { [ke
       .from("profiles")
       .select("bank_name, bank_account, bank_owner, name")
       .eq("id", userId)
-      .maybeSingle()
-  ]);
-
-  const bankInfo = {
-    bankName: profileRecord?.data?.bank_name || "",
-    bankAccount: profileRecord?.data?.bank_account || "",
-    bankOwner: profileRecord?.data?.bank_owner || profileRecord?.data?.name || userProfile?.name || ""
-  };
-
-  // 2. Lấy danh sách nhiệm vụ đã claim
-  const claims = await prisma.coinQuestClaim.findMany({
-    where: { userId: userId },
-    select: { questCode: true }
-  });
-  const claimedQuestCodes = claims.map(c => c.questCode);
-
-  // 3. Thống kê tiến độ nhiệm vụ
-  const productCount = await prisma.product.count({
-    where: { userId: userId, isDeleted: false }
-  });
-  const fiveStarCount = await prisma.review.count({
-    where: { revieweeId: userId, rating: { gte: 5 } }
-  });
-
-  // 4. Lấy lịch sử biến động Điểm Lá
-  const coinLedger = await prisma.coinLedgerEntry.findMany({
-    where: { userId: userId },
-    orderBy: { createdAt: "desc" },
-    take: 10
-  });
-
-  // 5. Lấy lịch sử giao dịch VNĐ THỰC TẾ từ Database (Không dùng mock)
-  const [realWithdrawals, realInvoices] = await Promise.all([
+      .maybeSingle(),
+    prisma.coinQuestClaim.findMany({
+      where: { userId: userId },
+      select: { questCode: true }
+    }),
+    prisma.product.count({
+      where: { userId: userId, isDeleted: false }
+    }),
+    prisma.review.count({
+      where: { revieweeId: userId, rating: { gte: 5 } }
+    }),
+    prisma.coinLedgerEntry.findMany({
+      where: { userId: userId },
+      orderBy: { createdAt: "desc" },
+      take: 10
+    }),
     prisma.withdrawalRequest.findMany({
       where: { userId: userId },
       orderBy: { createdAt: "desc" },
@@ -84,6 +76,14 @@ export default async function WalletPage({ searchParams }: { searchParams: { [ke
       take: 10
     })
   ]);
+
+  const bankInfo = {
+    bankName: profileRecord?.data?.bank_name || "",
+    bankAccount: profileRecord?.data?.bank_account || "",
+    bankOwner: profileRecord?.data?.bank_owner || profileRecord?.data?.name || userProfile?.name || ""
+  };
+
+  const claimedQuestCodes = claims.map(c => c.questCode);
 
   const vndTransactions = [
     ...realWithdrawals.map(w => ({
