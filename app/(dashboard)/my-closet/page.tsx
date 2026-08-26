@@ -3,7 +3,9 @@ import Link from "next/link";
 import { Plus, Leaf, Droplet, Sprout } from "lucide-react";
 import { requireUser } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
+import { supabase } from "@/lib/supabase";
 import { DashboardCharts } from "./DashboardCharts";
+import { SmartSellerOnboardingCard } from "./_components/SmartSellerOnboardingCard";
 import { redirect } from "next/navigation";
 import { unstable_cache } from "next/cache";
 
@@ -178,6 +180,12 @@ export default async function MyClosetOverviewPage() {
     sell: d.sell
   }));
 
+  const { data: userProfile } = await supabase
+    .from("profiles")
+    .select("id, pickup_address, phone, bank_name, bank_account, bank_owner")
+    .eq("id", userId)
+    .maybeSingle();
+
   return (
     <div className="min-h-screen bg-[#FAF9F5] py-8 px-4 sm:px-8 text-stone-800 antialiased">
       <div className="max-w-5xl mx-auto space-y-6">
@@ -194,6 +202,9 @@ export default async function MyClosetOverviewPage() {
             Quản lý hiệu suất kinh doanh, chỉ số sinh thái ESG và doanh thu thực tế.
           </p>
         </div>
+
+        {/* 📦 BƯỚC THIẾT LẬP DÀNH CHO CHỦ SHOP / CHỦ TỦ ĐỒ (ĐỊA CHỈ LẤY HÀNG + STK NGÂN HÀNG) */}
+        <SmartSellerOnboardingCard userProfile={userProfile} />
 
         {/* GREEN IMPACT ESG DASHBOARD & COIN BALANCE */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
