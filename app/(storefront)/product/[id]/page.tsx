@@ -214,12 +214,6 @@ function ProductDetailContent() {
                 className="object-cover object-top transition-transform duration-500 group-hover:scale-103" 
               />
 
-              {/* Eco Guarantee Circular Floating Badge */}
-              <div className="absolute top-3.5 left-3.5 flex items-center gap-1 rounded-full bg-white/90 backdrop-blur-md px-2.5 py-1 text-[10px] font-bold text-[#183A2D] shadow-xs border border-white/60">
-                <Leaf size={11} className="text-emerald-700" />
-                <span>100% Khử Khuẩn Xanh</span>
-              </div>
-
               {/* Listing Mode Floating Tag */}
               <div className="absolute top-3.5 right-3.5">
                 <span className="rounded-full bg-[#183A2D] px-2.5 py-1 text-[9.5px] font-extrabold uppercase tracking-wider text-white shadow-xs">
@@ -272,23 +266,23 @@ function ProductDetailContent() {
               </div>
             )}
 
-            {/* 3 CAM KẾT TUẦN HOÀN CLOOP */}
-            <div className="rounded-2xl border border-[#DCE8DC] bg-[#F3F8F2] p-3.5 space-y-2.5 text-left text-[11px]">
+            {/* QUYỀN LỢI & DỊCH VỤ CLOOP */}
+            <div className="rounded-2xl border border-stone-200 bg-white p-3.5 space-y-2.5 text-left text-[11px] shadow-2xs">
               <div className="flex items-center gap-2 text-[#183A2D] font-bold uppercase tracking-wider text-[10.5px]">
-                <ShieldCheck size={14} className="text-emerald-700" /> Cam Kết Bền Vững CLOOP
+                <ShieldCheck size={14} className="text-emerald-700" /> Dịch Vụ & Quyền Lợi Khách Hàng
               </div>
               <ul className="space-y-1.5 text-stone-600 leading-relaxed font-light">
                 <li className="flex items-start gap-1.5">
-                  <CheckCircle2 size={12} className="text-emerald-700 shrink-0 mt-0.5" />
-                  <span>Khử khuẩn Ozone 3 bước chuẩn y tế trước khi giao.</span>
+                  <RotateCcw size={12} className="text-emerald-700 shrink-0 mt-0.5" />
+                  <span>Hỗ trợ đổi mẫu hoặc đổi size nhanh nếu không vừa vặn.</span>
                 </li>
                 <li className="flex items-start gap-1.5">
-                  <RotateCcw size={12} className="text-emerald-700 shrink-0 mt-0.5" />
-                  <span>Hỗ trợ đổi mẫu/size trong 4 giờ nếu không vừa vặn.</span>
+                  <CheckCircle2 size={12} className="text-emerald-700 shrink-0 mt-0.5" />
+                  <span>Bảo vệ quyền lợi thanh toán và giữ cọc minh bạch.</span>
                 </li>
                 <li className="flex items-start gap-1.5">
                   <Leaf size={12} className="text-emerald-700 shrink-0 mt-0.5" />
-                  <span>Đóng gói bằng túi vải tái sử dụng 100%, không rác nhựa.</span>
+                  <span>Đóng gói bằng bao bì tái sử dụng, thân thiện môi trường.</span>
                 </li>
               </ul>
             </div>
