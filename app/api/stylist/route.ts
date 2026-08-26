@@ -18,11 +18,6 @@ type CatalogProduct = {
 const PLACEHOLDER_IMAGE =
   "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600";
 
-// BẢN ĐỒ 34 ĐƠN VỊ HÀNH CHÍNH 2025/2026 TỔNG QUAN
-const VIETNAM_PROVINCES_GEO = `
-Quy đổi địa danh: Vinh/Cửa Lò -> Nghệ An; Nha Trang/Cam Ranh -> Khánh Hòa; Đà Lạt/Bảo Lộc/Phan Thiết -> Lâm Đồng; Sa Pa/Yên Bái -> Lào Cai; Hội An/Tam Kỳ -> TP. Đà Nẵng; Sài Gòn/Bình Dương/Vũng Tàu -> TP. Hồ Chí Minh; Cần Thơ/Hậu Giang/Sóc Trăng -> TP. Cần Thơ; Quy Nhơn -> Gia Lai/Bình Định; Hải Phòng/Hải Dương -> TP. Hải Phòng; Hà Nội -> TP. Hà Nội; Hạ Long -> Quảng Ninh.
-`;
-
 function formatPrice(value?: number | null, listingType?: string | null) {
   if (!value || value <= 0) return "Liên hệ";
   const suffix = listingType === "RENT" ? " / ngày" : "";
@@ -57,9 +52,9 @@ export async function POST(request: Request) {
       return new Response("Thiếu GEMINI_API_KEY.", { status: 500 });
     }
 
-    // ⚡ Tối ưu truy vấn DB nhanh: Lấy 24 sản phẩm mới nhất với các trường cần thiết
-    const products = await prisma.product.findMany({
-      take: 24,
+    // ⚡ Lấy kho đồ 20 món mới nhất để sẵn sàng khi khách cần tìm đồ
+    const productsPromise = prisma.product.findMany({
+      take: 20,
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
@@ -68,15 +63,12 @@ export async function POST(request: Request) {
         size: true,
         color: true,
         province: true,
-        images: {
-          select: { url: true, isPrimary: true },
-          take: 1,
-        },
-        listings: {
-          select: { listingType: true, status: true, salePrice: true, basePrice: true },
-        },
+        images: { select: { url: true }, take: 1 },
+        listings: { select: { listingType: true, status: true, salePrice: true, basePrice: true } },
       },
     });
+
+    const products = await productsPromise;
 
     const catalog: CatalogProduct[] = products
       .map((product) => {
@@ -97,35 +89,6 @@ export async function POST(request: Request) {
       })
       .filter((product) => product.title && product.id);
 
-    // ⚡ Sử dụng Gemini 3.5 Flash-Lite mới nhất (Google's fastest 3.5-class model)
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const systemInstruction = [
-      "Bạn là CLOOP AI Stylist, cố vấn thời trang tuần hoàn thông minh, ngắn gọn, siêu nhanh.",
-      VIETNAM_PROVINCES_GEO,
-      "QUY TẮC PHẢN HỒI:",
-      "- Chỉ gợi ý 1-2 món phù hợp nhất từ kho đồ.",
-      "- BẮT BUỘC chèn cú pháp [PRODUCT:id] ngay sau câu giới thiệu món đồ.",
-      "- Trả lời ngắn gọn 2-3 câu, sành điệu, ấm áp, nêu lý do theo dịp/màu/vóc dáng.",
-    ].join("\n");
-
-    let model = genAI.getGenerativeModel({
-      model: "gemini-3.5-flash-lite",
-      generationConfig: {
-        temperature: 0.3,
-        maxOutputTokens: 450,
-      },
-      systemInstruction,
-    });
-
-    const recentHistory = Array.isArray(history)
-      ? history
-          .slice(-4)
-          .filter((item) => item?.role && item?.text)
-          .map((item) => `${item.role === "user" ? "Khách" : "Stylist"}: ${String(item.text).replace(/\[PRODUCT:[^\]]+\]/g, "").trim()}`)
-          .join("\n")
-      : "";
-
-    // Prompt siêu tinh gọn để inference siêu tốc
     const compactCatalog = catalog.map(p => ({
       id: p.id,
       title: p.title,
@@ -136,30 +99,62 @@ export async function POST(request: Request) {
       price: p.priceText
     }));
 
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const systemInstruction = [
+      "Bạn là Trợ Lý Thời Trang & Stylist Thông Minh của CLOOP (nền tảng thời trang tuần hoàn).",
+      "",
+      "TÍNH CÁCH & PHONG CÁCH GIAO TIẾP:",
+      "- Vui vẻ, tự nhiên, dí dỏm, thân thiện như một người bạn sành điệu nói chuyện đời thường.",
+      "- Trả lời nhanh gọn, ấm áp, có cảm xúc.",
+      "",
+      "QUY TẮC XỬ LÝ:",
+      "1. NẾU KHÁCH NÓI CHUYỆN PHIẾM, CHÀO HỎI, ĐÙA VUI, HỎI THĂM: Trả lời tự nhiên, hài hước, đời thường như người bạn (KHÔNG cần gợi ý sản phẩm).",
+      "2. KHI NÀO KHÁCH CÓ NHU CẦU TÌM ĐỒ / PHỐI OUTFIT / HỎI TRANG PHỤC ĐI ĐÂU (đi tiệc, đi biển, đi làm, tìm áo/váy...): Lúc này hãy tư vấn 1-2 món chuẩn gu từ kho đồ CLOOP và BẮT BUỘC chèn token [PRODUCT:id] ngay sau tên món đồ đó.",
+    ].join("\n");
+
+    const recentHistory = Array.isArray(history)
+      ? history
+          .slice(-4)
+          .filter((item) => item?.role && item?.text)
+          .map((item) => `${item.role === "user" ? "Khách" : "Trợ lý"}: ${String(item.text).replace(/\[PRODUCT:[^\]]+\]/g, "").trim()}`)
+          .join("\n")
+      : "";
+
     const prompt = [
-      `Kho đồ CLOOP: ${JSON.stringify(compactCatalog)}`,
-      recentHistory ? `Lịch sử:\n${recentHistory}` : "",
+      `Kho đồ CLOOP sẵn sàng: ${JSON.stringify(compactCatalog)}`,
+      recentHistory ? `Lịch sử chat:\n${recentHistory}` : "",
       `Khách: ${message}`,
-      "Tư vấn 1-2 món chuẩn nhất kèm [PRODUCT:id]:"
+      "Trợ lý CLOOP trả lời tự nhiên:"
     ].filter(Boolean).join("\n");
 
     let result;
     try {
+      const model = genAI.getGenerativeModel({
+        model: "gemini-3.5-flash-lite",
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 400,
+        },
+        systemInstruction,
+      });
       result = await model.generateContentStream(prompt);
     } catch (err) {
-      // Fallback model nếu endpoint 3.5 cần tương thích
+      // Fallback model nếu cần
       const fallbackModel = genAI.getGenerativeModel({
         model: "gemini-2.0-flash-lite",
-        generationConfig: { temperature: 0.3, maxOutputTokens: 450 },
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 400,
+        },
         systemInstruction,
       });
       result = await fallbackModel.generateContentStream(prompt);
     }
+
     const encoder = new TextEncoder();
 
     const stream = new ReadableStream({
       async start(controller) {
-        // Gửi catalog ngay lập tức
         controller.enqueue(encoder.encode(`[[CATALOG:${encodeCatalog(catalog)}]]\n`));
 
         try {
@@ -169,7 +164,7 @@ export async function POST(request: Request) {
           }
         } catch (error) {
           console.error("Lỗi streaming AI Stylist:", error);
-          controller.enqueue(encoder.encode("\nMình đang nghẽn mạng một chút, bạn gửi lại nhé!"));
+          controller.enqueue(encoder.encode("\nMình đang nghẽn mạng một xíu, bạn gửi lại nhé!"));
         } finally {
           controller.close();
         }
@@ -184,6 +179,6 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("Lỗi API AI Stylist:", error);
-    return new Response("Bộ não AI Stylist đang bận, bạn thử lại sau nhé.", { status: 500 });
+    return new Response("Trợ lý CLOOP đang bận, bạn thử lại sau nhé.", { status: 500 });
   }
 }
