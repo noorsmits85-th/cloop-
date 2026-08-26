@@ -97,22 +97,24 @@ export async function POST(request: Request) {
       })
       .filter((product) => product.title && product.id);
 
-    // ⚡ Sử dụng Gemini 2.0 Flash Lite / 2.5 Flash siêu tốc (< 400ms phản hồi)
+    // ⚡ Sử dụng Gemini 3.5 Flash-Lite mới nhất (Google's fastest 3.5-class model)
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash-lite",
+    const systemInstruction = [
+      "Bạn là CLOOP AI Stylist, cố vấn thời trang tuần hoàn thông minh, ngắn gọn, siêu nhanh.",
+      VIETNAM_PROVINCES_GEO,
+      "QUY TẮC PHẢN HỒI:",
+      "- Chỉ gợi ý 1-2 món phù hợp nhất từ kho đồ.",
+      "- BẮT BUỘC chèn cú pháp [PRODUCT:id] ngay sau câu giới thiệu món đồ.",
+      "- Trả lời ngắn gọn 2-3 câu, sành điệu, ấm áp, nêu lý do theo dịp/màu/vóc dáng.",
+    ].join("\n");
+
+    let model = genAI.getGenerativeModel({
+      model: "gemini-3.5-flash-lite",
       generationConfig: {
         temperature: 0.3,
         maxOutputTokens: 450,
       },
-      systemInstruction: [
-        "Bạn là CLOOP AI Stylist, cố vấn thời trang tuần hoàn ngắn gọn, tự nhiên, siêu nhanh.",
-        VIETNAM_PROVINCES_GEO,
-        "QUY TẮC PHẢN HỒI:",
-        "- Chỉ gợi ý 1-2 món phù hợp nhất từ kho đồ.",
-        "- BẮT BUỘC chèn cú pháp [PRODUCT:id] ngay sau câu giới thiệu món đồ.",
-        "- Trả lời ngắn gọn 2-3 câu, sành điệu, ấm áp, nêu lý do theo dịp/màu/vóc dáng.",
-      ].join("\n"),
+      systemInstruction,
     });
 
     const recentHistory = Array.isArray(history)
@@ -141,7 +143,18 @@ export async function POST(request: Request) {
       "Tư vấn 1-2 món chuẩn nhất kèm [PRODUCT:id]:"
     ].filter(Boolean).join("\n");
 
-    const result = await model.generateContentStream(prompt);
+    let result;
+    try {
+      result = await model.generateContentStream(prompt);
+    } catch (err) {
+      // Fallback model nếu endpoint 3.5 cần tương thích
+      const fallbackModel = genAI.getGenerativeModel({
+        model: "gemini-2.0-flash-lite",
+        generationConfig: { temperature: 0.3, maxOutputTokens: 450 },
+        systemInstruction,
+      });
+      result = await fallbackModel.generateContentStream(prompt);
+    }
     const encoder = new TextEncoder();
 
     const stream = new ReadableStream({
