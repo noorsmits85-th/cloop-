@@ -163,13 +163,13 @@ export default function ClosetProfilePage() {
       try {
         setLoading(true);
 
-        let loggedInId = null;
+        const { data: { user } } = await supabase.auth.getUser();
         const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          loggedInId = session.user.id;
-        }
+        const currentUserId = user?.id || session?.user?.id;
         
-        if (loggedInId === userId) setIsMe(true);
+        if (currentUserId && (currentUserId === userId || String(currentUserId).toLowerCase() === String(userId).toLowerCase())) {
+          setIsMe(true);
+        }
 
         const { data: userData } = await supabase
           .from("profiles")
@@ -199,7 +199,7 @@ export default function ClosetProfilePage() {
           quote: finalUser?.quote || "Lưu giữ ký ức qua từng chiếc váy.",
           coverImage: finalUser?.coverImage || null,
           location: finalUser?.location || "Nghệ An, Việt Nam",
-          todaysMemory: finalUser?.todaysMemory || "Hôm nay mình vừa cho thuê chiếc váy đầu tiên trên CLOOP. Một khởi đầu thật đáng nhớ! ✨",
+          todaysMemory: finalUser?.todaysMemory || "Hôm nay mình vừa cho thuê chiếc váy đầu tiên trên CLOOP. Một khởi đầu thật đáng nhớ!",
           rating: finalUser?.rating !== undefined ? Number(finalUser.rating) : 5.0,
           completedOrders: finalUser?.completedOrders !== undefined ? Number(finalUser.completedOrders) : 0
         });
@@ -327,8 +327,18 @@ export default function ClosetProfilePage() {
             <div className="tape w-24 h-6 -top-2 left-10 -rotate-3" />
             <div className="tape w-16 h-5 -bottom-2 right-20 rotate-2" />
 
-            <div className="w-full md:w-[280px] h-[360px] rounded-3xl overflow-hidden relative shrink-0 shadow-inner border border-stone-100">
-                <Image src={ownerInfo?.coverImage || DEFAULT_VINTAGE_COVER} alt="Cover" fill unoptimized className="object-cover" />
+            <div className="w-full md:w-[280px] h-[360px] rounded-3xl overflow-hidden relative shrink-0 shadow-inner border border-stone-100 group">
+                <Image src={ownerInfo?.coverImage || DEFAULT_VINTAGE_COVER} alt="Cover" fill unoptimized className="object-cover transition-transform duration-500 group-hover:scale-105" />
+                {isMe && (
+                  <button
+                    type="button"
+                    onClick={handleOpenEditModal}
+                    className="absolute bottom-3 right-3 px-3 py-1.5 rounded-full bg-black/60 hover:bg-[#183A2D] text-white text-[10px] font-bold backdrop-blur-md transition-all flex items-center gap-1.5 shadow-md cursor-pointer opacity-90 group-hover:opacity-100"
+                    title="Đổi ảnh bìa / mẫu tủ đồ"
+                  >
+                    <Camera size={12} /> Đổi ảnh bìa
+                  </button>
+                )}
             </div>
 
             <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left space-y-4 w-full">
@@ -337,7 +347,7 @@ export default function ClosetProfilePage() {
                     <Heart size={16} className="text-stone-400 -rotate-12" />
                 </div>
                 
-                <div className="relative">
+                <div className="relative group">
                     <div className="w-24 h-24 rounded-full p-1 bg-[#F5F2EB] shadow-sm border border-[#EBE6D8]">
                         <div className="w-full h-full rounded-full overflow-hidden bg-stone-100 flex items-center justify-center border border-white relative">
                             {ownerInfo?.avatar ? (
@@ -347,13 +357,36 @@ export default function ClosetProfilePage() {
                             )}
                         </div>
                     </div>
-                    <div className="absolute bottom-0 right-0 bg-emerald-500 text-white p-1 rounded-full border-2 border-white shadow-sm">
+                    {isMe ? (
+                      <button
+                        type="button"
+                        onClick={handleOpenEditModal}
+                        className="absolute bottom-0 right-0 bg-[#183A2D] hover:bg-emerald-700 text-white p-1.5 rounded-full border-2 border-white shadow-sm cursor-pointer transition-colors"
+                        title="Đổi ảnh đại diện"
+                      >
+                        <Camera size={11} />
+                      </button>
+                    ) : (
+                      <div className="absolute bottom-0 right-0 bg-emerald-500 text-white p-1 rounded-full border-2 border-white shadow-sm">
                         <ShieldCheck size={12} />
-                    </div>
+                      </div>
+                    )}
                 </div>
 
                 <div className="space-y-1">
-                    <h1 className="text-4xl font-bold text-[#183A2D] font-heading">{ownerInfo?.name || "Thành viên CLOOP"}</h1>
+                    <div className="flex items-center gap-2">
+                      <h1 className="text-4xl font-bold text-[#183A2D] font-heading">{ownerInfo?.name || "Thành viên CLOOP"}</h1>
+                      {isMe && (
+                        <button
+                          type="button"
+                          onClick={handleOpenEditModal}
+                          className="text-stone-400 hover:text-[#183A2D] p-1 rounded-full hover:bg-stone-100 transition-colors cursor-pointer"
+                          title="Chỉnh sửa tên và thông tin"
+                        >
+                          <Settings size={16} />
+                        </button>
+                      )}
+                    </div>
                     <p className="font-heading text-lg text-stone-600 italic">"{ownerInfo?.quote}"</p>
                 </div>
 
@@ -372,7 +405,6 @@ export default function ClosetProfilePage() {
                             <Settings size={14} /> CHỈNH SỬA HỒ SƠ
                         </button>
                     ) : (
-                        // 🟢 ĐÃ FIX: Thêm onClick để trượt xuống tủ đồ và chuyển tab sang "Thuê"
                         <button 
                             onClick={() => {
                                 document.getElementById("wardrobe-section")?.scrollIntoView({ behavior: "smooth" });
@@ -380,10 +412,10 @@ export default function ClosetProfilePage() {
                             }}
                             className="bg-[#183A2D] hover:bg-[#234F3E] text-white text-xs font-bold px-6 py-3.5 rounded-full transition-all flex items-center gap-2 shadow-sm cursor-pointer"
                         >
-                            <Shirt size={14} /> THUÊ ĐỒ CỦA MÌNH
+                            <Shirt size={14} /> THUÊ ĐỒ TỪ TỦ NÀY
                         </button>
                     )}
-                    <button className="w-11 h-11 rounded-full border border-stone-200 flex items-center justify-center text-stone-500 hover:bg-stone-50 transition-colors bg-white shadow-3xs">
+                    <button className="w-11 h-11 rounded-full border border-stone-200 flex items-center justify-center text-stone-500 hover:bg-stone-50 transition-colors bg-white shadow-3xs cursor-pointer">
                         <Share2 size={16} />
                     </button>
                 </div>
@@ -398,9 +430,21 @@ export default function ClosetProfilePage() {
                     </div>
                 </div>
 
-                <div className="bg-[#FFFDF4] p-5 shadow-sm border border-[#EBE6D8] rotate-2 transform hover:rotate-0 transition-transform duration-300 relative">
+                <div className="bg-[#FFFDF4] p-5 shadow-sm border border-[#EBE6D8] rotate-2 transform hover:rotate-0 transition-transform duration-300 relative group">
                     <div className="tape w-12 h-4 -top-2 left-1/2 -translate-x-1/2 -rotate-3" />
-                    <h3 className="font-handwriting text-xl text-stone-700 mb-2">Today's Memory</h3>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-handwriting text-xl text-stone-700">Today's Memory</h3>
+                      {isMe && (
+                        <button
+                          type="button"
+                          onClick={handleOpenEditModal}
+                          className="text-stone-400 hover:text-amber-700 text-[10px] font-semibold cursor-pointer flex items-center gap-0.5"
+                          title="Sửa lời nhắn hôm nay"
+                        >
+                          <Settings size={11} /> Sửa
+                        </button>
+                      )}
+                    </div>
                     <p className="text-xs text-stone-600 leading-relaxed italic font-serif">
                         {ownerInfo?.todaysMemory}
                     </p>
