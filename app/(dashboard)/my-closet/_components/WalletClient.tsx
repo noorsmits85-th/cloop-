@@ -32,6 +32,11 @@ interface WalletClientProps {
     productCount: number;
     fiveStarCount: number;
   };
+  bankInfo?: {
+    bankName?: string;
+    bankAccount?: string;
+    bankOwner?: string;
+  };
   coinLedger?: Array<{
     id: string;
     type: string;
@@ -49,6 +54,7 @@ export function WalletClient({
   coins: initialCoins, 
   claimedQuests: initialClaimed = [],
   stats = { productCount: 0, fiveStarCount: 0 },
+  bankInfo,
   coinLedger: initialCoinLedger = [],
   transactions = [], 
   paymentStatus 
@@ -71,6 +77,12 @@ export function WalletClient({
   const [password, setPassword] = useState("");
   const [isSubmittingWithdraw, setIsSubmittingWithdraw] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  // Thông tin tài khoản ngân hàng thực tế
+  const [bankName, setBankName] = useState(bankInfo?.bankName || "");
+  const [bankAccount, setBankAccount] = useState(bankInfo?.bankAccount || "");
+  const [bankOwner, setBankOwner] = useState(bankInfo?.bankOwner || "");
+  const [isEditingBankInModal, setIsEditingBankInModal] = useState(!bankInfo?.bankAccount);
 
   useEffect(() => {
     if (paymentStatus === "coin_success") {
@@ -121,18 +133,20 @@ export function WalletClient({
   // Xử lý rút tiền VNĐ
   const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!withdrawAmount || !password) return alert("Vui lòng nhập đủ thông tin.");
+    if (!withdrawAmount || !password) return alert("Vui lòng nhập số tiền cần rút và mật khẩu.");
+    if (!bankName.trim() || !bankAccount.trim()) return alert("Vui lòng nhập đầy đủ Tên ngân hàng và Số tài khoản nhận tiền.");
+    
     const numericAmount = parseInt(withdrawAmount.replace(/\D/g, ''));
-    if (numericAmount > balance) return alert("Số dư khả dụng không đủ.");
+    if (numericAmount > balance) return alert(`Số dư khả dụng (${balance.toLocaleString()}₫) không đủ để rút ${numericAmount.toLocaleString()}₫.`);
     if (numericAmount < 50000) return alert("Số tiền rút tối thiểu là 50,000đ.");
     
     setIsSubmittingWithdraw(true);
     try {
       const res = await requestWithdrawalAction({
         amount: numericAmount,
-        bankName: "VCB",
-        bankAccountNumber: "1012345678",
-        bankAccountHolder: "Trang Hoàng",
+        bankName: bankName.trim(),
+        bankAccountNumber: bankAccount.trim().replace(/\s+/g, ''),
+        bankAccountHolder: bankOwner.trim() || "Chủ tài khoản",
         password: password
       });
 
@@ -141,6 +155,7 @@ export function WalletClient({
         setShowWithdrawModal(false);
         setWithdrawAmount("");
         setPassword("");
+        setIsEditingBankInModal(false);
       } else {
         alert(res.message || "Không thể tạo lệnh rút tiền.");
       }
@@ -599,18 +614,60 @@ export function WalletClient({
               </div>
 
               <form onSubmit={handleWithdraw} className="space-y-4">
-                <div className="bg-stone-50 p-3.5 rounded-2xl border border-stone-100">
-                  <span className="text-[10px] text-stone-400 font-bold uppercase tracking-wider">Tài khoản nhận</span>
-                  <div className="flex items-center gap-3 mt-1.5">
-                    <div className="w-8 h-8 bg-[#183A2D] text-white rounded-lg flex items-center justify-center text-[10px] font-bold">VCB</div>
-                    <div className="flex flex-col">
-                      <span className="text-xs font-bold text-stone-800">1012345678</span>
-                      <span className="text-[10px] text-stone-500 uppercase">Tài khoản liên kết chính chủ</span>
+                {/* HIỂN THỊ TÀI KHOẢN NGÂN HÀNG THỰC TẾ */}
+                {bankAccount && !isEditingBankInModal ? (
+                  <div className="bg-emerald-50/60 p-3.5 rounded-2xl border border-emerald-200 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 bg-[#183A2D] text-white rounded-xl flex items-center justify-center text-[10px] font-bold shrink-0">
+                        {bankName.slice(0, 4).toUpperCase() || "BANK"}
+                      </div>
+                      <div className="flex flex-col text-left">
+                        <span className="text-xs font-bold text-stone-900">{bankName} • {bankAccount}</span>
+                        <span className="text-[10px] text-emerald-800 font-semibold">{bankOwner ? `Chủ TK: ${bankOwner}` : "Tài khoản nhận tiền"}</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingBankInModal(true)}
+                      className="text-[10px] font-bold text-emerald-800 hover:underline px-2 py-1 cursor-pointer"
+                    >
+                      Đổi STK
+                    </button>
+                  </div>
+                ) : (
+                  <div className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200 space-y-2 text-left">
+                    <span className="text-[10px] text-amber-800 font-bold uppercase tracking-wider">
+                      Nhập tài khoản ngân hàng nhận tiền
+                    </span>
+                    <div className="space-y-2">
+                      <input
+                        type="text"
+                        required
+                        value={bankName}
+                        onChange={(e) => setBankName(e.target.value)}
+                        placeholder="Tên ngân hàng (VD: MB Bank, Vietcombank...)"
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs bg-white focus:border-[#183A2D] outline-none"
+                      />
+                      <input
+                        type="text"
+                        required
+                        value={bankAccount}
+                        onChange={(e) => setBankAccount(e.target.value.replace(/\s+/g, ""))}
+                        placeholder="Số tài khoản ngân hàng nhận tiền"
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs font-mono font-bold bg-white focus:border-[#183A2D] outline-none"
+                      />
+                      <input
+                        type="text"
+                        value={bankOwner}
+                        onChange={(e) => setBankOwner(e.target.value)}
+                        placeholder="Tên chủ tài khoản (không dấu)"
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs uppercase bg-white focus:border-[#183A2D] outline-none"
+                      />
                     </div>
                   </div>
-                </div>
+                )}
 
-                <div className="space-y-1">
+                <div className="space-y-1 text-left">
                   <label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider">Số tiền cần rút (VNĐ)</label>
                   <input
                     type="text"

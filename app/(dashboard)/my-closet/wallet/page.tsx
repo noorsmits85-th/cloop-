@@ -2,6 +2,7 @@ import React from "react";
 import { requireUser } from "@/src/lib/auth";
 import { WalletClient } from "../_components/WalletClient";
 import { prisma } from "@/src/lib/prisma";
+import { supabase } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 
 export const revalidate = 0;
@@ -21,11 +22,24 @@ export default async function WalletPage({ searchParams }: { searchParams: { [ke
   const userId = userAuth.id;
   const status = searchParams?.status as string;
 
-  // 1. Lấy thông tin số dư
-  const userProfile = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { walletBalance: true, cloopCoins: true }
-  });
+  // 1. Lấy thông tin số dư và thông tin ngân hàng thực tế
+  const [userProfile, profileRecord] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { walletBalance: true, cloopCoins: true, name: true }
+    }),
+    supabase
+      .from("profiles")
+      .select("bank_name, bank_account, bank_owner, name")
+      .eq("id", userId)
+      .maybeSingle()
+  ]);
+
+  const bankInfo = {
+    bankName: profileRecord?.data?.bank_name || "",
+    bankAccount: profileRecord?.data?.bank_account || "",
+    bankOwner: profileRecord?.data?.bank_owner || profileRecord?.data?.name || userProfile?.name || ""
+  };
 
   // 2. Lấy danh sách nhiệm vụ đã claim
   const claims = await prisma.coinQuestClaim.findMany({
@@ -112,6 +126,7 @@ export default async function WalletPage({ searchParams }: { searchParams: { [ke
           coins={userProfile?.cloopCoins || 0}
           claimedQuests={claimedQuestCodes}
           stats={{ productCount, fiveStarCount }}
+          bankInfo={bankInfo}
           coinLedger={coinLedger.map(item => ({
             id: item.id,
             type: item.type,
