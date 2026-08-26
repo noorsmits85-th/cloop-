@@ -92,9 +92,6 @@ function HeaderNavbar({ darkMode, setDarkMode, handleFeatureRequirement, current
                   <Link href={`/closet/${userIdStr}`} title="Xem Tủ Đồ Công Khai" className="w-[30px] h-[30px] rounded-full border border-[#E9E2D8] bg-white text-stone-400 hover:text-[#183A2D] hover:bg-[#FAF8F3] hover:border-[#183A2D]/30 transition-all flex items-center justify-center shadow-sm">
                     <Shirt size={13} />
                   </Link>
-                  <Link href={`/closet/${userIdStr}/memories`} title="Mở Cuốn Nhật Ký" className="w-[30px] h-[30px] rounded-full border border-[#E9E2D8] bg-white text-stone-400 hover:text-[#183A2D] hover:bg-[#FAF8F3] hover:border-[#183A2D]/30 transition-all flex items-center justify-center shadow-sm">
-                    <BookOpen size={13} />
-                  </Link>
                 </div>
               )}
 
