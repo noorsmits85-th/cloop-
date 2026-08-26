@@ -3,12 +3,54 @@
 import { useMemo, useRef, useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { 
-  Bot, CloudSun, MapPin, Send, 
-  X, PhoneCall, MessageCircle, 
+  MapPin, Send, X, PhoneCall, MessageCircle, 
   ArrowRight, ShieldCheck, Headphones
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+
+// 🌟 ICON ĐẶC TRƯNG ĐỘC BẢN: CLOOP CHATBOT (Kết hợp Chat Bubble + Đôi Mắt Infinity Loop Tuần Hoàn)
+function CloopChatBotIcon({ className = "w-6 h-6" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      {/* Antenna Signal Dot */}
+      <circle cx="18" cy="3" r="1.5" fill="#34D399" />
+      <path d="M18 4.5V6.5" stroke="#34D399" strokeWidth="1.5" strokeLinecap="round" />
+
+      {/* Chat Bubble Silhouette */}
+      <path
+        d="M18 6.5C10.268 6.5 4 12.09 4 19C4 22.25 5.37 25.19 7.68 27.41L6.2 32.1C6.02 32.66 6.58 33.15 7.14 32.94L12.56 30.9C14.26 31.36 16.08 31.5 18 31.5C25.732 31.5 32 25.91 32 19C32 12.09 25.732 6.5 18 6.5Z"
+        fill="url(#cloop_chat_bot_bg)"
+        stroke="#A3E39F"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+
+      {/* CLOOP Infinity Loop Eyes (Biểu tượng Vòng Lặp Bất Tận) */}
+      <path
+        d="M13.2 16.5C11.4 16.5 10 17.84 10 19.5C10 21.16 11.4 22.5 13.2 22.5C15.2 22.5 16.6 20.5 18 19.5C19.4 18.5 20.8 16.5 22.8 16.5C24.6 16.5 26 17.84 26 19.5C26 21.16 24.6 22.5 22.8 22.5C20.8 22.5 19.4 20.5 18 19.5C16.6 18.5 15.2 16.5 13.2 16.5Z"
+        stroke="#A3E39F"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+
+      {/* Glowing Intelligent Pupil Dots */}
+      <circle cx="13.2" cy="19.5" r="1.6" fill="#FFFFFF" />
+      <circle cx="22.8" cy="19.5" r="1.6" fill="#FFFFFF" />
+
+      {/* Friendly Smile */}
+      <path d="M15.5 25.5C16.3 26.3 19.7 26.3 20.5 25.5" stroke="#A3E39F" strokeWidth="1.2" strokeLinecap="round" />
+
+      <defs>
+        <linearGradient id="cloop_chat_bot_bg" x1="4" y1="6.5" x2="32" y2="31.5" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#1C4B35" />
+          <stop offset="1" stopColor="#0B2016" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
 
 type ProductMini = {
   id: string;
@@ -167,7 +209,6 @@ export default function AiStylistChat({ darkMode }: { darkMode?: boolean } = {})
   const [activeTab, setActiveTab] = useState<"stylist" | "cskh">("stylist");
   const [chatInput, setChatInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [weatherContext, setWeatherContext] = useState("");
   const [productsById, setProductsById] = useState<Record<string, ProductMini>>({});
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
   const abortRef = useRef<AbortController | null>(null);
@@ -232,7 +273,7 @@ export default function AiStylistChat({ darkMode }: { darkMode?: boolean } = {})
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: weatherContext ? `${userText}\nNgữ cảnh thời tiết: ${weatherContext}` : userText,
+          message: userText,
           history: messages
             .filter((message) => message.text)
             .slice(-6)
@@ -298,7 +339,7 @@ export default function AiStylistChat({ darkMode }: { darkMode?: boolean } = {})
   };
 
   return (
-    <div className="fixed bottom-14 right-3 z-50 flex flex-col items-end gap-1.5 font-body md:bottom-5 md:right-5">
+    <div className="fixed bottom-14 right-3 z-50 flex flex-col items-end gap-1.5 font-body md:bottom-6 md:right-6">
       <AnimatePresence>
         {showChat && (
           <motion.div
@@ -312,8 +353,8 @@ export default function AiStylistChat({ darkMode }: { darkMode?: boolean } = {})
             <div className="bg-[#122D20] p-2.5 px-3 text-white border-b border-[#1C4431] shadow-2xs">
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2">
-                  <div className="relative flex h-6.5 w-6.5 items-center justify-center rounded-md bg-white/15 text-white border border-white/20">
-                    <Bot size={14} className="text-[#A3E39F]" />
+                  <div className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 text-white border border-white/20 p-0.5">
+                    <CloopChatBotIcon className="w-5 h-5" />
                     <span className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400 border border-[#122D20]" />
                   </div>
                   <div className="text-left">
@@ -347,7 +388,7 @@ export default function AiStylistChat({ darkMode }: { darkMode?: boolean } = {})
                       : "text-stone-300 hover:text-white"
                   }`}
                 >
-                  <Bot size={10} className={activeTab === "stylist" ? "text-[#122D20]" : "text-[#A3E39F]"} />
+                  <CloopChatBotIcon className="w-3.5 h-3.5" />
                   AI Stylist
                 </button>
 
@@ -512,21 +553,23 @@ export default function AiStylistChat({ darkMode }: { darkMode?: boolean } = {})
         )}
       </AnimatePresence>
 
-      {/* 🚀 SLEEK COMPACT LAUNCHER BUTTON */}
+      {/* 🚀 CHỈ ICON THỜI TRANG ĐỘC BẢN CLOOP CHATBOT (Floating Circular Action Button) */}
       <motion.button
         type="button"
         onClick={() => setShowChat(!showChat)}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        className="flex items-center gap-1.5 h-8.5 px-3 rounded-full bg-[#183A2D] hover:bg-[#235C3A] text-white shadow-md border border-emerald-500/20 transition-all duration-200 cursor-pointer"
+        whileHover={{ scale: 1.1, rotate: [0, -5, 5, 0] }}
+        whileTap={{ scale: 0.92 }}
+        className="relative flex items-center justify-center w-12 h-12 sm:w-13 sm:h-13 rounded-full bg-gradient-to-br from-[#1B4733] to-[#0A1F15] text-white shadow-[0_8px_25px_rgba(10,31,22,0.45)] hover:shadow-[0_12px_32px_rgba(34,197,94,0.35)] border border-[#A3E39F]/40 transition-all duration-300 cursor-pointer group"
+        title="Trợ lý Chat CLOOP"
       >
-        <div className="relative flex items-center justify-center">
-          <Bot className="w-3.5 h-3.5 text-[#A3E39F]" />
-          <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-        </div>
-        <span className="text-[10px] font-extrabold uppercase tracking-wider font-ui">
-          TRỢ LÝ CLOOP
-        </span>
+        {/* Animated Green Pulse Ring */}
+        <span className="absolute -inset-0.5 rounded-full bg-emerald-400/20 animate-ping pointer-events-none" />
+
+        {/* Custom CLOOP Chatbot Mascot SVG */}
+        <CloopChatBotIcon className="w-7 h-7 sm:w-8 sm:h-8 transition-transform duration-300 group-hover:scale-105" />
+
+        {/* Green Online Dot Badge */}
+        <span className="absolute top-0 right-0 w-3 h-3 rounded-full bg-emerald-400 border-2 border-[#122D20] shadow-xs" />
       </motion.button>
     </div>
   );
