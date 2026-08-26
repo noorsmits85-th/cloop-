@@ -8,7 +8,7 @@ import {
   MapPin, Star, ArrowLeft, Shirt, ShoppingBag, 
   ChevronLeft, ChevronRight, Ruler, Sparkles, 
   ShieldCheck, Leaf, RotateCcw, Share2, Heart,
-  CheckCircle2, Info, MessageCircle
+  CheckCircle2, Info, MessageCircle, PhoneCall
 } from "lucide-react";
 
 import RentalBookingBox from "@/components/RentalBookingBox"; 
@@ -266,23 +266,23 @@ function ProductDetailContent() {
               </div>
             )}
 
-            {/* QUYỀN LỢI & DỊCH VỤ CLOOP */}
+            {/* DỊCH VỤ & BẢO ĐẢM GIAO DỊCH */}
             <div className="rounded-2xl border border-stone-200 bg-white p-3.5 space-y-2.5 text-left text-[11px] shadow-2xs">
               <div className="flex items-center gap-2 text-[#183A2D] font-bold uppercase tracking-wider text-[10.5px]">
-                <ShieldCheck size={14} className="text-emerald-700" /> Dịch Vụ & Quyền Lợi Khách Hàng
+                <ShieldCheck size={14} className="text-emerald-700" /> Quyền Lợi & Bảo Đảm Giao Dịch
               </div>
               <ul className="space-y-1.5 text-stone-600 leading-relaxed font-light">
+                <li className="flex items-start gap-1.5">
+                  <CheckCircle2 size={12} className="text-emerald-700 shrink-0 mt-0.5" />
+                  <span>Tiền cọc được bảo chứng an toàn và hoàn trả ngay khi xong đơn.</span>
+                </li>
                 <li className="flex items-start gap-1.5">
                   <RotateCcw size={12} className="text-emerald-700 shrink-0 mt-0.5" />
                   <span>Hỗ trợ đổi mẫu hoặc đổi size nhanh nếu không vừa vặn.</span>
                 </li>
                 <li className="flex items-start gap-1.5">
-                  <CheckCircle2 size={12} className="text-emerald-700 shrink-0 mt-0.5" />
-                  <span>Bảo vệ quyền lợi thanh toán và giữ cọc minh bạch.</span>
-                </li>
-                <li className="flex items-start gap-1.5">
-                  <Leaf size={12} className="text-emerald-700 shrink-0 mt-0.5" />
-                  <span>Đóng gói bằng bao bì tái sử dụng, thân thiện môi trường.</span>
+                  <PhoneCall size={12} className="text-emerald-700 shrink-0 mt-0.5" />
+                  <span>Đội ngũ CSKH hỗ trợ trực tiếp 24/7 qua Hotline & Zalo.</span>
                 </li>
               </ul>
             </div>

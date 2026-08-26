@@ -548,9 +548,9 @@ export default function Home() {
               </div>
             </div>
             <div className="space-y-1">
-              <h3 className="font-heading text-sm sm:text-base font-bold text-[#183A2D]">Nhận Đồ Tận Tay Chuẩn Spa</h3>
+              <h3 className="font-heading text-sm sm:text-base font-bold text-[#183A2D]">Nhận Đồ Tận Tay Thơm Tho</h3>
               <p className="text-stone-600 text-[11px] font-light leading-relaxed">
-                Trang phục được hấp sấy ozone tiệt trùng chuẩn sinh thái, đóng gói bằng bao bì tuần hoàn thơm tho, sẵn sàng để mặc ngay.
+                Trang phục được kiểm tra tình trạng sạch sẽ, là phẳng tươm tất từ chủ tủ đồ uy tín, sẵn sàng để bạn tự tin diện ngay.
               </p>
             </div>
           </div>
