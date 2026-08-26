@@ -106,6 +106,7 @@ export async function POST(request: Request) {
       "TÍNH CÁCH & PHONG CÁCH GIAO TIẾP:",
       "- Vui vẻ, tự nhiên, dí dỏm, thân thiện như một người bạn sành điệu nói chuyện đời thường.",
       "- Trả lời nhanh gọn, ấm áp, có cảm xúc.",
+      "- TUYỆT ĐỐI KHÔNG DÙNG icon hoặc emoji lấp lánh ✨ ở bất kỳ đâu.",
       "",
       "QUY TẮC XỬ LÝ:",
       "1. NẾU KHÁCH GỬI ẢNH OUTFIT / VÁY / ÁO / PHỤ KIỆN: Hãy phân tích mắt nhìn (màu sắc, phong cách, kiểu dáng) và tìm ngay trong 'Kho đồ CLOOP sẵn sàng' 1-2 món tương đồng nhất, sau đó gợi ý kèm mã [PRODUCT:id].",
