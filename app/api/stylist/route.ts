@@ -39,8 +39,37 @@ function encodeCatalog(products: CatalogProduct[]) {
   return Buffer.from(JSON.stringify(products), "utf8").toString("base64");
 }
 
+// 🛡️ SLIDING WINDOW RATE LIMITER: Tối đa 15 request / phút / IP chống spam làm cạn token AI
+const ipRequestMap = new Map<string, number[]>();
+
+function checkRateLimit(ip: string, limit = 15, windowMs = 60000): boolean {
+  const now = Date.now();
+  const timestamps = ipRequestMap.get(ip) || [];
+  const validTimestamps = timestamps.filter(t => now - t < windowMs);
+
+  if (validTimestamps.length >= limit) {
+    return false;
+  }
+
+  validTimestamps.push(now);
+  ipRequestMap.set(ip, validTimestamps);
+  return true;
+}
+
 export async function POST(request: Request) {
   try {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "anonymous-client";
+
+    if (!checkRateLimit(ip, 15, 60000)) {
+      return new Response(
+        JSON.stringify({ 
+          reply: "⚠️ Bạn đang gửi tin nhắn quá nhanh. Vui lòng chờ 30 giây để tiếp tục trò chuyện cùng Trợ lý nhé!", 
+          catalog: [] 
+        }), 
+        { status: 429, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     const { message, image, history = [] } = await request.json();
 
     if ((!message && !image) || (message && typeof message !== "string")) {
