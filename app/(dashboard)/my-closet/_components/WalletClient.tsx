@@ -22,6 +22,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { createCoinTopUpPayment, claimQuestRewardAction } from "@/app/actions/coin";
 import { requestWithdrawalAction } from "@/app/actions/withdrawal";
 import { COIN_PACKAGES, QUEST_DEFINITIONS } from "@/lib/coinPackages";
+import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 
 interface WalletClientProps {
@@ -151,6 +152,20 @@ export function WalletClient({
       });
 
       if (res.success) {
+        // Lưu lại STK vào profiles để lần sau không cần nhập lại
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user?.id) {
+            await supabase.from("profiles").update({
+              bank_name: bankName.trim(),
+              bank_account: bankAccount.trim(),
+              bank_owner: bankOwner.trim().toUpperCase()
+            }).eq("id", session.user.id);
+          }
+        } catch (saveErr) {
+          console.warn("Lỗi lưu STK:", saveErr);
+        }
+
         alert("🎉 " + res.message);
         setShowWithdrawModal(false);
         setWithdrawAmount("");
@@ -616,53 +631,88 @@ export function WalletClient({
               <form onSubmit={handleWithdraw} className="space-y-4">
                 {/* HIỂN THỊ TÀI KHOẢN NGÂN HÀNG THỰC TẾ */}
                 {bankAccount && !isEditingBankInModal ? (
-                  <div className="bg-emerald-50/60 p-3.5 rounded-2xl border border-emerald-200 flex items-center justify-between">
+                  <div className="bg-emerald-50/70 p-4 rounded-2xl border border-emerald-200 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 bg-[#183A2D] text-white rounded-xl flex items-center justify-center text-[10px] font-bold shrink-0">
+                      <div className="w-10 h-10 bg-[#183A2D] text-white rounded-xl flex items-center justify-center text-[10px] font-bold shrink-0">
                         {bankName.slice(0, 4).toUpperCase() || "BANK"}
                       </div>
                       <div className="flex flex-col text-left">
                         <span className="text-xs font-bold text-stone-900">{bankName} • {bankAccount}</span>
-                        <span className="text-[10px] text-emerald-800 font-semibold">{bankOwner ? `Chủ TK: ${bankOwner}` : "Tài khoản nhận tiền"}</span>
+                        <span className="text-[11px] text-emerald-800 font-bold uppercase tracking-wider mt-0.5">
+                          Chủ TK: {bankOwner || "CHƯA ĐẶT TÊN"}
+                        </span>
                       </div>
                     </div>
                     <button
                       type="button"
                       onClick={() => setIsEditingBankInModal(true)}
-                      className="text-[10px] font-bold text-emerald-800 hover:underline px-2 py-1 cursor-pointer"
+                      className="text-[10px] font-bold text-emerald-800 hover:underline px-2.5 py-1 bg-white rounded-lg border border-emerald-200 shadow-2xs cursor-pointer"
                     >
                       Đổi STK
                     </button>
                   </div>
                 ) : (
-                  <div className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200 space-y-2 text-left">
-                    <span className="text-[10px] text-amber-800 font-bold uppercase tracking-wider">
-                      Nhập tài khoản ngân hàng nhận tiền
-                    </span>
-                    <div className="space-y-2">
-                      <input
-                        type="text"
-                        required
-                        value={bankName}
-                        onChange={(e) => setBankName(e.target.value)}
-                        placeholder="Tên ngân hàng (VD: MB Bank, Vietcombank...)"
-                        className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs bg-white focus:border-[#183A2D] outline-none"
-                      />
-                      <input
-                        type="text"
-                        required
-                        value={bankAccount}
-                        onChange={(e) => setBankAccount(e.target.value.replace(/\s+/g, ""))}
-                        placeholder="Số tài khoản ngân hàng nhận tiền"
-                        className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs font-mono font-bold bg-white focus:border-[#183A2D] outline-none"
-                      />
-                      <input
-                        type="text"
-                        value={bankOwner}
-                        onChange={(e) => setBankOwner(e.target.value)}
-                        placeholder="Tên chủ tài khoản (không dấu)"
-                        className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs uppercase bg-white focus:border-[#183A2D] outline-none"
-                      />
+                  <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/90 space-y-3 text-left">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10.5px] text-amber-900 font-extrabold uppercase tracking-wider">
+                        🛡️ Tài khoản ngân hàng chính chủ nhận tiền
+                      </span>
+                      {bankInfo?.bankAccount && (
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingBankInModal(false)}
+                          className="text-[10px] font-bold text-stone-500 hover:text-stone-800 underline cursor-pointer"
+                        >
+                          Hủy
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="space-y-2.5">
+                      <div className="space-y-1">
+                        <label className="block text-[10px] font-bold text-stone-600 uppercase tracking-wider">
+                          1. Ngân hàng thụ hưởng *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={bankName}
+                          onChange={(e) => setBankName(e.target.value)}
+                          placeholder="VD: MB Bank, Vietcombank, Techcombank..."
+                          className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs bg-white focus:border-[#183A2D] outline-none"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="block text-[10px] font-bold text-stone-600 uppercase tracking-wider">
+                          2. Số tài khoản ngân hàng *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={bankAccount}
+                          onChange={(e) => setBankAccount(e.target.value.replace(/\s+/g, ""))}
+                          placeholder="Nhập số tài khoản ngân hàng..."
+                          className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs font-mono font-bold bg-white focus:border-[#183A2D] outline-none"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="block text-[10px] font-bold text-stone-600 uppercase tracking-wider">
+                          3. Họ & Tên chủ tài khoản (In hoa không dấu) *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={bankOwner}
+                          onChange={(e) => setBankOwner(e.target.value.toUpperCase())}
+                          placeholder="VD: NGUYEN VAN A hoặc HOANG THI THU TRANG"
+                          className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs uppercase font-bold bg-white focus:border-[#183A2D] outline-none"
+                        />
+                        <p className="text-[9.5px] text-amber-800 leading-tight italic pt-0.5">
+                          * Tên chủ tài khoản phải trùng với thẻ ATM/CCCD để tiền về đúng chính chủ, chống kẻ gian đánh cắp.
+                        </p>
+                      </div>
                     </div>
                   </div>
                 )}
