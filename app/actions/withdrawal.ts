@@ -1,8 +1,34 @@
-﻿"use server";
+"use server";
 
 import { prisma } from "@/src/lib/prisma";
 import { requireUser } from "@/src/lib/auth";
 import { revalidatePath } from "next/cache";
+
+function normalizeVietnamese(str: string) {
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toUpperCase()
+    .trim();
+}
+
+function verifyBankKyc(registeredName?: string | null, bankHolderName?: string | null): boolean {
+  if (!registeredName || !bankHolderName) return true; // Nếu chưa có tên thì cho phép cập nhật lần đầu
+  const normReg = normalizeVietnamese(registeredName);
+  const normBank = normalizeVietnamese(bankHolderName);
+
+  if (!normReg || !normBank) return true;
+  if (normReg === normBank) return true;
+
+  const regTokens = normReg.split(/\s+/).filter(Boolean);
+  const bankTokens = normBank.split(/\s+/).filter(Boolean);
+
+  // Khớp toàn bộ token tên hoặc có ít nhất 2 từ trùng lặp (ví dụ: Trang Hoàng & Hoàng Thị Thu Trang)
+  const matchCount = regTokens.filter((token) => bankTokens.includes(token)).length;
+  return matchCount >= Math.min(2, regTokens.length);
+}
 
 export async function requestWithdrawalAction(data: {
   amount: number;
@@ -28,6 +54,19 @@ export async function requestWithdrawalAction(data: {
 
     if (!bankName || !bankAccountNumber || !bankAccountHolder) {
       return { success: false, message: "Vui lòng điền đầy đủ thông tin tài khoản ngân hàng nhận tiền." };
+    }
+
+    // 🔒 ĐỊNH DANH CHÉO QUA NGÂN HÀNG (BANK-KYC ANTI-FRAUD VERIFICATION)
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true, walletBalance: true, pendingWithdrawalBalance: true }
+    });
+
+    if (currentUser?.name && !verifyBankKyc(currentUser.name, bankAccountHolder)) {
+      return {
+        success: false,
+        message: `Quy tắc Bank-KYC: Tên chủ tài khoản ngân hàng ("${bankAccountHolder.toUpperCase()}") không khớp với tên tài khoản CLOOP ("${currentUser.name.toUpperCase()}"). Bạn chỉ được rút tiền về tài khoản ngân hàng chính chủ.`
+      };
     }
 
     // 🛡️ ATOMIC HOLD TRANSACTION: Trừ trực tiếp walletBalance chuyển sang pendingWithdrawalBalance
