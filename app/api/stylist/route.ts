@@ -41,10 +41,10 @@ function encodeCatalog(products: CatalogProduct[]) {
 
 export async function POST(request: Request) {
   try {
-    const { message, history = [] } = await request.json();
+    const { message, image, history = [] } = await request.json();
 
-    if (!message || typeof message !== "string") {
-      return new Response("Thiếu nội dung chat.", { status: 400 });
+    if ((!message && !image) || (message && typeof message !== "string")) {
+      return new Response("Thiếu nội dung chat hoặc ảnh.", { status: 400 });
     }
 
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || process.env.GEMINI_API_KEY_DEV;
@@ -108,8 +108,9 @@ export async function POST(request: Request) {
       "- Trả lời nhanh gọn, ấm áp, có cảm xúc.",
       "",
       "QUY TẮC XỬ LÝ:",
-      "1. NẾU KHÁCH NÓI CHUYỆN PHIẾM, CHÀO HỎI, ĐÙA VUI, HỎI THĂM: Trả lời tự nhiên, hài hước, đời thường như người bạn (KHÔNG cần gợi ý sản phẩm).",
-      "2. KHI NÀO KHÁCH CÓ NHU CẦU TÌM ĐỒ / PHỐI OUTFIT / HỎI TRANG PHỤC ĐI ĐÂU (đi tiệc, đi biển, đi làm, tìm áo/váy...): Lúc này hãy tư vấn 1-2 món chuẩn gu từ kho đồ CLOOP và BẮT BUỘC chèn token [PRODUCT:id] ngay sau tên món đồ đó.",
+      "1. NẾU KHÁCH GỬI ẢNH OUTFIT / VÁY / ÁO / PHỤ KIỆN: Hãy phân tích mắt nhìn (màu sắc, phong cách, kiểu dáng) và tìm ngay trong 'Kho đồ CLOOP sẵn sàng' 1-2 món tương đồng nhất, sau đó gợi ý kèm mã [PRODUCT:id].",
+      "2. NẾU KHÁCH NÓI CHUYỆN PHIẾM, CHÀO HỎI, ĐÙA VUI: Trả lời tự nhiên, hài hước, đời thường như người bạn (KHÔNG cần gợi ý sản phẩm).",
+      "3. KHI NÀO KHÁCH CÓ NHU CẦU TÌM ĐỒ / PHỐI OUTFIT / HỎI TRANG PHỤC ĐI ĐÂU (đi tiệc, đi biển, đi làm, tìm áo/váy...): Lúc này hãy tư vấn 1-2 món chuẩn gu từ kho đồ CLOOP và BẮT BUỘC chèn token [PRODUCT:id] ngay sau tên món đồ đó.",
     ].join("\n");
 
     const recentHistory = Array.isArray(history)
@@ -120,12 +121,32 @@ export async function POST(request: Request) {
           .join("\n")
       : "";
 
-    const prompt = [
+    const userPromptText = message || (image ? "Nhờ bạn xem giúp bức ảnh này và tìm đồ tương tự trong kho CLOOP giúp mình nhé!" : "");
+
+    const promptText = [
       `Kho đồ CLOOP sẵn sàng: ${JSON.stringify(compactCatalog)}`,
       recentHistory ? `Lịch sử chat:\n${recentHistory}` : "",
-      `Khách: ${message}`,
-      "Trợ lý CLOOP trả lời tự nhiên:"
+      `Khách: ${userPromptText}`,
+      "Trợ lý CLOOP trả lời tự nhiên & gợi ý:"
     ].filter(Boolean).join("\n");
+
+    // Hỗ trợ xử lý đa phương thức (Ảnh + Text)
+    const contentParts: any[] = [];
+    if (image && typeof image === "string" && image.includes("base64")) {
+      try {
+        const mimeType = image.match(/:(.*?);/)?.[1] || "image/jpeg";
+        const base64Data = image.split(",")[1] || image;
+        contentParts.push({
+          inlineData: {
+            data: base64Data,
+            mimeType,
+          },
+        });
+      } catch (imgErr) {
+        console.warn("Lỗi trích xuất Base64 ảnh trong chat:", imgErr);
+      }
+    }
+    contentParts.push(promptText);
 
     let result;
     try {
@@ -137,7 +158,7 @@ export async function POST(request: Request) {
         },
         systemInstruction,
       });
-      result = await model.generateContentStream(prompt);
+      result = await model.generateContentStream(contentParts.length === 1 ? contentParts[0] : contentParts);
     } catch (err) {
       // Fallback model nếu cần
       const fallbackModel = genAI.getGenerativeModel({
@@ -148,7 +169,7 @@ export async function POST(request: Request) {
         },
         systemInstruction,
       });
-      result = await fallbackModel.generateContentStream(prompt);
+      result = await fallbackModel.generateContentStream(contentParts.length === 1 ? contentParts[0] : contentParts);
     }
 
     const encoder = new TextEncoder();

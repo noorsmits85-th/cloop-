@@ -4,7 +4,7 @@ import { useMemo, useRef, useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { 
   MapPin, Send, X, PhoneCall, MessageCircle, 
-  ArrowRight, ShieldCheck, Headphones
+  ArrowRight, ShieldCheck, Headphones, Camera, Image as ImageIcon
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -70,7 +70,6 @@ function LivingTypingDots() {
 
   return (
     <div className="flex items-center gap-2 py-1 px-1">
-      {/* 3 Bouncing Dots Wave */}
       <div className="flex items-center gap-1">
         <motion.span 
           animate={{ y: [0, -5, 0], scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
@@ -89,7 +88,6 @@ function LivingTypingDots() {
         />
       </div>
 
-      {/* Dynamic Alive Text Caption */}
       <span className="text-[9.5px] font-medium text-emerald-800 font-ui tracking-wide">
         {statuses[statusIdx]}
       </span>
@@ -113,6 +111,7 @@ type Message = {
   id: string;
   role: "user" | "ai";
   text: string;
+  image?: string;
   subNote?: string;
   isStreaming?: boolean;
   suggestions?: string[];
@@ -122,7 +121,7 @@ const INITIAL_MESSAGES: Message[] = [
   {
     id: "welcome",
     role: "ai",
-    text: "Chào bạn! Mình là AI Stylist của CLOOP. Bạn chuẩn bị đi đâu, phong cách thế nào? Nhắn cho mình để tìm ngay set đồ phù hợp nhé!",
+    text: "Chào bạn! Mình là AI Stylist của CLOOP. Bạn chuẩn bị đi đâu, hoặc có ảnh set đồ ưng ý muốn tìm không? Nhắn hoặc gửi ảnh cho mình nhé!",
     subNote: "Nếu cần hỗ trợ đơn hàng hoặc đổi size, bạn chọn tab CSKH bên trên nhé.",
     suggestions: [
       "Đi tiệc & Sự kiện", 
@@ -157,7 +156,6 @@ function ProductCardMini({ product }: { product: ProductMini }) {
       className="my-1.5 block w-full rounded-xl border border-stone-200/90 bg-white p-2 shadow-2xs transition-all hover:border-[#183A2D] hover:shadow-xs group text-left"
     >
       <div className="flex gap-2.5 items-center">
-        {/* Product Image */}
         <div className="relative h-13 w-11 shrink-0 overflow-hidden rounded-lg bg-stone-100 border border-stone-200">
           <Image 
             src={product.image} 
@@ -172,7 +170,6 @@ function ProductCardMini({ product }: { product: ProductMini }) {
           </span>
         </div>
 
-        {/* Product Details */}
         <div className="flex min-w-0 flex-1 flex-col justify-between py-0.5 space-y-0.5">
           <h4 className="text-[10.5px] font-heading font-bold text-[#142A1E] line-clamp-1 group-hover:text-emerald-800 transition-colors leading-tight">
             {product.title}
@@ -253,9 +250,12 @@ export default function AiStylistChat({ darkMode }: { darkMode?: boolean } = {})
   const [showChat, setShowChat] = useState(false);
   const [activeTab, setActiveTab] = useState<"stylist" | "cskh">("stylist");
   const [chatInput, setChatInput] = useState("");
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [productsById, setProductsById] = useState<Record<string, ProductMini>>({});
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
+  
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -268,6 +268,42 @@ export default function AiStylistChat({ darkMode }: { darkMode?: boolean } = {})
       scrollToBottom();
     }
   }, [messages, isTyping, showChat, activeTab]);
+
+  // Nén ảnh gọn nhẹ trên Canvas (< 50KB) trước khi gửi
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new (window as any).Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const MAX_SIZE = 600;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height && width > MAX_SIZE) {
+          height *= MAX_SIZE / width;
+          width = MAX_SIZE;
+        } else if (height > MAX_SIZE) {
+          width *= MAX_SIZE / height;
+          height = MAX_SIZE;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        const compressedBase64 = canvas.toDataURL("image/jpeg", 0.8);
+        setSelectedImage(compressedBase64);
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
 
   const mergeCatalog = (catalog: ProductMini[]) => {
     setProductsById((prev) => {
@@ -293,9 +329,11 @@ export default function AiStylistChat({ darkMode }: { darkMode?: boolean } = {})
     );
   };
 
-  const handleProcessWorkflow = async (rawText: string) => {
-    const userText = rawText.trim();
-    if (!userText || isTyping) return;
+  const handleProcessWorkflow = async (rawText?: string, imageToSend?: string | null) => {
+    const userText = (rawText ?? chatInput).trim();
+    const currentImg = imageToSend !== undefined ? imageToSend : selectedImage;
+
+    if ((!userText && !currentImg) || isTyping) return;
 
     if (userText.includes("Gặp nhân viên CSKH") || userText.includes("CSKH")) {
       setActiveTab("cskh");
@@ -305,12 +343,19 @@ export default function AiStylistChat({ darkMode }: { darkMode?: boolean } = {})
     abortRef.current?.abort();
     abortRef.current = new AbortController();
 
-    const userMessage: Message = { id: crypto.randomUUID(), role: "user", text: userText };
+    const userMessage: Message = { 
+      id: crypto.randomUUID(), 
+      role: "user", 
+      text: userText || "Tìm đồ tương tự chiếc ảnh này",
+      image: currentImg || undefined
+    };
+    
     const aiMessageId = crypto.randomUUID();
     const aiMessage: Message = { id: aiMessageId, role: "ai", text: "", isStreaming: true };
 
     setMessages((prev) => [...prev, userMessage, aiMessage]);
     setChatInput("");
+    setSelectedImage(null);
     setIsTyping(true);
 
     try {
@@ -319,6 +364,7 @@ export default function AiStylistChat({ darkMode }: { darkMode?: boolean } = {})
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: userText,
+          image: currentImg || null,
           history: messages
             .filter((message) => message.text)
             .slice(-6)
@@ -363,7 +409,7 @@ export default function AiStylistChat({ darkMode }: { darkMode?: boolean } = {})
       visibleText += decoder.decode();
       updateStreamingMessage(
         aiMessageId,
-        visibleText || "Mình chưa tìm được món thật sự khớp. Bạn thử nói rõ hơn về dịp, màu sắc hoặc size nhé.",
+        visibleText || "Mình chưa tìm được món thật sự khớp. Bạn thử miêu tả thêm màu sắc hoặc size nhé.",
         true
       );
     } catch (error: unknown) {
@@ -380,7 +426,7 @@ export default function AiStylistChat({ darkMode }: { darkMode?: boolean } = {})
   };
 
   const handleInputSendButton = () => {
-    handleProcessWorkflow(chatInput);
+    handleProcessWorkflow();
   };
 
   return (
@@ -392,7 +438,7 @@ export default function AiStylistChat({ darkMode }: { darkMode?: boolean } = {})
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.97 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="flex h-[435px] max-h-[70vh] w-[310px] sm:w-[330px] flex-col overflow-hidden rounded-2xl border border-stone-300 bg-[#FAF8F3] text-[#142A1E] shadow-[0_12px_36px_rgba(0,0,0,0.18)]"
+            className="flex h-[445px] max-h-[72vh] w-[315px] sm:w-[335px] flex-col overflow-hidden rounded-2xl border border-stone-300 bg-[#FAF8F3] text-[#142A1E] shadow-[0_12px_36px_rgba(0,0,0,0.18)]"
           >
             {/* 👑 REFINED FOREST GREEN HEADER */}
             <div className="bg-[#122D20] p-2.5 px-3 text-white border-b border-[#1C4431] shadow-2xs">
@@ -460,12 +506,16 @@ export default function AiStylistChat({ darkMode }: { darkMode?: boolean } = {})
                     <div key={message.id} className="space-y-1">
                       <div className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
                         {message.role === "user" ? (
-                          <div className="max-w-[85%] rounded-xl rounded-tr-none bg-[#183A2D] px-2.5 py-1.5 text-[10.5px] font-medium text-white shadow-2xs">
-                            {message.text}
+                          <div className="max-w-[85%] rounded-xl rounded-tr-none bg-[#183A2D] px-2.5 py-1.5 text-[10.5px] font-medium text-white shadow-2xs space-y-1">
+                            {message.image && (
+                              <div className="relative w-28 h-28 rounded-lg overflow-hidden border border-white/20 mb-1">
+                                <img src={message.image} alt="Ảnh người dùng gửi" className="w-full h-full object-cover object-top" />
+                              </div>
+                            )}
+                            {message.text && <div>{message.text}</div>}
                           </div>
                         ) : (
                           <div className="w-full max-w-[98%] rounded-xl rounded-tl-none border border-stone-200/90 bg-white p-2.5 text-[10.5px] font-normal leading-relaxed text-[#142A1E] shadow-2xs">
-                            {/* NẾU ĐANG STREAMING MÀ CHƯA CÓ CHỮ => HIỆN 3 CHẤM SỐNG ĐỘNG */}
                             {message.isStreaming && !message.text ? (
                               <LivingTypingDots />
                             ) : (
@@ -478,7 +528,6 @@ export default function AiStylistChat({ darkMode }: { darkMode?: boolean } = {})
                                   />
                                 ) : null}
 
-                                {/* CON TRỎ PHÁT SÁNG KHI ĐANG GÕ DÒNG CHỮ */}
                                 {message.isStreaming && (
                                   <motion.span 
                                     animate={{ opacity: [1, 0, 1] }}
@@ -512,20 +561,59 @@ export default function AiStylistChat({ darkMode }: { darkMode?: boolean } = {})
                   <div ref={messagesEndRef} />
                 </div>
 
-                {/* COMPACT INPUT BAR */}
+                {/* 📷 IMAGE PREVIEW STRIP (KHI ĐANG CHỌN ẢNH ĐỂ GỬI) */}
+                {selectedImage && (
+                  <div className="flex items-center justify-between px-2.5 py-1.5 bg-emerald-50 border-t border-emerald-200/60">
+                    <div className="flex items-center gap-2">
+                      <div className="relative w-8 h-8 rounded-md overflow-hidden border border-emerald-300">
+                        <img src={selectedImage} alt="Ảnh chuẩn bị gửi" className="w-full h-full object-cover" />
+                      </div>
+                      <span className="text-[9.5px] font-medium text-emerald-900 font-ui">Đã chọn ảnh lookbook</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedImage(null)}
+                      className="w-5 h-5 rounded-full bg-emerald-200 hover:bg-emerald-300 flex items-center justify-center text-emerald-800 transition-colors cursor-pointer"
+                    >
+                      <X size={10} />
+                    </button>
+                  </div>
+                )}
+
+                {/* COMPACT INPUT BAR CÓ NÚT GỬI ẢNH */}
                 <div className="flex items-center gap-1.5 border-t border-stone-200/80 p-2 bg-white">
+                  {/* Hidden File Input */}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={fileInputRef}
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+
+                  {/* Nút Upload Ảnh */}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex h-6.5 w-6.5 shrink-0 items-center justify-center rounded-full text-stone-500 hover:text-[#183A2D] hover:bg-[#EBF5EA] transition-colors cursor-pointer border border-stone-200"
+                    title="Gửi ảnh outfit / lookbook để AI tìm đồ tương tự"
+                  >
+                    <Camera size={12} />
+                  </button>
+
                   <input
                     type="text"
                     value={chatInput}
                     onChange={(event) => setChatInput(event.target.value)}
                     onKeyDown={(event) => event.key === "Enter" && handleInputSendButton()}
-                    placeholder="Ví dụ: Đầm dạ hội đen size M..."
+                    placeholder={selectedImage ? "Nhập yêu cầu (hoặc gửi ảnh ngay)..." : "Ví dụ: Đầm dạ hội đen size M..."}
                     className="min-w-0 flex-1 rounded-full border border-stone-300 bg-[#FAF8F3] px-3 py-1 text-[10.5px] font-medium text-[#142A1E] outline-none transition-all focus:border-[#183A2D]"
                   />
+
                   <button
                     type="button"
                     onClick={handleInputSendButton}
-                    disabled={isTyping || !chatInput.trim()}
+                    disabled={isTyping || (!chatInput.trim() && !selectedImage)}
                     className="flex h-6.5 w-6.5 shrink-0 items-center justify-center rounded-full bg-[#183A2D] text-white shadow-2xs transition hover:bg-[#2A6E46] disabled:cursor-not-allowed disabled:opacity-30 cursor-pointer"
                   >
                     <Send size={10} />
@@ -544,7 +632,6 @@ export default function AiStylistChat({ darkMode }: { darkMode?: boolean } = {})
                   </p>
                 </div>
 
-                {/* Contact Action Cards */}
                 <div className="space-y-1.5">
                   <a
                     href="tel:0987654321"
@@ -600,7 +687,7 @@ export default function AiStylistChat({ darkMode }: { darkMode?: boolean } = {})
         )}
       </AnimatePresence>
 
-      {/* 🚀 CHỈ ICON THỜI TRANG ĐỘC BẢN CLOOP CHATBOT (Floating Circular Action Button) */}
+      {/* 🚀 CHỈ ICON THỜI TRANG ĐỘC BẢN CLOOP CHATBOT */}
       <motion.button
         type="button"
         onClick={() => setShowChat(!showChat)}
@@ -609,13 +696,8 @@ export default function AiStylistChat({ darkMode }: { darkMode?: boolean } = {})
         className="relative flex items-center justify-center w-12 h-12 sm:w-13 sm:h-13 rounded-full bg-gradient-to-br from-[#1B4733] to-[#0A1F15] text-white shadow-[0_8px_25px_rgba(10,31,22,0.45)] hover:shadow-[0_12px_32px_rgba(34,197,94,0.35)] border border-[#A3E39F]/40 transition-all duration-300 cursor-pointer group"
         title="Trợ lý Chat CLOOP"
       >
-        {/* Animated Green Pulse Ring */}
         <span className="absolute -inset-0.5 rounded-full bg-emerald-400/20 animate-ping pointer-events-none" />
-
-        {/* Custom CLOOP Chatbot Mascot SVG */}
         <CloopChatBotIcon className="w-7 h-7 sm:w-8 sm:h-8 transition-transform duration-300 group-hover:scale-105" />
-
-        {/* Green Online Dot Badge */}
         <span className="absolute top-0 right-0 w-3 h-3 rounded-full bg-emerald-400 border-2 border-[#122D20] shadow-xs" />
       </motion.button>
     </div>
