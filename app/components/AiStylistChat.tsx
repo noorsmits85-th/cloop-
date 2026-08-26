@@ -26,7 +26,7 @@ function CloopChatBotIcon({ className = "w-6 h-6" }: { className?: string }) {
         strokeLinejoin="round"
       />
 
-      {/* CLOOP Infinity Loop Eyes (Biểu tượng Vòng Lặp Bất Tận) */}
+      {/* CLOOP Infinity Loop Eyes */}
       <path
         d="M13.2 16.5C11.4 16.5 10 17.84 10 19.5C10 21.16 11.4 22.5 13.2 22.5C15.2 22.5 16.6 20.5 18 19.5C19.4 18.5 20.8 16.5 22.8 16.5C24.6 16.5 26 17.84 26 19.5C26 21.16 24.6 22.5 22.8 22.5C20.8 22.5 19.4 20.5 18 19.5C16.6 18.5 15.2 16.5 13.2 16.5Z"
         stroke="#A3E39F"
@@ -49,6 +49,51 @@ function CloopChatBotIcon({ className = "w-6 h-6" }: { className?: string }) {
         </linearGradient>
       </defs>
     </svg>
+  );
+}
+
+// 🟢 COMPONENT 3 CHẤM CHUYỂN ĐỘNG SỐNG ĐỘNG (LIVING TYPING INDICATOR)
+function LivingTypingDots() {
+  const [statusIdx, setStatusIdx] = useState(0);
+  const statuses = [
+    "Đang đọc vị phong cách...",
+    "Đang quét kho đồ thật...",
+    "Đang chuẩn bị gợi ý..."
+  ];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setStatusIdx((prev) => (prev + 1) % statuses.length);
+    }, 1800);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="flex items-center gap-2 py-1 px-1">
+      {/* 3 Bouncing Dots Wave */}
+      <div className="flex items-center gap-1">
+        <motion.span 
+          animate={{ y: [0, -5, 0], scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: 0 }}
+          className="w-1.5 h-1.5 rounded-full bg-emerald-600 shadow-[0_0_6px_#10B981]"
+        />
+        <motion.span 
+          animate={{ y: [0, -5, 0], scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
+          className="w-1.5 h-1.5 rounded-full bg-emerald-600 shadow-[0_0_6px_#10B981]"
+        />
+        <motion.span 
+          animate={{ y: [0, -5, 0], scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
+          className="w-1.5 h-1.5 rounded-full bg-emerald-600 shadow-[0_0_6px_#10B981]"
+        />
+      </div>
+
+      {/* Dynamic Alive Text Caption */}
+      <span className="text-[9.5px] font-medium text-emerald-800 font-ui tracking-wide">
+        {statuses[statusIdx]}
+      </span>
+    </div>
   );
 }
 
@@ -353,7 +398,7 @@ export default function AiStylistChat({ darkMode }: { darkMode?: boolean } = {})
             <div className="bg-[#122D20] p-2.5 px-3 text-white border-b border-[#1C4431] shadow-2xs">
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2">
-                  <div className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 text-white border border-white/20 p-0.5">
+                  <div className="relative flex h-6.5 w-6.5 items-center justify-center rounded-md bg-white/10 text-white border border-white/20 p-0.5">
                     <CloopChatBotIcon className="w-5 h-5" />
                     <span className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400 border border-[#122D20]" />
                   </div>
@@ -362,7 +407,7 @@ export default function AiStylistChat({ darkMode }: { darkMode?: boolean } = {})
                       TRỢ LÝ CLOOP
                     </h3>
                     <p className="text-[8.5px] text-[#A3E39F] font-ui leading-tight font-medium">
-                      Hoạt động 24/7 • Tìm đồ chuẩn gu
+                      {isTyping ? "Đang phản hồi..." : "Hoạt động 24/7 • Tìm đồ chuẩn gu"}
                     </p>
                   </div>
                 </div>
@@ -420,21 +465,34 @@ export default function AiStylistChat({ darkMode }: { darkMode?: boolean } = {})
                           </div>
                         ) : (
                           <div className="w-full max-w-[98%] rounded-xl rounded-tl-none border border-stone-200/90 bg-white p-2.5 text-[10.5px] font-normal leading-relaxed text-[#142A1E] shadow-2xs">
-                            {message.text ? (
-                              <MessageContent 
-                                text={message.text} 
-                                subNote={message.subNote} 
-                                products={productsById} 
-                              />
-                            ) : null}
-                            {message.isStreaming && (
-                              <span className="ml-1 inline-block h-2.5 w-1 animate-pulse rounded bg-emerald-600 align-middle" />
+                            {/* NẾU ĐANG STREAMING MÀ CHƯA CÓ CHỮ => HIỆN 3 CHẤM SỐNG ĐỘNG */}
+                            {message.isStreaming && !message.text ? (
+                              <LivingTypingDots />
+                            ) : (
+                              <>
+                                {message.text ? (
+                                  <MessageContent 
+                                    text={message.text} 
+                                    subNote={message.subNote} 
+                                    products={productsById} 
+                                  />
+                                ) : null}
+
+                                {/* CON TRỎ PHÁT SÁNG KHI ĐANG GÕ DÒNG CHỮ */}
+                                {message.isStreaming && (
+                                  <motion.span 
+                                    animate={{ opacity: [1, 0, 1] }}
+                                    transition={{ duration: 0.6, repeat: Infinity }}
+                                    className="inline-block w-1.5 h-3 ml-1 bg-emerald-600 rounded-xs align-middle shadow-[0_0_6px_#059669]"
+                                  />
+                                )}
+                              </>
                             )}
                           </div>
                         )}
                       </div>
 
-                      {message.suggestions && message.role === "ai" && (
+                      {message.suggestions && message.role === "ai" && !message.isStreaming && (
                         <div className="flex flex-wrap justify-start gap-1 pl-0.5 pt-0.5">
                           {message.suggestions.map((suggestion) => (
                             <button
@@ -450,17 +508,6 @@ export default function AiStylistChat({ darkMode }: { darkMode?: boolean } = {})
                       )}
                     </div>
                   ))}
-
-                  {isTyping && !messages.some((message) => message.isStreaming) && (
-                    <div className="flex justify-start">
-                      <div className="flex items-center gap-1 rounded-xl rounded-tl-none px-2.5 py-1.5 border border-stone-200 bg-white text-stone-600">
-                        <span className="h-1 w-1 animate-bounce rounded-full bg-[#183A2D]" />
-                        <span className="h-1 w-1 animate-bounce rounded-full bg-[#183A2D]" style={{ animationDelay: "150ms" }} />
-                        <span className="h-1 w-1 animate-bounce rounded-full bg-[#183A2D]" style={{ animationDelay: "300ms" }} />
-                        <span className="text-[9px] text-stone-500 ml-1 font-ui">Đang tìm đồ chuẩn gu...</span>
-                      </div>
-                    </div>
-                  )}
 
                   <div ref={messagesEndRef} />
                 </div>
