@@ -4,6 +4,9 @@ import React, { useState } from "react";
 import Image from "next/image";
 import { 
   ShieldCheck, 
+  Lock,
+  Leaf,
+  Award,
   ArrowRight, 
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -17,6 +20,7 @@ export default function MarketingLoopShowcase() {
       title: "Chọn đồ & Ướm dáng",
       desc: "Khám phá hàng ngàn trang phục dạ hội, áo dài & blazer thiết kế tuyển chọn.",
       meta: "Stylist 24/7",
+      action: "Khám phá ngay",
       image: "/step1_phone.jpg"
     },
     {
@@ -24,6 +28,7 @@ export default function MarketingLoopShowcase() {
       title: "Nhận đồ & Giữ cọc",
       desc: "Giao tận tay thơm tho tươm tất. Tiền cọc được bảo chứng an toàn qua Két Escrow.",
       meta: "Két Escrow 100%",
+      action: "Bảo chứng an toàn",
       image: "/step2_bag.jpg"
     },
     {
@@ -31,6 +36,7 @@ export default function MarketingLoopShowcase() {
       title: "Tỏa sáng sự kiện",
       desc: "Tự tin ghi dấu ấn rực rỡ với chi phí chỉ từ 10% so với giá mua mới.",
       meta: "Tiết kiệm 90%",
+      action: "Tỏa sáng lộng lẫy",
       image: "/step3_party.jpg"
     },
     {
@@ -38,6 +44,7 @@ export default function MarketingLoopShowcase() {
       title: "Hoàn trả & Tích điểm",
       desc: "Giao nhận trả đồ tận nơi tiện lợi. Tự động hoàn cọc 100% & tích lũy điểm xanh.",
       meta: "+50 Green Pts",
+      action: "Hoàn cọc tức thì",
       image: "https://images.unsplash.com/photo-1584917865442-de89df76afd3?q=80&w=600"
     }
   ];
@@ -48,6 +55,7 @@ export default function MarketingLoopShowcase() {
       title: "Đăng tủ 30 giây",
       desc: "Chụp ảnh váy áo nhàn rỗi. Tự động đề xuất phân loại & mức giá thuê chuẩn sàn.",
       meta: "Đăng đồ 30s",
+      action: "Bắt đầu đăng đồ",
       image: "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?q=80&w=600"
     },
     {
@@ -55,6 +63,7 @@ export default function MarketingLoopShowcase() {
       title: "Giao nhận tận cửa",
       desc: "Đối tác vận chuyển lấy hàng tận nơi, chủ tủ không cần tốn công di chuyển.",
       meta: "Lấy hàng tại nhà",
+      action: "Giao nhận thảnh thơi",
       image: "/step2_bag.jpg"
     },
     {
@@ -62,6 +71,7 @@ export default function MarketingLoopShowcase() {
       title: "Thu nhập thụ động",
       desc: "Tiền thuê tự động cộng vào ví sau mỗi chuyến đi, rút về STK nhanh gọn.",
       meta: "Rút tiền chính chủ",
+      action: "Xem ví thu nhập",
       image: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?q=80&w=600"
     },
     {
@@ -69,6 +79,7 @@ export default function MarketingLoopShowcase() {
       title: "Định danh xanh ESG",
       desc: "Đo lường CO₂ giảm thải, nâng hạng uy tín tủ đồ & nhận ưu đãi độc quyền.",
       meta: "Huy hiệu Trustworthy",
+      action: "Tích điểm uy tín",
       image: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?q=80&w=600"
     }
   ];
@@ -77,7 +88,7 @@ export default function MarketingLoopShowcase() {
 
   return (
     <section className="w-full bg-[#FAF9F5] border-b border-stone-200/70 py-8 md:py-12 text-[#183A2D] font-body">
-      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 space-y-6 md:space-y-8">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 space-y-6 md:space-y-7">
         
         {/* HEADER GỌN GÀNG & THANH LỊCH */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-stone-200/60 pb-4">
@@ -168,7 +179,7 @@ export default function MarketingLoopShowcase() {
                   </div>
 
                   <div className="pt-2.5 mt-2 border-t border-stone-100 flex items-center justify-between text-[10.5px] text-stone-400 font-ui">
-                    <span className="text-[#183A2D] font-semibold">Bảo chứng CLOOP</span>
+                    <span className="text-[#183A2D] font-semibold">{item.action}</span>
                     <ArrowRight size={12} className="text-stone-400 group-hover:text-[#183A2D] group-hover:translate-x-0.5 transition-all" />
                   </div>
                 </div>
@@ -177,38 +188,54 @@ export default function MarketingLoopShowcase() {
           </motion.div>
         </AnimatePresence>
 
-        {/* DẢI BẢO CHỨNG MINH BẠCH */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
-          <div className="flex items-center gap-2.5 p-3 bg-white rounded-xl border border-stone-200/70 text-left shadow-2xs">
-            <ShieldCheck size={18} strokeWidth={1.5} className="text-emerald-800 shrink-0" />
-            <div className="leading-tight">
-              <p className="text-[11.5px] font-bold text-[#183A2D]">Két Cọc Escrow</p>
-              <p className="text-[10px] text-stone-500 font-light">Hoàn cọc 100% khi trả đồ</p>
+        {/* 🛡️ DẢI BẢO CHỨNG NGUYÊN KHỐI LIỀN MẠCH (SINGLE UNIFIED TRUST RIBBON) */}
+        <div className="bg-white rounded-2xl border border-stone-200/90 shadow-xs overflow-hidden">
+          <div className="grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-stone-200/70">
+            
+            {/* 1. Két Escrow */}
+            <div className="flex items-center gap-3 p-3.5 sm:px-4.5 hover:bg-stone-50/60 transition-colors">
+              <div className="w-9 h-9 rounded-xl bg-[#EAF2E8] flex items-center justify-center shrink-0 border border-[#D2E4CE] text-[#183A2D]">
+                <ShieldCheck size={18} strokeWidth={2} />
+              </div>
+              <div className="leading-tight">
+                <p className="text-[11.5px] font-bold text-[#183A2D] font-ui">Két Cọc Escrow 100%</p>
+                <p className="text-[10px] text-stone-500 font-light mt-0.5">Hoàn cọc tự động khi trả đồ</p>
+              </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-2.5 p-3 bg-white rounded-xl border border-stone-200/70 text-left shadow-2xs">
-            <ShieldCheck size={18} strokeWidth={1.5} className="text-emerald-800 shrink-0" />
-            <div className="leading-tight">
-              <p className="text-[11.5px] font-bold text-[#183A2D]">Định Danh Bank-KYC</p>
-              <p className="text-[10px] text-stone-500 font-light">Rút tiền về STK chính chủ</p>
+            {/* 2. KYC Bank */}
+            <div className="flex items-center gap-3 p-3.5 sm:px-4.5 hover:bg-stone-50/60 transition-colors">
+              <div className="w-9 h-9 rounded-xl bg-[#EAF2E8] flex items-center justify-center shrink-0 border border-[#D2E4CE] text-[#183A2D]">
+                <Lock size={16} strokeWidth={2} />
+              </div>
+              <div className="leading-tight">
+                <p className="text-[11.5px] font-bold text-[#183A2D] font-ui">Định Danh Bank-KYC</p>
+                <p className="text-[10px] text-stone-500 font-light mt-0.5">Rút tiền về STK chính chủ</p>
+              </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-2.5 p-3 bg-white rounded-xl border border-stone-200/70 text-left shadow-2xs">
-            <ShieldCheck size={18} strokeWidth={1.5} className="text-emerald-800 shrink-0" />
-            <div className="leading-tight">
-              <p className="text-[11.5px] font-bold text-[#183A2D]">Điểm Green Pts</p>
-              <p className="text-[10px] text-stone-500 font-light">Giảm đến 50% tiền cọc</p>
+            {/* 3. Green Pts */}
+            <div className="flex items-center gap-3 p-3.5 sm:px-4.5 hover:bg-stone-50/60 transition-colors">
+              <div className="w-9 h-9 rounded-xl bg-[#EAF2E8] flex items-center justify-center shrink-0 border border-[#D2E4CE] text-[#183A2D]">
+                <Leaf size={16} strokeWidth={2} />
+              </div>
+              <div className="leading-tight">
+                <p className="text-[11.5px] font-bold text-[#183A2D] font-ui">Điểm Xanh Green Pts</p>
+                <p className="text-[10px] text-stone-500 font-light mt-0.5">Giảm đến 50% tiền cọc</p>
+              </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-2.5 p-3 bg-white rounded-xl border border-stone-200/70 text-left shadow-2xs">
-            <ShieldCheck size={18} strokeWidth={1.5} className="text-emerald-800 shrink-0" />
-            <div className="leading-tight">
-              <p className="text-[11.5px] font-bold text-[#183A2D]">Đánh Giá Mù 2 Chiều</p>
-              <p className="text-[10px] text-stone-500 font-light">Minh bạch chuẩn Airbnb</p>
+            {/* 4. Đánh giá mù */}
+            <div className="flex items-center gap-3 p-3.5 sm:px-4.5 hover:bg-stone-50/60 transition-colors">
+              <div className="w-9 h-9 rounded-xl bg-[#EAF2E8] flex items-center justify-center shrink-0 border border-[#D2E4CE] text-[#183A2D]">
+                <Award size={16} strokeWidth={2} />
+              </div>
+              <div className="leading-tight">
+                <p className="text-[11.5px] font-bold text-[#183A2D] font-ui">Đánh Giá Mù 2 Chiều</p>
+                <p className="text-[10px] text-stone-500 font-light mt-0.5">Minh bạch chuẩn Airbnb</p>
+              </div>
             </div>
+
           </div>
         </div>
 
