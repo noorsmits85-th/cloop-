@@ -396,36 +396,6 @@ export default function CreateProductListingPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="p-8 sm:p-12 space-y-12">
-            
-            {/* 🤖 AI AUTO-FILL STATUS BANNER */}
-            {isAiScanning && (
-              <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-ui shadow-xs animate-pulse">
-                <div className="w-5 h-5 border-2 border-emerald-700 border-t-transparent rounded-full animate-spin shrink-0" />
-                <div>
-                  <p className="font-bold">Trí tuệ nhân tạo CLOOP Vision đang quét ảnh...</p>
-                  <p className="text-[11px] text-emerald-700">Tự động nhận diện tên món đồ, màu sắc, chất liệu, dịp và đề xuất giá thuê giúp bạn.</p>
-                </div>
-              </div>
-            )}
-
-            {aiAutofillSuccess && !isAiScanning && (
-              <div className="flex items-center justify-between p-4 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-ui shadow-xs">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-2 h-2 rounded-full bg-emerald-700 shrink-0" />
-                  <div>
-                    <p className="font-bold">Đã tự động nhận diện & điền trọn bộ thông số!</p>
-                    <p className="text-[11px] text-emerald-700">Bạn chỉ cần kiểm tra lại các thông tin bên dưới và bấm đăng nhé.</p>
-                  </div>
-                </div>
-                <button 
-                  type="button" 
-                  onClick={() => setAiAutofillSuccess(false)} 
-                  className="text-stone-400 hover:text-stone-700 text-xs font-bold px-2 py-1 cursor-pointer"
-                >
-                  ✕
-                </button>
-              </div>
-            )}
 
             {/* 01: HÌNH ẢNH */}
             <section>
