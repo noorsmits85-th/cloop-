@@ -23,7 +23,7 @@ export default function MarketingLoopShowcase() {
       step: "01",
       title: "Chọn đồ & Ướm dáng",
       desc: "Trang phục dạ hội, áo dài & blazer thiết kế tuyển chọn.",
-      meta: "AI Stylist 24/7"
+      meta: "Stylist 24/7"
     },
     {
       step: "02",
@@ -40,7 +40,7 @@ export default function MarketingLoopShowcase() {
     {
       step: "04",
       title: "Hoàn trả & Tích điểm",
-      desc: "Shipper thu hồi tại nhà. Tự động hoàn cọc & tích Green Pts.",
+      desc: "Giao nhận trả đồ tận nơi qua đối tác vận chuyển. Tự động hoàn cọc & tích Green Pts.",
       meta: "+50 Green Pts"
     }
   ];
@@ -49,13 +49,13 @@ export default function MarketingLoopShowcase() {
     {
       step: "01",
       title: "Đăng tủ 30 giây",
-      desc: "Chụp ảnh váy áo nhàn rỗi. AI tự điền thông số & gợi ý giá thuê.",
-      meta: "AI Fast-Listing"
+      desc: "Chụp ảnh váy áo nhàn rỗi. Tự động đề xuất phân loại & mức giá thuê chuẩn sàn.",
+      meta: "Đăng đồ 30s"
     },
     {
       step: "02",
       title: "Giao nhận tận cửa",
-      desc: "Shipper đến lấy hàng tận nơi, chủ tủ không cần di chuyển.",
+      desc: "Đối tác vận chuyển lấy hàng tận nơi, chủ tủ không cần di chuyển.",
       meta: "Lấy hàng tại nhà"
     },
     {
