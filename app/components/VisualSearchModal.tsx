@@ -183,13 +183,13 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
               </div>
               <div>
                 <h3 className="font-heading text-xl sm:text-2xl font-bold tracking-wide flex items-center gap-2">
-                  AI Lookbook Visual Search
+                  Tìm kiếm bằng hình ảnh
                   <span className="text-[10px] uppercase font-extrabold tracking-widest px-2.5 py-0.5 rounded-full bg-emerald-400/20 text-emerald-300 border border-emerald-400/30 font-ui flex items-center gap-1">
-                    CLOOP Vision AI
+                    Visual Search
                   </span>
                 </h3>
                 <p className="text-xs text-stone-400">
-                  Phân tích phong cách bằng Trí tuệ nhân tạo CLOOP Vision để tìm đồ tương tự trong kho
+                  Tải ảnh phong cách hoặc góc chụp trang phục để khám phá tủ đồ tương tự trong kho CLOOP
                 </p>
               </div>
             </div>

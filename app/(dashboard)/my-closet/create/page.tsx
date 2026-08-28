@@ -413,8 +413,8 @@ export default function CreateProductListingPage() {
                 <div className="w-12 h-12 rounded-full bg-white border border-[#D5C6B1] flex items-center justify-center mx-auto text-stone-400 group-hover:bg-[#1C3F30] group-hover:text-white transition-all mb-3 shadow-sm">
                   <Camera size={20} />
                 </div>
-                <p className="font-medium text-lg text-gray-700 mb-1">Chụp ảnh hoặc dán ảnh vào đây</p>
-                <p className="text-[11px] text-emerald-800 font-semibold font-sans">Trí tuệ nhân tạo CLOOP sẽ tự động nhìn ảnh và điền hết thông số cho bạn!</p>
+                <p className="font-medium text-base text-stone-700 mb-1">Tải ảnh lên hoặc chụp ảnh trực tiếp</p>
+                <p className="text-xs text-stone-400 font-sans">Hỗ trợ định dạng JPG, PNG, WEBP • Khuyên dùng 2 - 4 góc chụp rõ nét</p>
               </div>
               
               {images.length > 0 && (
