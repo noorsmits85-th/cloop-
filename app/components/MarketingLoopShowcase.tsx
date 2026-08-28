@@ -2,11 +2,8 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { 
-  ShieldCheck, 
-  Lock,
-  Leaf,
-  Award,
   ArrowRight, 
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -18,32 +15,36 @@ export default function MarketingLoopShowcase() {
     {
       step: "01",
       title: "Chọn đồ & Ướm dáng",
-      desc: "Khám phá hàng ngàn trang phục dạ hội, áo dài & blazer thiết kế tuyển chọn.",
+      desc: "Khám phá hàng ngàn trang phục dạ hội, áo dài & blazer thiết kế tuyển chọn từ các chủ tủ uy tín.",
       meta: "Stylist 24/7",
+      link: "/shop",
       action: "Khám phá ngay",
       image: "/step1_phone.jpg"
     },
     {
       step: "02",
       title: "Nhận đồ & Giữ cọc",
-      desc: "Giao tận tay thơm tho tươm tất. Tiền cọc được bảo chứng an toàn qua Két Escrow.",
+      desc: "Giao tận tay thơm tho tươm tất. Tiền cọc được bảo chứng an toàn tuyệt đối qua Két Escrow.",
       meta: "Két Escrow 100%",
+      link: "/shop",
       action: "Bảo chứng an toàn",
       image: "/step2_bag.jpg"
     },
     {
       step: "03",
       title: "Tỏa sáng sự kiện",
-      desc: "Tự tin ghi dấu ấn rực rỡ với chi phí chỉ từ 10% so với giá mua mới.",
+      desc: "Tự tin ghi dấu ấn rực rỡ tại các bữa tiệc với chi phí chỉ từ 10% so với giá mua mới.",
       meta: "Tiết kiệm 90%",
+      link: "/shop",
       action: "Tỏa sáng lộng lẫy",
       image: "/step3_party.jpg"
     },
     {
       step: "04",
       title: "Hoàn trả & Tích điểm",
-      desc: "Giao nhận trả đồ tận nơi tiện lợi. Tự động hoàn cọc 100% & tích lũy điểm xanh.",
+      desc: "Giao nhận trả đồ tận nơi tiện lợi. Tự động hoàn cọc 100% về ví & tích lũy điểm xanh Eco.",
       meta: "+50 Green Pts",
+      link: "/shop",
       action: "Hoàn cọc tức thì",
       image: "https://images.unsplash.com/photo-1584917865442-de89df76afd3?q=80&w=600"
     }
@@ -53,32 +54,36 @@ export default function MarketingLoopShowcase() {
     {
       step: "01",
       title: "Đăng tủ 30 giây",
-      desc: "Chụp ảnh váy áo nhàn rỗi. Tự động đề xuất phân loại & mức giá thuê chuẩn sàn.",
+      desc: "Chụp ảnh váy áo nhàn rỗi. Tự động đề xuất phân loại chuẩn xác & mức giá thuê chuẩn sàn.",
       meta: "Đăng đồ 30s",
+      link: "/my-closet/create",
       action: "Bắt đầu đăng đồ",
       image: "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?q=80&w=600"
     },
     {
       step: "02",
       title: "Giao nhận tận cửa",
-      desc: "Đối tác vận chuyển lấy hàng tận nơi, chủ tủ không cần tốn công di chuyển.",
+      desc: "Đối tác vận chuyển lấy hàng tận nơi, chủ tủ không cần tốn thời gian di chuyển.",
       meta: "Lấy hàng tại nhà",
+      link: "/my-closet",
       action: "Giao nhận thảnh thơi",
       image: "/step2_bag.jpg"
     },
     {
       step: "03",
       title: "Thu nhập thụ động",
-      desc: "Tiền thuê tự động cộng vào ví sau mỗi chuyến đi, rút về STK nhanh gọn.",
+      desc: "Tiền thuê tự động cộng vào ví sau mỗi chuyến đi, rút về số tài khoản ngân hàng trong 30s.",
       meta: "Rút tiền chính chủ",
+      link: "/my-closet",
       action: "Xem ví thu nhập",
       image: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?q=80&w=600"
     },
     {
       step: "04",
       title: "Định danh xanh ESG",
-      desc: "Đo lường CO₂ giảm thải, nâng hạng uy tín tủ đồ & nhận ưu đãi độc quyền.",
+      desc: "Đo lường CO₂ giảm thải, nâng hạng uy tín tủ đồ & nhận ưu đãi độc quyền từ CLOOP.",
       meta: "Huy hiệu Trustworthy",
+      link: "/my-closet",
       action: "Tích điểm uy tín",
       image: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?q=80&w=600"
     }
@@ -88,7 +93,7 @@ export default function MarketingLoopShowcase() {
 
   return (
     <section className="w-full bg-[#FAF9F5] border-b border-stone-200/70 py-8 md:py-12 text-[#183A2D] font-body">
-      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 space-y-6 md:space-y-7">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 space-y-6 md:space-y-8">
         
         {/* HEADER GỌN GÀNG & THANH LỊCH */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-stone-200/60 pb-4">
@@ -142,8 +147,9 @@ export default function MarketingLoopShowcase() {
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5"
           >
             {currentSteps.map((item, idx) => (
-              <div
+              <Link
                 key={idx}
+                href={item.link}
                 className="group bg-white rounded-2xl p-3 border border-stone-200/80 hover:border-emerald-800/40 hover:shadow-lg transition-all duration-300 text-left flex flex-col justify-between shadow-2xs"
               >
                 {/* 📷 KHUNG ẢNH LOOKBOOK THỜI TRANG */}
@@ -183,60 +189,28 @@ export default function MarketingLoopShowcase() {
                     <ArrowRight size={12} className="text-stone-400 group-hover:text-[#183A2D] group-hover:translate-x-0.5 transition-all" />
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </motion.div>
         </AnimatePresence>
 
-        {/* 🛡️ DẢI BẢO CHỨNG NGUYÊN KHỐI LIỀN MẠCH (SINGLE UNIFIED TRUST RIBBON) */}
-        <div className="bg-white rounded-2xl border border-stone-200/90 shadow-xs overflow-hidden">
-          <div className="grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-stone-200/70">
-            
-            {/* 1. Két Escrow */}
-            <div className="flex items-center gap-3 p-3.5 sm:px-4.5 hover:bg-stone-50/60 transition-colors">
-              <div className="w-9 h-9 rounded-xl bg-[#EAF2E8] flex items-center justify-center shrink-0 border border-[#D2E4CE] text-[#183A2D]">
-                <ShieldCheck size={18} strokeWidth={2} />
-              </div>
-              <div className="leading-tight">
-                <p className="text-[11.5px] font-bold text-[#183A2D] font-ui">Két Cọc Escrow 100%</p>
-                <p className="text-[10px] text-stone-500 font-light mt-0.5">Hoàn cọc tự động khi trả đồ</p>
-              </div>
-            </div>
-
-            {/* 2. KYC Bank */}
-            <div className="flex items-center gap-3 p-3.5 sm:px-4.5 hover:bg-stone-50/60 transition-colors">
-              <div className="w-9 h-9 rounded-xl bg-[#EAF2E8] flex items-center justify-center shrink-0 border border-[#D2E4CE] text-[#183A2D]">
-                <Lock size={16} strokeWidth={2} />
-              </div>
-              <div className="leading-tight">
-                <p className="text-[11.5px] font-bold text-[#183A2D] font-ui">Định Danh Bank-KYC</p>
-                <p className="text-[10px] text-stone-500 font-light mt-0.5">Rút tiền về STK chính chủ</p>
-              </div>
-            </div>
-
-            {/* 3. Green Pts */}
-            <div className="flex items-center gap-3 p-3.5 sm:px-4.5 hover:bg-stone-50/60 transition-colors">
-              <div className="w-9 h-9 rounded-xl bg-[#EAF2E8] flex items-center justify-center shrink-0 border border-[#D2E4CE] text-[#183A2D]">
-                <Leaf size={16} strokeWidth={2} />
-              </div>
-              <div className="leading-tight">
-                <p className="text-[11.5px] font-bold text-[#183A2D] font-ui">Điểm Xanh Green Pts</p>
-                <p className="text-[10px] text-stone-500 font-light mt-0.5">Giảm đến 50% tiền cọc</p>
-              </div>
-            </div>
-
-            {/* 4. Đánh giá mù */}
-            <div className="flex items-center gap-3 p-3.5 sm:px-4.5 hover:bg-stone-50/60 transition-colors">
-              <div className="w-9 h-9 rounded-xl bg-[#EAF2E8] flex items-center justify-center shrink-0 border border-[#D2E4CE] text-[#183A2D]">
-                <Award size={16} strokeWidth={2} />
-              </div>
-              <div className="leading-tight">
-                <p className="text-[11.5px] font-bold text-[#183A2D] font-ui">Đánh Giá Mù 2 Chiều</p>
-                <p className="text-[10px] text-stone-500 font-light mt-0.5">Minh bạch chuẩn Airbnb</p>
-              </div>
-            </div>
-
-          </div>
+        {/* NÚT KÊU GỌI HÀNH ĐỘNG CHUẨN BY ROTATION */}
+        <div className="flex justify-center pt-2">
+          {roleTab === "RENTER" ? (
+            <Link
+              href="/shop"
+              className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#183A2D] hover:bg-[#2C4233] text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all font-ui shadow-xs hover:shadow-md"
+            >
+              Khám Phá Toàn Bộ Tủ Đồ Cho Thuê <ArrowRight size={13} />
+            </Link>
+          ) : (
+            <Link
+              href="/my-closet/create"
+              className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#183A2D] hover:bg-[#2C4233] text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all font-ui shadow-xs hover:shadow-md"
+            >
+              Đăng Tủ Đồ & Bắt Đầu Kiếm Tiền <ArrowRight size={13} />
+            </Link>
+          )}
         </div>
 
       </div>
