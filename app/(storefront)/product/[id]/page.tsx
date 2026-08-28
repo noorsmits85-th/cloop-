@@ -39,85 +39,27 @@ function ProductDetailContent() {
     async function fetchProductDetail() {
       try {
         setLoading(true);
-        const { data, error } = await supabase.from("products").select("*").eq("id", id).single();
-        if (error) throw error;
+        const res = await fetch(`/api/products/${id}`);
+        const result = await res.json();
 
-        let fetchedImages: string[] = [];
-        try {
-          const { data: imgData } = await supabase.from("product_images").select("url").eq("productId", id);
-          if (imgData && imgData.length > 0) {
-            fetchedImages = imgData.map((img: any) => img.url);
-          }
-        } catch (e) {
-          console.warn("Bỏ qua lỗi truy xuất ProductImage.");
+        if (!res.ok || !result.success || !result.product) {
+          throw new Error(result?.error || "Không tìm thấy sản phẩm");
         }
 
-        if (fetchedImages.length === 0) {
-          fetchedImages = [data?.image_url || PLACEHOLDER_IMG];
-        }
-        setImagesList(fetchedImages);
-        setActiveImgIndex(0); 
+        const pData = result.product;
+        setProduct(pData);
+        setImagesList(pData.images && pData.images.length > 0 ? pData.images : [pData.image || PLACEHOLDER_IMG]);
+        setActiveImgIndex(0);
 
-        let ownerProfile: any = null;
-        if (data?.userId) {
-          try {
-            const { data: uData } = await supabase.from("profiles").select("*").eq("id", data.userId).single();
-            if (uData) ownerProfile = uData;
-          } catch (authErr) {
-            console.error("Lỗi truy vấn bảng User chính chủ:", authErr);
-          }
-        }
-
-        let priceData: any[] = [];
-        try {
-          const { data: lData } = await supabase.from("Listing").select("*").eq("productId", id);
-          if (lData && lData.length > 0) priceData = lData;
-        } catch (e) {
-          console.warn("Bỏ qua lỗi truy xuất Listing.");
-        }
-
-        try {
-          const { data: rentData } = await supabase.from("RentalHistory").select("id").eq("product_id", id).in("status", ["active", "RESERVED"]).limit(1);
-          if (rentData && rentData.length > 0) {
-            setHasActiveRentals(true);
-          } else {
-            const { data: rentData2 } = await supabase.from("rental_history").select("id").eq("product_id", id).in("status", ["active", "RESERVED"]).limit(1);
-            if (rentData2 && rentData2.length > 0) {
-              setHasActiveRentals(true);
-            }
-          }
-        } catch (e) {
-          console.warn("Bỏ qua kiểm tra lịch thuê", e);
-        }
-
-        const rentListing = priceData.find((l: any) => (l.listingType || l.listing_type) === "RENT");
-        const saleListing = priceData.find((l: any) => (l.listingType || l.listing_type) === "SALE" || (l.listingType || l.listing_type) === "SELL");
-
-        const isRentalAvailable = !!rentListing || data?.rental_price > 0;
-        const isSaleAvailable = !!saleListing || data?.sale_price > 0;
-
-        setProduct({
-          ...data,
-          rentalPrice: rentListing?.basePrice || data?.rental_price || 0,
-          salePrice: saleListing?.basePrice || data?.sale_price || 0,
-          isRental: isRentalAvailable,
-          isSale: isSaleAvailable,
-          depositPercent: rentListing ? Number(rentListing.deposit) : 100,
-          image: data?.image_url || PLACEHOLDER_IMG,
-          ownerRealName: ownerProfile?.name || ownerProfile?.full_name || "Chủ tủ đồ CLOOP",
-          ownerRealPhone: ownerProfile?.phone || ownerProfile?.phoneNumber || data?.owner_phone || data?.ownerPhone || "098.765.4321"
-        });
-
-        if (urlType === "sell" && isSaleAvailable) {
+        if (urlType === "sell" && pData.isSale) {
           setTransactionMode("SELL");
-        } else if (urlType === "rent" && isRentalAvailable) {
+        } else if (urlType === "rent" && pData.isRental) {
           setTransactionMode("RENT");
         } else {
-          setTransactionMode(isRentalAvailable ? "RENT" : "SELL");
+          setTransactionMode(pData.isRental ? "RENT" : "SELL");
         }
-
       } catch (err) {
-        console.error("Lỗi dòng chảy chi tiết sản phẩm:", err);
+        console.error("Lỗi nạp chi tiết sản phẩm:", err);
       } finally {
         setLoading(false);
       }
