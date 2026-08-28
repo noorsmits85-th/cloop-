@@ -265,6 +265,8 @@ export default function CreateProductListingPage() {
         title: product.name,
         category: product.category || "Dạ hội & Sự kiện",
         size: product.size,
+        targetHeight: product.targetHeight || undefined,
+        targetWeight: product.targetWeight || undefined,
         material: product.material,
         color: product.color,
         condition: product.condition,

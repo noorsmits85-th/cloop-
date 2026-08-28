@@ -12,6 +12,8 @@ const createProductSchema = z.object({
   title: z.string().min(3, "Tên món đồ quá ngắn"),
   category: z.string().optional(),
   size: z.string(),
+  targetHeight: z.string().optional(),
+  targetWeight: z.string().optional(),
   material: z.string().min(1, "Chất liệu không được để trống"),
   color: z.string().min(1, "Màu sắc không được để trống"),
   condition: z.string(),
@@ -75,6 +77,10 @@ export async function createProductAction(data: any) {
     let createdProductId: string | null = null;
     let primaryImageRecord: { id: string; url: string } | null = null;
 
+    const styleMeta = (v.targetHeight || v.targetWeight)
+      ? JSON.stringify({ height: v.targetHeight || "", weight: v.targetWeight || "" })
+      : null;
+
     await prisma.$transaction(async (tx) => {
       // 1. Create Product
       const product = await tx.product.create({
@@ -90,6 +96,7 @@ export async function createProductAction(data: any) {
           specificAddress: `${v.ward}, ${v.province}`,
           category: v.category || "Dạ hội & Sự kiện",
           occasion: v.occasion,
+          style: styleMeta,
           bust: v.bust || null,
           waist: v.waist || null,
           hips: v.hips || null,

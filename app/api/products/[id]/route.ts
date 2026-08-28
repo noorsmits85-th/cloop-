@@ -70,6 +70,44 @@ export async function GET(
     const isRental = !!rentalListing && rentalPrice > 0;
     const isSale = !!saleListing && salePrice > 0;
 
+    let targetHeight = "";
+    let targetWeight = "";
+
+    if (product.style) {
+      try {
+        if (product.style.startsWith("{")) {
+          const parsedStyle = JSON.parse(product.style);
+          targetHeight = parsedStyle.height || "";
+          targetWeight = parsedStyle.weight || "";
+        } else if (product.style.startsWith("H:")) {
+          const parts = product.style.split("|");
+          targetHeight = parts[0]?.replace("H:", "") || "";
+          targetWeight = parts[1]?.replace("W:", "") || "";
+        }
+      } catch (e) {}
+    }
+
+    // Default smart suggestion based on size if not explicitly set
+    if (!targetHeight && !targetWeight) {
+      const sz = (product.size || "").toUpperCase();
+      if (sz === "XS" || sz === "S") {
+        targetHeight = "150 - 160";
+        targetWeight = "42 - 48";
+      } else if (sz === "M") {
+        targetHeight = "155 - 165";
+        targetWeight = "48 - 56";
+      } else if (sz === "L") {
+        targetHeight = "162 - 172";
+        targetWeight = "55 - 64";
+      } else if (sz === "XL") {
+        targetHeight = "168 - 180";
+        targetWeight = "63 - 75";
+      } else {
+        targetHeight = "155 - 168";
+        targetWeight = "46 - 58";
+      }
+    }
+
     return NextResponse.json({
       success: true,
       product: {
@@ -85,6 +123,9 @@ export async function GET(
         province: product.province,
         ward: product.wardCode,
         specificAddress: product.specificAddress,
+        targetHeight,
+        targetWeight,
+        chest: product.bust,
         bust: product.bust,
         waist: product.waist,
         hips: product.hips,

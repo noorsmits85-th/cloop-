@@ -364,28 +364,32 @@ function ProductDetailContent() {
                 </h3>
                 <div className="space-y-1.5 pt-1 text-xs text-stone-700">
                   {(product.targetHeight || product.targetWeight) ? (
-                    <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
                       {product.targetHeight && (
-                        <span className="bg-stone-100 px-2.5 py-1 rounded-lg">Chiều cao: <strong className="text-[#183A2D]">{product.targetHeight} cm</strong></span>
+                        <span className="bg-stone-100/90 border border-stone-200/60 px-3 py-1.5 rounded-xl font-medium">
+                          Chiều cao phù hợp: <strong className="text-[#183A2D] font-bold">{product.targetHeight} cm</strong>
+                        </span>
                       )}
                       {product.targetWeight && (
-                        <span className="bg-stone-100 px-2.5 py-1 rounded-lg">Cân nặng: <strong className="text-[#183A2D]">{product.targetWeight} kg</strong></span>
+                        <span className="bg-stone-100/90 border border-stone-200/60 px-3 py-1.5 rounded-xl font-medium">
+                          Cân nặng phù hợp: <strong className="text-[#183A2D] font-bold">{product.targetWeight} kg</strong>
+                        </span>
                       )}
                     </div>
                   ) : null}
 
-                  {(product.chest || product.waist || product.hips) ? (
-                    <div className="bg-stone-100 px-2.5 py-1.5 rounded-lg flex items-center gap-2">
+                  {(product.chest || product.bust || product.waist || product.hips) ? (
+                    <div className="bg-stone-100/90 border border-stone-200/60 px-3 py-1.5 rounded-xl flex items-center gap-2">
                       <span className="font-semibold text-stone-600">Số đo 3 vòng:</span>
                       <span className="font-mono font-bold text-[#183A2D]">
-                        {product.chest ? `V1: ${product.chest} ` : ''} 
+                        {(product.chest || product.bust) ? `V1: ${product.chest || product.bust} ` : ''} 
                         {product.waist ? `• V2: ${product.waist} ` : ''} 
                         {product.hips ? `• V3: ${product.hips}` : ''}
                       </span>
                     </div>
                   ) : null}
 
-                  {!product.targetHeight && !product.targetWeight && !product.chest && !product.waist && !product.hips && (
+                  {!product.targetHeight && !product.targetWeight && !product.chest && !product.bust && !product.waist && !product.hips && (
                     <p className="text-[11px] text-stone-600 italic">Trang phục thiết kế phom chuẩn, dễ mặc theo size {product.size || "FreeSize"}.</p>
                   )}
                 </div>
