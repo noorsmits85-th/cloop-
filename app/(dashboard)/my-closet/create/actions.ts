@@ -5,6 +5,7 @@ import { prisma } from "@/src/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { moderateProductImage } from "@/src/services/imageModeration";
+import { indexProductImageEmbedding } from "@/src/services/visualSearch";
 
 // Zod schema for server-side validation
 const createProductSchema = z.object({
@@ -71,6 +72,9 @@ export async function createProductAction(data: any) {
   }
 
   try {
+    let createdProductId: string | null = null;
+    let primaryImageRecord: { id: string; url: string } | null = null;
+
     await prisma.$transaction(async (tx) => {
       // 1. Create Product
       const product = await tx.product.create({
@@ -93,23 +97,30 @@ export async function createProductAction(data: any) {
           status: "ON_MARKET"
         }
       });
+      createdProductId = product.id;
 
       // 2. Create ProductImages
       if (v.uploadedImages.length > 0) {
-        await tx.productImage.createMany({
-          data: v.uploadedImages.map((img, idx) => ({
-            productId: product.id,
-            url: img.url,
-            storageProvider: img.storageProvider,
-            publicId: img.publicId,
-            width: img.width,
-            height: img.height,
-            bytes: img.bytes,
-            format: img.format,
-            isPrimary: idx === 0,
-            sortOrder: idx
-          }))
-        });
+        for (let idx = 0; idx < v.uploadedImages.length; idx++) {
+          const img = v.uploadedImages[idx];
+          const created = await tx.productImage.create({
+            data: {
+              productId: product.id,
+              url: img.url,
+              storageProvider: img.storageProvider,
+              publicId: img.publicId,
+              width: img.width,
+              height: img.height,
+              bytes: img.bytes,
+              format: img.format,
+              isPrimary: idx === 0,
+              sortOrder: idx
+            }
+          });
+          if (idx === 0) {
+            primaryImageRecord = { id: created.id, url: created.url };
+          }
+        }
       }
 
       // 3. Create Listings
@@ -154,6 +165,19 @@ export async function createProductAction(data: any) {
         });
       }
     });
+
+    // ⚡ ASYNC BACKGROUND EMBEDDING: Không chặn UI, chạy ngầm sau khi lưu DB thành công
+    const pId: string | null = createdProductId;
+    const imgId: string | null = primaryImageRecord ? (primaryImageRecord as any).id : null;
+    const imgUrl: string | null = primaryImageRecord ? (primaryImageRecord as any).url : null;
+
+    if (pId && imgId && imgUrl) {
+      setTimeout(() => {
+        indexProductImageEmbedding(pId, imgId, imgUrl).catch((err: any) => {
+          console.warn("[Background Embedding Failed]:", err?.message || err);
+        });
+      }, 100);
+    }
 
     try {
       revalidatePath("/my-closet");

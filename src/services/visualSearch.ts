@@ -1,5 +1,5 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { prisma } from "@/src/lib/prisma";
+import type { SafeImagePayload } from "@/src/lib/server-image-guard";
 import crypto from "node:crypto";
 
 export interface VisualSearchResult {
@@ -30,297 +30,204 @@ export interface VisualSearchResult {
   isFallback?: boolean;
 }
 
-const CANDIDATE_GEMINI_MODELS = [
-  "gemini-2.5-flash",
-  "gemini-2.0-flash-lite",
-  "gemini-2.0-flash",
-  "gemini-1.5-flash",
-];
+export const VISUAL_EMBEDDING_MODEL = "multimodal-embedding-001";
+export const VISUAL_EMBEDDING_VERSION = "v1";
+export const VISUAL_EMBEDDING_DIMENSION = 1408;
+const EMBEDDING_TIMEOUT_MS = 6000;
 
-// Hàm chuẩn hóa từ khóa để so khớp ngữ nghĩa tiếng Việt
-function normalizeText(text: string = ""): string {
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d")
-    .replace(/[^a-z0-9\s]/g, " ")
-    .trim();
+export async function searchByOutfitImage(imageBase64: string): Promise<VisualSearchResult> {
+  return searchByValidatedOutfitImage({
+    buffer: Buffer.from(imageBase64, "base64"),
+    base64: imageBase64,
+    mimeType: "image/jpeg",
+  });
 }
 
-// Nhóm đồng nghĩa chất liệu
-const MATERIAL_SYNONYMS: Record<string, string[]> = {
-  denim: ["denim", "jean", "jeans", "bo", "yem denim"],
-  lua: ["lua", "satin", "to tam", "silk", "phi bong"],
-  tweed: ["tweed", "da tweed", "da", "wool", "da han quoc"],
-  linen: ["linen", "dui", "cotton", "soi tu nhien"],
-  da: ["da", "leather", "da bo", "da lon", "pu"],
-  voan: ["voan", "chiffon", "ren", "lace", "organza", "luoi"],
-};
-
-// Nhóm đồng nghĩa màu sắc
-const COLOR_SYNONYMS: Record<string, string[]> = {
-  xanh: ["xanh", "denim", "blue", "indigo", "luc bao", "duong", "la"],
-  do: ["do", "red", "burgundy", "bordeaux", "ruou", "ruby"],
-  trang: ["trang", "white", "kem", "ivory", "be", "beige"],
-  den: ["den", "black", "xam", "gray", "grey"],
-  vang: ["vang", "yellow", "gold", "cam", "orange"],
-  hong: ["hong", "pink", "pastel", "sen"],
-};
-
-export async function searchByOutfitImage(imageBase64OrUrl: string): Promise<VisualSearchResult> {
-  const traceId = `vsearch_${crypto.randomUUID()}`;
+export async function createImageEmbedding(image: SafeImagePayload): Promise<number[]> {
   const apiKey = process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_DEV || process.env.GOOGLE_GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("VISUAL_EMBEDDING_API_KEY_MISSING");
+  }
 
-  try {
-    let base64Data = "";
-    let mimeType = "image/jpeg";
-
-    if (imageBase64OrUrl.startsWith("data:")) {
-      const parts = imageBase64OrUrl.split(",");
-      mimeType = parts[0].match(/:(.*?);/)?.[1] || "image/jpeg";
-      base64Data = parts[1];
-    } else if (imageBase64OrUrl.startsWith("http")) {
-      const imgRes = await fetch(imageBase64OrUrl, { signal: AbortSignal.timeout(6000) });
-      if (!imgRes.ok) throw new Error("Không thể tải ảnh từ URL");
-      const buffer = await imgRes.arrayBuffer();
-      base64Data = Buffer.from(buffer).toString("base64");
-      mimeType = imgRes.headers.get("content-type") || "image/jpeg";
-    } else {
-      base64Data = imageBase64OrUrl;
-    }
-
-    let detectedCategory = "Set đồ & Dạo phố";
-    let dominantColor = "Xanh denim";
-    let style = "Dạo phố năng động";
-    let material = "Denim";
-    let itemDescription = "Set đồ thời trang denim trẻ trung cá tính";
-    let searchKeywords = ["denim", "set đồ", "áo thun", "yếm"];
-    let aiModelUsed = "CLOOP Vision AI";
-
-    // 1. Phân tích thị giác bằng Gemini Vision
-    if (apiKey) {
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const prompt = `
-Bạn là AI Visual Stylist & Chuyên gia Giám định Trang phục của nền tảng thời trang tuần hoàn CLOOP.
-Hãy phân tích bức ảnh lookbook/outfit này và bóc tách chuẩn xác các đặc tính thời trang cốt lõi để truy vấn kho đồ:
-
-1. category: Chọn 1 trong các nhóm chính xác: ["Dạ hội & Sự kiện", "Tiệc cưới", "Áo dài truyền thống", "Đồ hoài cổ 90s", "Tối giản", "Công sở & Blazer", "Set đồ & Dạo phố", "Túi xách & Phụ kiện", "Giày & Boots"]
-2. dominantColor: Tông màu chủ đạo (ví dụ: Xanh denim, Đỏ Bordeaux, Trắng kem, Đen tuyền, Hồng pastel...)
-3. style: Phong cách (ví dụ: Dạo phố cá tính, Y2K, Parisian Chic, Dạ tiệc Glamour, Vintage 90s...)
-4. material: Chất liệu chính (ví dụ: Denim, Lụa Satin, Dạ Tweed, Linen, Voan tơ, Cotton, Da thật...)
-5. itemDescription: Mô tả ngắn gọn 1 câu ấn tượng về phom dáng trang phục
-6. searchKeywords: Mảng 4-6 từ khóa tiếng Việt không dấu hoặc có dấu để tra cứu database (ví dụ: ["denim", "yem", "ao thun", "set do", "xanh"])
-
-Trả về đúng cấu trúc JSON:
-{
-  "category": string,
-  "dominantColor": string,
-  "style": string,
-  "material": string,
-  "itemDescription": string,
-  "searchKeywords": string[]
-}
-`;
-
-      for (const candidate of CANDIDATE_GEMINI_MODELS) {
-        try {
-          const model = genAI.getGenerativeModel({
-            model: candidate,
-            generationConfig: {
-              responseMimeType: "application/json",
-              temperature: 0.15,
-            },
-          });
-
-          const result = await model.generateContent([
-            prompt,
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1/models/${VISUAL_EMBEDDING_MODEL}:embedContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(EMBEDDING_TIMEOUT_MS),
+      body: JSON.stringify({
+        content: {
+          parts: [
             {
               inlineData: {
-                data: base64Data,
-                mimeType: mimeType.startsWith("image/") ? mimeType : "image/jpeg",
+                mimeType: image.mimeType,
+                data: image.base64,
               },
             },
-          ]);
-
-          const rawText = result.response.text();
-          const parsed = JSON.parse(rawText);
-
-          if (parsed.category) {
-            detectedCategory = parsed.category;
-            dominantColor = parsed.dominantColor || dominantColor;
-            style = parsed.style || style;
-            material = parsed.material || material;
-            itemDescription = parsed.itemDescription || itemDescription;
-            searchKeywords = Array.isArray(parsed.searchKeywords) ? parsed.searchKeywords : searchKeywords;
-            aiModelUsed = candidate;
-            break;
-          }
-        } catch (modelErr: any) {
-          console.warn(`[Gemini candidate failed]:`, modelErr?.message || modelErr);
-        }
-      }
-    }
-
-    // 2. TRUY VẤN SÂU TOÀN BỘ KHO ĐỒ THẬT TRONG DATABASE
-    let dbProducts: any[] = [];
-    try {
-      dbProducts = await prisma.product.findMany({
-        where: {
-          isDeleted: false,
+          ],
         },
-        include: {
-          images: {
-            orderBy: { isPrimary: "desc" },
-            take: 1,
-          },
-          listings: {
-            where: { isDeleted: false },
-          },
-          user: {
-            select: { name: true },
-          },
-        },
-        take: 100,
-        orderBy: { createdAt: "desc" },
-      });
-    } catch (dbErr) {
-      console.warn("Lỗi truy vấn sản phẩm DB trong Visual Search:", dbErr);
+      }),
     }
+  );
 
-    // Lọc bỏ các sản phẩm rác test có tên "Mock", "test"
-    const validProducts = dbProducts.filter((p) => {
-      const titleLower = (p.title || "").toLowerCase();
-      return !titleLower.includes("mock") && !titleLower.includes("test");
+  const payload = await response.json();
+  if (!response.ok) {
+    throw new Error(payload?.error?.message || "VISUAL_EMBEDDING_PROVIDER_FAILED");
+  }
+
+  const vector = payload?.embedding?.values;
+  if (
+    !Array.isArray(vector) ||
+    vector.length !== VISUAL_EMBEDDING_DIMENSION ||
+    vector.some((value) => typeof value !== "number" || !Number.isFinite(value))
+  ) {
+    throw new Error("VISUAL_EMBEDDING_INVALID_RESPONSE");
+  }
+
+  return vector;
+}
+
+export async function indexProductImageEmbedding(productId: string, imageId: string, imageUrl: string): Promise<void> {
+  try {
+    const imgRes = await fetch(imageUrl, { signal: AbortSignal.timeout(6000) });
+    if (!imgRes.ok) return;
+    const arrayBuffer = await imgRes.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const mimeType = (imgRes.headers.get("content-type") || "image/jpeg") as SafeImagePayload["mimeType"];
+
+    const vector = await createImageEmbedding({
+      buffer,
+      base64: buffer.toString("base64"),
+      mimeType: mimeType === "image/png" || mimeType === "image/webp" ? mimeType : "image/jpeg",
     });
 
-    const normMaterial = normalizeText(material);
-    const normCategory = normalizeText(detectedCategory);
-    const normColor = normalizeText(dominantColor);
-    const normKeywords = searchKeywords.map(normalizeText);
+    const vectorLiteral = toPgVectorLiteral(vector);
 
-    // 3. THUẬT TOÁN ĐỐI SÁNH NGỮ NGHĨA ĐA CHIỀU (DEEP SEMANTIC SCORING)
-    const scoredProducts = validProducts.map((p) => {
-      const pTitle = normalizeText(p.title);
-      const pMaterial = normalizeText(p.material || "");
-      const pCategory = normalizeText(p.category || "");
-      const pOccasion = normalizeText(p.occasion || "");
-      const pColor = normalizeText(p.color || "");
-      const pDesc = normalizeText(p.description || "");
+    await prisma.$executeRawUnsafe(`
+      INSERT INTO product_image_embeddings (
+        id, product_id, image_id, embedding_model, embedding_version, dimension, embedding, created_at, updated_at
+      ) VALUES (
+        gen_random_uuid(), $1, $2, $3, $4, $5, $6::vector, NOW(), NOW()
+      )
+      ON CONFLICT (product_id, image_id, embedding_model, embedding_version)
+      DO UPDATE SET embedding = EXCLUDED.embedding, updated_at = NOW();
+    `, productId, imageId, VISUAL_EMBEDDING_MODEL, VISUAL_EMBEDDING_VERSION, VISUAL_EMBEDDING_DIMENSION, vectorLiteral);
+  } catch (error: any) {
+    console.warn(`[Async Embedding Indexing Warning][Product:${productId}]:`, error?.message || error);
+  }
+}
 
-      let score = 50; // Điểm xuất phát cơ sở
-      const matchReasons: string[] = [];
+function toPgVectorLiteral(vector: number[]): string {
+  return `[${vector.map((value) => Number(value).toFixed(8)).join(",")}]`;
+}
 
-      // A. Khớp chất liệu (Trọng số lớn nhất: +30)
-      let isMaterialMatch = false;
-      if (pMaterial && normMaterial) {
-        if (pMaterial.includes(normMaterial) || normMaterial.includes(pMaterial)) {
-          score += 25;
-          isMaterialMatch = true;
-        } else {
-          // Kiểm tra từ đồng nghĩa chất liệu
-          for (const [, synonyms] of Object.entries(MATERIAL_SYNONYMS)) {
-            const hasTarget = synonyms.some(s => normMaterial.includes(s));
-            const hasProduct = synonyms.some(s => pMaterial.includes(s) || pTitle.includes(s));
-            if (hasTarget && hasProduct) {
-              score += 25;
-              isMaterialMatch = true;
-              break;
-            }
-          }
-        }
-      }
-      if (isMaterialMatch) matchReasons.push(`Chất liệu ${material}`);
+async function searchAvailableProductsByVector(vector: number[]) {
+  const vectorLiteral = toPgVectorLiteral(vector);
 
-      // B. Khớp phom dáng / danh mục (+20)
-      let isCategoryMatch = false;
-      if (pCategory.includes(normCategory) || normCategory.includes(pCategory) || pTitle.includes(normCategory)) {
-        score += 18;
-        isCategoryMatch = true;
-      } else if (normCategory.includes("set") && (pTitle.includes("set") || pCategory.includes("set"))) {
-        score += 18;
-        isCategoryMatch = true;
-      }
-      if (isCategoryMatch) matchReasons.push(`Phom dáng ${detectedCategory}`);
+  return prisma.$queryRawUnsafe<Array<{
+    id: string;
+    title: string;
+    category: string;
+    color: string | null;
+    primaryImage: string | null;
+    rentalPrice: number | null;
+    salePrice: number | null;
+    ownerName: string | null;
+    vectorScore: number;
+  }>>(`
+    WITH candidates AS (
+      SELECT
+        product_id,
+        image_id,
+        1 - (embedding <=> $1::vector) AS vector_score
+      FROM product_image_embeddings
+      WHERE embedding_model = $2
+        AND embedding_version = $3
+        AND dimension = $4
+      ORDER BY embedding <=> $1::vector
+      LIMIT 50
+    )
+    SELECT
+      p.id,
+      p.title,
+      p.category,
+      p.color,
+      COALESCE(pi.url, primary_pi.url) AS "primaryImage",
+      rent_listing."basePrice" AS "rentalPrice",
+      sell_listing."basePrice" AS "salePrice",
+      u.name AS "ownerName",
+      MAX(c.vector_score)::float AS "vectorScore"
+    FROM candidates c
+    JOIN products p ON p.id = c.product_id
+    LEFT JOIN "Listing" rent_listing
+      ON rent_listing."productId" = p.id
+      AND rent_listing.status = 'AVAILABLE'
+      AND rent_listing."isDeleted" = false
+      AND rent_listing."listingType" = 'RENT'
+    LEFT JOIN "Listing" sell_listing
+      ON sell_listing."productId" = p.id
+      AND sell_listing.status = 'AVAILABLE'
+      AND sell_listing."isDeleted" = false
+      AND sell_listing."listingType" = 'SELL'
+    LEFT JOIN "ProductImage" pi ON pi.id = c.image_id
+    LEFT JOIN LATERAL (
+      SELECT url
+      FROM "ProductImage"
+      WHERE "productId" = p.id
+      ORDER BY "isPrimary" DESC, "sortOrder" ASC, "createdAt" ASC
+      LIMIT 1
+    ) primary_pi ON true
+    LEFT JOIN "User" u ON u.id = p."userId"
+    WHERE p."isDeleted" = false
+      AND p.status = 'ON_MARKET'
+      AND (rent_listing.id IS NOT NULL OR sell_listing.id IS NOT NULL)
+    GROUP BY p.id, p.title, p.category, p.color, pi.url, primary_pi.url, rent_listing."basePrice", sell_listing."basePrice", u.name
+    ORDER BY MAX(c.vector_score) DESC
+    LIMIT 6
+  `, vectorLiteral, VISUAL_EMBEDDING_MODEL, VISUAL_EMBEDDING_VERSION, VISUAL_EMBEDDING_DIMENSION);
+}
 
-      // C. Khớp màu sắc (+15)
-      let isColorMatch = false;
-      if (pColor && normColor) {
-        if (pColor.includes(normColor) || normColor.includes(pColor) || pTitle.includes(normColor)) {
-          score += 15;
-          isColorMatch = true;
-        } else {
-          for (const [, synonyms] of Object.entries(COLOR_SYNONYMS)) {
-            const hasTarget = synonyms.some(s => normColor.includes(s));
-            const hasProduct = synonyms.some(s => pColor.includes(s) || pTitle.includes(s));
-            if (hasTarget && hasProduct) {
-              score += 15;
-              isColorMatch = true;
-              break;
-            }
-          }
-        }
-      }
-      if (isColorMatch) matchReasons.push(`Tông màu ${dominantColor}`);
+export async function searchByValidatedOutfitImage(image: SafeImagePayload): Promise<VisualSearchResult> {
+  const traceId = `vsearch_${crypto.randomUUID()}`;
 
-      // D. Khớp từ khóa tìm kiếm & Dịp (+10)
-      let keywordHits = 0;
-      for (const kw of normKeywords) {
-        if (pTitle.includes(kw) || pDesc.includes(kw) || pOccasion.includes(kw)) {
-          keywordHits++;
-        }
-      }
-      score += Math.min(keywordHits * 4, 12);
-
-      // Điểm tối đa 98%
-      const finalScore = Math.min(score, 98);
-
-      const rentalListing = p.listings.find((l: any) => l.listingType === "RENT");
-      const saleListing = p.listings.find((l: any) => l.listingType === "SELL");
-
-      const reasonText = matchReasons.length > 0 
-        ? `Khớp ${finalScore}% về ${matchReasons.join(" & ")}`
-        : `Khớp ${finalScore}% phong cách ${style}`;
-
-      return {
-        id: p.id,
-        title: p.title,
-        category: p.category || detectedCategory,
-        color: p.color,
-        primaryImage: p.images[0]?.url || "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600",
-        rentalPrice: rentalListing?.basePrice || 150000,
-        salePrice: saleListing?.basePrice || 0,
-        matchScore: finalScore,
-        matchReason: reasonText,
-        ownerName: p.user?.name || "Chủ Tủ CLOOP",
-      };
-    });
-
-    // Sắp xếp theo độ tương đồng cao nhất
-    scoredProducts.sort((a, b) => b.matchScore - a.matchScore);
-    const topMatched = scoredProducts.slice(0, 6);
+  try {
+    const embedding = await createImageEmbedding(image);
+    const products = await searchAvailableProductsByVector(embedding);
 
     return {
       success: true,
       traceId,
       detectedInfo: {
-        category: detectedCategory,
-        dominantColor,
-        style,
-        material,
-        itemDescription,
-        searchKeywords,
-        aiModelUsed,
+        category: "Visual similarity",
+        dominantColor: "AI vector match",
+        style: "Hybrid vector retrieval",
+        itemDescription: "CLOOP Lens matched this image against available closet items.",
+        searchKeywords: ["visual-search", "pgvector", VISUAL_EMBEDDING_MODEL],
+        aiModelUsed: VISUAL_EMBEDDING_MODEL,
       },
-      matchedProducts: topMatched,
-      isFallback: !apiKey,
+      matchedProducts: products.map((product) => {
+        const score = Math.max(0, Math.min(99, Math.round(product.vectorScore * 100)));
+        return {
+          id: product.id,
+          title: product.title,
+          category: product.category,
+          color: product.color,
+          primaryImage: product.primaryImage || "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600",
+          rentalPrice: product.rentalPrice || 0,
+          salePrice: product.salePrice || 0,
+          matchScore: score,
+          matchReason: `Khớp ${score}% theo vector hình ảnh`,
+          ownerName: product.ownerName || "Chu Tu CLOOP",
+        };
+      }),
     };
   } catch (error: any) {
-    console.error(`❌ [Visual Search Error][${traceId}]:`, error);
+    // TODO: integrate Sentry/LogRocket tracking for production visual-search failures.
+    console.error(`[Visual Search Error][${traceId}]:`, error?.message || error);
     return {
       success: false,
       traceId,
-      error: error.message || "Không thể phân tích hình ảnh tìm kiếm",
+      error: error?.message || "VISUAL_SEARCH_FAILED",
       matchedProducts: [],
     };
   }

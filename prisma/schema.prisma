@@ -111,6 +111,22 @@ model ProductImage {
   @@index([productId, isPrimary])
 }
 
+model ProductImageEmbedding {
+  id               String                      @id @default(uuid()) @db.Uuid
+  productId        String                      @map("product_id")
+  imageId          String?                     @map("image_id")
+  embeddingModel   String                      @map("embedding_model")
+  embeddingVersion String                      @map("embedding_version")
+  dimension        Int
+  embedding        Unsupported("vector(1408)")
+  createdAt        DateTime                    @default(now()) @map("created_at")
+  updatedAt        DateTime                    @updatedAt @map("updated_at")
+
+  @@index([productId])
+  @@index([embeddingModel, embeddingVersion, dimension])
+  @@map("product_image_embeddings")
+}
+
 model Listing {
   id              String        @id @default(uuid())
   productId       String

@@ -18,6 +18,15 @@ export const searchRateLimit = redis
     })
   : null;
 
+// Visual search calls external vision models, so keep this quota tighter than text search.
+export const visualSearchRateLimit = redis
+  ? new Ratelimit({
+      redis: redis,
+      limiter: Ratelimit.slidingWindow(10, "1 m"),
+      analytics: true,
+    })
+  : null;
+
 // Checkout: 1 request per 3 seconds
 export const checkoutRateLimit = redis
   ? new Ratelimit({
