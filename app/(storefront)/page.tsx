@@ -30,6 +30,7 @@ import VisualSearchModal from "@/app/components/VisualSearchModal";
 import LivePulseTicker from "@/app/components/LivePulseTicker";
 import EcoImpactCalculator from "@/app/components/EcoImpactCalculator";
 import GoogleFlowFashionHero from "@/app/components/GoogleFlowFashionHero";
+import MarketingLoopShowcase from "@/app/components/MarketingLoopShowcase";
 
 export default function Home() {
   const [activeRentalCategory, setActiveRentalCategory] = useState("Tất cả");
@@ -231,6 +232,9 @@ export default function Home() {
           ))}
         </div>
       </section>
+
+      {/* 🌿 SECTION 1.5: QUẢNG BÁ MARKETING THỜI TRANG TUẦN HOÀN & HƯỚNG DẪN 4 BƯỚC */}
+      <MarketingLoopShowcase />
 
       {/* SECTION 2: BỘ SƯU TẬP THEO CẢM XÚC & DỊP SỰ KIỆN */}
       <section className="w-full max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-10 md:py-12">
