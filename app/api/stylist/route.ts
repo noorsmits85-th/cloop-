@@ -7,8 +7,10 @@ type CatalogProduct = {
   id: string;
   title: string;
   category: string;
+  occasion: string;
   size: string;
   color: string;
+  material: string;
   province: string;
   image: string;
   priceText: string;
@@ -39,10 +41,10 @@ function encodeCatalog(products: CatalogProduct[]) {
   return Buffer.from(JSON.stringify(products), "utf8").toString("base64");
 }
 
-// 🛡️ SLIDING WINDOW RATE LIMITER: Tối đa 15 request / phút / IP chống spam làm cạn token AI
+// 🛡️ SLIDING WINDOW RATE LIMITER: Tối đa 25 request / phút / IP chống spam làm cạn token AI
 const ipRequestMap = new Map<string, number[]>();
 
-function checkRateLimit(ip: string, limit = 15, windowMs = 60000): boolean {
+function checkRateLimit(ip: string, limit = 25, windowMs = 60000): boolean {
   const now = Date.now();
   const timestamps = ipRequestMap.get(ip) || [];
   const validTimestamps = timestamps.filter(t => now - t < windowMs);
@@ -60,10 +62,10 @@ export async function POST(request: Request) {
   try {
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "anonymous-client";
 
-    if (!checkRateLimit(ip, 15, 60000)) {
+    if (!checkRateLimit(ip, 25, 60000)) {
       return new Response(
         JSON.stringify({ 
-          reply: "⚠️ Bạn đang gửi tin nhắn quá nhanh. Vui lòng chờ 30 giây để tiếp tục trò chuyện cùng Trợ lý nhé!", 
+          reply: "Bạn đang gửi tin nhắn quá nhanh. Vui lòng chờ 30 giây để tiếp tục trò chuyện cùng Trợ lý nhé!", 
           catalog: [] 
         }), 
         { status: 429, headers: { "Content-Type": "application/json" } }
@@ -81,23 +83,23 @@ export async function POST(request: Request) {
       return new Response("Thiếu GEMINI_API_KEY.", { status: 500 });
     }
 
-    // ⚡ Lấy kho đồ 20 món mới nhất để sẵn sàng khi khách cần tìm đồ
-    const productsPromise = prisma.product.findMany({
-      take: 20,
+    // ⚡ LẤY TOÀN BỘ KHO ĐỒ WEB SẴN CÓ ĐỂ AI NẮM 100% DỮ LIỆU
+    const products = await prisma.product.findMany({
+      take: 100,
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
         title: true,
         category: true,
+        occasion: true,
         size: true,
         color: true,
+        material: true,
         province: true,
         images: { select: { url: true }, take: 1 },
         listings: { select: { listingType: true, status: true, salePrice: true, basePrice: true } },
       },
     });
-
-    const products = await productsPromise;
 
     const catalog: CatalogProduct[] = products
       .map((product) => {
@@ -108,8 +110,10 @@ export async function POST(request: Request) {
           id: product.id,
           title: product.title,
           category: product.category || "",
+          occasion: product.occasion || "Dạo phố",
           size: product.size || "",
           color: product.color || "",
+          material: product.material || "",
           province: product.province || "Toàn quốc",
           image: product.images[0]?.url || PLACEHOLDER_IMAGE,
           priceText: formatPrice(price, listing?.listingType),
@@ -122,42 +126,49 @@ export async function POST(request: Request) {
       id: p.id,
       title: p.title,
       cat: p.category,
-      size: p.size,
+      occ: p.occasion,
       color: p.color,
-      prov: p.province,
-      price: p.priceText
+      mat: p.material,
+      size: p.size,
+      price: p.priceText,
+      type: p.listingType === "RENT" ? "Cho thuê" : "Bán/Thanh lý"
     }));
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const systemInstruction = [
       "Bạn là Trợ Lý Thời Trang & Stylist Thông Minh của CLOOP (nền tảng thời trang tuần hoàn).",
       "",
+      "NHIỆM VỤ CỐT LÕI:",
+      "- Bạn nắm toàn bộ kho đồ thời trang thực tế của CLOOP (được cung cấp trong 'Kho đồ CLOOP sẵn sàng').",
+      "- Khi khách hỏi bất kỳ nhu cầu nào (ví dụ: tìm đồ đi tiệc, đi cưới, dạ hội, dạo phố, công sở, áo dài, set denim, đồ vintage, tìm theo màu sắc, chất liệu, mức giá...), bạn PHẢI tra cứu ngay trong kho đồ thật và bốc 1-3 món đồ phù hợp nhất.",
+      "- BẮT BUỘC chèn cú pháp [PRODUCT:id] ngay sau tên mỗi món đồ được gợi ý để giao diện tự động hiển thị thẻ sản phẩm cho khách bấm xem và thuê/mua ngay.",
+      "",
       "TÍNH CÁCH & PHONG CÁCH GIAO TIẾP:",
-      "- Vui vẻ, tự nhiên, dí dỏm, thân thiện như một người bạn sành điệu nói chuyện đời thường.",
-      "- Trả lời nhanh gọn, ấm áp, có cảm xúc.",
+      "- Tự nhiên, thân thiện, tinh tế, am hiểu thời trang và biết cách phối đồ tôn dáng.",
+      "- Trả lời súc tích, ấm áp, lịch thiệp.",
       "- TUYỆT ĐỐI KHÔNG DÙNG icon hoặc emoji lấp lánh ✨ ở bất kỳ đâu.",
       "",
       "QUY TẮC XỬ LÝ:",
-      "1. NẾU KHÁCH GỬI ẢNH OUTFIT / VÁY / ÁO / PHỤ KIỆN: Hãy phân tích mắt nhìn (màu sắc, phong cách, kiểu dáng) và tìm ngay trong 'Kho đồ CLOOP sẵn sàng' 1-2 món tương đồng nhất, sau đó gợi ý kèm mã [PRODUCT:id].",
-      "2. NẾU KHÁCH NÓI CHUYỆN PHIẾM, CHÀO HỎI, ĐÙA VUI: Trả lời tự nhiên, hài hước, đời thường như người bạn (KHÔNG cần gợi ý sản phẩm).",
-      "3. KHI NÀO KHÁCH CÓ NHU CẦU TÌM ĐỒ / PHỐI OUTFIT / HỎI TRANG PHỤC ĐI ĐÂU (đi tiệc, đi biển, đi làm, tìm áo/váy...): Lúc này hãy tư vấn 1-2 món chuẩn gu từ kho đồ CLOOP và BẮT BUỘC chèn token [PRODUCT:id] ngay sau tên món đồ đó.",
+      "1. NẾU KHÁCH GỬI ẢNH: Phân tích kiểu dáng, màu sắc, phong cách trong ảnh và tìm trong kho CLOOP món đồ có nét tương đồng nhất kèm mã [PRODUCT:id].",
+      "2. NẾU KHÁCH CHÀO HỎI / CHÉM GIÓ: Trả lời tự nhiên, thân thiện và gợi ý nhẹ nhàng xem khách đang chuẩn bị đi đâu hay cần tìm đồ gì.",
+      "3. NẾU KHÁCH TÌM ĐỒ / HỎI OUTFIT: Tư vấn phối đồ chuyên nghiệp và bốc đúng sản phẩm từ kho đồ thật kèm [PRODUCT:id].",
     ].join("\n");
 
     const recentHistory = Array.isArray(history)
       ? history
-          .slice(-4)
+          .slice(-6)
           .filter((item) => item?.role && item?.text)
           .map((item) => `${item.role === "user" ? "Khách" : "Trợ lý"}: ${String(item.text).replace(/\[PRODUCT:[^\]]+\]/g, "").trim()}`)
           .join("\n")
       : "";
 
-    const userPromptText = message || (image ? "Nhờ bạn xem giúp bức ảnh này và tìm đồ tương tự trong kho CLOOP giúp mình nhé!" : "");
+    const userPromptText = message || (image ? "Nhờ bạn xem giúp bức ảnh này và tìm trang phục tương tự trong kho CLOOP giúp mình nhé!" : "");
 
     const promptText = [
-      `Kho đồ CLOOP sẵn sàng: ${JSON.stringify(compactCatalog)}`,
-      recentHistory ? `Lịch sử chat:\n${recentHistory}` : "",
-      `Khách: ${userPromptText}`,
-      "Trợ lý CLOOP trả lời tự nhiên & gợi ý:"
+      `Kho đồ CLOOP sẵn sàng (${compactCatalog.length} món có thật trên web): ${JSON.stringify(compactCatalog)}`,
+      recentHistory ? `Lịch sử hội thoại gần đây:\n${recentHistory}` : "",
+      `Khách hàng: ${userPromptText}`,
+      "Trợ lý Stylist CLOOP phản hồi sành điệu & bốc đúng đồ thật:"
     ].filter(Boolean).join("\n");
 
     // Hỗ trợ xử lý đa phương thức (Ảnh + Text)
@@ -181,21 +192,20 @@ export async function POST(request: Request) {
     let result;
     try {
       const model = genAI.getGenerativeModel({
-        model: "gemini-3.5-flash-lite",
+        model: "gemini-2.5-flash",
         generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 400,
+          temperature: 0.6,
+          maxOutputTokens: 500,
         },
         systemInstruction,
       });
       result = await model.generateContentStream(contentParts.length === 1 ? contentParts[0] : contentParts);
     } catch (err) {
-      // Fallback model nếu cần
       const fallbackModel = genAI.getGenerativeModel({
         model: "gemini-2.0-flash-lite",
         generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 400,
+          temperature: 0.6,
+          maxOutputTokens: 500,
         },
         systemInstruction,
       });
@@ -215,7 +225,7 @@ export async function POST(request: Request) {
           }
         } catch (error) {
           console.error("Lỗi streaming AI Stylist:", error);
-          controller.enqueue(encoder.encode("\nMình đang nghẽn mạng một xíu, bạn gửi lại nhé!"));
+          controller.enqueue(encoder.encode("\nMình đang cập nhật kho đồ một chút, bạn gửi lại câu hỏi giúp mình nhé!"));
         } finally {
           controller.close();
         }
@@ -230,6 +240,6 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("Lỗi API AI Stylist:", error);
-    return new Response("Trợ lý CLOOP đang bận, bạn thử lại sau nhé.", { status: 500 });
+    return new Response("Trợ lý CLOOP đang kết nối kho đồ, bạn thử lại sau ít giây nhé.", { status: 500 });
   }
 }

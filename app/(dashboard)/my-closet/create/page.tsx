@@ -21,7 +21,7 @@ const DRIED_LEAF = "https://images.unsplash.com/photo-1621274220349-2e06cb388ea2
 const VINTAGE_PAPER = "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?q=80&w=500"; 
 
 interface ProductSpecifications {
-  name: string; size: "S" | "M" | "L" | "XL"; targetHeight: string; targetWeight: string;
+  name: string; category: string; size: "S" | "M" | "L" | "XL"; targetHeight: string; targetWeight: string;
   bust?: string; waist?: string; hips?: string; color: string; material: string;
   condition: string; province: string; district: string; ward: string; address: string;
   originalPrice: number; 
@@ -76,7 +76,7 @@ export default function CreateProductListingPage() {
   const router = useRouter();
   
   const [product, setProduct] = useState<ProductSpecifications>({
-    name: "", size: "M", targetHeight: "", targetWeight: "",
+    name: "", category: "Dạ hội & Sự kiện", size: "M", targetHeight: "", targetWeight: "",
     bust: "", waist: "", hips: "", color: "", material: "",
     condition: "Mới 95%", province: "Hà Nội", district: "Quận Hoàn Kiếm", ward: "Phường Hàng Đào", address: "",
     originalPrice: 500000, 
@@ -124,12 +124,14 @@ export default function CreateProductListingPage() {
           setProduct((prev) => ({
             ...prev,
             name: ai.name || prev.name,
+            category: ai.category || prev.category,
             color: ai.color || prev.color,
             material: ai.material || prev.material,
             occasion: ai.occasion || prev.occasion,
             condition: ai.condition || prev.condition,
             size: (ai.size as any) || prev.size,
             description: ai.description || prev.description,
+            originalPrice: ai.originalPrice || ai.salePrice || prev.originalPrice,
           }));
           if (ai.rentalPrice) {
             setListings((prev) => ({
@@ -257,6 +259,7 @@ export default function CreateProductListingPage() {
       // 2. Chuẩn bị payload và gọi Server Action
       const payload = {
         title: product.name,
+        category: product.category || "Dạ hội & Sự kiện",
         size: product.size,
         material: product.material,
         color: product.color,
@@ -264,6 +267,7 @@ export default function CreateProductListingPage() {
         province: product.province,
         ward: product.ward,
         occasion: product.occasion,
+        description: product.description || undefined,
         bust: product.bust ? Number(product.bust) : null,
         waist: product.waist ? Number(product.waist) : null,
         hips: product.hips ? Number(product.hips) : null,
@@ -485,11 +489,33 @@ export default function CreateProductListingPage() {
                 </div>
 
                 <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Danh mục sản phẩm</label>
+                  <select className="scrapbook-input cursor-pointer" value={product.category} onChange={(e) => setProduct({...product, category: e.target.value})}>
+                    <option value="Dạ hội & Sự kiện">Dạ hội & Sự kiện</option>
+                    <option value="Tiệc cưới">Tiệc cưới</option>
+                    <option value="Áo dài truyền thống">Áo dài truyền thống</option>
+                    <option value="Đồ hoài cổ 90s">Đồ hoài cổ 90s</option>
+                    <option value="Tối giản">Tối giản</option>
+                    <option value="Công sở & Blazer">Công sở & Blazer</option>
+                    <option value="Set đồ & Dạo phố">Set đồ & Dạo phố</option>
+                    <option value="Túi xách & Phụ kiện">Túi xách & Phụ kiện</option>
+                    <option value="Giày & Boots">Giày & Boots</option>
+                  </select>
+                </div>
+
+                <div className="md:col-span-2">
                   <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Phong cách / Dịp</label>
                   <select className="scrapbook-input cursor-pointer" value={product.occasion} onChange={(e) => setProduct({...product, occasion: e.target.value})}>
-                    <option value="Dạo phố">Dạo phố</option><option value="Tiệc cưới">Tiệc cưới</option><option value="Dạ hội">Dạ hội</option>
-                    <option value="Áo dài">Áo dài</option><option value="Đi biển">Đi biển</option><option value="Kỷ yếu">Kỷ yếu</option>
-                    <option value="Lễ hội">Lễ hội</option><option value="Công sở">Công sở</option>
+                    <option value="Dạo phố">Dạo phố</option>
+                    <option value="Tiệc cưới">Tiệc cưới</option>
+                    <option value="Dạ hội">Dạ hội</option>
+                    <option value="Áo dài">Áo dài</option>
+                    <option value="Đi biển">Đi biển</option>
+                    <option value="Kỷ yếu">Kỷ yếu</option>
+                    <option value="Lễ hội">Lễ hội</option>
+                    <option value="Công sở">Công sở</option>
+                    <option value="Vintage & Hoài cổ">Vintage & Hoài cổ</option>
+                    <option value="Tối giản">Tối giản</option>
                   </select>
                 </div>
 

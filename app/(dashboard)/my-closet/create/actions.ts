@@ -9,6 +9,7 @@ import { moderateProductImage } from "@/src/services/imageModeration";
 // Zod schema for server-side validation
 const createProductSchema = z.object({
   title: z.string().min(3, "Tên món đồ quá ngắn"),
+  category: z.string().optional(),
   size: z.string(),
   material: z.string().min(1, "Chất liệu không được để trống"),
   color: z.string().min(1, "Màu sắc không được để trống"),
@@ -65,7 +66,7 @@ export async function createProductAction(data: any) {
   if (modResult.decision === "REJECTED") {
     return {
       success: false,
-      error: modResult.userMessage || "Ảnh tải lên chưa thấy rõ trang phục hoặc phụ kiện thời trang. Bạn vui lòng chụp rõ món đồ hơn giúp CLOOP nhé! ✨"
+      error: modResult.userMessage || "Ảnh tải lên chưa thấy rõ trang phục hoặc phụ kiện thời trang. Bạn vui lòng chụp rõ món đồ hơn giúp CLOOP nhé!"
     };
   }
 
@@ -83,7 +84,7 @@ export async function createProductAction(data: any) {
           province: v.province,
           wardCode: v.ward,
           specificAddress: `${v.ward}, ${v.province}`,
-          category: "UNISEX",
+          category: v.category || "Dạ hội & Sự kiện",
           occasion: v.occasion,
           bust: v.bust || null,
           waist: v.waist || null,
