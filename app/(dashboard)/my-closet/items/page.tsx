@@ -17,9 +17,11 @@ export default async function MyClosetItemsPage() {
   const userId = userAuth.id;
 
   const products = await prisma.product.findMany({
-    where: { userId },
+    where: { userId, isDeleted: false },
     include: {
-      listings: true,
+      listings: {
+        where: { isDeleted: false }
+      },
       blogs: true,
       rentalHistory: {
         where: {
@@ -27,22 +29,25 @@ export default async function MyClosetItemsPage() {
         }
       },
       images: {
-        where: { isPrimary: true },
-        take: 1
+        orderBy: [
+          { isPrimary: 'desc' },
+          { sortOrder: 'asc' },
+          { createdAt: 'asc' }
+        ]
       }
     },
     orderBy: { createdAt: 'desc' }
   });
 
   const formattedItems = products.map((item) => {
-    let currentImage = item.images?.[0]?.url || PLACEHOLDER_IMG;
+    const itemImages = item.images.length > 0 ? item.images.map(img => img.url) : [PLACEHOLDER_IMG];
     const rentalListing = item.listings.find((l: any) => l.listingType === "RENT");
     const saleListing = item.listings.find((l: any) => l.listingType === "SELL" || l.listingType === "RECYCLE");
 
     const rentPrice = rentalListing ? Number(rentalListing.basePrice) : 0;
     const sellPrice = saleListing ? Number(saleListing.basePrice) : 0;
 
-    const listingIds = [rentalListing?.id, saleListing?.id].filter(Boolean);
+    const listingIds = [rentalListing?.id, saleListing?.id].filter(Boolean) as string[];
     const isShopHidden = item.listings.length > 0 && item.listings.every((l: any) => l.status === "HIDDEN");
 
     const matchedBlog = item.blogs?.[0];
@@ -53,8 +58,10 @@ export default async function MyClosetItemsPage() {
     return {
       id: item.id,
       name: item.title,
+      category: item.category,
       size: item.size || "M",
-      image: currentImage,
+      image: itemImages[0],
+      images: itemImages,
       isRentalActive: rentPrice > 0,
       rentalPrice: rentPrice,
       activeRentals: item.rentalHistory,

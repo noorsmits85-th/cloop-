@@ -92,6 +92,7 @@ export default function CreateProductListingPage() {
 
   const [images, setImages] = useState<ImageItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [cropQueue, setCropQueue] = useState<File[]>([]);
@@ -222,6 +223,8 @@ export default function CreateProductListingPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting || submittingRef.current) return;
+
     const fieldsToScan = [product.name, product.material, product.color, product.province, product.ward];
     for (const field of fieldsToScan) {
       if (checkContactInfoLeak(field)) {
@@ -234,6 +237,7 @@ export default function CreateProductListingPage() {
       return;
     }
 
+    submittingRef.current = true;
     setIsSubmitting(true);
     try {
       // 1. Upload ảnh
@@ -291,6 +295,7 @@ export default function CreateProductListingPage() {
       alert(`Đã xảy ra lỗi nhỏ: ${error.message || error}`);
     } finally {
       setIsSubmitting(false);
+      submittingRef.current = false;
     }
   };
 
