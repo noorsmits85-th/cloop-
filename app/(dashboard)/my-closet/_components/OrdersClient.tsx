@@ -606,6 +606,17 @@ export function OrdersClient({
                                     <ShieldAlert size={14} strokeWidth={1.5} /> Báo cáo sự cố
                                   </button>
                                 )}
+                                {order.status === "LENDER_COMPLETED" && (
+                                   <button 
+                                     onClick={() => {
+                                       setSelectedOrderForReview(order);
+                                       setShowReviewModal(true);
+                                     }} 
+                                     className="border border-stone-200 bg-transparent hover:border-[#183A2D] hover:bg-[#183A2D] text-stone-600 hover:text-white text-xs font-medium px-5 py-2.5 rounded-md transition-all duration-500 flex items-center gap-1.5"
+                                   >
+                                     ⭐ Đánh giá khách thuê
+                                   </button>
+                                 )}
                                 {order.status === "DISPUTE" && (
                                   <div className="mt-4 p-4 rounded-lg bg-amber-50/70 border border-amber-200/80 text-left space-y-3 w-full">
                                     <div className="flex items-center gap-2 text-amber-800 font-semibold text-xs uppercase tracking-wide">
