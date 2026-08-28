@@ -192,7 +192,7 @@ export async function POST(request: Request) {
     let result;
     try {
       const model = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.5-flash-lite",
         generationConfig: {
           temperature: 0.6,
           maxOutputTokens: 500,
@@ -201,8 +201,9 @@ export async function POST(request: Request) {
       });
       result = await model.generateContentStream(contentParts.length === 1 ? contentParts[0] : contentParts);
     } catch (err) {
+      console.warn("Stylist primary model error, trying fallback:", err);
       const fallbackModel = genAI.getGenerativeModel({
-        model: "gemini-2.0-flash-lite",
+        model: "gemini-3.6-flash",
         generationConfig: {
           temperature: 0.6,
           maxOutputTokens: 500,

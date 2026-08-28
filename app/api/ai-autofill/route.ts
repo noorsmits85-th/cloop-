@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     const genAI = new GoogleGenerativeAI(apiKey);
     
     let model = genAI.getGenerativeModel({ 
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash-lite",
       generationConfig: {
         responseMimeType: "application/json",
         temperature: 0.2,
@@ -64,8 +64,9 @@ Trả về đúng cấu trúc JSON sau:
     try {
       result = await model.generateContent([prompt, imagePart]);
     } catch (e) {
+      console.warn("Autofill primary model error, trying fallback:", e);
       const fallbackModel = genAI.getGenerativeModel({
-        model: "gemini-2.0-flash-lite",
+        model: "gemini-3.6-flash",
         generationConfig: { responseMimeType: "application/json", temperature: 0.2 },
       });
       result = await fallbackModel.generateContent([prompt, imagePart]);
