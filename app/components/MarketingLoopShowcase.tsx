@@ -1,9 +1,18 @@
 "use client";
 
 import React, { useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, RotateCw } from "lucide-react";
+import { 
+  ShieldCheck, 
+  Truck, 
+  RotateCcw, 
+  Leaf, 
+  ArrowRight, 
+  Camera, 
+  Lock, 
+  Award,
+  Sparkle
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function MarketingLoopShowcase() {
@@ -12,81 +21,65 @@ export default function MarketingLoopShowcase() {
   const renterSteps = [
     {
       step: "01",
-      title: "Chọn Đồ & Ướm Dáng",
-      desc: "Khám phá hàng ngàn trang phục dạ hội, áo dài & blazer thiết kế tuyển chọn.",
-      meta: "Stylist 24/7",
-      image: "/step1_phone.jpg",
-      link: "/shop"
+      title: "Chọn đồ & Ướm dáng",
+      desc: "Trang phục dạ hội, áo dài & blazer thiết kế tuyển chọn.",
+      meta: "AI Stylist 24/7"
     },
     {
       step: "02",
-      title: "Nhận Đồ & Két Giữ Cọc",
-      desc: "Giao tận tay thơm tho tươm tất. Tiền cọc bảo chứng an toàn qua Két Escrow.",
-      meta: "Két Escrow 100%",
-      image: "/step2_bag.jpg",
-      link: "/shop"
+      title: "Nhận đồ & Giữ cọc",
+      desc: "Giao tận tay thơm tho. Tiền cọc bảo chứng an toàn qua Két Escrow.",
+      meta: "Két Escrow 100%"
     },
     {
       step: "03",
-      title: "Diện Đồ & Tỏa Sáng",
-      desc: "Tự tin ghi dấu ấn tại các sự kiện với chi phí chỉ từ 10% so với giá mua mới.",
-      meta: "Tiết kiệm 90%",
-      image: "/step3_party.jpg",
-      link: "/shop"
+      title: "Tỏa sáng sự kiện",
+      desc: "Diện đồ cao cấp với chi phí chỉ từ 10% giá mua mới.",
+      meta: "Tiết kiệm 90%"
     },
     {
       step: "04",
-      title: "Hoàn Trả & Vòng Lặp Mới",
-      desc: "Shipper nhận lại tận nhà. Tự động hoàn 100% tiền cọc & tích lũy điểm xanh.",
-      meta: "+50 Green Pts",
-      image: "https://images.unsplash.com/photo-1584917865442-de89df76afd3?q=80&w=800",
-      link: "/shop"
+      title: "Hoàn trả & Tích điểm",
+      desc: "Shipper thu hồi tại nhà. Tự động hoàn cọc & tích Green Pts.",
+      meta: "+50 Green Pts"
     }
   ];
 
   const ownerSteps = [
     {
       step: "01",
-      title: "Đăng Tủ Trong 30 Giây",
-      desc: "Chụp ảnh váy áo nhàn rỗi. Tự động đề xuất phân loại & mức giá thuê chuẩn sàn.",
-      meta: "Đăng đồ 30s",
-      image: "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?q=80&w=800",
-      link: "/my-closet/create"
+      title: "Đăng tủ 30 giây",
+      desc: "Chụp ảnh váy áo nhàn rỗi. AI tự điền thông số & gợi ý giá thuê.",
+      meta: "AI Fast-Listing"
     },
     {
       step: "02",
-      title: "Giao Nhận Tận Cửa",
-      desc: "Đối tác vận chuyển lấy hàng tận nơi, chủ tủ không cần tốn thời gian di chuyển.",
-      meta: "Lấy hàng tại nhà",
-      image: "/step2_bag.jpg",
-      link: "/my-closet"
+      title: "Giao nhận tận cửa",
+      desc: "Shipper đến lấy hàng tận nơi, chủ tủ không cần di chuyển.",
+      meta: "Lấy hàng tại nhà"
     },
     {
       step: "03",
-      title: "Thu Nhập Thụ Động",
-      desc: "Tiền thuê tự động cộng vào ví sau mỗi chuyến đi, rút về STK chính chủ trong 30s.",
-      meta: "Rút tiền 30s",
-      image: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?q=80&w=800",
-      link: "/my-closet"
+      title: "Thu nhập thụ động",
+      desc: "Tiền thuê cộng vào ví sau mỗi chuyến đi, rút về STK trong 30s.",
+      meta: "Rút tiền chính chủ"
     },
     {
       step: "04",
-      title: "Định Danh Xanh ESG",
-      desc: "Đo lường CO₂ giảm thải, nâng hạng uy tín tủ đồ & nhận ưu đãi độc quyền.",
-      meta: "Shop Uy Tín",
-      image: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?q=80&w=800",
-      link: "/my-closet"
+      title: "Định danh xanh ESG",
+      desc: "Đo lường CO₂ giảm thải & nâng hạng huy hiệu Shop Uy Tín.",
+      meta: "Huy hiệu Trustworthy"
     }
   ];
 
   const currentSteps = roleTab === "RENTER" ? renterSteps : ownerSteps;
 
   return (
-    <section className="w-full bg-[#FAF9F5] border-b border-stone-200/70 py-10 md:py-14 text-[#183A2D] font-body">
-      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 space-y-6 md:space-y-8">
+    <section className="w-full bg-[#FAF9F5] border-b border-stone-200/70 py-8 md:py-10 text-[#183A2D] font-body">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 space-y-6">
         
-        {/* 1. HEADER SECTION ĐỒNG BỘ CHUẨN THỜI TRANG */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-stone-200/80 pb-4">
+        {/* HEADER GỌN GÀNG & THANH LỊCH */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-stone-200/60 pb-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-700"></span>
@@ -99,12 +92,12 @@ export default function MarketingLoopShowcase() {
             </h2>
           </div>
 
-          {/* 2 TAB CHUYỂN ĐỔI THANH MẢNH */}
-          <div className="inline-flex items-center gap-1 p-1 bg-stone-200/60 rounded-lg font-ui self-start md:self-auto shadow-2xs">
+          {/* TAB CHUYỂN ĐỔI THANH MẢNH */}
+          <div className="inline-flex items-center gap-1 p-1 bg-stone-100/90 rounded-lg border border-stone-200/80 font-ui self-start md:self-auto">
             <button
               type="button"
               onClick={() => setRoleTab("RENTER")}
-              className={`px-3.5 py-1.5 rounded-md text-xs font-semibold tracking-wide transition-all cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${
                 roleTab === "RENTER"
                   ? "bg-[#183A2D] text-white shadow-xs"
                   : "text-stone-600 hover:text-[#183A2D]"
@@ -115,7 +108,7 @@ export default function MarketingLoopShowcase() {
             <button
               type="button"
               onClick={() => setRoleTab("OWNER")}
-              className={`px-3.5 py-1.5 rounded-md text-xs font-semibold tracking-wide transition-all cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${
                 roleTab === "OWNER"
                   ? "bg-[#183A2D] text-white shadow-xs"
                   : "text-stone-600 hover:text-[#183A2D]"
@@ -126,72 +119,79 @@ export default function MarketingLoopShowcase() {
           </div>
         </div>
 
-        {/* 2. DẢI 4 BƯỚC THỜI TRANG TUẦN HOÀN (CLEAN TIMELINE STREAM) */}
+        {/* 4 BƯỚC NẰM GỌN TRÊN 1 HÀNG */}
         <AnimatePresence mode="wait">
           <motion.div
             key={roleTab}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.25 }}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 relative"
+            transition={{ duration: 0.2 }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5"
           >
             {currentSteps.map((item, idx) => (
-              <Link
+              <div
                 key={idx}
-                href={item.link}
-                className="group flex flex-col justify-between bg-white rounded-xl p-3.5 border border-stone-200/80 hover:border-emerald-800/40 hover:shadow-md transition-all duration-300 shadow-2xs"
+                className="bg-white rounded-xl p-4 border border-stone-200/80 hover:border-emerald-700/50 transition-all text-left flex flex-col justify-between space-y-2.5 shadow-2xs"
               >
-                {/* Top Timeline Indicator */}
-                <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-stone-100 text-[11px] font-mono">
-                  <span className="font-bold text-[#183A2D] flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 group-hover:scale-125 transition-transform" />
-                    BƯỚC {item.step}
-                  </span>
-                  <span className="text-[10px] text-emerald-800 bg-[#E8F1E5] px-2 py-0.5 rounded font-ui font-semibold">
-                    {item.meta}
-                  </span>
-                </div>
-
-                {/* Lookbook Image Container */}
-                <div className="relative aspect-[16/11] rounded-lg overflow-hidden mb-3 bg-stone-100 border border-stone-200/60">
-                  <Image
-                    src={item.image}
-                    alt={item.title}
-                    fill
-                    className="object-cover transition-transform duration-700 group-hover:scale-105"
-                    unoptimized
-                  />
-                  {idx === 3 && (
-                    <div className="absolute bottom-2 right-2 bg-black/70 backdrop-blur-xs text-white text-[8.5px] font-ui font-semibold px-2 py-0.5 rounded flex items-center gap-1 shadow-xs">
-                      <RotateCw size={9} className="animate-spin text-emerald-300" />
-                      <span>Vòng Lặp Mới</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Content */}
-                <div className="space-y-1 flex-1 flex flex-col justify-between pt-0.5">
-                  <div>
-                    <h3 className="font-heading text-sm font-bold text-[#183A2D] group-hover:text-emerald-800 transition-colors leading-snug">
-                      {item.title}
-                    </h3>
-                    <p className="text-[11.5px] text-stone-500 font-light leading-relaxed mt-1 line-clamp-2">
-                      {item.desc}
-                    </p>
-                  </div>
-
-                  <div className="pt-2 mt-2 border-t border-stone-100 flex items-center justify-between text-[10.5px] text-stone-400 font-ui">
-                    <span className="text-[#183A2D] font-semibold group-hover:text-emerald-700 transition-colors">
-                      Bảo chứng CLOOP
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px] font-mono font-medium text-stone-400">
+                    <span>BƯỚC {item.step}</span>
+                    <span className="text-[10px] text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 font-ui font-semibold">
+                      {item.meta}
                     </span>
-                    <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform text-stone-400 group-hover:text-[#183A2D]" />
                   </div>
+                  <h3 className="text-xs sm:text-sm font-bold text-[#183A2D] font-heading">
+                    {item.title}
+                  </h3>
+                  <p className="text-[11.5px] text-stone-500 font-light leading-relaxed">
+                    {item.desc}
+                  </p>
                 </div>
-              </Link>
+
+                <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-[10.5px] text-stone-400 font-ui">
+                  <span className="text-[#183A2D] font-medium">Bảo chứng CLOOP</span>
+                  <ArrowRight size={11} className="text-stone-400" />
+                </div>
+              </div>
             ))}
           </motion.div>
         </AnimatePresence>
+
+        {/* DẢI BẢO CHỨNG MINH BẠCH - NỀN TRẮNG TINH TẾ */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
+          <div className="flex items-center gap-2.5 p-2.5 bg-stone-50/80 rounded-lg border border-stone-200/60 text-left">
+            <ShieldCheck size={16} strokeWidth={1.5} className="text-emerald-800 shrink-0" />
+            <div className="leading-tight">
+              <p className="text-[11px] font-bold text-[#183A2D]">Két Cọc Escrow</p>
+              <p className="text-[9.5px] text-stone-500 font-light">Hoàn cọc 100% khi trả đồ</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 p-2.5 bg-stone-50/80 rounded-lg border border-stone-200/60 text-left">
+            <Lock size={16} strokeWidth={1.5} className="text-emerald-800 shrink-0" />
+            <div className="leading-tight">
+              <p className="text-[11px] font-bold text-[#183A2D]">Định Danh Bank-KYC</p>
+              <p className="text-[9.5px] text-stone-500 font-light">Rút tiền về STK chính chủ</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 p-2.5 bg-stone-50/80 rounded-lg border border-stone-200/60 text-left">
+            <Leaf size={16} strokeWidth={1.5} className="text-emerald-800 shrink-0" />
+            <div className="leading-tight">
+              <p className="text-[11px] font-bold text-[#183A2D]">Điểm Green Pts</p>
+              <p className="text-[9.5px] text-stone-500 font-light">Giảm đến 50% tiền cọc</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 p-2.5 bg-stone-50/80 rounded-lg border border-stone-200/60 text-left">
+            <Award size={16} strokeWidth={1.5} className="text-emerald-800 shrink-0" />
+            <div className="leading-tight">
+              <p className="text-[11px] font-bold text-[#183A2D]">Đánh Giá Mù 2 Chiều</p>
+              <p className="text-[9.5px] text-stone-500 font-light">Minh bạch chuẩn Airbnb</p>
+            </div>
+          </div>
+        </div>
 
       </div>
     </section>

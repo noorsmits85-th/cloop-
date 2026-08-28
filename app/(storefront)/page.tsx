@@ -515,78 +515,69 @@ export default function Home() {
         </div>
       </section>
 
-
-
-      {/* SECTION 6: TRANG PHỤC THANH LÝ & SỞ HỮU DENSE 6-COLUMN GRID */}
+      {/* SECTION 5: HÀNH TRÌNH TUẦN HOÀN 3 BƯỚC */}
       <section className="w-full max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-10 md:py-12">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-5 gap-3 border-b border-stone-200 pb-2.5">
-          <div>
-            <span className="text-[9.5px] uppercase font-bold tracking-wider text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60 font-ui">
-              CHUYỂN NHƯỢNG & PASS NHANH
-            </span>
-            <h2 className="text-lg md:text-2xl font-heading font-extrabold text-[#0A2517] tracking-normal mt-1">
-              Trang Phục Thanh Lý & Sở Hữu
-            </h2>
-          </div>
-          
-          <div className="flex items-center gap-4 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 hide-scrollbar shrink-0">
-            <div className="flex items-center gap-4 text-[11px] font-bold uppercase tracking-wider text-stone-500 font-ui shrink-0">
-              {resaleCategories.map(cat => (
-                <button 
-                  key={cat} 
-                  onClick={() => setActiveResaleCategory(cat)}
-                  className={`pb-1 shrink-0 transition-all cursor-pointer ${activeResaleCategory === cat ? 'text-[#183A2D] border-b-2 border-[#183A2D]' : 'hover:text-[#183A2D] border-b-2 border-transparent hover:border-[#183A2D]'}`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-
-            <div className="hidden md:block w-px h-3.5 bg-gray-300"></div>
-
-            <Link 
-              href="/shop" 
-              className="group font-ui text-[11px] font-bold text-[#0A2517] hover:text-emerald-800 uppercase tracking-widest flex items-center gap-1 shrink-0"
-            >
-              Khám Phá Tất Cả <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </div>
+        <div className="text-center max-w-xl mx-auto mb-8">
+          <span className="text-[9.5px] uppercase font-bold tracking-widest text-[#2A4B2E] bg-[#E5EFE2] px-2.5 py-0.5 rounded-md border border-[#C5DAC2] font-ui">
+            TRẢI NGHIỆM ĐỘC BẢN CLOOP
+          </span>
+          <h2 className="font-heading text-lg md:text-2xl text-[#183A2D] font-bold tracking-normal mt-1">
+            Vận Hành Vòng Đời Thời Trang Trong 3 Bước
+          </h2>
         </div>
 
-        {/* 6-Column Resale Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-3.5">
-          {resaleItems.map((item, idx) => (
-            <div key={idx} className="group flex flex-col bg-white p-2 rounded-lg border border-stone-200/80 hover:border-amber-300 hover:shadow-xs transition-all cursor-pointer">
-              <div className="relative w-full aspect-[3/4] bg-stone-100 overflow-hidden rounded-md mb-2">
-                <Image src={item.src} alt={item.title} fill className="object-cover transition-opacity duration-700 opacity-100 group-hover:opacity-0" unoptimized />
-                <Image src={item.hoverSrc} alt={item.title} fill className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 scale-105 opacity-0 group-hover:opacity-100 group-hover:scale-100" unoptimized />
-                <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 text-[7.5px] font-bold tracking-wider bg-black text-white uppercase rounded-xs z-10">
-                  Sở Hữu
-                </div>
-              </div>
-
-              <div className="flex flex-col flex-1 justify-between gap-0.5">
-                <div className="flex justify-between items-center text-[9px]">
-                  <span className="text-stone-400 font-ui uppercase line-clamp-1">{item.owner}</span>
-                  <span className="text-rose-600 font-bold font-mono text-[8.5px] bg-rose-50 px-1 py-0.2 rounded">{item.discount}</span>
-                </div>
-
-                <h3 className="text-[11.5px] font-heading font-bold text-black line-clamp-1 group-hover:text-emerald-800 transition-colors">
-                  {item.title}
-                </h3>
-
-                <div className="flex items-center gap-1.5 pt-0.5 border-t border-stone-100">
-                  <span className="text-[11px] font-bold text-black font-mono">{item.price}</span>
-                  <span className="text-[8.5px] text-stone-400 line-through font-mono">{item.originalPrice}</span>
-                </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5">
+          {/* Step 1 */}
+          <div className="group bg-white rounded-xl p-3.5 border border-stone-200/80 hover:border-[#37503F] hover:shadow-md transition-all flex flex-col justify-between">
+            <div className="relative aspect-[4/3] rounded-lg overflow-hidden mb-3 bg-stone-100">
+              <Image src="/step1_phone.jpg" alt="Lướt & Đặt Thuê" fill className="object-cover transition-transform duration-700 group-hover:scale-105" unoptimized />
+              <div className="absolute top-2.5 left-2.5 bg-[#37503F] text-white text-[11px] font-mono font-bold px-2 py-0.5 rounded-md shadow-2xs">
+                01
               </div>
             </div>
-          ))}
+            <div className="space-y-1">
+              <h3 className="font-heading text-sm sm:text-base font-bold text-[#183A2D]">Lướt & Đặt Thuê Trong 60 Giây</h3>
+              <p className="text-stone-600 text-[11px] font-light leading-relaxed">
+                Khám phá hàng ngàn món đồ độc bản từ các chủ tủ uy tín. Kiểm tra lịch rảnh và đặt lịch giao tận tay trước sự kiện.
+              </p>
+            </div>
+          </div>
+
+          {/* Step 2 */}
+          <div className="group bg-white rounded-xl p-3.5 border border-stone-200/80 hover:border-[#37503F] hover:shadow-md transition-all flex flex-col justify-between">
+            <div className="relative aspect-[4/3] rounded-lg overflow-hidden mb-3 bg-stone-100">
+              <Image src="/step2_bag.jpg" alt="Nhận Đồ Chuẩn Spa" fill className="object-cover transition-transform duration-700 group-hover:scale-105" unoptimized />
+              <div className="absolute top-2.5 left-2.5 bg-[#37503F] text-white text-[11px] font-mono font-bold px-2 py-0.5 rounded-md shadow-2xs">
+                02
+              </div>
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-heading text-sm sm:text-base font-bold text-[#183A2D]">Nhận Đồ Tận Tay Thơm Tho</h3>
+              <p className="text-stone-600 text-[11px] font-light leading-relaxed">
+                Trang phục được kiểm tra tình trạng sạch sẽ, là phẳng tươm tất từ chủ tủ đồ uy tín, sẵn sàng để bạn tự tin diện ngay.
+              </p>
+            </div>
+          </div>
+
+          {/* Step 3 */}
+          <div className="group bg-white rounded-xl p-3.5 border border-stone-200/80 hover:border-[#37503F] hover:shadow-md transition-all flex flex-col justify-between">
+            <div className="relative aspect-[4/3] rounded-lg overflow-hidden mb-3 bg-stone-100">
+              <Image src="/step3_party.jpg" alt="Tỏa Sáng & Trả Đồ" fill className="object-cover transition-transform duration-700 group-hover:scale-105" unoptimized />
+              <div className="absolute top-2.5 left-2.5 bg-[#37503F] text-white text-[11px] font-mono font-bold px-2 py-0.5 rounded-md shadow-2xs">
+                03
+              </div>
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-heading text-sm sm:text-base font-bold text-[#183A2D]">Tỏa Sáng & Trả Đồ Tiện Lợi</h3>
+              <p className="text-stone-600 text-[11px] font-light leading-relaxed">
+                Tự tin ghi dấu ấn tại sự kiện. Sau ngày thuê, shipper CLOOP đến nhận lại tận nơi mà bạn hoàn toàn không cần tự giặt ủi.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* SECTION 7: HỘ CHIẾU THỜI TRANG SỐ */}
+      {/* SECTION 6: HỘ CHIẾU THỜI TRANG SỐ */}
       <section className="w-full py-12 md:py-14 bg-[#F3EFE6] border-y border-stone-200/80">
         <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
           
@@ -675,6 +666,75 @@ export default function Home() {
             </div>
           </div>
 
+        </div>
+      </section>
+
+      {/* SECTION 7: TRANG PHỤC THANH LÝ & SỞ HỮU DENSE 6-COLUMN GRID */}
+      <section className="w-full max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-10 md:py-12">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-5 gap-3 border-b border-stone-200 pb-2.5">
+          <div>
+            <span className="text-[9.5px] uppercase font-bold tracking-wider text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60 font-ui">
+              CHUYỂN NHƯỢNG & PASS NHANH
+            </span>
+            <h2 className="text-lg md:text-2xl font-heading font-extrabold text-[#0A2517] tracking-normal mt-1">
+              Trang Phục Thanh Lý & Sở Hữu
+            </h2>
+          </div>
+          
+          <div className="flex items-center gap-4 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 hide-scrollbar shrink-0">
+            <div className="flex items-center gap-4 text-[11px] font-bold uppercase tracking-wider text-stone-500 font-ui shrink-0">
+              {resaleCategories.map(cat => (
+                <button 
+                  key={cat} 
+                  onClick={() => setActiveResaleCategory(cat)}
+                  className={`pb-1 shrink-0 transition-all cursor-pointer ${activeResaleCategory === cat ? 'text-[#183A2D] border-b-2 border-[#183A2D]' : 'hover:text-[#183A2D] border-b-2 border-transparent hover:border-[#183A2D]'}`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            <div className="hidden md:block w-px h-3.5 bg-gray-300"></div>
+
+            <Link 
+              href="/shop" 
+              className="group font-ui text-[11px] font-bold text-[#0A2517] hover:text-emerald-800 uppercase tracking-widest flex items-center gap-1 shrink-0"
+            >
+              Khám Phá Tất Cả <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </div>
+        </div>
+
+        {/* 6-Column Resale Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-3.5">
+          {resaleItems.map((item, idx) => (
+            <div key={idx} className="group flex flex-col bg-white p-2 rounded-lg border border-stone-200/80 hover:border-amber-300 hover:shadow-xs transition-all cursor-pointer">
+              <div className="relative w-full aspect-[3/4] bg-stone-100 overflow-hidden rounded-md mb-2">
+                <Image src={item.src} alt={item.title} fill className="object-cover transition-opacity duration-700 opacity-100 group-hover:opacity-0" unoptimized />
+                <Image src={item.hoverSrc} alt={item.title} fill className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 scale-105 opacity-0 group-hover:opacity-100 group-hover:scale-100" unoptimized />
+                <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 text-[7.5px] font-bold tracking-wider bg-black text-white uppercase rounded-xs z-10">
+                  Sở Hữu
+                </div>
+              </div>
+
+              <div className="flex flex-col flex-1 justify-between gap-0.5">
+                <div className="flex justify-between items-center text-[9px]">
+                  <span className="text-stone-400 font-ui uppercase line-clamp-1">{item.owner}</span>
+                  <span className="text-rose-600 font-bold font-mono text-[8.5px] bg-rose-50 px-1 py-0.2 rounded">{item.discount}</span>
+                </div>
+
+                <h3 className="text-[11.5px] font-heading font-bold text-black line-clamp-1 group-hover:text-emerald-800 transition-colors">
+                  {item.title}
+                </h3>
+
+                <div className="flex items-center gap-1.5 pt-0.5 border-t border-stone-100">
+                  <span className="text-[11px] font-bold text-black font-mono">{item.price}</span>
+                  <span className="text-[8.5px] text-stone-400 line-through font-mono">{item.originalPrice}</span>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
