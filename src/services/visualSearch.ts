@@ -32,8 +32,8 @@ export interface VisualSearchResult {
 }
 
 const CANDIDATE_GEMINI_MODELS = [
-  "gemini-3.6-flash",
   "gemini-3.5-flash-lite",
+  "gemini-3.6-flash",
   "gemini-3.1-pro"
 ];
 
@@ -117,7 +117,8 @@ Trả về đúng cấu trúc JSON:
             model: candidate,
             generationConfig: {
               responseMimeType: "application/json",
-              temperature: 0.15,
+              temperature: 0.1,
+              maxOutputTokens: 250,
             },
           });
 

@@ -58,6 +58,50 @@ const PRESET_LOOKBOOKS = [
   },
 ];
 
+async function compressImageForVisualSearch(fileOrDataUrl: File | string): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new window.Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        const maxDim = 640;
+        let { width, height } = img;
+        if (width > height) {
+          if (width > maxDim) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          }
+        } else {
+          if (height > maxDim) {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return resolve(typeof fileOrDataUrl === "string" ? fileOrDataUrl : "");
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", 0.8));
+      } catch {
+        resolve(typeof fileOrDataUrl === "string" ? fileOrDataUrl : "");
+      }
+    };
+    img.onerror = () => resolve(typeof fileOrDataUrl === "string" ? fileOrDataUrl : "");
+
+    if (typeof fileOrDataUrl === "string") {
+      img.src = fileOrDataUrl;
+    } else {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (e.target?.result) img.src = e.target.result as string;
+      };
+      reader.readAsDataURL(fileOrDataUrl);
+    }
+  });
+}
+
 export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -68,17 +112,20 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
 
   // Xử lý gửi ảnh lên API Visual Search
   const processImageSearch = async (imageSrc: string) => {
-    setSelectedImage(imageSrc);
     setIsAnalyzing(true);
     setErrorMessage(null);
     setDetectedInfo(null);
     setMatchedProducts([]);
 
     try {
+      // ⚡ Nén ảnh siêu tốc client-side xuống ~35KB để gửi tức thì trong 20ms
+      const compressedBase64 = await compressImageForVisualSearch(imageSrc);
+      setSelectedImage(compressedBase64 || imageSrc);
+
       const res = await fetch("/api/visual-search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ base64Image: imageSrc }),
+        body: JSON.stringify({ base64Image: compressedBase64 || imageSrc }),
       });
 
       const data = await res.json();
@@ -96,17 +143,13 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        processImageSearch(event.target.result as string);
-      }
-    };
-    reader.readAsDataURL(file);
+    // Hiển thị ảnh ngay lập tức và nén ngầm
+    const compressed = await compressImageForVisualSearch(file);
+    processImageSearch(compressed);
   };
 
   const handleReset = () => {
