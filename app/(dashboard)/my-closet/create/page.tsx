@@ -391,7 +391,7 @@ export default function CreateProductListingPage() {
               <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-ui shadow-xs animate-pulse">
                 <div className="w-5 h-5 border-2 border-emerald-700 border-t-transparent rounded-full animate-spin shrink-0" />
                 <div>
-                  <p className="font-bold">⚡ AI Gemini 3.5 Flash-Lite đang quét ảnh...</p>
+                  <p className="font-bold">Trí tuệ nhân tạo CLOOP Vision đang quét ảnh...</p>
                   <p className="text-[11px] text-emerald-700">Tự động nhận diện tên món đồ, màu sắc, chất liệu, dịp và đề xuất giá thuê giúp bạn.</p>
                 </div>
               </div>
@@ -400,9 +400,9 @@ export default function CreateProductListingPage() {
             {aiAutofillSuccess && !isAiScanning && (
               <div className="flex items-center justify-between p-4 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-ui shadow-xs">
                 <div className="flex items-center gap-2.5">
-                  <Sparkles size={18} className="text-emerald-700 shrink-0" />
+                  <div className="w-2 h-2 rounded-full bg-emerald-700 shrink-0" />
                   <div>
-                    <p className="font-bold">🎉 AI đã tự động nhận diện & điền trọn bộ thông số!</p>
+                    <p className="font-bold">Đã tự động nhận diện & điền trọn bộ thông số!</p>
                     <p className="text-[11px] text-emerald-700">Bạn chỉ cần kiểm tra lại các thông tin bên dưới và bấm đăng nhé.</p>
                   </div>
                 </div>
@@ -432,8 +432,8 @@ export default function CreateProductListingPage() {
                 <div className="w-12 h-12 rounded-full bg-white border border-[#D5C6B1] flex items-center justify-center mx-auto text-stone-400 group-hover:bg-[#1C3F30] group-hover:text-white transition-all mb-3 shadow-sm">
                   <Camera size={20} />
                 </div>
-                <p className="font-medium text-lg text-gray-700 mb-1">📸 Chụp ảnh hoặc dán ảnh vào đây</p>
-                <p className="text-[11px] text-emerald-800 font-semibold font-sans">✨ AI Gemini 3.5 Flash-Lite sẽ tự động nhìn ảnh và điền hết thông số cho bạn!</p>
+                <p className="font-medium text-lg text-gray-700 mb-1">Chụp ảnh hoặc dán ảnh vào đây</p>
+                <p className="text-[11px] text-emerald-800 font-semibold font-sans">Trí tuệ nhân tạo CLOOP sẽ tự động nhìn ảnh và điền hết thông số cho bạn!</p>
               </div>
               
               {images.length > 0 && (

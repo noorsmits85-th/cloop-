@@ -142,11 +142,11 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
                 <h3 className="font-heading text-xl sm:text-2xl font-bold tracking-wide flex items-center gap-2">
                   AI Lookbook Visual Search
                   <span className="text-[10px] uppercase font-extrabold tracking-widest px-2.5 py-0.5 rounded-full bg-emerald-400/20 text-emerald-300 border border-emerald-400/30 font-ui flex items-center gap-1">
-                    ⚡ Gemini 3.5 Flash-Lite
+                    CLOOP Vision AI
                   </span>
                 </h3>
                 <p className="text-xs text-stone-400">
-                  Phân tích phong cách bằng Google Gemini 3.5 Flash-Lite siêu tốc để tìm đồ tương tự
+                  Phân tích phong cách bằng Trí tuệ nhân tạo CLOOP Vision để tìm đồ tương tự trong kho
                 </p>
               </div>
             </div>
