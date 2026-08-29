@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-const GHN_API_URL = "https://dev-online-gateway.ghn.vn/shiip/public-api/master-data";
+const GHN_API_URL = "https://online-gateway.ghn.vn/shiip/public-api/master-data";
 const GHN_TOKEN = process.env.GHN_API_TOKEN;
 
 // DANH SÁCH 63 TỈNH THÀNH VIỆT NAM CHUẨN ĐẦY ĐỦ 100%
