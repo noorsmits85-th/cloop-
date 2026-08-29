@@ -389,7 +389,7 @@ export default function Home() {
             </div>
             
             <Link 
-              href="/closets" 
+              href="/shop" 
               className="group font-ui text-[11px] font-bold text-[#0A2517] hover:text-emerald-800 uppercase tracking-widest flex items-center gap-1 shrink-0"
             >
               Khám phá tất cả <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
@@ -848,7 +848,7 @@ export default function Home() {
           </p>
           <div className="pt-2">
             <Link 
-              href="/green-market" 
+              href="/shop?category=Upcycle" 
               className="inline-flex items-center justify-center px-6 py-2.5 bg-white text-[#183A2D] hover:bg-[#F4F1EA] font-extrabold rounded-md text-[11px] uppercase tracking-widest transition-all font-ui shadow-2xs"
             >
               KHÁM PHÁ NGUYÊN LIỆU

@@ -502,7 +502,7 @@ export default function BlogJournalPage() {
                   Đăng nhập để đính câu chuyện trang phục của bạn lên bản đồ ký ức và tích lũy điểm xanh!
                 </p>
                 <Link
-                  href="/auth"
+                  href="/login"
                   className="mt-5 w-full py-3 rounded-full bg-[#0A2517] hover:bg-[#183A2D] text-white text-xs font-bold uppercase tracking-wider transition-all font-ui shadow-md"
                 >
                   Đăng Nhập / Đăng Ký

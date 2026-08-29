@@ -235,21 +235,19 @@ export async function getUserWishlistAction(filter: "ALL" | "SAVE" | "LIKE" = "S
  * Big Tech HackerNews Time-Decay Gravity Trending Algorithm:
  * Score = (Likes + Saves * 2 + BoostWeight) / (Hours_Old + 2)^1.2
  */
-export async function getTrendingProductsAction(limit: number = 10) {
+export async function getTrendingProductsAction(limit: number = 24) {
   try {
-    const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
-
     const products = await prisma.product.findMany({
       where: {
         isDeleted: false,
         status: "IN_CLOSET",
-        createdAt: { gte: sixtyDaysAgo }
       },
       include: {
         images: { orderBy: { sortOrder: "asc" } },
         user: { select: { id: true, name: true, avatar: true } },
         listings: { where: { status: "AVAILABLE" } }
       },
+      orderBy: { createdAt: "desc" },
       take: 60
     });
 
@@ -264,10 +262,16 @@ export async function getTrendingProductsAction(limit: number = 10) {
       const gravity = 1.2;
       const score = (rawPoints + 1) / Math.pow(hoursOld + 2, gravity);
 
+      const rentListing = p.listings.find(l => l.listingType === "RENT");
+      const sellListing = p.listings.find(l => l.listingType === "SELL" || (l as any).listingType === "SALE");
+
       return {
         ...p,
         trendingScore: score,
-        isBoosted
+        isBoosted,
+        rentalPrice: rentListing?.basePrice || 0,
+        salePrice: sellListing?.salePrice || sellListing?.basePrice || 0,
+        primaryImage: p.images[0]?.url || "/placeholder-clothing.png"
       };
     });
 
@@ -283,3 +287,53 @@ export async function getTrendingProductsAction(limit: number = 10) {
     return { success: false, error: error.message, products: [] };
   }
 }
+
+/**
+ * Get products available for direct resale / transfer ownership
+ */
+export async function getResaleProductsAction(limit: number = 12) {
+  try {
+    const products = await prisma.product.findMany({
+      where: {
+        isDeleted: false,
+        status: "IN_CLOSET",
+        listings: {
+          some: {
+            listingType: { in: ["SELL"] },
+            status: "AVAILABLE"
+          }
+        }
+      },
+      include: {
+        images: { orderBy: { sortOrder: "asc" } },
+        user: { select: { id: true, name: true, avatar: true } },
+        listings: { where: { status: "AVAILABLE" } }
+      },
+      orderBy: { createdAt: "desc" },
+      take: limit
+    });
+
+    const formatted = products.map(p => {
+      const sellListing = p.listings.find(l => l.listingType === "SELL");
+      return {
+        id: p.id,
+        title: p.title,
+        price: sellListing?.salePrice || sellListing?.basePrice || 0,
+        origPrice: (sellListing?.salePrice || 0) * 2 || 1000000,
+        img: p.images[0]?.url || "/vintage_coat.jpg",
+        hoverImg: p.images[1]?.url || p.images[0]?.url || "/macro_fabric.jpg",
+        owner: p.user?.name ? `@${p.user.name}` : "@cloop.member",
+        discount: "-50%"
+      };
+    });
+
+    return {
+      success: true,
+      products: formatted
+    };
+  } catch (error: any) {
+    console.error("Lỗi lấy sản phẩm thanh lý:", error);
+    return { success: false, error: error.message, products: [] };
+  }
+}
+

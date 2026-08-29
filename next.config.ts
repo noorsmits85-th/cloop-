@@ -4,11 +4,11 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
-      bodySizeLimit: "50mb", // 🚀 Cho phép điện thoại up ảnh gốc căng nét tới 50MB
-      allowedOrigins: ["192.168.1.5:3000", "localhost:3000"], // 🔓 Đổi thành allowedOrigins là hết sạch gạch đỏ nha Trang!
+      bodySizeLimit: "50mb",
+      allowedOrigins: ["192.168.1.5:3000", "localhost:3000"],
     },
   },
-  // 📸 VÁ LỖI HÌNH ẢNH: Mở khóa ranh giới bảo mật cho cả kho cũ Supabase và kho mới Cloudinary
+  // 📸 VÁ LỖI HÌNH ẢNH: Mở khóa ranh giới bảo mật cho Cloudinary, Supabase, Google Storage, Unsplash
   images: {
     remotePatterns: [
       {
@@ -17,7 +17,31 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "notxrjsuukrrxdlboavo.supabase.co", // ⬅️ CHÈN THÊM CHÁU NÀY VÀO LÀ HẾT BỊ LỖI TRANG PRODUCT CŨ KHÔNG HIỆN ẢNH!
+        hostname: "notxrjsuukrrxdlboavo.supabase.co",
+      },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
+      {
+        protocol: "https",
+        hostname: "storage.googleapis.com",
+      },
+      {
+        protocol: "https",
+        hostname: "drive.googleusercontent.com",
+      },
+      {
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
+      },
+      {
+        protocol: "https",
+        hostname: "*.googleusercontent.com",
+      },
+      {
+        protocol: "https",
+        hostname: "*.supabase.co",
       },
     ],
   },
@@ -35,8 +59,6 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  // 🛡️ Ép Vercel bỏ qua toàn bộ lỗi ESLint khi Build (Chống sập do các file js cũ)
-  // 🛡️ Ép Vercel bỏ qua lỗi TypeScript (phòng hờ)
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -46,20 +68,13 @@ const nextConfig: NextConfig = {
 export default withSentryConfig(
   nextConfig,
   {
-    // Tắt các log loằng ngoằng của Sentry lúc Vercel đang build cho đỡ rác Terminal
     silent: true,
     org: "cloop-tech",
     project: "cloop-app",
-
-    // 🛡️ BỌC THÉP 1: Upload source maps lên Sentry nhưng GIẤU KHỎI TRÌNH DUYỆT (End-user)
     sourcemaps: {
       disable: false,
       deleteSourcemapsAfterUpload: true,
     },
-
-    // Dọn dẹp các frame rác trong stack trace (v8 mặc định đã tối ưu)
-    
-    // 🛡️ BỌC THÉP 2: Ẩn các log console của Sentry trên trình duyệt khách hàng
     disableLogger: true,
   }
 );

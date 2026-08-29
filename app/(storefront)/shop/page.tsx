@@ -36,9 +36,10 @@ function ShopContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   
-  // 🎛️ a) Nhận diện phân luồng trực tiếp từ URL bar (?type và ?occasion mới)
+  // 🎛️ a) Nhận diện phân luồng trực tiếp từ URL bar (?type, ?occasion, ?category, ?size, ?material)
   const urlType = searchParams.get("type") || "all";
   const urlOccasion = searchParams.get("occasion");
+  const urlCategory = searchParams.get("category");
   const urlSize = searchParams.get("size") || "all";
   const urlMaterial = searchParams.get("material") || "all";
 
@@ -53,10 +54,10 @@ function ShopContent() {
   const [showAllMaterials, setShowAllMaterials] = useState(false);
 
   // 🎛️ b) Khởi tạo state lọc dịp linh hoạt theo URL bar thay vì ép cứng "Tất cả"
-  const [selectedOccasion, setSelectedOccasion] = useState(urlOccasion || "Tất cả");
+  const [selectedOccasion, setSelectedOccasion] = useState(urlOccasion || urlCategory || "Tất cả");
 
   // 🎛️ c) Cập nhật mở rộng danh sách chip lọc khớp chuẩn khép kín với 8 dịp trên trang chủ và form
-  const occasionList = ["Tất cả", "Tiệc cưới", "Dạ hội", "Dạo phố", "Áo dài", "Đi biển", "Kỷ yếu", "Lễ hội", "Công sở"];
+  const occasionList = ["Tất cả", "Tiệc cưới", "Dạ hội", "Dạo phố", "Áo dài", "Đi biển", "Kỷ yếu", "Lễ hội", "Công sở", "Upcycle", "Vintage"];
 
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [loadingMore, setLoadingMore] = useState(false);
@@ -78,10 +79,12 @@ function ShopContent() {
   useEffect(() => {
     if (urlOccasion) {
       setSelectedOccasion(urlOccasion);
+    } else if (urlCategory) {
+      setSelectedOccasion(urlCategory);
     } else {
       setSelectedOccasion("Tất cả");
     }
-  }, [urlOccasion]);
+  }, [urlOccasion, urlCategory]);
 
   const isFetchingRef = useRef(false);
 
@@ -99,14 +102,16 @@ function ShopContent() {
       let query = supabase
         .from("products")
         .select(`
-          id, title, province, condition, size, brand, userId, occasion, createdAt,
+          id, title, province, condition, size, brand, userId, occasion, category, createdAt,
           Listing!inner(status)
         `)
         .eq("Listing.status", "AVAILABLE");
       
       // 3. Đẩy Filter xuống Backend (Chỉ thị 3)
-      if (selectedOccasion !== "Tất cả") {
-        query = query.ilike("occasion", `%${selectedOccasion}%`);
+      if (urlCategory) {
+        query = query.or(`category.ilike.%${urlCategory}%,occasion.ilike.%${urlCategory}%,title.ilike.%${urlCategory}%`);
+      } else if (selectedOccasion !== "Tất cả") {
+        query = query.or(`occasion.ilike.%${selectedOccasion}%,category.ilike.%${selectedOccasion}%`);
       }
       if (selectedSize !== "all") {
         query = query.eq("size", selectedSize);
@@ -474,14 +479,24 @@ function ShopContent() {
           )}
           </>
         ) : (
-          <div className="border border-stone-200/60 bg-white rounded-[2.5rem] p-12 text-center shadow-sm max-w-xl mx-auto mt-8 font-sans">
-            <div className="w-12 h-12 bg-stone-50 border rounded-full flex items-center justify-center mx-auto text-stone-400 mb-4 shadow-inner">
-              <Shirt size={20} />
+          <div className="border border-stone-200/60 bg-white rounded-[2.5rem] p-12 text-center shadow-sm max-w-xl mx-auto mt-8 font-sans space-y-4">
+            <div className="w-14 h-14 bg-emerald-50 border border-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-800 shadow-inner">
+              <Shirt size={24} />
             </div>
-            <h3 className="text-sm font-bold text-stone-800 uppercase tracking-wide">Không tìm thấy trang phục phù hợp</h3>
-            <p className="text-[11px] text-gray-400 mt-2 leading-relaxed">
-              Hiện tại phân hệ này chưa ghi nhận phục trang tương thích với phong cách này, cậu chọn dịp khác hoặc tự tay đăng đồ nhé.
+            <h3 className="text-base font-bold text-stone-800 uppercase tracking-wide">
+              Tủ đồ phong cách này đang chờ bạn khai phá!
+            </h3>
+            <p className="text-xs text-stone-500 max-w-md mx-auto leading-relaxed">
+              Hiện tại chưa có trang phục nào thuộc phân loại này. Bạn hãy là người đầu tiên đăng tải chiếc váy của mình lên sàn nhé!
             </p>
+            <div className="pt-2">
+              <Link
+                href="/my-closet/create"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-[#183A2D] hover:bg-[#0A2517] text-white font-bold rounded-full text-xs uppercase tracking-wider transition-all font-ui shadow-md"
+              >
+                Đăng Món Đồ Đầu Tiên &rarr;
+              </Link>
+            </div>
           </div>
         )}
 

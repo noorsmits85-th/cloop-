@@ -1,22 +1,30 @@
 import React from "react";
+import { requireUser } from "@/src/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { SettingsClient } from "../_components/SettingsClient";
+import { redirect } from "next/navigation";
 
 export const revalidate = 0;
 
 export default async function SettingsPage() {
-  const { data: { session } } = await supabase.auth.getSession();
-  const userId = session?.user?.id;
-
-  if (!userId) {
-    return <div className="p-10 text-center">Vui lòng đăng nhập</div>;
+  let userAuth;
+  try {
+    userAuth = await requireUser();
+  } catch (error) {
+    // Không có session
   }
+
+  if (!userAuth) {
+    redirect("/login?next=/my-closet/settings");
+  }
+
+  const userId = userAuth.id;
 
   const { data: userProfile } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", userId)
-    .single();
+    .maybeSingle();
 
   return (
     <div className="min-h-screen bg-[#FAF9F5] py-8 px-4 sm:px-8 text-stone-800 antialiased">
@@ -35,7 +43,7 @@ export default async function SettingsPage() {
           </p>
         </div>
         
-        <SettingsClient userProfile={userProfile} />
+        <SettingsClient userProfile={userProfile || { id: userId, name: userAuth.name }} />
       </div>
     </div>
   );

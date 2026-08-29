@@ -155,10 +155,25 @@ export default function CreateProductListingPage() {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      const fileArray = Array.from(files).slice(0, 5 - images.length);
-      setCropQueue((prev) => [...prev, ...fileArray]);
-      // Quét AI ngay tấm đầu tiên
-      triggerAiAutofill(fileArray[0]);
+      const validFiles: File[] = [];
+      for (const file of Array.from(files)) {
+        if (file.size > 15 * 1024 * 1024) {
+          alert(`Ảnh "${file.name}" vượt quá 15MB. Vui lòng chọn ảnh nhỏ hơn!`);
+          continue;
+        }
+        if (!file.type.startsWith("image/")) {
+          alert(`Tệp "${file.name}" không phải định dạng ảnh hợp lệ.`);
+          continue;
+        }
+        validFiles.push(file);
+      }
+
+      if (validFiles.length > 0) {
+        const fileArray = validFiles.slice(0, 5 - images.length);
+        setCropQueue((prev) => [...prev, ...fileArray]);
+        // Quét AI ngay tấm đầu tiên
+        triggerAiAutofill(fileArray[0]);
+      }
     }
   };
 
