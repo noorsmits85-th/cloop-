@@ -125,21 +125,9 @@ export default function RentalBookingBox({
     fetchOwnerReviewStats();
   }, [ownerId]);
 
-  const handleActivatePayment = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (!session) {
-      router.push(`/login?next=/checkout/${productId}`);
-      return;
-    }
-
-    if (totalInvoicePrice <= 0) {
-      alert("Lỗi: Tổng hóa đơn thanh toán không hợp lệ (0đ). Vui lòng kiểm tra lại giá sản phẩm!");
-      return;
-    }
-
+  const handleActivatePayment = () => {
     if (!agreedToTerms) { 
-      alert(`Bạn ơi, vui lòng tích chọn đồng ý với Điều khoản và cam kết bảo chứng của CLOOP nhé! 😊`); 
+      alert(`Bạn ơi, vui lòng tích chọn vào ô đồng ý với Điều khoản và cam kết bảo chứng của CLOOP nhé! 😊`); 
       return; 
     }
 
