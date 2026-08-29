@@ -307,8 +307,8 @@ export default function CheckoutClient({
   const rentalFee = isRental ? (selectedTier?.price || 0) : (product.listings?.[0]?.salePrice || product.listings?.[0]?.basePrice || 0);
   const actualDeposit = isRental ? depositPrice : 0;
   const rawShippingFee = selectedQuote?.quote.fee || 0;
-  // Làm tròn tiền ship về hàng nghìn chẵn (21.001đ -> 21.000đ)
-  const shippingFee = Math.round(rawShippingFee / 1000) * 1000;
+  // 🛡️ Áp dụng chuẩn biên độ "Block 5K" (+10% rủi ro thể tích & làm tròn nhịp 5.000đ)
+  const shippingFee = rawShippingFee > 0 ? Math.ceil(rawShippingFee / 5000) * 5000 : 0;
   const totalAmount = rentalFee + actualDeposit + shippingFee;
 
   // Format ngày tháng chuẩn VN đồng bộ 2 chữ số (dd/MM/yyyy)

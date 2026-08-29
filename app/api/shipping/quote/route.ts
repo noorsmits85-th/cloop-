@@ -45,18 +45,22 @@ export async function POST(req: Request) {
         body: JSON.stringify(ghnBody)
       });
       const data = await res.json();
-        const realFee = data.data.total;
-        const retailEstimate = realFee + 10000;
-        quotes = [{
-          provider: "GHN",
-          serviceId: "standard",
-          name: "Giao Tiêu Chuẩn (GHN Express)",
-          fee: realFee,
-          originalFee: retailEstimate,
-          discount: 10000,
-          estimatedDays: 2,
-          packagingNote: "Quy cách chuẩn: Túi niêm phong PE dẻo (<500g)"
-        }];
+      const rawFee = (data.code === 200 && data.data?.total) ? data.data.total : 21000;
+      
+      // 🛡️ CÔNG THỨC BIÊN ĐỘ "BLOCK 5K" (+10% rủi ro thể tích / hoàn hàng & làm tròn lên nhịp 5.000đ)
+      const safeFee = rawFee * 1.1;
+      const normalizedFee = Math.ceil(safeFee / 5000) * 5000;
+
+      quotes = [{
+        provider: "GHN",
+        serviceId: "standard",
+        name: "Giao Tiêu Chuẩn (GHN Express)",
+        fee: normalizedFee,
+        originalFee: normalizedFee + 10000,
+        discount: 10000,
+        estimatedDays: 2,
+        packagingNote: "Quy cách chuẩn: Túi niêm phong PE dẻo (<500g)"
+      }];
     } else {
       // NẾU KHÔNG CÓ TOKEN -> CHẠY MOCK LOGIC THÔNG MINH
       quotes = await getShippingQuotes(fromProvince, toProvince, weight);
