@@ -280,16 +280,53 @@ export default function CheckoutClient({
     }
   };
 
+  // Phát hiện đơn liên tỉnh (VD: Hà Nội -> Nghệ An / TP.HCM)
+  const originProvinceStr = (fromProvince || product.province || "Hà Nội").trim().toLowerCase();
+  const isInterProvincial = Boolean(
+    selectedProvince && 
+    !originProvinceStr.includes(selectedProvince.name.trim().toLowerCase()) &&
+    !selectedProvince.name.trim().toLowerCase().includes(originProvinceStr)
+  );
+
+  // Đơn liên tỉnh cần tối thiểu 3 ngày để xe tải GHN vận chuyển an toàn
+  const minDaysBuffer = isInterProvincial ? 3 : 1;
+  const earliestDateObj = new Date(Date.now() + minDaysBuffer * 86400000);
+  const earliestStartDate = earliestDateObj.toISOString().slice(0, 10);
+
+  // Tự động đẩy lùi startDate nếu nhỏ hơn earliestStartDate & chuyển gói 1 ngày sang gói 3 ngày khi liên tỉnh
+  useEffect(() => {
+    if (startDate && startDate < earliestStartDate) {
+      setStartDate(earliestStartDate);
+    }
+    if (isInterProvincial && selectedTier?.days === 1) {
+      const tier3 = pricingTiers.find(t => t.days === 3) || pricingTiers[1];
+      if (tier3) setSelectedTier(tier3);
+    }
+  }, [isInterProvincial, earliestStartDate]);
+
   const rentalFee = isRental ? (selectedTier?.price || 0) : (product.listings?.[0]?.salePrice || product.listings?.[0]?.basePrice || 0);
   const actualDeposit = isRental ? depositPrice : 0;
-  const shippingFee = selectedQuote?.quote.fee || 0;
+  const rawShippingFee = selectedQuote?.quote.fee || 0;
+  // Làm tròn tiền ship về hàng nghìn chẵn (21.001đ -> 21.000đ)
+  const shippingFee = Math.round(rawShippingFee / 1000) * 1000;
   const totalAmount = rentalFee + actualDeposit + shippingFee;
+
+  // Format ngày tháng chuẩn VN đồng bộ 2 chữ số (dd/MM/yyyy)
+  const formatDateVN = (dateInput: Date | string) => {
+    if (!dateInput) return "";
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return "";
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
 
   const calculateEndDate = () => {
     if (!startDate || !selectedTier) return "";
     const start = new Date(startDate);
     const end = new Date(start.getTime() + ((selectedTier?.days || 1) - 1) * 86400000);
-    return end.toLocaleDateString('vi-VN');
+    return formatDateVN(end);
   };
 
   return (
@@ -369,14 +406,15 @@ export default function CheckoutClient({
           </div>
 
           {isRental && actualDeposit > 0 && (
-            <div className="flex justify-between items-center text-amber-900 bg-amber-50/70 p-2.5 rounded-xl border border-amber-200/60">
-              <div>
-                <p className="font-bold flex items-center gap-1">
-                  <ShieldCheck size={13} className="text-amber-700" /> Tiền cọc Két Escrow:
+            <div className="flex justify-between items-center text-amber-950 bg-amber-50/80 p-3 rounded-xl border border-amber-200/70">
+              <div className="space-y-0.5">
+                <p className="font-bold flex items-center gap-1.5 text-xs">
+                  <ShieldCheck size={14} className="text-amber-700" /> Tiền cọc Két Escrow (Tạm giữ):
                 </p>
-                <span className="text-[9.5px] text-amber-700">Tự động hoàn trả 100% khi trả đồ</span>
+                <span className="text-[10px] text-amber-800 block">Tự động hoàn trả 100% khi trả đồ nguyên vẹn</span>
+                <span className="text-[9px] text-emerald-800 font-medium block">Ưu đãi: Xác thực CCCD / VNeID để giảm 50% cọc đơn sau</span>
               </div>
-              <span className="font-bold font-mono text-sm">+{actualDeposit.toLocaleString('vi-VN')}đ</span>
+              <span className="font-bold font-mono text-sm text-amber-900 shrink-0">+{actualDeposit.toLocaleString('vi-VN')}đ</span>
             </div>
           )}
 
@@ -460,25 +498,47 @@ export default function CheckoutClient({
         {/* 1. CHỌN GÓI THUÊ THÔNG MINH */}
         {isRental && (
           <div className="space-y-2">
-            <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 font-ui">
-              1. Gói Thuê Trải Nghiệm
-            </label>
+            <div className="flex justify-between items-center">
+              <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 font-ui">
+                1. Gói Thuê Trải Nghiệm
+              </label>
+              {isInterProvincial && (
+                <span className="text-[10px] text-amber-700 font-medium bg-amber-50 px-2 py-0.5 rounded border border-amber-200/60 font-ui">
+                  Giao liên tỉnh (Hà Nội → {selectedProvince?.name})
+                </span>
+              )}
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               {pricingTiers.map((tier, idx) => {
                 const isSelected = selectedTier?.days === tier.days;
+                const isOneDayDisabled = isInterProvincial && tier.days === 1;
+
                 return (
                   <div 
                     key={idx}
-                    onClick={() => setSelectedTier(tier)}
-                    className={`p-3 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
-                      isSelected 
-                        ? 'border-[#183A2D] bg-[#F4F9F5] shadow-2xs ring-1 ring-[#183A2D]' 
-                        : 'border-stone-200 hover:border-stone-300 bg-[#FAF9F5]'
+                    onClick={() => {
+                      if (isOneDayDisabled) {
+                        alert(`Gói Hỏa Tốc 1 ngày chỉ áp dụng cho đơn cùng tỉnh/thành phố (${fromProvince || product.province || "Hà Nội"}). Đơn hàng gửi về ${selectedProvince?.name} cần tối thiểu 2-3 ngày vận chuyển nên bạn vui lòng chọn gói 3 ngày hoặc 7 ngày nhé!`);
+                        return;
+                      }
+                      setSelectedTier(tier);
+                    }}
+                    className={`p-3 rounded-xl border transition-all flex flex-col justify-between ${
+                      isOneDayDisabled 
+                        ? 'opacity-45 bg-stone-100 border-stone-200 cursor-not-allowed' 
+                        : isSelected 
+                          ? 'border-[#183A2D] bg-[#F4F9F5] shadow-2xs ring-1 ring-[#183A2D] cursor-pointer' 
+                          : 'border-stone-200 hover:border-stone-300 bg-[#FAF9F5] cursor-pointer'
                     }`}
                   >
                     <div>
                       <div className="flex justify-between items-center mb-0.5">
                         <span className="font-ui font-bold text-xs text-[#0A2517]">{tier.name}</span>
+                        {isOneDayDisabled && (
+                          <span className="text-[8.5px] font-bold text-amber-800 bg-amber-100 px-1 py-0.2 rounded font-ui">
+                            Chỉ nội tỉnh
+                          </span>
+                        )}
                       </div>
                       <p className="text-[10px] text-stone-500 line-clamp-1">{tier.description}</p>
                     </div>
@@ -496,16 +556,21 @@ export default function CheckoutClient({
         {/* 2. CHỌN LỊCH DỰ KIẾN */}
         {isRental && (
           <div className="space-y-2">
-            <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 font-ui">
-              2. Lịch Dự Kiến Nhận & Trả Trang Phục
-            </label>
+            <div className="flex justify-between items-center">
+              <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 font-ui">
+                2. Lịch Dự Kiến Nhận & Trả Trang Phục
+              </label>
+              <span className="text-[10px] text-stone-400 font-ui">
+                {isInterProvincial ? "Tối thiểu 3 ngày chuẩn bị & vận chuyển" : "Nhận hàng sớm nhất ngày mai"}
+              </span>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-[10.5px] text-stone-500 mb-1">Ngày bắt đầu nhận đồ:</label>
                 <input 
                   type="date"
                   value={startDate}
-                  min={new Date().toISOString().slice(0, 10)}
+                  min={earliestStartDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   className="w-full px-3.5 py-2.5 border border-stone-200 rounded-xl font-ui text-xs font-medium focus:outline-none focus:border-[#183A2D] bg-[#FAF9F5] text-[#183A2D]"
                 />
