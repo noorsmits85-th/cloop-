@@ -439,14 +439,17 @@ export default function CheckoutClient({
           </p>
         </div>
 
-        {/* Quy chuẩn đóng gói bảo vệ cước */}
-        <div className="bg-[#F8FAF8] p-3 rounded-xl border border-emerald-200/60 text-[10.5px] text-stone-600 space-y-1 font-body">
+        {/* Đóng gói xanh - Vận chuyển nhanh (Chuẩn Eco & Tối ưu thể tích) */}
+        <div className="bg-[#F8FAF8] p-3.5 rounded-xl border border-emerald-200/60 text-[10.5px] text-stone-600 space-y-1.5 font-body">
           <p className="font-bold text-emerald-950 flex items-center gap-1.5 font-ui">
-            <Package size={13} className="text-emerald-700" /> Quy Cách Đóng Gói Chuẩn
+            <Sparkles size={13} className="text-emerald-700" /> 🌱 Đóng Gói Xanh - Vận Chuyển Nhanh
           </p>
-          <p className="text-stone-500 leading-relaxed font-light">
-            Chủ tủ đóng gói tiêu chuẩn bằng túi niêm phong PE dẻo gọn nhẹ (&lt;500g) kèm tem niêm phong CLOOP để tối ưu cước phí và bảo vệ trang phục suốt lộ trình.
+          <p className="text-stone-600 leading-relaxed font-light">
+            CLOOP khuyến khích bạn <strong>tái sử dụng túi giấy, túi vải hoặc túi niêm phong sạch</strong> có sẵn tại nhà. Hãy gấp gọn trang phục để giảm thiểu rác thải đóng gói.
           </p>
+          <div className="pt-1 text-[10px] text-emerald-800 font-medium">
+            💡 <em>Mẹo:</em> Tránh dùng hộp carton cồng kềnh. Gói hàng nhỏ gọn (&lt;500g) giúp giảm phát thải CO2 và tối ưu chi phí giao nhận.
+          </div>
         </div>
 
       </div>
