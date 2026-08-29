@@ -2,9 +2,12 @@
 
 import { supabase } from "@/src/lib/supabase";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { SignedShippingQuote } from "@/src/utils/shipping";
-import { Loader2, ShieldCheck, MapPin, Calendar, Clock, Sparkles } from "lucide-react";
+import { 
+  Loader2, ShieldCheck, MapPin, Calendar, Clock, Sparkles, 
+  Check, ArrowRight, User, Phone, Home, Shirt, Tag, AlertCircle 
+} from "lucide-react";
 import Image from "next/image";
 
 export default function CheckoutClient({
@@ -25,8 +28,17 @@ export default function CheckoutClient({
   turnaroundDays: number;
 }) {
   const router = useRouter();
-  const [addressDetail, setAddressDetail] = useState("");
+  const searchParams = useSearchParams();
+
+  // Nhận tham số từ trang Chi tiết sản phẩm để thông mạch liền mạch 100%
+  const urlPackage = Number(searchParams.get("package")) || 3;
+  const urlStartDate = searchParams.get("startDate") || new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const urlType = searchParams.get("type") || "rent";
+  const isRental = urlType !== "sell";
+
+  const [recipientName, setRecipientName] = useState("");
   const [phone, setPhone] = useState("");
+  const [addressDetail, setAddressDetail] = useState("");
   
   // GHN Address States
   const [provinces, setProvinces] = useState<any[]>([]);
@@ -40,15 +52,26 @@ export default function CheckoutClient({
   const [shippingQuotes, setShippingQuotes] = useState<SignedShippingQuote[]>([]);
   const [selectedQuote, setSelectedQuote] = useState<SignedShippingQuote | null>(null);
   
-  // States cho Smart Pricing & Date (Mặc định gói 3 ngày)
-  const [selectedTier, setSelectedTier] = useState<any>(pricingTiers[1] || pricingTiers[0]);
-  const [startDate, setStartDate] = useState<string>(new Date(Date.now() + 86400000).toISOString().slice(0, 10));
+  // Gói thuê & Lịch (Khởi tạo chuẩn xác từ lựa chọn của khách ở trang sản phẩm)
+  const initialTier = pricingTiers.find(t => t.days === urlPackage) || pricingTiers[1] || pricingTiers[0];
+  const [selectedTier, setSelectedTier] = useState<any>(initialTier);
+  const [startDate, setStartDate] = useState<string>(urlStartDate);
 
   const [isLoadingShipping, setIsLoadingShipping] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [error, setError] = useState("");
 
-  // Fetch Provinces on Mount
+  // Nạp thông tin người dùng đang đăng nhập để tự động điền sẵn
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        if (user.user_metadata?.name) setRecipientName(user.user_metadata.name);
+        if (user.phone) setPhone(user.phone);
+      }
+    });
+  }, []);
+
+  // Fetch Danh sách Tỉnh/Thành phố
   useEffect(() => {
     fetch("/api/shipping/address?type=province")
       .then(res => res.json())
@@ -58,7 +81,7 @@ export default function CheckoutClient({
       .catch(console.error);
   }, []);
 
-  // Fetch Districts when Province changes
+  // Fetch Quận/Huyện khi chọn Tỉnh
   useEffect(() => {
     if (!selectedProvince) return;
     setDistricts([]);
@@ -73,7 +96,7 @@ export default function CheckoutClient({
       .catch(console.error);
   }, [selectedProvince]);
 
-  // Fetch Wards when District changes
+  // Fetch Phường/Xã khi chọn Huyện
   useEffect(() => {
     if (!selectedDistrict) return;
     setWards([]);
@@ -86,7 +109,7 @@ export default function CheckoutClient({
       .catch(console.error);
   }, [selectedDistrict]);
 
-  // Auto Fetch Shipping when Ward is selected
+  // Tự động tính cước GHN khi đã chọn xong Phường/Xã
   useEffect(() => {
     if (selectedProvince && selectedDistrict && selectedWard) {
       handleFetchShipping();
@@ -105,14 +128,14 @@ export default function CheckoutClient({
       const res = await fetch("/api/shipping/quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fromProvince, toProvince: fullToProvinceStr, weight }),
+        body: JSON.stringify({ fromProvince: fromProvince || product.province || "Hà Nội", toProvince: fullToProvinceStr, weight }),
       });
       
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Lỗi lấy phí ship");
+      if (!res.ok) throw new Error(data.error || "Lỗi tính phí giao hàng");
       
-      setShippingQuotes(data.options);
-      if (data.options.length > 0) {
+      setShippingQuotes(data.options || []);
+      if (data.options && data.options.length > 0) {
         setSelectedQuote(data.options[0]);
       }
     } catch (err: any) {
@@ -123,31 +146,32 @@ export default function CheckoutClient({
   };
 
   const handleCheckout = async () => {
-    if (!startDate) {
-      setError("⚠️ Bạn ơi, vui lòng chọn Ngày bắt đầu thuê nhé!");
+    if (isRental && !startDate) {
+      setError("Vui lòng chọn ngày bắt đầu nhận đồ.");
       return;
     }
     if (!selectedProvince || !selectedDistrict || !selectedWard) {
-      setError("⚠️ Vui lòng chọn đầy đủ Tỉnh/Thành, Quận/Huyện, Phường/Xã để tính phí giao hàng!");
+      setError("Vui lòng chọn đầy đủ Tỉnh/Thành phố, Quận/Huyện và Phường/Xã.");
       return;
     }
     if (!addressDetail.trim() || addressDetail.trim().length < 3) {
-      setError("⚠️ Vui lòng nhập địa chỉ chi tiết (Số nhà, tên đường...)");
+      setError("Vui lòng nhập địa chỉ chi tiết (Số nhà, tên đường, tòa nhà...)");
       return;
     }
     if (!phone.trim()) {
-      setError("⚠️ Vui lòng nhập số điện thoại người nhận hàng!");
+      setError("Vui lòng nhập số điện thoại người nhận hàng.");
       return;
     }
     
+    const phoneClean = phone.replace(/[\s.-]+/g, "");
     const phoneRegex = /(84|0[3|5|7|8|9])+([0-9]{8})\b/;
-    if (!phoneRegex.test(phone.replace(/\s+/g, ''))) {
-      setError("⚠️ Số điện thoại không đúng định dạng (Ví dụ: 0987654321)");
+    if (!phoneRegex.test(phoneClean)) {
+      setError("Số điện thoại không hợp lệ (Ví dụ: 0987654321).");
       return;
     }
 
     if (!selectedQuote) {
-      setError("⚠️ Đang tính cước vận chuyển, vui lòng đợi 1 giây!");
+      setError("Đang kết nối cước vận chuyển GHN, vui lòng đợi 1 giây!");
       return;
     }
 
@@ -158,7 +182,7 @@ export default function CheckoutClient({
       const { data: { session } } = await supabase.auth.getSession();
       const userId = session?.user?.id;
       if (!userId) {
-        throw new Error("Vui lòng đăng nhập để tiếp tục thanh toán");
+        throw new Error("Vui lòng đăng nhập để hoàn tất thanh toán");
       }
 
       const fullToProvinceStr = `${selectedWard.name}, ${selectedDistrict.name}, ${selectedProvince.name}`;
@@ -167,9 +191,9 @@ export default function CheckoutClient({
         userId,
         shippingToken: selectedQuote.token,
         buyerAddress: `${addressDetail}, ${fullToProvinceStr}`,
-        buyerPhone: phone,
+        buyerPhone: phoneClean,
         startDate: startDate,
-        packageDays: selectedTier.days
+        packageDays: selectedTier?.days || 3
       };
 
       const res = await fetch("/api/checkout", {
@@ -181,11 +205,10 @@ export default function CheckoutClient({
       const data = await res.json();
       
       if (!res.ok) {
-        throw new Error(data.error || "Lỗi thanh toán");
+        throw new Error(data.error || "Lỗi khởi tạo cổng thanh toán");
       }
 
       if (data.checkoutUrl) {
-        // Chuyển hướng tới cổng thanh toán VietQR PayOS
         window.location.href = data.checkoutUrl;
       }
     } catch (err: any) {
@@ -194,32 +217,38 @@ export default function CheckoutClient({
     }
   };
 
-  const rentalFee = selectedTier?.price || 0;
+  const rentalFee = isRental ? (selectedTier?.price || 0) : (product.listings?.[0]?.salePrice || product.listings?.[0]?.basePrice || 0);
+  const actualDeposit = isRental ? depositPrice : 0;
   const shippingFee = selectedQuote?.quote.fee || 0;
-  const totalAmount = rentalFee + depositPrice + shippingFee;
+  const totalAmount = rentalFee + actualDeposit + shippingFee;
 
   const calculateEndDate = () => {
     if (!startDate || !selectedTier) return "";
     const start = new Date(startDate);
-    const end = new Date(start.getTime() + (selectedTier.days - 1) * 86400000);
+    const end = new Date(start.getTime() + ((selectedTier?.days || 1) - 1) * 86400000);
     return end.toLocaleDateString('vi-VN');
   };
 
   return (
     <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
       
-      {/* CỘT TRÁI (5/12): THÔNG TIN ĐƠN HÀNG & BẢNG KÊ ĐỒNG BỘ ĐỘNG */}
-      <div className="lg:col-span-5 bg-white p-6 rounded-2xl shadow-sm border border-stone-200 space-y-6">
+      {/* ========================================================
+          CỘT TRÁI (5/12): HÓA ĐƠN ĐẶT ĐỒ & THÔNG TIN CHỦ TỦ
+      ======================================================== */}
+      <div className="lg:col-span-5 bg-white p-6 sm:p-7 rounded-2xl shadow-xs border border-[#E9E2D8] space-y-5 text-[#183A2D] font-body">
+        
         <div>
-          <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200/60 font-ui">
-            HÓA ĐƠN ĐẶT THUÊ
+          <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-800 bg-[#EAF2EC] px-2.5 py-1 rounded-md border border-emerald-200/60 font-ui">
+            ĐƠN ĐẶT {isRental ? "THUÊ" : "MUA"} TUẦN HOÀN
           </span>
-          <h2 className="font-heading text-xl text-[#0A2517] font-bold mt-2">Thông tin đơn hàng</h2>
+          <h2 className="font-heading text-xl font-bold text-[#0A2517] mt-2">
+            Tóm Tắt Đơn Hàng
+          </h2>
         </div>
         
-        {/* Khối Ảnh & Tên Sản Phẩm */}
-        <div className="flex gap-4 pb-5 border-b border-stone-100">
-          <div className="relative w-24 h-32 rounded-xl overflow-hidden bg-stone-100 border border-stone-200 shrink-0">
+        {/* Thông tin Món Đồ & Chủ Tủ (Chính xác 100% từ Database) */}
+        <div className="flex gap-4 pb-4 border-b border-stone-100">
+          <div className="relative w-24 h-32 rounded-xl overflow-hidden bg-[#FAF9F5] border border-[#E9E2D8] shrink-0">
             <Image 
               src={product.images?.[0]?.url || product.image || "/placeholder-clothing.png"} 
               alt={product.title} 
@@ -229,19 +258,36 @@ export default function CheckoutClient({
             />
           </div>
           
-          <div className="flex flex-col justify-between">
+          <div className="flex flex-col justify-between py-0.5">
             <div>
-              <h3 className="font-heading font-bold text-base text-[#0A2517] leading-snug line-clamp-2">
+              <h3 className="font-heading font-bold text-sm text-[#0A2517] leading-snug line-clamp-2">
                 {product.title}
               </h3>
-              <p className="text-xs text-stone-500 mt-1 font-body">Chủ tủ: <strong>{product.user?.name || "Thành viên CLOOP"}</strong></p>
-              <p className="text-xs text-stone-500 font-body flex items-center gap-1 mt-0.5">
-                <MapPin size={11} className="text-emerald-700" /> Giao từ: {product.province || fromProvince || "Toàn quốc"}
+              
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {product.size && (
+                  <span className="text-[9.5px] font-bold text-stone-600 bg-stone-100 px-2 py-0.5 rounded font-ui">
+                    Size {product.size}
+                  </span>
+                )}
+                {product.condition && (
+                  <span className="text-[9.5px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded font-ui">
+                    {product.condition === "GOOD" ? "Mới 95%" : "Mới 98%"}
+                  </span>
+                )}
+                {product.material && (
+                  <span className="text-[9.5px] text-stone-500 bg-stone-50 px-2 py-0.5 rounded font-ui">
+                    {product.material}
+                  </span>
+                )}
+              </div>
+
+              <p className="text-[11px] text-stone-500 mt-2 font-body">
+                Chủ tủ: <strong className="text-stone-800 font-semibold">{product.user?.name || "Thành viên CLOOP"}</strong>
               </p>
-            </div>
-            
-            <div className="text-xs font-mono text-stone-600 bg-[#FAF9F5] p-2 rounded-lg border border-stone-100">
-              Đơn giá gốc: <strong className="text-stone-900 font-bold">{(product.listings?.[0]?.basePrice || 0).toLocaleString('vi-VN')}đ/ngày</strong>
+              <p className="text-[11px] text-stone-500 font-body flex items-center gap-1 mt-0.5">
+                <MapPin size={11} className="text-emerald-700 shrink-0" /> Giao từ: {product.province || fromProvince || "Toàn quốc"}
+              </p>
             </div>
           </div>
         </div>
@@ -249,48 +295,52 @@ export default function CheckoutClient({
         {/* Bảng Kê Chi Phí Đồng Bộ Thời Gian Thực */}
         <div className="space-y-3 font-ui text-xs text-stone-600">
           
-          <div className="flex justify-between items-center py-1">
+          <div className="flex justify-between items-center py-0.5">
             <span className="font-medium text-stone-800 flex items-center gap-1.5">
               <Clock size={13} className="text-emerald-800" />
-              Chi phí gói thuê <strong>({selectedTier?.days || 1} ngày)</strong>:
+              {isRental ? `Chi phí gói thuê (${selectedTier?.days || 1} ngày):` : "Giá sản phẩm:"}
             </span>
             <span className="font-bold font-mono text-sm text-[#0A2517]">
               {rentalFee.toLocaleString('vi-VN')}đ
             </span>
           </div>
 
-          <div className="flex justify-between items-center py-1 text-amber-900 bg-amber-50/70 p-2.5 rounded-xl border border-amber-200/60">
-            <div>
-              <p className="font-bold flex items-center gap-1">
-                <ShieldCheck size={14} className="text-amber-700" /> Tiền cọc Két Escrow:
-              </p>
-              <span className="text-[10px] text-amber-700">Tự động hoàn trả 100% khi trả váy</span>
+          {isRental && actualDeposit > 0 && (
+            <div className="flex justify-between items-center text-amber-900 bg-amber-50/70 p-2.5 rounded-xl border border-amber-200/60">
+              <div>
+                <p className="font-bold flex items-center gap-1">
+                  <ShieldCheck size={13} className="text-amber-700" /> Tiền cọc Két Escrow:
+                </p>
+                <span className="text-[9.5px] text-amber-700">Tự động hoàn trả 100% khi trả váy</span>
+              </div>
+              <span className="font-bold font-mono text-sm">+{actualDeposit.toLocaleString('vi-VN')}đ</span>
             </div>
-            <span className="font-bold font-mono text-sm">+{depositPrice.toLocaleString('vi-VN')}đ</span>
-          </div>
+          )}
 
-          <div className="flex justify-between items-center py-1">
-            <span>Phí vận chuyển giao nhận (GHN):</span>
-            <span className="font-bold font-mono text-stone-900">
+          <div className="flex justify-between items-center py-0.5">
+            <span className="flex items-center gap-1.5">
+              <span>Cước vận chuyển (GHN):</span>
+            </span>
+            <span className="font-bold font-mono text-stone-800">
               {isLoadingShipping ? "Đang tính..." : selectedQuote ? `+${shippingFee.toLocaleString('vi-VN')}đ` : "Chưa chọn địa chỉ"}
             </span>
           </div>
 
-          <div className="flex justify-between items-center py-1">
-            <span>Phí dịch vụ tuần hoàn (Nền tảng):</span>
+          <div className="flex justify-between items-center py-0.5">
+            <span>Phí dịch vụ tuần hoàn:</span>
             <div className="flex items-center gap-2">
               <span className="text-stone-400 line-through font-mono">15.000đ</span>
-              <span className="font-bold text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded text-[10px] font-ui">
+              <span className="font-bold text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded text-[9.5px] font-ui">
                 FREE LAUNCH
               </span>
             </div>
           </div>
 
           {/* Tổng Hóa Đơn */}
-          <div className="pt-4 border-t border-stone-200 flex justify-between items-baseline">
+          <div className="pt-3.5 border-t border-stone-200 flex justify-between items-baseline">
             <div>
               <span className="text-xs uppercase font-bold text-stone-500 tracking-wider">Tổng thanh toán:</span>
-              <p className="text-[10px] text-stone-400">Bao gồm cọc hoàn lại và phí ship</p>
+              <p className="text-[10px] text-stone-400">Bao gồm cọc hoàn lại & phí ship</p>
             </div>
             <span className="font-heading text-2xl font-black text-[#183A2D] font-mono">
               {totalAmount.toLocaleString('vi-VN')}đ
@@ -298,86 +348,99 @@ export default function CheckoutClient({
           </div>
         </div>
 
-        {/* Khối Cam Kết Bảo Hiểm */}
-        <div className="bg-[#FAF9F5] p-3.5 rounded-xl border border-[#E9E2D8] text-[11px] text-stone-600 space-y-1.5 font-body">
-          <p className="font-bold text-emerald-950 flex items-center gap-1.5">
-            <Sparkles size={13} className="text-emerald-700" /> Cam Kết Bảo Chứng CLOOP
+        {/* Cam Kết Bảo Chứng */}
+        <div className="bg-[#FAF9F5] p-3.5 rounded-xl border border-[#E9E2D8] text-[11px] text-stone-600 space-y-1 font-body">
+          <p className="font-bold text-[#183A2D] flex items-center gap-1.5">
+            <Sparkles size={12} className="text-emerald-700" /> Cam Kết Bảo Chứng CLOOP
           </p>
-          <p className="text-stone-500 leading-relaxed">
-            Tiền của bạn được giữ an toàn trong Két Escrow và chỉ giải ngân cho chủ tủ khi bạn đã nhận đồ đúng mẫu, đúng size.
+          <p className="text-stone-500 leading-relaxed font-light text-[10.5px]">
+            Tiền của bạn được khóa an toàn tại Két Escrow và chỉ giải ngân cho chủ tủ khi bạn đã nhận đúng mẫu, đúng size và hoàn tất thời gian trải nghiệm.
           </p>
         </div>
 
       </div>
 
-      {/* CỘT PHẢI (7/12): FORM NHẬP LỊCH THUÊ, ĐỊA CHỈ GHN & NÚT PAYOS */}
-      <div className="lg:col-span-7 bg-white p-6 rounded-2xl shadow-sm border border-stone-200 flex flex-col space-y-6">
+      {/* ========================================================
+          CỘT PHẢI (7/12): FORM GIAO NHẬN, LỊCH THUÊ & THANH TOÁN
+      ======================================================== */}
+      <div className="lg:col-span-7 bg-white p-6 sm:p-7 rounded-2xl shadow-xs border border-[#E9E2D8] flex flex-col space-y-5 text-[#183A2D] font-body">
+        
         <div>
-          <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200/60 font-ui">
-            BƯỚC GIAO NHẬN
+          <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-800 bg-[#EAF2EC] px-2.5 py-1 rounded-md border border-emerald-200/60 font-ui">
+            THÔNG TIN GIAO NHẬN
           </span>
-          <h2 className="font-heading text-xl text-[#0A2517] font-bold mt-2">Thông tin nhận hàng & Lịch thuê</h2>
+          <h2 className="font-heading text-xl font-bold text-[#0A2517] mt-2">
+            Lịch Thuê & Địa Chỉ Nhận Hàng
+          </h2>
         </div>
         
         {/* 1. CHỌN GÓI THUÊ THÔNG MINH */}
-        <div className="space-y-2.5">
-          <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 font-ui">
-            1. Chọn gói thuê (Tiết kiệm đến 25%)
-          </label>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-            {pricingTiers.map((tier, idx) => (
-              <div 
-                key={idx}
-                onClick={() => setSelectedTier(tier)}
-                className={`p-3.5 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
-                  selectedTier?.days === tier.days 
-                    ? 'border-[#183A2D] bg-[#F4F9F5] shadow-xs ring-1 ring-[#183A2D]' 
-                    : 'border-stone-200 hover:border-stone-300 bg-white'
-                }`}
-              >
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="font-ui font-bold text-xs text-[#0A2517]">{tier.name}</span>
+        {isRental && (
+          <div className="space-y-2">
+            <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 font-ui">
+              1. Gói Thuê Trải Nghiệm
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              {pricingTiers.map((tier, idx) => {
+                const isSelected = selectedTier?.days === tier.days;
+                return (
+                  <div 
+                    key={idx}
+                    onClick={() => setSelectedTier(tier)}
+                    className={`p-3 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
+                      isSelected 
+                        ? 'border-[#183A2D] bg-[#F4F9F5] shadow-2xs ring-1 ring-[#183A2D]' 
+                        : 'border-stone-200 hover:border-stone-300 bg-[#FAF9F5]'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex justify-between items-center mb-0.5">
+                        <span className="font-ui font-bold text-xs text-[#0A2517]">{tier.name}</span>
+                      </div>
+                      <p className="text-[10px] text-stone-500 line-clamp-1">{tier.description}</p>
+                    </div>
+                    <div className="pt-2 mt-2 border-t border-stone-200/60 flex justify-between items-baseline">
+                      <span className="text-[10px] font-bold text-emerald-800 font-mono">{tier.days} ngày</span>
+                      <span className="font-bold text-sm font-mono text-[#183A2D]">{tier.price.toLocaleString('vi-VN')}đ</span>
+                    </div>
                   </div>
-                  <p className="text-[10px] text-stone-500 line-clamp-1">{tier.description}</p>
-                </div>
-                <div className="pt-2 mt-2 border-t border-stone-100 flex justify-between items-baseline">
-                  <span className="text-[10px] font-bold text-emerald-800 font-mono">{tier.days} ngày</span>
-                  <span className="font-bold text-sm font-mono text-[#183A2D]">{tier.price.toLocaleString('vi-VN')}đ</span>
-                </div>
-              </div>
-            ))}
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* 2. CHỌN NGÀY BẮT ĐẦU */}
-        <div className="space-y-2">
-          <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 font-ui">
-            2. Ngày dự kiến nhận đồ (Bắt đầu lịch thuê)
-          </label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <input 
-                type="date"
-                value={startDate}
-                min={new Date().toISOString().slice(0, 10)}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-3.5 py-3 border border-stone-200 rounded-xl font-ui text-xs font-medium focus:outline-none focus:border-[#183A2D] bg-white"
-              />
-            </div>
-            <div className="bg-[#FAF9F5] px-3.5 py-2.5 rounded-xl border border-stone-100 flex flex-col justify-center">
-              <span className="text-[10px] text-stone-400 font-ui uppercase tracking-wider">Dự kiến hoàn trả đồ:</span>
-              <span className="text-xs font-bold text-[#183A2D] font-mono mt-0.5">
-                📅 {calculateEndDate() || "Vui lòng chọn ngày bắt đầu"}
-              </span>
+        {/* 2. CHỌN LỊCH DỰ KIẾN */}
+        {isRental && (
+          <div className="space-y-2">
+            <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 font-ui">
+              2. Lịch Dự Kiến Nhận & Trả Trang Phục
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10.5px] text-stone-500 mb-1">Ngày bắt đầu nhận đồ:</label>
+                <input 
+                  type="date"
+                  value={startDate}
+                  min={new Date().toISOString().slice(0, 10)}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full px-3.5 py-2.5 border border-stone-200 rounded-xl font-ui text-xs font-medium focus:outline-none focus:border-[#183A2D] bg-[#FAF9F5] text-[#183A2D]"
+                />
+              </div>
+              <div className="bg-[#FAF9F5] px-3.5 py-2 rounded-xl border border-stone-200 flex flex-col justify-center">
+                <span className="text-[10px] text-stone-400 font-ui uppercase tracking-wider">Hạn hoàn trả đồ:</span>
+                <span className="text-xs font-bold text-[#183A2D] font-mono mt-0.5">
+                  📅 {calculateEndDate() || "Vui lòng chọn ngày bắt đầu"}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* 3. ĐỊA CHỈ NHẬN HÀNG (GHN 3 CẤP) */}
         <div className="space-y-3 pt-2 border-t border-stone-100">
           <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 font-ui">
-            3. Địa chỉ giao nhận tận nhà (Tính cước GHN)
+            {isRental ? "3. Địa Chỉ Nhận Hàng Tận Nhà (Tính Cước GHN)" : "1. Địa Chỉ Giao Hàng"}
           </label>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -387,9 +450,9 @@ export default function CheckoutClient({
                 const p = provinces.find((x) => String(x.ProvinceID) === String(e.target.value));
                 setSelectedProvince(p ? { id: p.ProvinceID, name: p.ProvinceName } : null);
               }}
-              className="w-full px-3 py-2.5 border border-stone-200 rounded-xl font-ui text-xs focus:outline-none focus:border-[#183A2D] bg-white"
+              className="w-full px-3 py-2.5 border border-stone-200 rounded-xl font-ui text-xs focus:outline-none focus:border-[#183A2D] bg-[#FAF9F5] text-[#183A2D]"
             >
-              <option value="">-- Chọn Tỉnh/Thành --</option>
+              <option value="">-- Tỉnh / Thành phố --</option>
               {provinces.map((p) => (
                 <option key={p.ProvinceID} value={p.ProvinceID}>{p.ProvinceName}</option>
               ))}
@@ -402,9 +465,9 @@ export default function CheckoutClient({
                 setSelectedDistrict(d ? { id: d.DistrictID, name: d.DistrictName } : null);
               }}
               disabled={!selectedProvince}
-              className="w-full px-3 py-2.5 border border-stone-200 rounded-xl font-ui text-xs focus:outline-none focus:border-[#183A2D] bg-white disabled:bg-stone-50 disabled:text-stone-400"
+              className="w-full px-3 py-2.5 border border-stone-200 rounded-xl font-ui text-xs focus:outline-none focus:border-[#183A2D] bg-[#FAF9F5] text-[#183A2D] disabled:opacity-50 disabled:bg-stone-100"
             >
-              <option value="">-- Chọn Quận/Huyện --</option>
+              <option value="">-- Quận / Huyện --</option>
               {districts.map((d) => (
                 <option key={d.DistrictID} value={d.DistrictID}>{d.DistrictName}</option>
               ))}
@@ -417,9 +480,9 @@ export default function CheckoutClient({
                 setSelectedWard(w ? { id: w.WardCode, name: w.WardName } : null);
               }}
               disabled={!selectedDistrict}
-              className="w-full px-3 py-2.5 border border-stone-200 rounded-xl font-ui text-xs focus:outline-none focus:border-[#183A2D] bg-white disabled:bg-stone-50 disabled:text-stone-400"
+              className="w-full px-3 py-2.5 border border-stone-200 rounded-xl font-ui text-xs focus:outline-none focus:border-[#183A2D] bg-[#FAF9F5] text-[#183A2D] disabled:opacity-50 disabled:bg-stone-100"
             >
-              <option value="">-- Chọn Phường/Xã --</option>
+              <option value="">-- Phường / Xã --</option>
               {wards.map((w) => (
                 <option key={w.WardCode} value={w.WardCode}>{w.WardName}</option>
               ))}
@@ -440,7 +503,7 @@ export default function CheckoutClient({
                 placeholder="Ví dụ: 124 Lê Lợi, Tòa A..."
                 value={addressDetail}
                 onChange={(e) => setAddressDetail(e.target.value)}
-                className="w-full px-3.5 py-2.5 border border-stone-200 rounded-xl font-ui text-xs focus:outline-none focus:border-[#183A2D] bg-white"
+                className="w-full px-3.5 py-2.5 border border-stone-200 rounded-xl font-ui text-xs focus:outline-none focus:border-[#183A2D] bg-[#FAF9F5] text-[#183A2D]"
               />
             </div>
 
@@ -451,38 +514,41 @@ export default function CheckoutClient({
                 placeholder="Ví dụ: 0987654321..."
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-3.5 py-2.5 border border-stone-200 rounded-xl font-ui text-xs font-mono focus:outline-none focus:border-[#183A2D] bg-white"
+                className="w-full px-3.5 py-2.5 border border-stone-200 rounded-xl font-ui text-xs font-mono focus:outline-none focus:border-[#183A2D] bg-[#FAF9F5] text-[#183A2D]"
               />
             </div>
           </div>
         </div>
 
-        {/* Thông báo lỗi nếu thiếu */}
+        {/* THÔNG BÁO LỖI NẾU THIẾU THÔNG TIN */}
         {error && (
-          <div className="text-red-700 text-xs font-ui p-3.5 bg-red-50 rounded-xl border border-red-200 flex items-center gap-2">
+          <div className="text-red-700 text-xs font-ui p-3 bg-red-50 rounded-xl border border-red-200 flex items-center gap-2">
+            <AlertCircle size={14} className="shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
-        {/* NÚT BẤM THANH TOÁN PAYOS */}
+        {/* NÚT BẤM THANH TOÁN VIETQR PAYOS */}
         <div className="pt-2 mt-auto">
           <button 
+            type="button"
             onClick={handleCheckout}
             disabled={isProcessingPayment}
-            className="w-full py-4 bg-[#183A2D] hover:bg-[#0A2517] text-white rounded-2xl font-ui font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50 cursor-pointer"
+            className="w-full py-4 bg-[#183A2D] hover:bg-[#0A2517] text-white rounded-2xl font-ui font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-md disabled:opacity-50 cursor-pointer"
           >
             {isProcessingPayment ? (
               <>
-                <Loader2 size={18} className="animate-spin" /> ĐANG TẠO MÃ VIETQR PAYOS...
+                <Loader2 size={16} className="animate-spin" /> Đang Tạo Mã VietQR PayOS...
               </>
             ) : (
               <>
-                THANH TOÁN AN TOÀN ({totalAmount.toLocaleString('vi-VN')}đ) ➔
+                Xác Nhận & Thanh Toán VietQR ({totalAmount.toLocaleString('vi-VN')}đ) ➔
               </>
             )}
           </button>
-          <p className="text-center text-[11px] text-stone-400 mt-2 font-ui">
-            Chuyển khoản an toàn 24/7 qua mã VietQR Ngân hàng ACB
+          
+          <p className="text-center text-[10.5px] text-stone-400 mt-2.5 font-ui">
+            Chuyển khoản an toàn 24/7 qua mã VietQR Ngân hàng ACB • Hộ chiếu số bảo chứng
           </p>
         </div>
 

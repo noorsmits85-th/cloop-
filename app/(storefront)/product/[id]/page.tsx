@@ -410,11 +410,11 @@ function ProductDetailContent() {
             <div className="pt-2">
               <RentalBookingBox 
                 productId={product.id} 
-                ownerId={product.userId} 
+                ownerId={product.ownerId || product.userId} 
                 price={transactionMode === "RENT" ? product.rentalPrice : product.salePrice} 
                 listingType={transactionMode} 
-                depositPercent={product.depositPercent || 100} 
-                ownerName={product.ownerRealName}
+                depositPercent={product.depositAmount ?? product.depositPercent ?? 0} 
+                ownerName={product.ownerRealName || product.user?.name}
                 ownerPhone={product.ownerRealPhone}
                 ownerAddress={product.province || product.address}
               />
