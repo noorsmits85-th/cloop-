@@ -84,12 +84,26 @@ export function WalletClient({
   const [isTopUpSuccess, setIsTopUpSuccess] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [claimingCode, setClaimingCode] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  const showToast = (message: string, type: "success" | "error" = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3500);
+  };
 
   const copyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
     setCopiedField(field);
+    showToast("Đã sao chép vào bộ nhớ tạm!");
     setTimeout(() => setCopiedField(null), 2000);
   };
+
+  // Đồng bộ claimedQuests từ Server Component
+  useEffect(() => {
+    if (initialClaimed && initialClaimed.length > 0) {
+      setClaimedQuests(prev => Array.from(new Set([...prev, ...initialClaimed])));
+    }
+  }, [initialClaimed]);
 
   // Form rút tiền VNĐ
   const [withdrawAmount, setWithdrawAmount] = useState("");
@@ -105,10 +119,10 @@ export function WalletClient({
 
   useEffect(() => {
     if (paymentStatus === "coin_success") {
-      alert("🎉 Nạp Điểm Lá thành công! Điểm Lá đã được cộng vào tài khoản của bạn.");
+      showToast("🎉 Nạp Điểm Lá thành công! Điểm Lá đã được cộng vào tài khoản.");
       window.history.replaceState(null, '', '/my-closet/wallet');
     } else if (paymentStatus === "coin_cancel") {
-      alert("🚫 Giao dịch nạp Lá đã bị hủy.");
+      showToast("🚫 Giao dịch nạp Lá đã bị hủy.", "error");
       window.history.replaceState(null, '', '/my-closet/wallet');
     }
   }, [paymentStatus]);
@@ -124,12 +138,13 @@ export function WalletClient({
           setIsTopUpSuccess(true);
           const updatedCoins = res.newBalance || (coins + (activeTopUpData.totalCoins || 0));
           setCoins(updatedCoins);
+          showToast(`🎉 Nạp thành công +${activeTopUpData.totalCoins} Lá!`);
           clearInterval(interval);
           setTimeout(() => {
             setShowCoinStoreModal(false);
             setActiveTopUpData(null);
             setIsTopUpSuccess(false);
-          }, 3500);
+          }, 3000);
         }
       } catch (err) {
         console.error("Polling check failed:", err);
@@ -171,34 +186,41 @@ export function WalletClient({
     }
   };
 
-  // Xử lý nhận thưởng nhiệm vụ (Quest Claim)
+  // Xử lý nhận thưởng nhiệm vụ (Optimistic 0ms - Không đơ, không chặn UI)
   const handleClaimQuest = async (questCode: string) => {
-    setClaimingCode(questCode);
+    const quest = QUEST_DEFINITIONS[questCode];
+    if (!quest) return;
+
+    // ⚡ 1. PHẢN HỒI TỨC THÌ 0MS: Đổi ngay sang "Đã nhận" và cộng Lá lập tức
+    setClaimedQuests(prev => Array.from(new Set([...prev, questCode])));
+    const reward = quest.rewardCoins || 0;
+    setCoins(prev => prev + reward);
+    showToast(`🎉 Nhận thành công +${reward} Lá vào ví!`);
+
+    // ⚡ 2. Gửi Server Action đồng bộ ngầm
     try {
       const res = await claimQuestRewardAction(questCode);
-      if (res.success) {
-        setCoins(res.newBalance || (coins + (res.rewardCoins || 0)));
-        setClaimedQuests([...claimedQuests, questCode]);
-        alert(res.message || "Nhận thưởng thành công!");
-      } else {
-        alert(res.message || "Không thể nhận thưởng.");
+      if (res.success && res.newBalance) {
+        setCoins(res.newBalance);
+      } else if (!res.success && res.message?.includes("đã nhận")) {
+        // Đã nhận trước đó, giữ nguyên trạng thái
+      } else if (!res.success) {
+        showToast(res.message || "Không thể nhận thưởng.", "error");
       }
     } catch (error) {
-      alert("Lỗi khi kết nối với máy chủ.");
-    } finally {
-      setClaimingCode(null);
+      console.error("Claim quest error:", error);
     }
   };
 
   // Xử lý rút tiền VNĐ
   const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!withdrawAmount || !password) return alert("Vui lòng nhập số tiền cần rút và mật khẩu.");
-    if (!bankName.trim() || !bankAccount.trim()) return alert("Vui lòng nhập đầy đủ Tên ngân hàng và Số tài khoản nhận tiền.");
+    if (!withdrawAmount || !password) return showToast("Vui lòng nhập số tiền cần rút và mật khẩu.", "error");
+    if (!bankName.trim() || !bankAccount.trim()) return showToast("Vui lòng nhập đầy đủ Tên ngân hàng và Số tài khoản nhận tiền.", "error");
     
     const numericAmount = parseInt(withdrawAmount.replace(/\D/g, ''));
-    if (numericAmount > balance) return alert(`Số dư khả dụng (${balance.toLocaleString()}₫) không đủ để rút ${numericAmount.toLocaleString()}₫.`);
-    if (numericAmount < 50000) return alert("Số tiền rút tối thiểu là 50,000đ.");
+    if (numericAmount > balance) return showToast(`Số dư khả dụng (${balance.toLocaleString()}₫) không đủ để rút ${numericAmount.toLocaleString()}₫.`, "error");
+    if (numericAmount < 50000) return showToast("Số tiền rút tối thiểu là 50,000đ.", "error");
     
     setIsSubmittingWithdraw(true);
     try {
@@ -225,23 +247,41 @@ export function WalletClient({
           console.warn("Lỗi lưu STK:", saveErr);
         }
 
-        alert("🎉 " + res.message);
+        showToast("🎉 " + res.message);
         setShowWithdrawModal(false);
         setWithdrawAmount("");
         setPassword("");
         setIsEditingBankInModal(false);
       } else {
-        alert(res.message || "Không thể tạo lệnh rút tiền.");
+        showToast(res.message || "Không thể tạo lệnh rút tiền.", "error");
       }
     } catch (err: any) {
-      alert("Lỗi kết nối khi tạo lệnh rút tiền.");
+      showToast("Lỗi kết nối khi tạo lệnh rút tiền.", "error");
     } finally {
       setIsSubmittingWithdraw(false);
     }
   };
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-8 relative">
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            className={`fixed top-6 right-6 z-[100] px-4 py-3 rounded-2xl shadow-2xl border flex items-center gap-2.5 text-xs font-bold font-ui backdrop-blur-md ${
+              toast.type === "success" 
+                ? "bg-[#183A2D] text-white border-emerald-500/40 shadow-emerald-950/30" 
+                : "bg-rose-950 text-white border-rose-600/40 shadow-rose-950/30"
+            }`}
+          >
+            {toast.type === "success" ? <CheckCircle2 size={16} className="text-emerald-400 shrink-0" /> : <AlertCircle size={16} className="text-rose-400 shrink-0" />}
+            <span>{toast.message}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
       
       {/* ===== VÙNG THẺ VÍ KÉP (DUAL CARDS) ===== */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
