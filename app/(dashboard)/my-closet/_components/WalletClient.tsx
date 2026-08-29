@@ -603,9 +603,32 @@ export function WalletClient({
                       </div>
 
                       {/* Trạng thái lắng nghe thời gian thực */}
-                      <div className="w-full flex items-center justify-center gap-2 text-xs font-semibold text-emerald-800 bg-emerald-50/90 py-2.5 px-4 rounded-xl border border-emerald-200/60 font-ui">
-                        <Loader2 size={13} className="animate-spin text-emerald-700 shrink-0" />
-                        <span>Hệ thống đang tự động nhận diện thanh toán...</span>
+                      <div className="w-full flex flex-col gap-2">
+                        <div className="w-full flex items-center justify-center gap-2 text-xs font-semibold text-emerald-800 bg-emerald-50/90 py-2.5 px-4 rounded-xl border border-emerald-200/60 font-ui">
+                          <Loader2 size={13} className="animate-spin text-emerald-700 shrink-0" />
+                          <span>Mở App ngân hàng quét mã QR – Tự động cộng Lá sau 1s</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            showToast("Đang kiểm tra giao dịch ngân hàng...");
+                            try {
+                              const res = await checkCoinTopUpStatusAction(activeTopUpData.orderCode);
+                              if (res.success && res.status === "PAID") {
+                                setIsTopUpSuccess(true);
+                                setCoins(res.newBalance || (coins + (activeTopUpData.totalCoins || 0)));
+                                showToast(`🎉 Nạp thành công +${activeTopUpData.totalCoins} Lá!`);
+                              } else {
+                                showToast("Chưa nhận được tiền. Vui lòng quét QR chuyển khoản trước.", "error");
+                              }
+                            } catch (e) {
+                              showToast("Lỗi kiểm tra giao dịch.", "error");
+                            }
+                          }}
+                          className="w-full py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold rounded-xl transition-all cursor-pointer font-ui flex items-center justify-center gap-1.5"
+                        >
+                          <CheckCircle2 size={14} className="text-emerald-700" /> Tôi đã chuyển khoản xong (Kiểm tra ngay)
+                        </button>
                       </div>
 
                       {activeTopUpData.checkoutUrl && (
