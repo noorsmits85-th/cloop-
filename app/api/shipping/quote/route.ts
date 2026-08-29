@@ -35,15 +35,18 @@ export async function POST(req: Request) {
         })
       });
       const data = await res.json();
-      if (data.code === 200) {
+        const realFee = data.data.total;
+        const retailEstimate = realFee + 10000;
         quotes = [{
           provider: "GHN",
           serviceId: "standard",
-          name: "Giao Tiêu Chuẩn (GHN)",
-          fee: data.data.total,
-          estimatedDays: 3,
+          name: "Giao Tiêu Chuẩn (GHN Express)",
+          fee: realFee,
+          originalFee: retailEstimate,
+          discount: 10000,
+          estimatedDays: 2,
+          packagingNote: "Quy cách chuẩn: Túi niêm phong PE dẻo (<500g)"
         }];
-      }
     } else {
       // NẾU KHÔNG CÓ TOKEN -> CHẠY MOCK LOGIC THÔNG MINH
       quotes = await getShippingQuotes(fromProvince, toProvince, weight);
