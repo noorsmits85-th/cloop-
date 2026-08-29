@@ -164,8 +164,8 @@ export default async function WalletPage({
         </div>
         
         <WalletClient 
-          balance={userProfile?.walletBalance || 0} 
-          coins={userProfile?.cloopCoins || 0}
+          balance={userProfile?.walletBalance ?? (userAuth as any)?.walletBalance ?? 0} 
+          coins={userProfile?.cloopCoins ?? (userAuth as any)?.cloopCoins ?? (coinLedger[0]?.balanceAfter || 0)}
           claimedQuests={claimedQuestCodes}
           stats={{ productCount, weeklyProductCount, fiveStarCount }}
           bankInfo={bankInfo}

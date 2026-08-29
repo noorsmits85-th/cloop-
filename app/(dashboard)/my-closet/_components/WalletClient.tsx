@@ -69,7 +69,9 @@ export function WalletClient({
   transactions = [], 
   paymentStatus 
 }: WalletClientProps) {
-  const [coins, setCoins] = useState(initialCoins);
+  // Đảm bảo số dư luôn đồng bộ chính xác với Sổ Cái (tránh cache SSR trả về 0)
+  const effectiveCoins = Math.max(initialCoins || 0, initialCoinLedger[0]?.balanceAfter || 0);
+  const [coins, setCoins] = useState(effectiveCoins);
   const [claimedQuests, setClaimedQuests] = useState<string[]>(initialClaimed);
   const [coinLedger, setCoinLedger] = useState(initialCoinLedger);
 
@@ -106,13 +108,12 @@ export function WalletClient({
   }, [initialClaimed]);
 
   useEffect(() => {
-    if (initialCoins !== undefined) {
-      setCoins(initialCoins);
-    }
-  }, [initialCoins]);
+    const freshCoins = Math.max(initialCoins || 0, initialCoinLedger[0]?.balanceAfter || 0);
+    setCoins(freshCoins);
+  }, [initialCoins, initialCoinLedger]);
 
   useEffect(() => {
-    if (initialCoinLedger) {
+    if (initialCoinLedger && initialCoinLedger.length > 0) {
       setCoinLedger(initialCoinLedger);
     }
   }, [initialCoinLedger]);
