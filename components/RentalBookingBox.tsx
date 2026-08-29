@@ -126,11 +126,10 @@ export default function RentalBookingBox({
   }, [ownerId]);
 
   const handleActivatePayment = async () => {
-    // 1. Kiểm tra đăng nhập bằng Supabase thay vì localStorage (Thông mạch UX & Security)
     const { data: { session } } = await supabase.auth.getSession();
 
     if (!session) {
-      router.push(`/login?next=/product/${productId}`);
+      router.push(`/login?next=/checkout/${productId}`);
       return;
     }
 
@@ -139,72 +138,14 @@ export default function RentalBookingBox({
       return;
     }
 
-    if (!renterName.trim()) { alert(`Vui lòng nhập tên người ${isRental ? "thuê" : "mua"} để CLOOP bảo chứng nhé!`); return; }
-    if (!renterPhone.trim()) { alert(`Vui lòng nhập số điện thoại người ${isRental ? "thuê" : "mua"} nhé!`); return; }
-    
-    if (isRental) {
-      if (!startDate) { alert("Vui lòng chọn ngày bắt đầu thuê."); return; }
+    if (!agreedToTerms) { 
+      alert(`Bạn ơi, vui lòng tích chọn đồng ý với Điều khoản và cam kết bảo chứng của CLOOP nhé! 😊`); 
+      return; 
     }
-    if (!agreedToTerms) { alert(`Bạn ơi, vui lòng tích chọn đồng ý với Điều khoản và cam kết bảo chứng của CLOOP nhé! 😊`); return; }
 
     setIsSubmitting(true);
-    
-    // Ghi log Nghiệp vụ Axiom
-    log.info("User Clicked Checkout", { 
-      productId, 
-      isRental, 
-      shippingMode, 
-      totalInvoicePrice, 
-      renterPhone 
-    });
-
-    try {
-      // 1.5 KIỂM TRA SỐ DƯ VÍ CLOOP
-      let walletBalance = 0;
-      const { data: userData } = await supabase.from('User').select('walletBalance').eq('id', session.user.id).single();
-      if (userData) {
-        walletBalance = userData.walletBalance || 0;
-      }
-
-      if (walletBalance < totalInvoicePrice) {
-        alert(`Số dư ví của bạn không đủ (${walletBalance.toLocaleString()}đ). Vui lòng nạp thêm tối thiểu ${(totalInvoicePrice - walletBalance).toLocaleString()}đ vào Ví Cloop để tiếp tục.`);
-        setIsSubmitting(false);
-        // Ở đây đáng lý sẽ gọi PayOS để nạp ví, tạm thời kích hoạt Mock Payment Modal
-        setShowMockPayment(true);
-        setMockPaymentStatus("SCANNING");
-        return;
-      }
-
-      // NẾU ĐỦ TIỀN VÍ -> Trừ tiền trong ví và tạo đơn hàng
-      // 2. Gọi Server Action để tạo Booking
-      const bookingRes = await createBooking({
-        productId,
-        startDate,
-        endDate,
-        renterName,
-        renterPhone,
-        ownerName: finalOwnerName,
-        ownerPhone: finalOwnerPhone,
-        isRental,
-        shippingMode
-      });
-
-      if (!bookingRes.success || !(bookingRes as any).rentalId) {
-        alert((bookingRes as any).error || "Có lỗi xảy ra khi tạo đơn hàng.");
-        setIsSubmitting(false);
-        return;
-      }
-
-      // TRỪ TIỀN TRONG VÍ (Giả lập trừ ở Client/Server, đáng ra phải gọi API trừ tiền)
-      // Tạm thời bỏ qua gọi PayOS vì đã trả bằng ví thành công
-      alert("Thanh toán thành công qua Ví CLOOP! Tiền đã được giữ an toàn.");
-      window.location.href = `/my-closet/orders`;
-      
-    } catch (error) {
-      console.error(error);
-      alert("Lỗi kết nối. Vui lòng thử lại!");
-      setIsSubmitting(false);
-    }
+    // Chuyển hướng trực tiếp vào cổng Checkout PayOS & GHN
+    router.push(`/checkout/${productId}`);
   };
   return (
     <div className="space-y-4 pt-4 border-t border-stone-200">

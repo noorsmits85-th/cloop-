@@ -1,7 +1,6 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
 import { createClient } from '@/src/utils/supabase/server';
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -21,7 +20,7 @@ export async function login(formData: FormData) {
   const password = getPassword(formData);
 
   if (!email || !password) {
-    return { error: 'Email va mat khau la bat buoc.' };
+    return { error: 'Email và mật khẩu là bắt buộc.' };
   }
 
   const { error } = await supabase.auth.signInWithPassword({
@@ -33,9 +32,12 @@ export async function login(formData: FormData) {
     return { error: error.message };
   }
 
-  const nextUrl = formData.get('nextUrl') as string;
-  revalidatePath(nextUrl || '/', 'layout');
-  redirect(nextUrl || '/');
+  const nextUrl = (formData.get('nextUrl') as string) || '/';
+  try {
+    revalidatePath(nextUrl, 'layout');
+  } catch (_) {}
+
+  return { success: true, redirectUrl: nextUrl };
 }
 
 export async function loginWithOtp(formData: FormData) {
@@ -43,13 +45,13 @@ export async function loginWithOtp(formData: FormData) {
   const email = getEmail(formData);
 
   if (!email) {
-    return { error: 'Email la bat buoc.' };
+    return { error: 'Email là bắt buộc.' };
   }
 
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`,
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'https://cloop-sable.vercel.app'}/auth/callback`,
     },
   });
 
@@ -66,7 +68,7 @@ export async function verifyOtp(formData: FormData) {
   const token = String(formData.get('token') || '').trim();
 
   if (!email || !/^\d{6}$/.test(token)) {
-    return { error: 'Ma OTP khong hop le.' };
+    return { error: 'Mã OTP không hợp lệ.' };
   }
 
   const { error } = await supabase.auth.verifyOtp({
@@ -79,9 +81,12 @@ export async function verifyOtp(formData: FormData) {
     return { error: 'Mã OTP không hợp lệ hoặc đã hết hạn.' };
   }
 
-  const nextUrl = formData.get('nextUrl') as string;
-  revalidatePath(nextUrl || '/', 'layout');
-  redirect(nextUrl || '/');
+  const nextUrl = (formData.get('nextUrl') as string) || '/';
+  try {
+    revalidatePath(nextUrl, 'layout');
+  } catch (_) {}
+
+  return { success: true, redirectUrl: nextUrl };
 }
 
 export async function resetPasswordForEmail(formData: FormData) {
@@ -89,68 +94,88 @@ export async function resetPasswordForEmail(formData: FormData) {
   const email = getEmail(formData);
 
   if (!email) {
-    return { error: 'Email la bat buoc.' };
+    return { error: 'Email là bắt buộc.' };
   }
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback?next=/reset-password`,
+    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'https://cloop-sable.vercel.app'}/auth/callback?next=/reset-password`,
   });
 
   if (error) {
     return { error: error.message };
   }
 
-  return { success: 'Đã gửi mã OTP khôi phục mật khẩu vào Email của bạn!' };
+  return { success: 'Đã gửi mã OTP khôi phục mật khẩu vào Email!' };
 }
 
 export async function verifyRecoveryOtp(formData: FormData) {
   const supabase = await createClient();
   const email = getEmail(formData);
   const token = String(formData.get('token') || '').trim();
+  const newPassword = String(formData.get('newPassword') || '');
 
-  if (!email || !/^\d{6}$/.test(token)) {
-    return { error: 'Ma OTP khong hop le.' };
+  if (!email || !token || !newPassword) {
+    return { error: 'Vui lòng điền đầy đủ thông tin.' };
   }
 
-  const { error } = await supabase.auth.verifyOtp({
+  if (newPassword.length < MIN_PASSWORD_LENGTH) {
+    return { error: `Mật khẩu mới phải có ít nhất ${MIN_PASSWORD_LENGTH} ký tự.` };
+  }
+
+  const { error: otpError } = await supabase.auth.verifyOtp({
     email,
     token,
     type: 'recovery',
   });
 
-  if (error) {
-    return { error: 'Mã OTP không hợp lệ hoặc đã hết hạn.' };
+  if (otpError) {
+    return { error: 'Mã OTP khôi phục không đúng hoặc đã hết hạn.' };
   }
 
-  const nextUrl = formData.get('nextUrl') as string;
-  revalidatePath(nextUrl || '/reset-password', 'layout');
-  redirect(nextUrl || '/reset-password');
+  const { error: updateError } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+
+  if (updateError) {
+    return { error: updateError.message };
+  }
+
+  return { success: 'Mật khẩu đã được cập nhật thành công! Bạn có thể đăng nhập ngay.', redirectUrl: '/login' };
 }
 
 export async function signup(formData: FormData) {
   const supabase = await createClient();
+
   const email = getEmail(formData);
   const password = getPassword(formData);
+  const name = String(formData.get('name') || '').trim();
 
-  if (!email || password.length < MIN_PASSWORD_LENGTH) {
-    return { error: `Mat khau phai co it nhat ${MIN_PASSWORD_LENGTH} ky tu.` };
+  if (!email || !password) {
+    return { error: 'Email và mật khẩu là bắt buộc.' };
+  }
+
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return { error: `Mật khẩu phải có ít nhất ${MIN_PASSWORD_LENGTH} ký tự.` };
   }
 
   const { error } = await supabase.auth.signUp({
     email,
     password,
+    options: {
+      data: {
+        name: name || email.split('@')[0],
+      },
+    },
   });
 
   if (error) {
     return { error: error.message };
   }
 
-  return { success: 'Đăng ký thành công! Vui lòng kiểm tra Email để xác nhận tài khoản.' };
-}
+  const nextUrl = (formData.get('nextUrl') as string) || '/';
+  try {
+    revalidatePath(nextUrl, 'layout');
+  } catch (_) {}
 
-export async function logout() {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
-  revalidatePath('/', 'layout');
-  redirect('/');
+  return { success: true, redirectUrl: nextUrl };
 }
