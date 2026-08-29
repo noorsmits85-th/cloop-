@@ -2,11 +2,32 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Plus, Shirt, Eye, EyeOff, MoreHorizontal, Edit, PackageX, TrendingUp, Trash2, ChevronLeft, ChevronRight, EyeIcon } from "lucide-react";
+import { 
+  Plus, 
+  Shirt, 
+  Eye, 
+  EyeOff, 
+  MoreHorizontal, 
+  Edit, 
+  PackageX, 
+  TrendingUp, 
+  Trash2, 
+  ChevronLeft, 
+  ChevronRight, 
+  EyeIcon,
+  Zap,
+  Sparkles,
+  CheckCircle2,
+  AlertTriangle,
+  X,
+  Loader2,
+  Leaf
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { deleteProductAction, toggleProductHideAction } from "../items/actions";
+import { purchaseBoostPackage } from "@/app/actions/boost";
 
 interface ItemData {
   id: string;
@@ -26,6 +47,8 @@ interface ItemData {
   hasBlog: boolean;
   blogTitle: string;
   isBlogHidden: boolean;
+  boostExpiresAt?: string | null;
+  isHighlighted?: boolean;
 }
 
 function ClosetItemCard({
@@ -33,12 +56,14 @@ function ClosetItemCard({
   onToggleBlog,
   onDelete,
   onToggleHide,
+  onBoost,
   isUpdating,
 }: {
   item: ItemData;
   onToggleBlog: (productId: string, currentlyHidden: boolean) => void;
   onDelete: (productId: string, title: string) => void;
   onToggleHide: (productId: string, currentIsHidden: boolean) => void;
+  onBoost: (item: ItemData) => void;
   isUpdating: boolean;
 }) {
   const [activeImageIdx, setActiveImageIdx] = useState(0);
@@ -60,6 +85,8 @@ function ClosetItemCard({
     setActiveImageIdx((prev) => (prev < imagesList.length - 1 ? prev + 1 : 0));
   };
 
+  const isBoosted = item.boostExpiresAt && new Date(item.boostExpiresAt) > new Date();
+
   return (
     <motion.div
       layout
@@ -67,7 +94,9 @@ function ClosetItemCard({
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.2 }}
-      className="bg-white rounded-2xl border border-stone-200/70 shadow-sm hover:shadow-md transition-all overflow-hidden group relative flex flex-col"
+      className={`bg-white rounded-2xl border transition-all overflow-hidden group relative flex flex-col ${
+        isBoosted ? "border-amber-400 ring-2 ring-amber-300/40 shadow-md" : "border-stone-200/70 shadow-sm hover:shadow-md"
+      }`}
     >
       {/* QUICK ACTIONS MENU */}
       <div className="absolute top-2.5 right-2.5 z-20">
@@ -89,16 +118,16 @@ function ClosetItemCard({
                 setOpenMenu(false);
                 router.push(`/shop/${item.id}/edit`);
               }}
-              className="px-4 py-2.5 font-medium text-stone-700 hover:bg-stone-50 flex items-center gap-2.5 text-left"
+              className="px-4 py-2.5 font-medium text-stone-700 hover:bg-stone-50 flex items-center gap-2.5 text-left cursor-pointer"
             >
               <Edit size={14} className="text-stone-500" /> Sửa món đồ
             </button>
             <button
               onClick={() => {
                 setOpenMenu(false);
-                alert("Đã thêm sản phẩm vào hàng đợi Boost (Đẩy tin) 🚀");
+                onBoost(item);
               }}
-              className="px-4 py-2.5 font-medium text-amber-600 hover:bg-amber-50 flex items-center gap-2.5 text-left"
+              className="px-4 py-2.5 font-medium text-amber-600 hover:bg-amber-50 flex items-center gap-2.5 text-left cursor-pointer"
             >
               <TrendingUp size={14} /> Đẩy tin (Boost)
             </button>
@@ -107,7 +136,7 @@ function ClosetItemCard({
                 setOpenMenu(false);
                 onToggleHide(item.id, item.isShopHidden);
               }}
-              className="px-4 py-2.5 font-medium text-stone-600 hover:bg-stone-50 flex items-center gap-2.5 text-left"
+              className="px-4 py-2.5 font-medium text-stone-600 hover:bg-stone-50 flex items-center gap-2.5 text-left cursor-pointer"
             >
               {item.isShopHidden ? (
                 <>
@@ -125,7 +154,7 @@ function ClosetItemCard({
                 setOpenMenu(false);
                 onDelete(item.id, item.name);
               }}
-              className="px-4 py-2.5 font-medium text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 text-left"
+              className="px-4 py-2.5 font-medium text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 text-left cursor-pointer"
             >
               <Trash2 size={14} /> Xóa món đồ
             </button>
@@ -158,15 +187,15 @@ function ClosetItemCard({
             <button
               onClick={handleNextImage}
               className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/40 hover:bg-black/75 text-white flex items-center justify-center backdrop-blur-md transition-all opacity-0 group-hover:opacity-100 z-10 shadow-sm"
-              title="Ảnh tiếp theo"
+              title="Ảnh sau"
             >
               <ChevronRight size={16} />
             </button>
 
-            {/* Pagination Indicator Dots */}
-            <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-10 bg-black/30 backdrop-blur-sm px-2 py-0.5 rounded-full">
+            {/* Navigation Dots */}
+            <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex gap-1 z-10">
               {imagesList.map((_, idx) => (
-                <span
+                <button
                   key={idx}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -190,6 +219,11 @@ function ClosetItemCard({
 
         {/* BADGES THÔNG MINH */}
         <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 z-10 pointer-events-none">
+          {isBoosted && (
+            <span className="px-2.5 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-bold rounded-lg shadow-sm flex items-center gap-1">
+              <Zap size={11} className="fill-white" /> Đang Đẩy Top
+            </span>
+          )}
           {item.isShopHidden && (
             <span className="px-2.5 py-1 bg-stone-800/85 backdrop-blur-sm text-white text-[10px] font-bold rounded-lg shadow-sm">
               Đã Ẩn
@@ -265,6 +299,41 @@ export function ItemsClient({ initialItems }: { initialItems: ItemData[] }) {
   const [activeTab, setActiveTab] = useState<"ALL" | "SELLING" | "RENTING" | "HIDDEN">("ALL");
   const router = useRouter();
 
+  // Boost Modal State
+  const [selectedBoostItem, setSelectedBoostItem] = useState<ItemData | null>(null);
+  const [boostPackage, setBoostPackage] = useState<"BOOST" | "HIGHLIGHT">("BOOST");
+  const [isBoosting, setIsBoosting] = useState(false);
+
+  // Toast Notification
+  const [toast, setToast] = useState<{ message: string; type?: "success" | "error" } | null>(null);
+  const showToast = (message: string, type: "success" | "error" = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3500);
+  };
+
+  const handleBoostSubmit = async () => {
+    if (!selectedBoostItem) return;
+    setIsBoosting(true);
+    try {
+      const res = await purchaseBoostPackage(selectedBoostItem.id, undefined, boostPackage);
+      if (res.success) {
+        showToast(
+          boostPackage === "BOOST"
+            ? `🚀 Đã Đẩy Top 12h cho "${selectedBoostItem.name}" thành công!`
+            : `✨ Đã bật Hào Quang Nổi Bật cho "${selectedBoostItem.name}" thành công!`
+        );
+        setSelectedBoostItem(null);
+        router.refresh();
+      } else {
+        showToast(res.error || "Không thể Đẩy Top.", "error");
+      }
+    } catch (err: any) {
+      showToast(err.message || "Lỗi khi Đẩy Top", "error");
+    } finally {
+      setIsBoosting(false);
+    }
+  };
+
   const handleToggleBlogVisibility = async (productId: string, currentlyHidden: boolean) => {
     if (isUpdating) return;
     setIsUpdating(true);
@@ -276,7 +345,7 @@ export function ItemsClient({ initialItems }: { initialItems: ItemData[] }) {
         .eq("productId", productId);
 
       if (error) throw error;
-      alert(
+      showToast(
         currentlyHidden
           ? "🎉 Đã đẩy câu chuyện Lookbook hiển thị lại công khai trên Blog!"
           : "🛑 Đã ẩn câu chuyện khỏi luồng bài viết công khai!"
@@ -290,7 +359,7 @@ export function ItemsClient({ initialItems }: { initialItems: ItemData[] }) {
 
       router.refresh();
     } catch (err: any) {
-      alert(`Lỗi xử lý cổng Blog: ${err.message}`);
+      showToast(`Lỗi xử lý cổng Blog: ${err.message}`, "error");
     } finally {
       setIsUpdating(false);
     }
@@ -303,14 +372,14 @@ export function ItemsClient({ initialItems }: { initialItems: ItemData[] }) {
     try {
       const res = await deleteProductAction(productId);
       if (!res.success) {
-        alert("Lỗi khi xóa: " + res.error);
+        showToast("Lỗi khi xóa: " + res.error, "error");
         return;
       }
       setItems((prev) => prev.filter((item) => item.id !== productId));
-      alert("Đã xóa món đồ khỏi tủ đồ thành công! ✨");
+      showToast("Đã xóa món đồ khỏi tủ đồ thành công! ✨");
       router.refresh();
     } catch (err: any) {
-      alert("Lỗi khi xóa món đồ: " + (err.message || err));
+      showToast("Lỗi khi xóa món đồ: " + (err.message || err), "error");
     }
   };
 
@@ -318,15 +387,16 @@ export function ItemsClient({ initialItems }: { initialItems: ItemData[] }) {
     try {
       const res = await toggleProductHideAction(productId, currentIsHidden);
       if (!res.success) {
-        alert("Lỗi: " + res.error);
+        showToast("Lỗi: " + res.error, "error");
         return;
       }
       setItems((prev) =>
         prev.map((item) => (item.id === productId ? { ...item, isShopHidden: !currentIsHidden } : item))
       );
+      showToast(currentIsHidden ? "🟢 Đã hiển thị món đồ lên Sàn!" : "📦 Đã ẩn món đồ khỏi Sàn!");
       router.refresh();
     } catch (err: any) {
-      alert("Lỗi khi đổi trạng thái: " + (err.message || err));
+      showToast("Lỗi khi đổi trạng thái: " + (err.message || err), "error");
     }
   };
 
@@ -340,6 +410,18 @@ export function ItemsClient({ initialItems }: { initialItems: ItemData[] }) {
 
   return (
     <div className="bg-transparent flex flex-col mt-4">
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`fixed top-5 right-5 z-50 px-4 py-3 rounded-2xl shadow-xl border text-xs font-bold font-ui flex items-center gap-2 transition-all ${
+          toast.type === "error" 
+            ? "bg-rose-50 border-rose-200 text-rose-900" 
+            : "bg-emerald-900 border-emerald-700 text-white"
+        }`}>
+          {toast.type === "error" ? <AlertTriangle size={15} /> : <CheckCircle2 size={15} className="text-emerald-400" />}
+          <span>{toast.message}</span>
+        </div>
+      )}
+
       {/* TABS */}
       <div className="flex w-full overflow-x-auto no-scrollbar gap-2 mb-6">
         <button
@@ -395,6 +477,7 @@ export function ItemsClient({ initialItems }: { initialItems: ItemData[] }) {
                 onToggleBlog={handleToggleBlogVisibility}
                 onDelete={handleDeleteProduct}
                 onToggleHide={handleToggleHide}
+                onBoost={(it) => setSelectedBoostItem(it)}
                 isUpdating={isUpdating}
               />
             ))}
@@ -417,6 +500,117 @@ export function ItemsClient({ initialItems }: { initialItems: ItemData[] }) {
           </Link>
         </div>
       )}
+
+      {/* MODAL ĐẨY TOP MÓN ĐỒ (BOOST WITH CLOOPCOINS) */}
+      {selectedBoostItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-stone-200 relative space-y-5 text-left">
+            <button
+              onClick={() => setSelectedBoostItem(null)}
+              className="absolute top-5 right-5 text-stone-400 hover:text-stone-700 w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center cursor-pointer transition-colors"
+            >
+              <X size={16} />
+            </button>
+
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-wider text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200 font-mono">
+                <Leaf size={11} /> Tokenomics Điểm Lá
+              </div>
+              <h3 className="text-lg font-bold font-heading text-stone-900">
+                Đẩy Top Món Đồ Lên Đầu Sàn
+              </h3>
+              <p className="text-xs text-stone-500 font-light">
+                Dùng Điểm Lá tích lũy để đưa món đồ lên vị trí nổi bật nhất.
+              </p>
+            </div>
+
+            {/* Item Preview */}
+            <div className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl border border-stone-200/80">
+              <img 
+                src={selectedBoostItem.image} 
+                alt={selectedBoostItem.name} 
+                className="w-12 h-14 object-cover rounded-xl border border-stone-200"
+              />
+              <div className="flex-1 min-w-0">
+                <h4 className="font-bold text-xs text-stone-900 truncate">{selectedBoostItem.name}</h4>
+                <p className="text-[11px] text-stone-500">Size: {selectedBoostItem.size}</p>
+                <p className="text-xs font-mono font-bold text-emerald-700">{selectedBoostItem.rentalPrice.toLocaleString()}₫/ngày</p>
+              </div>
+            </div>
+
+            {/* Package Choices */}
+            <div className="space-y-2.5">
+              <div 
+                onClick={() => setBoostPackage("BOOST")}
+                className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+                  boostPackage === "BOOST" 
+                    ? "bg-amber-50/80 border-amber-400 ring-2 ring-amber-300/40" 
+                    : "bg-stone-50 border-stone-200 hover:bg-stone-100/80"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-amber-400 text-stone-900 flex items-center justify-center shrink-0 font-bold shadow-xs">
+                    <Zap size={18} className="fill-stone-900" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-xs text-stone-900">Gói Đẩy Top 12 Giờ 🔥</div>
+                    <div className="text-[11px] text-stone-500 font-light">Ưu tiên hiển thị đầu Trang chủ & Sàn đồ</div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="font-mono font-black text-sm text-amber-700">500 Lá</div>
+                  <div className="text-[10px] text-stone-400">12 tiếng</div>
+                </div>
+              </div>
+
+              <div 
+                onClick={() => setBoostPackage("HIGHLIGHT")}
+                className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+                  boostPackage === "HIGHLIGHT" 
+                    ? "bg-amber-50/80 border-amber-400 ring-2 ring-amber-300/40" 
+                    : "bg-stone-50 border-stone-200 hover:bg-stone-100/80"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-700 text-white flex items-center justify-center shrink-0 font-bold shadow-xs">
+                    <Sparkles size={18} />
+                  </div>
+                  <div>
+                    <div className="font-bold text-xs text-stone-900">Gói Hào Quang Nổi Bật ✨</div>
+                    <div className="text-[11px] text-stone-500 font-light">Viền kim tuyến bắt mắt thu hút click</div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="font-mono font-black text-sm text-emerald-800">300 Lá</div>
+                  <div className="text-[10px] text-stone-400">Vĩnh viễn</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="pt-2 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setSelectedBoostItem(null)}
+                className="flex-1 py-3 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-2xl text-xs font-bold transition-all cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                disabled={isBoosting}
+                onClick={handleBoostSubmit}
+                className="flex-1 py-3 bg-[#183A2D] hover:bg-[#224A3B] text-white rounded-2xl text-xs font-bold shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {isBoosting ? <Loader2 size={15} className="animate-spin" /> : <Zap size={15} className="fill-amber-300 text-amber-300" />}
+                {isBoosting ? "Đang xử lý..." : "Xác nhận Đẩy Top"}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
