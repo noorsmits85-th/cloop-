@@ -7,7 +7,11 @@ import { redirect } from "next/navigation";
 
 export const revalidate = 0;
 
-export default async function WalletPage({ searchParams }: { searchParams: { [key: string]: string | string[] | undefined } }) {
+export default async function WalletPage({ 
+  searchParams 
+}: { 
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }> | { [key: string]: string | string[] | undefined } 
+}) {
   let userAuth;
   try {
     userAuth = await requireUser();
@@ -20,62 +24,86 @@ export default async function WalletPage({ searchParams }: { searchParams: { [ke
   }
 
   const userId = userAuth.id;
-  const status = searchParams?.status as string;
+  const resolvedSearchParams = await searchParams;
+  const status = resolvedSearchParams?.status as string;
 
-  // ⚡ TỐI ƯU SIÊU TỐC: Gom toàn bộ 7 truy vấn Database chạy song song cùng lúc (Parallel Fetching)
-  const [
-    userProfile,
-    profileRecord,
-    claims,
-    productCount,
-    fiveStarCount,
-    coinLedger,
-    realWithdrawals,
-    realInvoices
-  ] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: userId },
-      select: { walletBalance: true, cloopCoins: true, name: true }
-    }),
-    supabase
-      .from("profiles")
-      .select("bank_name, bank_account, bank_owner, name")
-      .eq("id", userId)
-      .maybeSingle(),
-    prisma.coinQuestClaim.findMany({
-      where: { userId: userId },
-      select: { questCode: true }
-    }),
-    prisma.product.count({
-      where: { userId: userId, isDeleted: false }
-    }),
-    prisma.review.count({
-      where: { revieweeId: userId, rating: { gte: 5 } }
-    }),
-    prisma.coinLedgerEntry.findMany({
-      where: { userId: userId },
-      orderBy: { createdAt: "desc" },
-      take: 10
-    }),
-    prisma.withdrawalRequest.findMany({
-      where: { userId: userId },
-      orderBy: { createdAt: "desc" },
-      take: 10
-    }),
-    prisma.invoice.findMany({
-      where: { 
-        rental: { ownerId: userId }, 
-        status: "PAID" 
-      },
-      include: { 
-        rental: { 
-          include: { product: true } 
-        } 
-      },
-      orderBy: { createdAt: "desc" },
-      take: 10
-    })
-  ]);
+  // Safe data containers with defaults
+  let userProfile: any = null;
+  let profileRecord: any = null;
+  let claims: any[] = [];
+  let productCount = 0;
+  let fiveStarCount = 0;
+  let coinLedger: any[] = [];
+  let realWithdrawals: any[] = [];
+  let realInvoices: any[] = [];
+
+  try {
+    const [
+      userRes,
+      profRes,
+      claimsRes,
+      prodCntRes,
+      fiveStarRes,
+      ledgerRes,
+      withdrawRes,
+      invoicesRes
+    ] = await Promise.allSettled([
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: { walletBalance: true, cloopCoins: true, name: true }
+      }),
+      supabase
+        .from("profiles")
+        .select("bank_name, bank_account, bank_owner, name")
+        .eq("id", userId)
+        .maybeSingle(),
+      prisma.coinQuestClaim.findMany({
+        where: { userId: userId },
+        select: { questCode: true }
+      }),
+      prisma.product.count({
+        where: { userId: userId, isDeleted: false }
+      }),
+      prisma.review.count({
+        where: { revieweeId: userId, rating: { gte: 5 } }
+      }),
+      prisma.coinLedgerEntry.findMany({
+        where: { userId: userId },
+        orderBy: { createdAt: "desc" },
+        take: 10
+      }),
+      prisma.withdrawalRequest.findMany({
+        where: { userId: userId },
+        orderBy: { createdAt: "desc" },
+        take: 10
+      }),
+      prisma.invoice.findMany({
+        where: { 
+          rental: { ownerId: userId }, 
+          status: "PAID" 
+        },
+        include: { 
+          rental: { 
+            include: { product: true } 
+          } 
+        },
+        orderBy: { createdAt: "desc" },
+        take: 10
+      })
+    ]);
+
+    if (userRes.status === "fulfilled") userProfile = userRes.value;
+    if (profRes.status === "fulfilled") profileRecord = profRes.value;
+    if (claimsRes.status === "fulfilled") claims = claimsRes.value || [];
+    if (prodCntRes.status === "fulfilled") productCount = prodCntRes.value || 0;
+    if (fiveStarRes.status === "fulfilled") fiveStarCount = fiveStarRes.value || 0;
+    if (ledgerRes.status === "fulfilled") coinLedger = ledgerRes.value || [];
+    if (withdrawRes.status === "fulfilled") realWithdrawals = withdrawRes.value || [];
+    if (invoicesRes.status === "fulfilled") realInvoices = invoicesRes.value || [];
+
+  } catch (fetchErr) {
+    console.error("⚠️ [WalletPage Data Fetch Error]:", fetchErr);
+  }
 
   const bankInfo = {
     bankName: profileRecord?.data?.bank_name || "",
@@ -83,23 +111,23 @@ export default async function WalletPage({ searchParams }: { searchParams: { [ke
     bankOwner: profileRecord?.data?.bank_owner || profileRecord?.data?.name || userProfile?.name || ""
   };
 
-  const claimedQuestCodes = claims.map(c => c.questCode);
+  const claimedQuestCodes = (claims || []).map(c => c.questCode);
 
   const vndTransactions = [
-    ...realWithdrawals.map(w => ({
+    ...(realWithdrawals || []).map(w => ({
       id: w.id,
       type: "WITHDRAW",
       amount: -w.amount,
       desc: `Lệnh rút tiền về ${w.bankName} (${w.bankAccountNumber})`,
-      date: w.createdAt.toISOString(),
+      date: w.createdAt?.toISOString ? w.createdAt.toISOString() : new Date().toISOString(),
       status: w.status === "COMPLETED" ? "SUCCESS" : w.status === "PENDING" ? "PENDING" : "FAILED"
     })),
-    ...realInvoices.map(inv => ({
+    ...(realInvoices || []).map(inv => ({
       id: inv.id,
       type: "INCOME",
       amount: inv.amount,
       desc: `Thu nhập cho thuê "${inv.rental?.product?.title || "Sản phẩm"}"`,
-      date: inv.createdAt.toISOString(),
+      date: inv.createdAt?.toISOString ? inv.createdAt.toISOString() : new Date().toISOString(),
       status: "SUCCESS"
     }))
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -127,13 +155,13 @@ export default async function WalletPage({ searchParams }: { searchParams: { [ke
           claimedQuests={claimedQuestCodes}
           stats={{ productCount, fiveStarCount }}
           bankInfo={bankInfo}
-          coinLedger={coinLedger.map(item => ({
+          coinLedger={(coinLedger || []).map(item => ({
             id: item.id,
             type: item.type,
             amount: item.amount,
             balanceAfter: item.balanceAfter,
             description: item.description || "Giao dịch Điểm Lá",
-            createdAt: item.createdAt.toISOString()
+            createdAt: item.createdAt?.toISOString ? item.createdAt.toISOString() : new Date().toISOString()
           }))}
           transactions={vndTransactions} 
           paymentStatus={status}
