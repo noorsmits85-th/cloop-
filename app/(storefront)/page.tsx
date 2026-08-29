@@ -18,8 +18,7 @@ import {
   Leaf, 
   Compass,
   SlidersHorizontal,
-  Tag,
-  Sparkles
+  Tag
 } from "lucide-react";
 import { motion } from "framer-motion";
 import MagneticButton from "@/app/components/MagneticButton";

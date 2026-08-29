@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { 
-  ArrowLeft, Camera, Sparkles, MapPin, Tag, 
+  ArrowLeft, Camera, MapPin, Tag, 
   BookOpen, Heart, UploadCloud, X, CheckCircle2, Feather, Shirt
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -239,7 +239,7 @@ export default function CreateBlogPostPage() {
           
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-bold uppercase tracking-widest text-[#2A4B2E] bg-[#E5EFE2] border border-[#C5DAC2] px-3 py-1 rounded-full font-ui flex items-center gap-1.5 shadow-2xs">
-              <Sparkles size={11} className="text-[#37503F]" /> Lưu Bút Thời Trang 2026
+              <Feather size={11} className="text-[#37503F]" /> Lưu Bút Thời Trang 2026
             </span>
           </div>
         </div>
@@ -373,7 +373,7 @@ export default function CreateBlogPostPage() {
               {/* Quick Sample Photos Bar */}
               <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200/80 flex items-center gap-2 overflow-x-auto">
                 <span className="text-[10px] font-bold text-stone-500 shrink-0 font-ui uppercase tracking-wider flex items-center gap-1">
-                  <Sparkles size={11} className="text-[#37503F]" /> Gợi ý ảnh nhanh:
+                  <Tag size={11} className="text-[#37503F]" /> Gợi ý ảnh nhanh:
                 </span>
                 <div className="flex gap-2">
                   {SAMPLE_PHOTOS.map((sampleUrl, sIdx) => (
@@ -402,8 +402,8 @@ export default function CreateBlogPostPage() {
                   disabled={isGeneratingStory}
                   className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-[#183A2D] to-[#2D5A47] hover:from-[#112a20] hover:to-[#224738] text-white rounded-full text-[10px] font-bold shadow-xs transition-all cursor-pointer active:scale-95 disabled:opacity-50"
                 >
-                  <Sparkles size={11} className="text-amber-300 fill-amber-300" />
-                  {isGeneratingStory ? "AI đang chắp bút..." : "✨ AI Chắp Bút (Gemini Pro)"}
+                  <Feather size={11} className="text-emerald-200" />
+                  {isGeneratingStory ? "AI đang chắp bút..." : "AI Chắp Bút (Gemini Pro)"}
                 </button>
               </div>
               <textarea

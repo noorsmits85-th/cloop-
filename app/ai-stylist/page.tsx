@@ -4,10 +4,10 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { 
-  Sparkles, Shirt, Compass, Smile, Sliders, 
+  Shirt, Compass, Smile, Sliders, 
   CheckCircle2, RefreshCw, Calendar, Palette, DollarSign, 
   Leaf, ShieldCheck, ChevronLeft, ArrowRight, User,
-  CreditCard, ClipboardCheck, CheckCircle, Loader2, Upload, Camera, FileText, Send, Bot, Sparkle
+  CreditCard, ClipboardCheck, CheckCircle, Loader2, Upload, Camera, FileText, Send, Bot
 } from "lucide-react";
 import Link from "next/link";
 
@@ -485,7 +485,7 @@ export default function AIStylistHub() {
                   >
                     {msg.role === "ai" && (
                       <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mb-1">
-                        <Sparkle size={12} className="text-emerald-700" />
+                        <Bot size={12} className="text-emerald-700" />
                       </div>
                     )}
                     
@@ -569,7 +569,7 @@ export default function AIStylistHub() {
                     <div className="md:col-span-7 space-y-5 text-left">
                       <div className="bg-gradient-to-br from-[#183A2D] to-emerald-900 text-white p-5 rounded-2xl shadow-md">
                         <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-2">
-                          <span className="text-[10px] uppercase font-bold tracking-widest text-amber-300 flex items-center gap-1"><Sparkles size={12} /> AI Phân Tích Logic</span>
+                          <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-300 flex items-center gap-1"><Compass size={12} /> AI Phân Tích Logic</span>
                           <span className="text-xs font-bold font-heading text-white">{activeResult.confidence} Match</span>
                         </div>
                         <p className="text-[12px] text-emerald-50 leading-relaxed font-medium">"{activeResult.Outfit.reasonBase}"</p>

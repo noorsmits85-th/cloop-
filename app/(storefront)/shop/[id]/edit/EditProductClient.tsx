@@ -8,7 +8,6 @@ import {
   Save, 
   Shirt, 
   Tag, 
-  Sparkles, 
   Info, 
   CheckCircle2, 
   AlertTriangle, 

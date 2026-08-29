@@ -10,8 +10,7 @@ import {
   ArrowRight, 
   Camera, 
   Lock, 
-  Award,
-  Sparkle
+  Award
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 

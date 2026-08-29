@@ -5,8 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  ArrowRight, Camera, Search, Sparkles, X, 
-  ShieldCheck, Leaf, Star
+  ArrowRight, Camera, Search, X, 
+  ShieldCheck, Leaf
 } from "lucide-react";
 import VisualSearchModal from "@/app/components/VisualSearchModal";
 
@@ -426,10 +426,10 @@ export default function GoogleFlowFashionHero() {
             <p className="text-[9px] uppercase font-bold text-stone-300 font-ui">Giảm CO₂</p>
           </div>
           <div>
-            <p className="font-heading font-extrabold text-base sm:text-lg text-amber-300 flex items-center justify-center gap-1">
-              <Star size={13} className="fill-current text-amber-400" /> 4.9★
+            <p className="font-heading font-extrabold text-base sm:text-lg text-emerald-300 flex items-center justify-center gap-1">
+              <ShieldCheck size={13} className="text-emerald-300" /> 98%
             </p>
-            <p className="text-[9px] uppercase font-bold text-stone-300 font-ui">1.8k Đánh Giá</p>
+            <p className="text-[9px] uppercase font-bold text-stone-300 font-ui">Hài Lòng</p>
           </div>
         </div>
 
@@ -486,7 +486,7 @@ export default function GoogleFlowFashionHero() {
                 <div className="p-3.5 bg-[#F5F8F4] rounded-2xl border border-[#D5E5D2] space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-[#183A2D] font-ui flex items-center gap-1.5">
-                      <Sparkles size={13} className="text-[#2A6E46]" /> Thông Số Fit Check Chuẩn
+                      <ShieldCheck size={13} className="text-[#2A6E46]" /> Thông Số Fit Check Chuẩn
                     </span>
                     <span className="text-[11px] font-extrabold text-[#2A6E46] font-ui">{selectedItem.rating} (Đánh giá cao)</span>
                   </div>

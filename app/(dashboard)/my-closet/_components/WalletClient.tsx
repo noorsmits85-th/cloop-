@@ -17,10 +17,9 @@ import {
   ShieldCheck, 
   HelpCircle,
   Clock,
-  Sparkles,
   Shirt,
-  Flame,
-  Star,
+  Calendar,
+  Award,
   Users,
   Copy,
   ExternalLink,
@@ -814,13 +813,13 @@ export function WalletClient({
                   const renderQuestIcon = () => {
                     switch (quest.code) {
                       case "WELCOME_ACTIVATION":
-                        return <Sparkles size={18} className="text-[#183A2D]" />;
+                        return <Gift size={18} className="text-[#183A2D]" />;
                       case "FIRST_LISTING":
                         return <Shirt size={18} className="text-[#183A2D]" />;
                       case "WEEKLY_LISTING_1":
-                        return <Flame size={18} className="text-[#183A2D]" />;
+                        return <Calendar size={18} className="text-[#183A2D]" />;
                       case "FIVE_STAR_ORDER":
-                        return <Star size={18} className="text-[#183A2D]" />;
+                        return <Award size={18} className="text-[#183A2D]" />;
                       case "REFERRAL_FIRST_ORDER":
                         return <Users size={18} className="text-[#183A2D]" />;
                       default:

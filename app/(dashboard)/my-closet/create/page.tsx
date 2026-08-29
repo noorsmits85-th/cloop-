@@ -6,8 +6,8 @@ import { useRouter } from "next/navigation";
 
 import Cropper from "react-easy-crop";
 import { motion, AnimatePresence } from "framer-motion";
-import Image from "next/image"; // 🟢 Đã fix: Trả lại thẻ Image cho Next.js
-import { Heart, Sparkles, Shirt, Info, MapPin, BadgePercent, ShieldAlert, Camera, Feather, Quote, ArrowLeft, Leaf } from "lucide-react"; 
+import Image from "next/image";
+import { Heart, Shirt, Info, MapPin, BadgePercent, ShieldAlert, Camera, Feather, Quote, ArrowLeft, Leaf } from "lucide-react"; 
 import { createProductAction } from "./actions";
 const PLACEHOLDER_IMG = "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600";
 const PAPER_BG = "https://www.transparenttextures.com/patterns/cream-paper.png";

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Heart, Bookmark, ArrowRight, Sparkles, ShoppingBag, Clock, Trash2, Store } from "lucide-react";
+import { Heart, Bookmark, ArrowRight, ShoppingBag, Clock, Trash2, Store } from "lucide-react";
 import { toggleProductInteractionAction } from "@/app/actions/favorite";
 
 interface WishlistProduct {

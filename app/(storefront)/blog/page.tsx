@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { 
   Heart, Bookmark, MapPin, PenTool, 
-  BookOpen, Trophy, Sparkles, User, ChevronRight,
+  BookOpen, Trophy, User, ChevronRight,
   Share2, MessageSquare, Shirt, ArrowRight, X, Feather, Check, Leaf, Droplet
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -396,7 +396,7 @@ export default function BlogJournalPage() {
 
             <div className="space-y-4 max-w-md relative z-10 text-left">
               <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#E5EFE2] border border-[#C5DAC2] text-[#2A4B2E] text-[10.5px] font-bold uppercase tracking-widest font-ui shadow-2xs">
-                <Sparkles size={11} className="text-[#37503F]" /> Bảo Tàng Ký Ức Tuần Hoàn 2026
+                <Feather size={11} className="text-[#37503F]" /> Bảo Tàng Ký Ức Tuần Hoàn 2026
               </div>
 
               <h1 className="text-3xl sm:text-4xl md:text-5xl font-heading text-[#0A2517] font-extrabold tracking-tight leading-tight">
@@ -458,7 +458,7 @@ export default function BlogJournalPage() {
 
                 <h3 className="font-heading text-lg font-extrabold text-[#0A2517] flex items-center gap-1.5">
                   @{myProfile?.name || "Người Kể Chuyện"}
-                  <Sparkles size={14} className="text-[#2A6E46]" />
+                  <Leaf size={14} className="text-[#2A6E46]" />
                 </h3>
 
                 <span className="text-[10px] font-bold uppercase tracking-widest text-[#2A4B2E] bg-[#E5EFE2] border border-[#C5DAC2] px-3 py-0.5 rounded-full mt-1 font-ui">
@@ -734,7 +734,7 @@ export default function BlogJournalPage() {
                 <Image src="/vuongmien.png" alt="Crown" width={45} height={45} className="absolute -top-2 -right-2 opacity-30" unoptimized />
                 
                 <div className="inline-flex items-center gap-1 px-3 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-[#A3E39F] text-[9.5px] font-bold uppercase tracking-widest font-ui mb-3">
-                  <Sparkles size={10} /> Câu Chuyện Tiêu Biểu Tuần
+                  <Feather size={10} /> Câu Chuyện Tiêu Biểu Tuần
                 </div>
 
                 <div 
@@ -813,7 +813,7 @@ export default function BlogJournalPage() {
             {/* Modal Header */}
             <div className="space-y-2 pr-8">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E5EFE2] text-[#2A4B2E] text-[10px] font-bold uppercase tracking-widest font-ui">
-                <Sparkles size={11} /> Ký Ức Tuần Hoàn • {selectedStory.location}
+                <Feather size={11} /> Ký Ức Tuần Hoàn • {selectedStory.location}
               </div>
               <h2 className="font-heading text-xl sm:text-2xl font-extrabold text-[#0A2517] leading-snug">
                 {selectedStory.title}

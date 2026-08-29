@@ -5,8 +5,8 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { 
-  MapPin, Star, ArrowLeft, Shirt, ShoppingBag, 
-  ChevronLeft, ChevronRight, Ruler, Sparkles, 
+  MapPin, ArrowLeft, Shirt, ShoppingBag, 
+  ChevronLeft, ChevronRight, Ruler, 
   ShieldCheck, Leaf, RotateCcw, Share2, Heart,
   CheckCircle2, Info, MessageCircle, PhoneCall
 } from "lucide-react";
@@ -258,13 +258,9 @@ function ProductDetailContent() {
               </h1>
 
               <div className="flex flex-wrap items-center gap-3 text-xs">
-                <div className="flex items-center gap-1 text-amber-600 font-bold">
-                  <div className="flex gap-0.5">
-                    {[1, 2, 3, 4, 5].map((s) => (
-                      <Star key={s} size={13} className="fill-amber-400 text-amber-400" />
-                    ))}
-                  </div>
-                  <span className="text-stone-600 font-mono text-[11px]">4.9 (98% hài lòng)</span>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-900 border border-emerald-200/80 font-bold">
+                  <ShieldCheck size={13} className="text-emerald-700" />
+                  <span className="font-mono text-[11px]">98% Hài Lòng • Kiểm Định Đồ Thật</span>
                 </div>
                 <span className="text-stone-300">•</span>
                 <LiveViewerBadge />

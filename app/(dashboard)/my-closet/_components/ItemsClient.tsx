@@ -16,7 +16,7 @@ import {
   ChevronRight, 
   EyeIcon,
   Zap,
-  Sparkles,
+  Layers,
   CheckCircle2,
   AlertTriangle,
   X,
@@ -220,7 +220,7 @@ function ClosetItemCard({
         {/* BADGES THÔNG MINH */}
         <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 z-10 pointer-events-none">
           {isBoosted && (
-            <span className="px-2.5 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-bold rounded-lg shadow-sm flex items-center gap-1">
+            <span className="px-2.5 py-1 bg-[#183A2D] text-white text-[10px] font-bold rounded-lg shadow-sm flex items-center gap-1">
               <Zap size={11} className="fill-white" /> Đang Đẩy Top
             </span>
           )}
@@ -544,21 +544,21 @@ export function ItemsClient({ initialItems }: { initialItems: ItemData[] }) {
                 onClick={() => setBoostPackage("BOOST")}
                 className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
                   boostPackage === "BOOST" 
-                    ? "bg-amber-50/80 border-amber-400 ring-2 ring-amber-300/40" 
+                    ? "bg-emerald-50/80 border-[#183A2D] ring-2 ring-emerald-900/20" 
                     : "bg-stone-50 border-stone-200 hover:bg-stone-100/80"
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-amber-400 text-stone-900 flex items-center justify-center shrink-0 font-bold shadow-xs">
-                    <Zap size={18} className="fill-stone-900" />
+                  <div className="w-9 h-9 rounded-xl bg-[#183A2D] text-white flex items-center justify-center shrink-0 font-bold shadow-xs">
+                    <Zap size={16} className="fill-white" />
                   </div>
                   <div>
-                    <div className="font-bold text-xs text-stone-900">Gói Đẩy Top 12 Giờ 🔥</div>
+                    <div className="font-bold text-xs text-stone-900">Gói Đẩy Top 12 Giờ</div>
                     <div className="text-[11px] text-stone-500 font-light">Ưu tiên hiển thị đầu Trang chủ & Sàn đồ</div>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="font-mono font-black text-sm text-amber-700">500 Lá</div>
+                  <div className="font-mono font-black text-sm text-[#183A2D]">500 Lá</div>
                   <div className="text-[10px] text-stone-400">12 tiếng</div>
                 </div>
               </div>
@@ -567,21 +567,21 @@ export function ItemsClient({ initialItems }: { initialItems: ItemData[] }) {
                 onClick={() => setBoostPackage("HIGHLIGHT")}
                 className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
                   boostPackage === "HIGHLIGHT" 
-                    ? "bg-amber-50/80 border-amber-400 ring-2 ring-amber-300/40" 
+                    ? "bg-emerald-50/80 border-[#183A2D] ring-2 ring-emerald-900/20" 
                     : "bg-stone-50 border-stone-200 hover:bg-stone-100/80"
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-700 text-white flex items-center justify-center shrink-0 font-bold shadow-xs">
-                    <Sparkles size={18} />
+                  <div className="w-9 h-9 rounded-xl bg-stone-800 text-white flex items-center justify-center shrink-0 font-bold shadow-xs">
+                    <Layers size={16} />
                   </div>
                   <div>
-                    <div className="font-bold text-xs text-stone-900">Gói Hào Quang Nổi Bật ✨</div>
-                    <div className="text-[11px] text-stone-500 font-light">Viền kim tuyến bắt mắt thu hút click</div>
+                    <div className="font-bold text-xs text-stone-900">Gói Nổi Bật Trang Chủ</div>
+                    <div className="text-[11px] text-stone-500 font-light">Gắn nhãn nổi bật thu hút người xem</div>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="font-mono font-black text-sm text-emerald-800">300 Lá</div>
+                  <div className="font-mono font-black text-sm text-stone-900">300 Lá</div>
                   <div className="text-[10px] text-stone-400">Vĩnh viễn</div>
                 </div>
               </div>

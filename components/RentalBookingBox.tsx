@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Star, ShieldCheck, Calendar, Clock, ArrowRight, Sparkles, Check, Info } from "lucide-react";
+import { ShieldCheck, Calendar, Clock, ArrowRight, Check, Info } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
