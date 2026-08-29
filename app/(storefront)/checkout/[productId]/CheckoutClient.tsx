@@ -412,7 +412,7 @@ export default function CheckoutClient({
                   <ShieldCheck size={14} className="text-amber-700" /> Tiền cọc Két Escrow (Tạm giữ):
                 </p>
                 <span className="text-[10px] text-amber-800 block">Tự động hoàn trả 100% khi trả đồ nguyên vẹn</span>
-                <span className="text-[9px] text-emerald-800 font-medium block">Ưu đãi: Xác thực CCCD / VNeID để giảm 50% cọc đơn sau</span>
+                <span className="text-[9.5px] text-emerald-800 font-medium block">Đặc quyền VIP: Tích lũy 3 chuyến thuê xanh để tự động giảm 50% tiền cọc</span>
               </div>
               <span className="font-bold font-mono text-sm text-amber-900 shrink-0">+{actualDeposit.toLocaleString('vi-VN')}đ</span>
             </div>
