@@ -127,7 +127,27 @@ export function WalletClient({
     }
   }, [paymentStatus]);
 
-  // Lắng nghe thanh toán VietQR thời gian thực (Polling Check)
+  const handleTopUpSuccess = (newBalance: number, totalCoins: number, amountVnd: number) => {
+    setIsTopUpSuccess(true);
+    setCoins(newBalance);
+    const newEntry = {
+      id: `topup-${Date.now()}`,
+      type: "TOP_UP_IN",
+      amount: totalCoins,
+      balanceAfter: newBalance,
+      description: `Nạp gói ${COIN_PACKAGES[selectedPackage]?.name || 'Điểm Lá'} (+${totalCoins.toLocaleString()} Lá)`,
+      createdAt: new Date().toISOString()
+    };
+    setCoinLedger(prev => [newEntry, ...prev]);
+    showToast(`🎉 Nạp thành công +${totalCoins.toLocaleString()} Lá! Đã cập nhật vào Sổ Cái.`);
+    setTimeout(() => {
+      setShowCoinStoreModal(false);
+      setActiveTopUpData(null);
+      setIsTopUpSuccess(false);
+    }, 2800);
+  };
+
+  // Lắng nghe thanh toán VietQR thời gian thực (Polling Check 1.8s)
   useEffect(() => {
     if (!activeTopUpData?.orderCode || isTopUpSuccess) return;
 
@@ -135,24 +155,17 @@ export function WalletClient({
       try {
         const res = await checkCoinTopUpStatusAction(activeTopUpData.orderCode);
         if (res.success && res.status === "PAID") {
-          setIsTopUpSuccess(true);
-          const updatedCoins = res.newBalance || (coins + (activeTopUpData.totalCoins || 0));
-          setCoins(updatedCoins);
-          showToast(`🎉 Nạp thành công +${activeTopUpData.totalCoins} Lá!`);
           clearInterval(interval);
-          setTimeout(() => {
-            setShowCoinStoreModal(false);
-            setActiveTopUpData(null);
-            setIsTopUpSuccess(false);
-          }, 3000);
+          const updatedCoins = res.newBalance || (coins + (activeTopUpData.totalCoins || 0));
+          handleTopUpSuccess(updatedCoins, activeTopUpData.totalCoins, activeTopUpData.amount);
         }
       } catch (err) {
         console.error("Polling check failed:", err);
       }
-    }, 2500);
+    }, 1800);
 
     return () => clearInterval(interval);
-  }, [activeTopUpData, isTopUpSuccess, coins]);
+  }, [activeTopUpData, isTopUpSuccess, coins, selectedPackage]);
 
   // Xử lý nạp Điểm Lá qua PayOS (Tức thì 0.01s - Không giật lag)
   const handleBuyCoinPackage = async () => {
@@ -620,9 +633,8 @@ export function WalletClient({
                             try {
                               const res = await checkCoinTopUpStatusAction(activeTopUpData.orderCode);
                               if (res.success && res.status === "PAID") {
-                                setIsTopUpSuccess(true);
-                                setCoins(res.newBalance || (coins + (activeTopUpData.totalCoins || 0)));
-                                showToast(`🎉 Nạp thành công +${activeTopUpData.totalCoins} Lá!`);
+                                const updatedCoins = res.newBalance || (coins + (activeTopUpData.totalCoins || 0));
+                                handleTopUpSuccess(updatedCoins, activeTopUpData.totalCoins, activeTopUpData.amount);
                               } else {
                                 showToast("Chưa nhận được tiền. Vui lòng quét QR chuyển khoản trước.", "error");
                               }
