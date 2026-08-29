@@ -121,23 +121,32 @@ export default function CheckoutClient({
   };
 
   const handleCheckout = async () => {
-    if (!selectedQuote) {
-      setError("Vui lòng chọn phương thức giao hàng");
+    if (!startDate) {
+      setError("⚠️ Bạn ơi, vui lòng chọn Ngày bắt đầu thuê nhé!");
       return;
     }
-    if (!phone.trim() || !addressDetail.trim() || !startDate) {
-      setError("Vui lòng nhập đủ Ngày, SĐT và chi tiết địa chỉ");
+    if (!selectedProvince || !selectedDistrict || !selectedWard) {
+      setError("⚠️ Vui lòng chọn đầy đủ Tỉnh/Thành, Quận/Huyện, Phường/Xã để tính phí giao hàng!");
+      return;
+    }
+    if (!addressDetail.trim() || addressDetail.trim().length < 4) {
+      setError("⚠️ Vui lòng nhập địa chỉ chi tiết (Số nhà, tên đường...)");
+      return;
+    }
+    if (!phone.trim()) {
+      setError("⚠️ Vui lòng nhập số điện thoại người nhận hàng!");
       return;
     }
     
     // Validate Regex cơ bản ở Client
     const phoneRegex = /(84|0[3|5|7|8|9])+([0-9]{8})\b/;
-    if (!phoneRegex.test(phone)) {
-      setError("Số điện thoại không đúng định dạng (Ví dụ: 0987654321)");
+    if (!phoneRegex.test(phone.replace(/\s+/g, ''))) {
+      setError("⚠️ Số điện thoại không đúng định dạng (Ví dụ: 0987654321)");
       return;
     }
-    if (addressDetail.length < 5) {
-      setError("Địa chỉ nhận hàng quá ngắn, vui lòng nhập rõ số nhà, tên đường.");
+
+    if (!selectedQuote) {
+      setError("⚠️ Đang tính phí vận chuyển GHN, vui lòng đợi 1 giây hoặc chọn lại địa chỉ!");
       return;
     }
 
@@ -346,10 +355,10 @@ export default function CheckoutClient({
         
         <button 
           onClick={handleCheckout}
-          disabled={isProcessingPayment || !selectedQuote}
-          className="w-full h-[54px] bg-[#0A2517] text-white rounded font-ui font-bold text-lg hover:bg-[#113a25] transition-colors flex items-center justify-center disabled:opacity-50"
+          disabled={isProcessingPayment}
+          className="w-full h-[54px] bg-[#0A2517] text-white rounded-xl font-ui font-bold text-base hover:bg-[#113a25] transition-colors flex items-center justify-center disabled:opacity-50 cursor-pointer shadow-md"
         >
-          {isProcessingPayment ? <Loader2 size={24} className="animate-spin" /> : "Thanh toán bằng PayOS"}
+          {isProcessingPayment ? <Loader2 size={24} className="animate-spin" /> : "Thanh toán bằng PayOS VietQR →"}
         </button>
         <p className="text-center text-xs text-stone-400 mt-3 font-ui">Chuyển khoản an toàn qua mã QR 24/7</p>
       </div>
