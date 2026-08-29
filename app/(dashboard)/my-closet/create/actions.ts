@@ -199,3 +199,173 @@ export async function createProductAction(data: any) {
     return { success: false, error: err.message || "Lỗi khi lưu vào Database" };
   }
 }
+
+// Lấy dữ liệu sản phẩm để sửa
+export async function getProductForEditAction(productId: string) {
+  try {
+    const user = await requireUser();
+    if (!user) return { success: false, error: "Unauthorized" };
+
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      include: {
+        listings: true,
+        images: true
+      }
+    });
+
+    if (!product) {
+      return { success: false, error: "Không tìm thấy món đồ" };
+    }
+
+    if (product.userId !== user.id && user.role !== "ADMIN") {
+      return { success: false, error: "Bạn không có quyền chỉnh sửa món đồ này" };
+    }
+
+    const rentalListing = product.listings.find(l => l.listingType === "RENT");
+    const saleListing = product.listings.find(l => l.listingType === "SELL");
+
+    let styleData: any = {};
+    try {
+      if (product.style) styleData = JSON.parse(product.style);
+    } catch {}
+
+    return {
+      success: true,
+      product: {
+        id: product.id,
+        title: product.title,
+        category: product.category,
+        size: product.size,
+        material: product.material || "",
+        color: product.color || "",
+        condition: product.condition === "GOOD" ? "Độ mới 95%" : "Độ mới 99% (Như mới)",
+        occasion: product.occasion || "",
+        description: product.description || "",
+        province: product.province || "",
+        ward: product.wardCode || "",
+        bust: product.bust ? String(product.bust) : "",
+        waist: product.waist ? String(product.waist) : "",
+        hips: product.hips ? String(product.hips) : "",
+        targetHeight: styleData.height || "",
+        targetWeight: styleData.weight || "",
+        images: (product.images || []).map(img => img.url),
+        listings: {
+          isRental: !!rentalListing,
+          rentalPrice: rentalListing?.basePrice || 0,
+          depositPercent: rentalListing?.deposit || 70,
+          isSale: !!saleListing,
+          salePrice: saleListing?.basePrice || 0,
+        }
+      }
+    };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Lỗi khi lấy thông tin sản phẩm" };
+  }
+}
+
+// Cập nhật sản phẩm
+export async function updateProductAction(productId: string, data: any) {
+  try {
+    const user = await requireUser();
+    if (!user) return { success: false, error: "Unauthorized" };
+
+    const existingProduct = await prisma.product.findUnique({
+      where: { id: productId },
+      include: { listings: true }
+    });
+
+    if (!existingProduct) {
+      return { success: false, error: "Không tìm thấy món đồ" };
+    }
+
+    if (existingProduct.userId !== user.id && user.role !== "ADMIN") {
+      return { success: false, error: "Bạn không có quyền chỉnh sửa món đồ này" };
+    }
+
+    const styleMeta = (data.targetHeight || data.targetWeight)
+      ? JSON.stringify({ height: data.targetHeight || "", weight: data.targetWeight || "" })
+      : existingProduct.style;
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Cập nhật thông tin cơ bản
+      await tx.product.update({
+        where: { id: productId },
+        data: {
+          title: data.title || existingProduct.title,
+          category: data.category || existingProduct.category,
+          size: data.size || existingProduct.size,
+          material: data.material || existingProduct.material,
+          color: data.color || existingProduct.color,
+          condition: data.condition?.includes("95") ? "GOOD" : "EXCELLENT",
+          description: data.description ?? existingProduct.description,
+          occasion: data.occasion || existingProduct.occasion,
+          style: styleMeta,
+          bust: data.bust ? Number(data.bust) : null,
+          waist: data.waist ? Number(data.waist) : null,
+          hips: data.hips ? Number(data.hips) : null
+        }
+      });
+
+      // 2. Cập nhật listing thuê & bán
+      if (data.listings) {
+        if (data.listings.isRental) {
+          const rentalListing = existingProduct.listings.find(l => l.listingType === "RENT");
+          if (rentalListing) {
+            await tx.listing.update({
+              where: { id: rentalListing.id },
+              data: {
+                basePrice: data.listings.rentalPrice,
+                deposit: data.listings.depositPercent
+              }
+            });
+          } else {
+            await tx.listing.create({
+              data: {
+                productId: productId,
+                status: "AVAILABLE",
+                listingType: "RENT",
+                basePrice: data.listings.rentalPrice,
+                deposit: data.listings.depositPercent,
+                minDays: 3
+              }
+            });
+          }
+        }
+
+        if (data.listings.isSale) {
+          const saleListing = existingProduct.listings.find(l => l.listingType === "SELL");
+          if (saleListing) {
+            await tx.listing.update({
+              where: { id: saleListing.id },
+              data: {
+                basePrice: data.listings.salePrice
+              }
+            });
+          } else {
+            await tx.listing.create({
+              data: {
+                productId: productId,
+                status: "AVAILABLE",
+                listingType: "SELL",
+                basePrice: data.listings.salePrice,
+                deposit: 0,
+                minDays: 0
+              }
+            });
+          }
+        }
+      }
+    });
+
+    revalidatePath("/my-closet");
+    revalidatePath("/my-closet/items");
+    revalidatePath(`/product/${productId}`);
+    revalidatePath("/shop");
+    revalidatePath("/");
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Lỗi khi cập nhật sản phẩm" };
+  }
+}
