@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SignedShippingQuote } from "@/src/utils/shipping";
 import { 
-  Loader2, ShieldCheck, MapPin, Calendar, Clock, Sparkles, 
+  Loader2, ShieldCheck, MapPin, Calendar, Clock, 
   Check, ArrowRight, User, Phone, Home, Shirt, Tag, AlertCircle, Navigation, Package 
 } from "lucide-react";
 import Image from "next/image";
@@ -348,7 +348,6 @@ export default function CheckoutClient({
         </div>
         
         {/* Bảng Kê Chi Phí Đồng Bộ Thời Gian Thực */}
-        {/* Bảng Kê Chi Phí Đồng Bộ Thời Gian Thực (Chuẩn Tâm Lý Học TMĐT) */}
         <div className="space-y-3 font-ui text-xs text-stone-600">
           
           <div className="flex justify-between items-center py-0.5">
@@ -367,24 +366,17 @@ export default function CheckoutClient({
                 <p className="font-bold flex items-center gap-1">
                   <ShieldCheck size={13} className="text-amber-700" /> Tiền cọc Két Escrow:
                 </p>
-                <span className="text-[9.5px] text-amber-700">Tự động hoàn trả 100% khi trả váy</span>
+                <span className="text-[9.5px] text-amber-700">Tự động hoàn trả 100% khi trả đồ</span>
               </div>
               <span className="font-bold font-mono text-sm">+{actualDeposit.toLocaleString('vi-VN')}đ</span>
             </div>
           )}
 
           <div className="flex justify-between items-center py-0.5">
-            <span className="flex items-center gap-1.5">
-              <span>Cước vận chuyển (GHN):</span>
+            <span>Cước vận chuyển (GHN):</span>
+            <span className="font-bold font-mono text-stone-800">
+              {isLoadingShipping ? "Đang tính..." : selectedQuote ? `+${shippingFee.toLocaleString('vi-VN')}đ` : "Chưa chọn địa chỉ"}
             </span>
-            <div className="flex items-center gap-1.5 font-mono">
-              {selectedQuote?.quote.originalFee && (
-                <span className="text-stone-400 line-through text-[11px]">{selectedQuote.quote.originalFee.toLocaleString('vi-VN')}đ</span>
-              )}
-              <span className="font-bold font-mono text-stone-800">
-                {isLoadingShipping ? "Đang tính..." : selectedQuote ? `+${shippingFee.toLocaleString('vi-VN')}đ` : "Chưa chọn địa chỉ"}
-              </span>
-            </div>
           </div>
 
           {/* Phân tách biểu phí: Phí dịch vụ 0% Founding 100 */}
@@ -406,17 +398,6 @@ export default function CheckoutClient({
             </span>
           </div>
 
-          {/* Khóa dòng tiền bằng CloopCoins */}
-          <div className="flex justify-between items-center py-1.5 bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-200/50 text-emerald-950">
-            <span className="flex items-center gap-1.5 text-[11px] font-medium">
-              <Sparkles size={13} className="text-emerald-700 shrink-0" />
-              Thưởng Xu Lá khi trả đồ đúng hạn:
-            </span>
-            <span className="font-bold font-mono text-xs text-emerald-800">
-              +15.000 Xu Lá
-            </span>
-          </div>
-
           {/* Tổng Hóa Đơn */}
           <div className="pt-3.5 border-t border-stone-200 flex justify-between items-baseline">
             <div>
@@ -432,23 +413,23 @@ export default function CheckoutClient({
         {/* Cam Kết Bảo Chứng */}
         <div className="bg-[#FAF9F5] p-3.5 rounded-xl border border-[#E9E2D8] text-[11px] text-stone-600 space-y-1 font-body">
           <p className="font-bold text-[#183A2D] flex items-center gap-1.5">
-            <Sparkles size={12} className="text-emerald-700" /> Cam Kết Bảo Chứng CLOOP
+            <ShieldCheck size={13} className="text-emerald-800" /> Cam Kết Bảo Chứng CLOOP
           </p>
           <p className="text-stone-500 leading-relaxed font-light text-[10.5px]">
-            Tiền của bạn được khóa an toàn tại Két Escrow và chỉ giải ngân cho chủ tủ khi bạn đã nhận đúng mẫu, đúng size và hoàn tất thời gian trải nghiệm.
+            Tiền của bạn được giữ an toàn tại Két Escrow và chỉ giải ngân cho chủ tủ khi bạn đã nhận đúng mẫu, đúng size và hoàn tất thời gian trải nghiệm.
           </p>
         </div>
 
-        {/* Đóng gói xanh - Vận chuyển nhanh (Chuẩn Eco & Tối ưu thể tích) */}
+        {/* Đóng gói xanh - Vận chuyển nhanh */}
         <div className="bg-[#F8FAF8] p-3.5 rounded-xl border border-emerald-200/60 text-[10.5px] text-stone-600 space-y-1.5 font-body">
           <p className="font-bold text-emerald-950 flex items-center gap-1.5 font-ui">
-            <Sparkles size={13} className="text-emerald-700" /> 🌱 Đóng Gói Xanh - Vận Chuyển Nhanh
+            <Package size={13} className="text-emerald-700" /> Đóng Gói Xanh - Vận Chuyển Nhanh
           </p>
           <p className="text-stone-600 leading-relaxed font-light">
-            CLOOP khuyến khích bạn <strong>tái sử dụng túi giấy, túi vải hoặc túi niêm phong sạch</strong> có sẵn tại nhà. Hãy gấp gọn trang phục để giảm thiểu rác thải đóng gói.
+            CLOOP khuyến khích bạn tái sử dụng túi giấy, túi vải hoặc túi niêm phong sạch có sẵn tại nhà. Hãy gấp gọn trang phục để giảm thiểu rác thải đóng gói.
           </p>
           <div className="pt-1 text-[10px] text-emerald-800 font-medium">
-            💡 <em>Mẹo:</em> Tránh dùng hộp carton cồng kềnh. Gói hàng nhỏ gọn (&lt;500g) giúp giảm phát thải CO2 và tối ưu chi phí giao nhận.
+            Gói hàng nhỏ gọn (&lt;500g) giúp giảm phát thải CO2 và tối ưu chi phí giao nhận.
           </div>
         </div>
 
@@ -524,7 +505,7 @@ export default function CheckoutClient({
               <div className="bg-[#FAF9F5] px-3.5 py-2 rounded-xl border border-stone-200 flex flex-col justify-center">
                 <span className="text-[10px] text-stone-400 font-ui uppercase tracking-wider">Hạn hoàn trả đồ:</span>
                 <span className="text-xs font-bold text-[#183A2D] font-mono mt-0.5">
-                  📅 {calculateEndDate() || "Vui lòng chọn ngày bắt đầu"}
+                  {calculateEndDate() || "Vui lòng chọn ngày bắt đầu"}
                 </span>
               </div>
             </div>
@@ -538,12 +519,12 @@ export default function CheckoutClient({
               {isRental ? "3. Địa Chỉ Nhận Hàng Tận Nhà (Tính Cước GHN)" : "1. Địa Chỉ Giao Hàng"}
             </label>
             
-            {/* Nút định vị GPS 1 chạm (TikTok / Shopee Standard) */}
+            {/* Nút định vị GPS 1 chạm */}
             <button
               type="button"
               onClick={handleGPSLocation}
               disabled={isLocatingGPS}
-              className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-[#EAF2EC] hover:bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-200/60 font-ui transition-colors cursor-pointer disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-800 bg-[#EAF2EC] hover:bg-emerald-100 px-3 py-1.5 rounded-xl border border-emerald-200/60 font-ui transition-colors cursor-pointer disabled:opacity-60"
             >
               {isLocatingGPS ? (
                 <>
@@ -553,7 +534,7 @@ export default function CheckoutClient({
               ) : (
                 <>
                   <Navigation size={12} className="text-emerald-700" />
-                  <span>📍 Định vị GPS (Tự điền)</span>
+                  <span>Định vị vị trí hiện tại</span>
                 </>
               )}
             </button>
