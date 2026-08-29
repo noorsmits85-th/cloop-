@@ -51,6 +51,7 @@ export default function AdminDashboardClient({
   recentTopUps = []
 }: AdminDashboardClientProps) {
   const [activeTab, setActiveTab] = useState<"OVERVIEW" | "TOOLS">("OVERVIEW");
+  const [isFrozenDemo, setIsFrozenDemo] = useState(false);
 
   // State cho công cụ hỗ trợ
   const [email, setEmail] = useState("");
@@ -288,6 +289,120 @@ export default function AdminDashboardClient({
                 </Link>
               ))}
             </div>
+          </div>
+
+          {/* VŨ KHÍ PITCHING 1: CÔNG TẮC ĐÓNG BĂNG KÉT ESCROW KHẨN CẤP (DISPUTE FREEZE SWITCH) */}
+          <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-4 border-b border-stone-100">
+              <div>
+                <div className="inline-flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-wider text-rose-800 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200 font-mono mb-1">
+                  <ShieldCheck size={11} /> Kịch Bản Phòng Vệ Rủi Ro (Techfest Demo)
+                </div>
+                <h3 className="text-base font-bold font-heading text-stone-900">
+                  Công Tắc Đóng Băng Két Escrow (Emergency Dispute Freeze)
+                </h3>
+                <p className="text-xs text-stone-500 font-light">
+                  Mô phỏng: Khi phát hiện váy dạ hội bị rách tà hoặc tráo hàng, Admin kích hoạt đóng băng bảo vệ 100% tiền cọc.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsFrozenDemo(!isFrozenDemo)}
+                className={`px-5 py-2.5 rounded-2xl text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer active:scale-95 ${
+                  isFrozenDemo
+                    ? "bg-stone-800 hover:bg-stone-900 text-white animate-pulse"
+                    : "bg-rose-600 hover:bg-rose-700 text-white shadow-rose-600/30"
+                }`}
+              >
+                <AlertTriangle size={14} />
+                {isFrozenDemo ? "🔓 HỦY ĐÓNG BĂNG (MỞ LẠI KÉT)" : "🚨 ĐÓNG BĂNG KÉT CỌC NGAY LẬP TỨC"}
+              </button>
+            </div>
+
+            <div className={`p-4 rounded-2xl border transition-all ${
+              isFrozenDemo 
+                ? "bg-rose-50/80 border-rose-300 text-rose-950" 
+                : "bg-emerald-50/60 border-emerald-200/80 text-emerald-950"
+            }`}>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2.5 h-2.5 rounded-full ${isFrozenDemo ? "bg-rose-600 animate-ping" : "bg-emerald-600"}`}></span>
+                    <span className="font-bold text-xs font-mono">
+                      {isFrozenDemo ? "🔴 TRẠNG THÁI: KÉT BẢO CHỨNG ĐÃ BỊ KHÓA TOÀN PHẦN" : "🟢 TRẠNG THÁI: KÉT BẢO CHỨNG ĐANG HOẠT ĐỘNG BÌNH THƯỜNG"}
+                    </span>
+                  </div>
+                  <p className="text-xs opacity-80">
+                    {isFrozenDemo 
+                      ? "Tiền cọc 1.200.000₫ của đơn thuê #CLP-88492 đã bị đóng băng tại Ngân hàng ACB. Khách thuê không thể rút tiền cho đến khi Hội đồng Trọng tài CLOOP thẩm định xong video mở hộp." 
+                      : "Dòng tiền Escrow luân chuyển an toàn 2 chiều. Tự động giải ngân sau 24h khi khách hoàn trả đồ nguyên vẹn."}
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <span className="text-[10px] uppercase font-bold tracking-wider opacity-60 font-mono">Số dư Két Đơn</span>
+                  <div className="text-lg font-black font-mono">1.200.000₫</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* VŨ KHÍ PITCHING 2: BẢNG ĐỐI SOÁT BLOCK 5K VẬN CHUYỂN GHN */}
+          <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-xs space-y-4">
+            <div className="flex justify-between items-center pb-3 border-b border-stone-100">
+              <div>
+                <div className="inline-flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-wider text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200 font-mono mb-1">
+                  <Truck size={11} /> Thuật Toán Làm Tròn Block 5K
+                </div>
+                <h3 className="text-base font-bold font-heading text-stone-900">
+                  Sổ Cái Đối Soát Cước Vận Chuyển GHN & Quỹ Phòng Vệ Tích Lũy
+                </h3>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] text-stone-400 font-bold uppercase">Tổng Quỹ Phòng Vệ</span>
+                <div className="text-base font-black font-mono text-emerald-800">+8.300₫</div>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs font-ui">
+                <thead>
+                  <tr className="border-b border-stone-100 text-stone-400 uppercase text-[10px] tracking-wider font-bold font-mono">
+                    <th className="py-2.5">Mã Vận Đơn GHN</th>
+                    <th className="py-2.5">Tuyến Vận Chuyển</th>
+                    <th className="py-2.5 text-right">Cước Khách Trả (Block 5K)</th>
+                    <th className="py-2.5 text-right">Cước Thực Tế GHN</th>
+                    <th className="py-2.5 text-right text-emerald-800">Thặng Dư Tích Lũy Quỹ</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100 font-mono">
+                  <tr>
+                    <td className="py-3 font-bold text-stone-900">#GHN-HN-SG-88492</td>
+                    <td className="py-3 font-sans text-stone-600">Hà Nội $\rightarrow$ TP.HCM (2 Chiều)</td>
+                    <td className="py-3 text-right font-bold text-stone-900">35.000₫</td>
+                    <td className="py-3 text-right text-stone-500">31.400₫</td>
+                    <td className="py-3 text-right font-bold text-emerald-800 bg-emerald-50/50 rounded-lg px-2">+3.600₫</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 font-bold text-stone-900">#GHN-DN-HN-29184</td>
+                    <td className="py-3 font-sans text-stone-600">Đà Nẵng $\rightarrow$ Hà Nội (2 Chiều)</td>
+                    <td className="py-3 text-right font-bold text-stone-900">30.000₫</td>
+                    <td className="py-3 text-right text-stone-500">27.800₫</td>
+                    <td className="py-3 text-right font-bold text-emerald-800 bg-emerald-50/50 rounded-lg px-2">+2.200₫</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 font-bold text-stone-900">#GHN-SG-BD-10923</td>
+                    <td className="py-3 font-sans text-stone-600">TP.HCM $\rightarrow$ Bình Dương (2 Chiều)</td>
+                    <td className="py-3 text-right font-bold text-stone-900">25.000₫</td>
+                    <td className="py-3 text-right text-stone-500">22.500₫</td>
+                    <td className="py-3 text-right font-bold text-emerald-800 bg-emerald-50/50 rounded-lg px-2">+2.500₫</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="text-[11px] text-stone-400 italic">
+              * Khoản thặng dư Block 5K được giữ riêng tại Quỹ Bảo Vệ Vận Chuyển để bù trừ tự động các đơn bị phụ phí giao lại lần 2 mà không tăng giá của khách.
+            </p>
           </div>
 
           {/* QUY MÔ HỆ THỐNG */}
