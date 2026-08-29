@@ -139,7 +139,12 @@ export function WalletClient({
     }
   }, [paymentStatus]);
 
-  const handleTopUpSuccess = (newBalance: number, totalCoins: number, amountVnd: number) => {
+  const processedOrderCodesRef = React.useRef<Set<number>>(new Set());
+
+  const handleTopUpSuccess = (newBalance: number, totalCoins: number, amountVnd: number, orderCode?: number) => {
+    if (orderCode && processedOrderCodesRef.current.has(orderCode)) return;
+    if (orderCode) processedOrderCodesRef.current.add(orderCode);
+
     setIsTopUpSuccess(true);
     setCoins(newBalance);
     const newEntry = {
@@ -162,21 +167,27 @@ export function WalletClient({
   // Lắng nghe thanh toán VietQR thời gian thực (Polling Check 1.8s)
   useEffect(() => {
     if (!activeTopUpData?.orderCode || isTopUpSuccess) return;
+    const currentOrderCode = activeTopUpData.orderCode;
+    if (processedOrderCodesRef.current.has(currentOrderCode)) return;
 
+    let isSubscribed = true;
     const interval = setInterval(async () => {
       try {
-        const res = await checkCoinTopUpStatusAction(activeTopUpData.orderCode);
-        if (res.success && res.status === "PAID") {
+        const res = await checkCoinTopUpStatusAction(currentOrderCode);
+        if (isSubscribed && res.success && res.status === "PAID") {
           clearInterval(interval);
           const updatedCoins = res.newBalance || (coins + (activeTopUpData.totalCoins || 0));
-          handleTopUpSuccess(updatedCoins, activeTopUpData.totalCoins, activeTopUpData.amount);
+          handleTopUpSuccess(updatedCoins, activeTopUpData.totalCoins, activeTopUpData.amount, currentOrderCode);
         }
       } catch (err) {
         console.error("Polling check failed:", err);
       }
     }, 1800);
 
-    return () => clearInterval(interval);
+    return () => {
+      isSubscribed = false;
+      clearInterval(interval);
+    };
   }, [activeTopUpData, isTopUpSuccess, coins, selectedPackage]);
 
   // Xử lý nạp Điểm Lá qua PayOS (Tức thì 0.01s - Không giật lag)
