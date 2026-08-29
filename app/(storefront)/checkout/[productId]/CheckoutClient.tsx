@@ -183,7 +183,15 @@ export default function CheckoutClient({
       const res = await fetch("/api/shipping/quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fromProvince: fromProvince || product.province || "Hà Nội", toProvince: fullToProvinceStr, weight }),
+        body: JSON.stringify({ 
+          fromProvince: fromProvince || product.province || "Hà Nội", 
+          toProvince: fullToProvinceStr, 
+          fromDistrictId: (product as any)?.districtId,
+          fromWardCode: (product as any)?.wardCode,
+          toDistrictId: selectedDistrict.id,
+          toWardCode: selectedWard.id || (selectedWard as any).code,
+          weight 
+        }),
       });
       
       const data = await res.json();

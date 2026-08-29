@@ -4,7 +4,15 @@ import { getShippingQuotes, signShippingQuote } from "@/src/utils/shipping";
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { fromProvince, toProvince, weight = 500 } = body;
+    const { 
+      fromProvince, 
+      toProvince, 
+      fromDistrictId, 
+      fromWardCode, 
+      toDistrictId, 
+      toWardCode, 
+      weight = 500 
+    } = body;
 
     if (!fromProvince || !toProvince) {
       return NextResponse.json({ error: "Thiếu thông tin địa chỉ giao nhận" }, { status: 400 });
@@ -15,24 +23,26 @@ export async function POST(req: Request) {
     
     let quotes: any[] = [];
 
-    // NẾU CÓ TOKEN GHN THẬT -> GỌI API GHN
+    // NẾU CÓ TOKEN GHN THẬT -> GỌI API GHN THEO ĐỊNH VỊ CHÍNH XÁC
     if (GHN_TOKEN) {
-      // Tách chuỗi fromProvince và toProvince ra (Vì từ Frontend nó gửi lên chuỗi ghép)
-      // Tạm thời để gọi GHN cần district_id, ward_code, lúc này ta giả lập truyền ID vào fromProvince, toProvince hoặc fix tạm
-      // Vì Frontend hiện tại gửi chuỗi ghép "Phường, Quận, Tỉnh", ta sẽ mock bằng ID giả nếu không parse được
+      const ghnBody: any = {
+        from_district_id: Number(fromDistrictId) || 1442,
+        service_type_id: 2,
+        to_district_id: Number(toDistrictId) || 1442,
+        height: 10, 
+        length: 10, 
+        weight: weight, 
+        width: 10,
+        insurance_value: 0,
+      };
+
+      if (fromWardCode) ghnBody.from_ward_code = String(fromWardCode);
+      if (toWardCode) ghnBody.to_ward_code = String(toWardCode);
+
       const res = await fetch(GHN_FEE_URL, {
         method: "POST",
         headers: { "Token": GHN_TOKEN, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          from_district_id: 1442, // Fix cứng tạm Kho hàng ở Quận Hoàn Kiếm (Hoặc lấy từ Product)
-          from_ward_code: "20101",
-          service_id: 53320,
-          service_type_id: 2,
-          to_district_id: 1442, // TODO: Bóc tách ID từ payload
-          to_ward_code: "20101",
-          height: 10, length: 10, weight: weight, width: 10,
-          insurance_value: 0,
-        })
+        body: JSON.stringify(ghnBody)
       });
       const data = await res.json();
         const realFee = data.data.total;
