@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 
 import { prisma } from "@/src/lib/prisma";
 import { payos } from "@/lib/payos";
@@ -43,7 +43,8 @@ export async function createCoinTopUpPayment(packageCode: string) {
       }
     });
 
-    const DOMAIN = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    const DOMAIN = process.env.NEXT_PUBLIC_SITE_URL || 
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://cloop-sable.vercel.app");
 
     const body = {
       orderCode: orderCode,
@@ -65,7 +66,13 @@ export async function createCoinTopUpPayment(packageCode: string) {
     return {
       success: true,
       checkoutUrl: paymentLink.checkoutUrl,
-      orderCode: orderCode
+      orderCode: orderCode,
+      qrCode: paymentLink.qrCode,
+      accountNumber: paymentLink.accountNumber,
+      accountName: paymentLink.accountName,
+      bin: paymentLink.bin,
+      amount: pkg.amountVnd,
+      totalCoins: pkg.totalCoins
     };
 
   } catch (error: any) {
@@ -74,6 +81,36 @@ export async function createCoinTopUpPayment(packageCode: string) {
       success: false,
       message: error.message || "Không thể khởi tạo thanh toán mua Lá."
     };
+  }
+}
+
+// Kiểm tra trạng thái nạp Lá thời gian thực (Polling Check)
+export async function checkCoinTopUpStatusAction(orderCode: number) {
+  try {
+    let authUser;
+    try {
+      authUser = await requireUser();
+    } catch {
+      return { success: false, status: "UNAUTHORIZED" };
+    }
+
+    const topUp = await prisma.coinTopUp.findUnique({
+      where: { orderCode: BigInt(orderCode) },
+      include: { user: { select: { cloopCoins: true } } }
+    });
+
+    if (!topUp) {
+      return { success: false, status: "NOT_FOUND" };
+    }
+
+    return {
+      success: true,
+      status: topUp.status, // "PAID" | "PENDING" | "FAILED" | "CANCELLED"
+      totalCoins: topUp.totalCoins,
+      newBalance: topUp.user?.cloopCoins || 0
+    };
+  } catch (err: any) {
+    return { success: false, status: "ERROR" };
   }
 }
 

@@ -21,10 +21,13 @@ import {
   Shirt,
   Flame,
   Star,
-  Users
+  Users,
+  Copy,
+  ExternalLink,
+  ArrowLeft
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { createCoinTopUpPayment, claimQuestRewardAction } from "@/app/actions/coin";
+import { createCoinTopUpPayment, checkCoinTopUpStatusAction, claimQuestRewardAction } from "@/app/actions/coin";
 import { requestWithdrawalAction } from "@/app/actions/withdrawal";
 import { COIN_PACKAGES, QUEST_DEFINITIONS } from "@/lib/coinPackages";
 import { supabase } from "@/lib/supabase";
@@ -77,7 +80,16 @@ export function WalletClient({
 
   const [selectedPackage, setSelectedPackage] = useState<string>("LEAF_50K");
   const [isBuyingCoins, setIsBuyingCoins] = useState(false);
+  const [activeTopUpData, setActiveTopUpData] = useState<any>(null);
+  const [isTopUpSuccess, setIsTopUpSuccess] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
   const [claimingCode, setClaimingCode] = useState<string | null>(null);
+
+  const copyToClipboard = (text: string, field: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
 
   // Form rút tiền VNĐ
   const [withdrawAmount, setWithdrawAmount] = useState("");
@@ -101,19 +113,45 @@ export function WalletClient({
     }
   }, [paymentStatus]);
 
-  // Xử lý nạp Điểm Lá qua PayOS
+  // Lắng nghe thanh toán VietQR thời gian thực (Polling Check)
+  useEffect(() => {
+    if (!activeTopUpData?.orderCode || isTopUpSuccess) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await checkCoinTopUpStatusAction(activeTopUpData.orderCode);
+        if (res.success && res.status === "PAID") {
+          setIsTopUpSuccess(true);
+          const updatedCoins = res.newBalance || (coins + (activeTopUpData.totalCoins || 0));
+          setCoins(updatedCoins);
+          clearInterval(interval);
+          setTimeout(() => {
+            setShowCoinStoreModal(false);
+            setActiveTopUpData(null);
+            setIsTopUpSuccess(false);
+          }, 3500);
+        }
+      } catch (err) {
+        console.error("Polling check failed:", err);
+      }
+    }, 2500);
+
+    return () => clearInterval(interval);
+  }, [activeTopUpData, isTopUpSuccess, coins]);
+
+  // Xử lý nạp Điểm Lá qua PayOS (Tạo mã VietQR ngay trong Popup)
   const handleBuyCoinPackage = async () => {
     setIsBuyingCoins(true);
     try {
       const res = await createCoinTopUpPayment(selectedPackage);
-      if (res.success && res.checkoutUrl) {
-        window.location.href = res.checkoutUrl;
+      if (res.success) {
+        setActiveTopUpData(res);
       } else {
         alert(res.message || "Không thể khởi tạo thanh toán.");
-        setIsBuyingCoins(false);
       }
     } catch (error) {
       alert("Lỗi kết nối khi nạp Lá.");
+    } finally {
       setIsBuyingCoins(false);
     }
   };
@@ -427,61 +465,166 @@ export function WalletClient({
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
-                {Object.values(COIN_PACKAGES).map((pkg) => {
-                  const isSelected = selectedPackage === pkg.code;
-                  return (
-                    <button
-                      key={pkg.code}
-                      type="button"
-                      onClick={() => setSelectedPackage(pkg.code)}
-                      className={`relative p-4 rounded-2xl border-2 text-left transition-all flex flex-col justify-between gap-3 ${
-                        isSelected 
-                          ? "border-emerald-700 bg-emerald-50/50 shadow-sm" 
-                          : "border-stone-200 hover:border-stone-300 bg-white"
-                      }`}
+              {activeTopUpData ? (
+                <div className="flex flex-col items-center text-center space-y-4">
+                  {isTopUpSuccess ? (
+                    <motion.div 
+                      initial={{ scale: 0.8, opacity: 0 }} 
+                      animate={{ scale: 1, opacity: 1 }} 
+                      className="py-8 flex flex-col items-center space-y-3"
                     >
-                      {pkg.badge && (
-                        <span className="absolute top-3 right-3 bg-amber-400 text-stone-900 text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-2xs">
-                          {pkg.badge}
+                      <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-800 shadow-sm">
+                        <CheckCircle2 size={36} />
+                      </div>
+                      <h4 className="text-xl font-bold text-stone-900 font-heading">Nạp Điểm Lá Thành Công!</h4>
+                      <p className="text-sm text-stone-600 font-body">
+                        +{activeTopUpData.totalCoins?.toLocaleString()} Lá đã được cộng ngay vào ví của bạn.
+                      </p>
+                    </motion.div>
+                  ) : (
+                    <>
+                      <div className="w-full flex justify-between items-center pb-3 border-b border-stone-100">
+                        <button 
+                          type="button" 
+                          onClick={() => setActiveTopUpData(null)} 
+                          className="text-xs font-bold text-stone-600 hover:text-stone-900 flex items-center gap-1.5 font-ui cursor-pointer"
+                        >
+                          <ArrowLeft size={14} /> Chọn gói khác
+                        </button>
+                        <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200/60 font-mono">
+                          Mã #{activeTopUpData.orderCode}
                         </span>
-                      )}
+                      </div>
 
-                      <div>
-                        <span className="text-[11px] uppercase tracking-wider font-semibold text-stone-500">{pkg.name}</span>
-                        <div className="text-2xl font-mono font-black text-[#183A2D] mt-0.5">
-                          {pkg.totalCoins.toLocaleString()} <span className="text-xs font-bold">Lá</span>
+                      {/* Mã VietQR */}
+                      <div className="bg-white p-3 rounded-2xl border border-stone-200 shadow-xs">
+                        <img 
+                          src={activeTopUpData.qrCode || `https://img.vietqr.io/image/${activeTopUpData.bin || '970416'}-${activeTopUpData.accountNumber || 'LOCCASS000340028'}-compact.png?amount=${activeTopUpData.amount}&addInfo=NAP%20LA%20${activeTopUpData.orderCode}&accountName=${encodeURIComponent(activeTopUpData.accountName || 'HOANG THI TRANG')}`} 
+                          alt="Mã VietQR ACB Nạp Lá" 
+                          className="w-48 h-48 sm:w-52 sm:h-52 object-contain mx-auto"
+                        />
+                      </div>
+
+                      {/* Thông tin chuyển khoản 1-chạm copy */}
+                      <div className="w-full bg-[#FAF9F5] p-3.5 rounded-xl border border-[#E9E2D8] text-left text-xs space-y-2 font-ui">
+                        <div className="flex justify-between items-center">
+                          <span className="text-stone-500">Số tiền:</span>
+                          <span className="font-bold text-emerald-800 font-mono text-sm">{activeTopUpData.amount?.toLocaleString()}₫ (+{activeTopUpData.totalCoins?.toLocaleString()} Lá)</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-stone-500">Ngân hàng:</span>
+                          <span className="font-bold text-stone-800">ACB (Ngân hàng Á Châu)</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-stone-500">Số tài khoản:</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono font-bold text-stone-900">{activeTopUpData.accountNumber || "LOCCASS000340028"}</span>
+                            <button 
+                              type="button" 
+                              onClick={() => copyToClipboard(activeTopUpData.accountNumber || "LOCCASS000340028", "stk")}
+                              className="text-emerald-800 hover:text-emerald-950 p-1 hover:bg-emerald-100 rounded transition-colors cursor-pointer"
+                              title="Sao chép STK"
+                            >
+                              <Copy size={12} />
+                            </button>
+                            {copiedField === "stk" && <span className="text-[9px] text-emerald-700 font-bold">Đã chép!</span>}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-stone-500">Nội dung CK:</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">NAP LA {activeTopUpData.orderCode}</span>
+                            <button 
+                              type="button" 
+                              onClick={() => copyToClipboard(`NAP LA ${activeTopUpData.orderCode}`, "content")}
+                              className="text-amber-800 hover:text-amber-950 p-1 hover:bg-amber-100 rounded transition-colors cursor-pointer"
+                              title="Sao chép nội dung"
+                            >
+                              <Copy size={12} />
+                            </button>
+                            {copiedField === "content" && <span className="text-[9px] text-amber-700 font-bold">Đã chép!</span>}
+                          </div>
                         </div>
                       </div>
 
-                      <div className="pt-2 border-t border-stone-100 flex items-center justify-between">
-                        <span className="text-xs font-bold text-stone-900">{pkg.amountVnd.toLocaleString()}₫</span>
-                        {isSelected && <CheckCircle2 size={16} className="text-emerald-700" />}
+                      {/* Trạng thái lắng nghe thời gian thực */}
+                      <div className="w-full flex items-center justify-center gap-2 text-xs font-semibold text-emerald-800 bg-emerald-50/90 py-2.5 px-4 rounded-xl border border-emerald-200/60 font-ui">
+                        <Loader2 size={13} className="animate-spin text-emerald-700 shrink-0" />
+                        <span>Hệ thống đang tự động nhận diện thanh toán...</span>
                       </div>
-                    </button>
-                  );
-                })}
-              </div>
 
-              <div className="bg-amber-50 border border-amber-200/60 rounded-2xl p-3.5 mb-5 flex items-start gap-2.5">
-                <HelpCircle size={16} className="text-amber-700 shrink-0 mt-0.5" />
-                <p className="text-[11px] text-amber-900 leading-relaxed font-light">
-                  <strong>Quy ước Tokenomics:</strong> Điểm Lá dùng để mua dịch vụ Đẩy Top tin đăng, đổi voucher. Điểm Lá không có giá trị quy đổi ngược ra tiền mặt.
-                </p>
-              </div>
+                      {activeTopUpData.checkoutUrl && (
+                        <a 
+                          href={activeTopUpData.checkoutUrl} 
+                          target="_blank" 
+                          rel="noreferrer"
+                          className="text-[11px] text-stone-400 hover:text-stone-700 underline flex items-center gap-1 font-ui"
+                        >
+                          Hoặc mở trang thanh toán PayOS <ExternalLink size={11} />
+                        </a>
+                      )}
+                    </>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                    {Object.values(COIN_PACKAGES).map((pkg) => {
+                      const isSelected = selectedPackage === pkg.code;
+                      return (
+                        <button
+                          key={pkg.code}
+                          type="button"
+                          onClick={() => setSelectedPackage(pkg.code)}
+                          className={`relative p-4 rounded-2xl border-2 text-left transition-all flex flex-col justify-between gap-3 cursor-pointer ${
+                            isSelected 
+                              ? "border-emerald-700 bg-emerald-50/50 shadow-sm" 
+                              : "border-stone-200 hover:border-stone-300 bg-white"
+                          }`}
+                        >
+                          {pkg.badge && (
+                            <span className="absolute top-3 right-3 bg-amber-400 text-stone-900 text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-2xs">
+                              {pkg.badge}
+                            </span>
+                          )}
 
-              <button
-                type="button"
-                onClick={handleBuyCoinPackage}
-                disabled={isBuyingCoins}
-                className="w-full py-3.5 bg-[#183A2D] text-white text-xs font-bold uppercase tracking-widest rounded-2xl shadow hover:bg-[#23452F] transition-all flex items-center justify-center gap-2 active:scale-98 disabled:opacity-50"
-              >
-                {isBuyingCoins ? (
-                  <><Loader2 size={16} className="animate-spin" /> Đang tạo mã VietQR PayOS...</>
-                ) : (
-                  `Tiến hành thanh toán ${COIN_PACKAGES[selectedPackage]?.amountVnd.toLocaleString()}₫`
-                )}
-              </button>
+                          <div>
+                            <span className="text-[11px] uppercase tracking-wider font-semibold text-stone-500 font-ui">{pkg.name}</span>
+                            <div className="text-2xl font-mono font-black text-[#183A2D] mt-0.5">
+                              {pkg.totalCoins.toLocaleString()} <span className="text-xs font-bold font-ui">Lá</span>
+                            </div>
+                          </div>
+
+                          <div className="pt-2 border-t border-stone-100 flex items-center justify-between">
+                            <span className="text-xs font-bold text-stone-900 font-mono">{pkg.amountVnd.toLocaleString()}₫</span>
+                            {isSelected && <CheckCircle2 size={16} className="text-emerald-700" />}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="bg-amber-50 border border-amber-200/60 rounded-2xl p-3.5 mb-5 flex items-start gap-2.5 font-body">
+                    <HelpCircle size={16} className="text-amber-700 shrink-0 mt-0.5" />
+                    <p className="text-[11px] text-amber-900 leading-relaxed font-light">
+                      <strong>Quy ước Tokenomics:</strong> Điểm Lá dùng để mua dịch vụ Đẩy Top tin đăng, đổi voucher. Điểm Lá không có giá trị quy đổi ngược ra tiền mặt.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleBuyCoinPackage}
+                    disabled={isBuyingCoins}
+                    className="w-full py-3.5 bg-[#183A2D] text-white text-xs font-bold uppercase tracking-widest rounded-2xl shadow hover:bg-[#23452F] transition-all flex items-center justify-center gap-2 active:scale-98 disabled:opacity-50 cursor-pointer font-ui"
+                  >
+                    {isBuyingCoins ? (
+                      <><Loader2 size={16} className="animate-spin" /> Đang tạo mã VietQR PayOS...</>
+                    ) : (
+                      `Tiến hành thanh toán ${COIN_PACKAGES[selectedPackage]?.amountVnd.toLocaleString()}₫`
+                    )}
+                  </button>
+                </>
+              )}
             </motion.div>
           </div>
         )}
