@@ -16,7 +16,12 @@ import {
   Gift, 
   ShieldCheck, 
   HelpCircle,
-  Clock
+  Clock,
+  Sparkles,
+  Shirt,
+  Flame,
+  Star,
+  Users
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createCoinTopUpPayment, claimQuestRewardAction } from "@/app/actions/coin";
@@ -31,6 +36,7 @@ interface WalletClientProps {
   claimedQuests?: string[];
   stats?: {
     productCount: number;
+    weeklyProductCount?: number;
     fiveStarCount: number;
   };
   bankInfo?: {
@@ -516,61 +522,81 @@ export function WalletClient({
               </div>
 
               {/* Danh sách nhiệm vụ */}
-              <div className="p-6 overflow-y-auto space-y-3.5 divide-y divide-stone-100">
+              <div className="p-6 overflow-y-auto space-y-3.5 divide-y divide-stone-100 font-body">
                 {Object.values(QUEST_DEFINITIONS).map((quest) => {
                   const isClaimed = claimedQuests.includes(quest.code);
                   
-                  // Kiểm tra điều kiện
+                  // Kiểm tra điều kiện chính xác
                   let isEligible = false;
                   let progressText = "";
                   if (quest.code === "WELCOME_ACTIVATION") {
                     isEligible = true;
+                    progressText = "Đã kích hoạt tài khoản";
                   } else if (quest.code === "FIRST_LISTING") {
                     isEligible = (stats.productCount || 0) >= 1;
                     progressText = `${Math.min(stats.productCount || 0, 1)}/1 món đồ`;
                   } else if (quest.code === "WEEKLY_LISTING_1") {
-                    isEligible = (stats.productCount || 0) >= 1;
-                    progressText = `${Math.min(stats.productCount || 0, 3)}/3 món`;
+                    const weeklyCount = stats.weeklyProductCount ?? (stats.productCount > 0 ? 1 : 0);
+                    isEligible = weeklyCount >= 1;
+                    progressText = `${Math.min(weeklyCount, 1)}/1 món tuần này`;
                   } else if (quest.code === "FIVE_STAR_ORDER") {
                     isEligible = (stats.fiveStarCount || 0) >= 1;
                     progressText = `${Math.min(stats.fiveStarCount || 0, 1)}/1 đánh giá 5★`;
                   } else if (quest.code === "REFERRAL_FIRST_ORDER") {
                     isEligible = false;
+                    progressText = "0/1 bạn bè";
                   }
 
                   const isClaiming = claimingCode === quest.code;
 
+                  const renderQuestIcon = () => {
+                    switch (quest.code) {
+                      case "WELCOME_ACTIVATION":
+                        return <Sparkles size={18} className="text-[#183A2D]" />;
+                      case "FIRST_LISTING":
+                        return <Shirt size={18} className="text-[#183A2D]" />;
+                      case "WEEKLY_LISTING_1":
+                        return <Flame size={18} className="text-[#183A2D]" />;
+                      case "FIVE_STAR_ORDER":
+                        return <Star size={18} className="text-[#183A2D]" />;
+                      case "REFERRAL_FIRST_ORDER":
+                        return <Users size={18} className="text-[#183A2D]" />;
+                      default:
+                        return <Leaf size={18} className="text-[#183A2D]" />;
+                    }
+                  };
+
                   return (
                     <div key={quest.code} className="pt-3.5 first:pt-0 flex items-start justify-between gap-4">
                       <div className="flex items-start gap-3.5">
-                        <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-xl shrink-0">
-                          {quest.icon}
+                        <div className="w-10 h-10 rounded-xl bg-[#FAF9F5] border border-[#E9E2D8] flex items-center justify-center shrink-0 shadow-2xs">
+                          {renderQuestIcon()}
                         </div>
                         <div className="flex flex-col">
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-stone-800 text-xs sm:text-sm">{quest.title}</span>
-                            <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-mono font-bold">
+                            <span className="font-bold text-stone-800 text-xs sm:text-sm font-heading">{quest.title}</span>
+                            <span className="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-2 py-0.5 rounded-md font-mono font-bold">
                               +{quest.rewardCoins} Lá
                             </span>
                           </div>
-                          <p className="text-[11px] text-stone-500 mt-0.5 leading-relaxed font-light">{quest.description}</p>
+                          <p className="text-[11px] text-stone-500 mt-0.5 leading-relaxed font-light font-body">{quest.description}</p>
                           {progressText && (
                             <span className="text-[10px] text-stone-400 font-mono mt-1">Tiến độ: {progressText}</span>
                           )}
                         </div>
                       </div>
 
-                      <div className="shrink-0">
+                      <div className="shrink-0 pt-0.5">
                         {isClaimed ? (
-                          <span className="px-3 py-1.5 bg-stone-100 text-stone-400 rounded-full text-[11px] font-bold flex items-center gap-1">
-                            <CheckCircle2 size={12} /> Đã nhận
+                          <span className="px-3 py-1 bg-stone-100 text-stone-400 rounded-lg text-[11px] font-bold font-ui flex items-center gap-1 border border-stone-200/50">
+                            <CheckCircle2 size={12} className="text-emerald-700" /> Đã nhận
                           </span>
                         ) : isEligible ? (
                           <button
                             type="button"
                             onClick={() => handleClaimQuest(quest.code)}
                             disabled={isClaiming}
-                            className="px-4 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-full text-xs font-bold shadow-sm transition-all flex items-center gap-1 active:scale-95 disabled:opacity-50"
+                            className="px-3.5 py-1.5 bg-[#183A2D] hover:bg-[#23452F] text-white rounded-lg text-xs font-bold font-ui shadow-xs transition-all flex items-center gap-1 active:scale-95 disabled:opacity-50 cursor-pointer"
                           >
                             {isClaiming ? <Loader2 size={12} className="animate-spin" /> : "Nhận Lá"}
                           </button>
@@ -578,12 +604,12 @@ export function WalletClient({
                           quest.actionUrl ? (
                             <Link
                               href={quest.actionUrl}
-                              className="px-3.5 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-full text-xs font-semibold transition-all inline-block text-center"
+                              className="px-3 py-1.5 bg-white hover:bg-stone-50 text-[#183A2D] rounded-lg text-xs font-semibold font-ui transition-all border border-stone-200 shadow-2xs inline-block text-center"
                             >
                               {quest.actionText}
                             </Link>
                           ) : (
-                            <span className="px-3 py-1.5 bg-stone-50 text-stone-300 rounded-full text-[11px] font-medium">
+                            <span className="px-3 py-1 bg-stone-50 text-stone-300 rounded-lg text-[11px] font-medium font-ui">
                               Chưa đủ
                             </span>
                           )

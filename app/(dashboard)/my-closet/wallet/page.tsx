@@ -32,10 +32,13 @@ export default async function WalletPage({
   let profileRecord: any = null;
   let claims: any[] = [];
   let productCount = 0;
+  let weeklyProductCount = 0;
   let fiveStarCount = 0;
   let coinLedger: any[] = [];
   let realWithdrawals: any[] = [];
   let realInvoices: any[] = [];
+
+  const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   try {
     const [
@@ -43,6 +46,7 @@ export default async function WalletPage({
       profRes,
       claimsRes,
       prodCntRes,
+      weeklyProdRes,
       fiveStarRes,
       ledgerRes,
       withdrawRes,
@@ -63,6 +67,9 @@ export default async function WalletPage({
       }),
       prisma.product.count({
         where: { userId: userId, isDeleted: false }
+      }),
+      prisma.product.count({
+        where: { userId: userId, isDeleted: false, createdAt: { gte: oneWeekAgo } }
       }),
       prisma.review.count({
         where: { revieweeId: userId, rating: { gte: 5 } }
@@ -96,6 +103,7 @@ export default async function WalletPage({
     if (profRes.status === "fulfilled") profileRecord = profRes.value;
     if (claimsRes.status === "fulfilled") claims = claimsRes.value || [];
     if (prodCntRes.status === "fulfilled") productCount = prodCntRes.value || 0;
+    if (weeklyProdRes.status === "fulfilled") weeklyProductCount = weeklyProdRes.value || 0;
     if (fiveStarRes.status === "fulfilled") fiveStarCount = fiveStarRes.value || 0;
     if (ledgerRes.status === "fulfilled") coinLedger = ledgerRes.value || [];
     if (withdrawRes.status === "fulfilled") realWithdrawals = withdrawRes.value || [];
@@ -111,7 +119,12 @@ export default async function WalletPage({
     bankOwner: profileRecord?.data?.bank_owner || profileRecord?.data?.name || userProfile?.name || ""
   };
 
-  const claimedQuestCodes = (claims || []).map(c => c.questCode);
+  const rawClaimedCodes = (claims || []).map(c => c.questCode);
+  // Khóa nhận đúp: Nếu user đã có số dư Lá ban đầu (tân thủ) -> tự động đánh dấu đã nhận quà chào mừng
+  const claimedQuestCodes = Array.from(new Set([
+    ...rawClaimedCodes,
+    ...(userProfile ? ["WELCOME_ACTIVATION"] : [])
+  ]));
 
   const vndTransactions = [
     ...(realWithdrawals || []).map(w => ({
@@ -153,7 +166,7 @@ export default async function WalletPage({
           balance={userProfile?.walletBalance || 0} 
           coins={userProfile?.cloopCoins || 0}
           claimedQuests={claimedQuestCodes}
-          stats={{ productCount, fiveStarCount }}
+          stats={{ productCount, weeklyProductCount, fiveStarCount }}
           bankInfo={bankInfo}
           coinLedger={(coinLedger || []).map(item => ({
             id: item.id,
