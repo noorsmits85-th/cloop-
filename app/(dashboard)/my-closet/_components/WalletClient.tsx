@@ -98,12 +98,24 @@ export function WalletClient({
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  // Đồng bộ claimedQuests từ Server Component
+  // Đồng bộ props từ Server Component
   useEffect(() => {
     if (initialClaimed && initialClaimed.length > 0) {
       setClaimedQuests(prev => Array.from(new Set([...prev, ...initialClaimed])));
     }
   }, [initialClaimed]);
+
+  useEffect(() => {
+    if (initialCoins !== undefined) {
+      setCoins(initialCoins);
+    }
+  }, [initialCoins]);
+
+  useEffect(() => {
+    if (initialCoinLedger) {
+      setCoinLedger(initialCoinLedger);
+    }
+  }, [initialCoinLedger]);
 
   // Form rút tiền VNĐ
   const [withdrawAmount, setWithdrawAmount] = useState("");
