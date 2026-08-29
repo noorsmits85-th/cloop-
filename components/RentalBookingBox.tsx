@@ -88,7 +88,7 @@ export default function RentalBookingBox({
   return (
     <div className="bg-white rounded-2xl border border-[#E9E2D8] p-5 sm:p-6 shadow-xs space-y-5 font-body text-[#183A2D] antialiased">
       
-      {/* 1. THẺ UY TÍN CHỦ TỦ ĐỒ (EDITORIAL SOCIAL PROOF) */}
+      {/* 1. THẺ THÔNG TIN CHỦ TỦ ĐỒ */}
       <div className="flex items-center justify-between pb-4 border-b border-stone-100">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-full bg-[#E5EFE2] text-[#183A2D] flex items-center justify-center font-bold text-xs font-heading">
@@ -104,15 +104,9 @@ export default function RentalBookingBox({
           </div>
         </div>
 
-        <div className="flex items-center gap-1 bg-[#FBFDFB] px-2.5 py-1 rounded-full border border-emerald-200/60 text-xs">
-          <Star size={12} className="fill-amber-400 text-amber-400" />
-          <span className="font-bold text-[#0A2517] text-[11px]">
-            {ownerRating ? `${ownerRating} ★` : "5.0 ★"}
-          </span>
-          <span className="text-[10px] text-stone-400">
-            ({reviewCount > 0 ? `${reviewCount} lượt` : "Mới"})
-          </span>
-        </div>
+        <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-emerald-800 bg-[#EAF2EC] px-2.5 py-1 rounded-full border border-emerald-200/60 font-ui">
+          <ShieldCheck size={12} className="text-emerald-700" /> Đã xác thực
+        </span>
       </div>
 
       {/* 2. CHỌN GÓI THUÊ (NẾU LÀ THUÊ) */}

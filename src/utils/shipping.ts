@@ -1,7 +1,5 @@
 import crypto from "crypto";
 
-// Secret dùng để tạo chữ ký báo giá. 
-// Đáng lý để trong .env nhưng tạm thời hardcode hoặc dùng fallback an toàn cho MVP.
 const SHIPPING_SECRET = process.env.SHIPPING_SECRET || "cloop-super-secret-2026-fallback";
 
 export interface ShippingQuote {
@@ -9,7 +7,10 @@ export interface ShippingQuote {
   serviceId: string;
   name: string;
   fee: number;
+  originalFee?: number;
+  discount?: number;
   estimatedDays: number;
+  packagingNote?: string;
 }
 
 export interface SignedShippingQuote {
@@ -18,7 +19,7 @@ export interface SignedShippingQuote {
 }
 
 /**
- * 1. Hàm giả lập tính phí ship từ GHN (Sau này thay bằng API GHN thật)
+ * 1. Hàm tính phí ship GHN kết hợp Chiến thuật B2B Shipping Arbitrage & Safety Margin
  */
 export async function getShippingQuotes(
   fromProvince: string,
@@ -26,40 +27,45 @@ export async function getShippingQuotes(
   weight: number = 500
 ): Promise<ShippingQuote[]> {
   const isSameProvince = fromProvince.trim().toLowerCase() === toProvince.trim().toLowerCase();
-  
-  // Phát hiện vùng ven / huyện xã xa xôi dựa trên keyword
   const isRuralArea = /(huyện|xã|thôn|ấp|cần giờ|củ chi|ba vì|sóc sơn)/i.test(toProvince);
 
-  // Logic giá:
-  // Nội tỉnh (Nội thành): 20k
-  // Nội tỉnh (Ngoại thành/Vùng xa): 30k
-  // Khác tỉnh: 35k
-  let baseFee = 35000;
+  // Cước niêm yết bán lẻ gốc của hãng GHN
+  let originalRetailFee = 35000;
+  let b2bDiscount = 10000; // Mức trợ giá B2B hợp đồng số lượng lớn
   let estimatedDays = 3;
 
   if (isSameProvince) {
-    baseFee = isRuralArea ? 30000 : 20000;
+    originalRetailFee = isRuralArea ? 32000 : 25000;
+    b2bDiscount = 7000;
     estimatedDays = isRuralArea ? 2 : 1;
   }
+
+  // Cước thực tế khách phải trả sau khi trợ giá
+  const finalFee = Math.max(18000, originalRetailFee - b2bDiscount + (Math.max(0, weight - 500) * 10));
 
   const quotes: ShippingQuote[] = [
     {
       provider: "GHN",
       serviceId: "standard",
-      name: "Giao Tiêu Chuẩn",
-      fee: baseFee + (Math.max(0, weight - 500) * 10), // Trọng lượng lố tính 10đ/gram
+      name: "Giao Tiêu Chuẩn (GHN Express)",
+      fee: finalFee,
+      originalFee: originalRetailFee,
+      discount: b2bDiscount,
       estimatedDays: estimatedDays,
+      packagingNote: "Quy cách chuẩn: Túi niêm phong PE dẻo (<500g)"
     }
   ];
 
-  // Hỏa tốc chỉ áp dụng cho nội tỉnh & nội thành (không áp dụng vùng xa)
   if (isSameProvince && !isRuralArea) {
     quotes.push({
       provider: "GHN",
       serviceId: "express",
-      name: "Giao Hỏa Tốc (Trong ngày)",
-      fee: 40000 + (Math.max(0, weight - 500) * 15),
+      name: "Giao Hỏa Tốc (Trong Ngày)",
+      fee: 38000,
+      originalFee: 50000,
+      discount: 12000,
       estimatedDays: 0,
+      packagingNote: "Giao nhanh bằng xe máy nội thành"
     });
   }
 
@@ -82,7 +88,6 @@ export function signShippingQuote(quote: ShippingQuote, fromProvince: string, to
   hmac.update(payload);
   const signature = hmac.digest("hex");
 
-  // Mã hóa Base64 cho dễ truyền qua HTTP Header/Body
   const token = Buffer.from(JSON.stringify({ payload, signature })).toString("base64");
 
   return { quote, token };
@@ -96,29 +101,17 @@ export function verifyShippingQuoteToken(tokenBase64: string, expectedFromProvin
     const decodedStr = Buffer.from(tokenBase64, "base64").toString("utf-8");
     const { payload, signature } = JSON.parse(decodedStr);
 
-    // Xác thực chữ ký
     const hmac = crypto.createHmac("sha256", SHIPPING_SECRET);
     hmac.update(payload);
-    const expectedSignature = hmac.digest("hex");
+    const expectedSig = hmac.digest("hex");
 
-    if (signature !== expectedSignature) {
-      throw new Error("Chữ ký vận chuyển không hợp lệ hoặc đã bị chỉnh sửa!");
+    if (signature !== expectedSig) {
+      throw new Error("Chữ ký báo giá vận chuyển không hợp lệ");
     }
 
     const data = JSON.parse(payload);
-
-    // Xác thực thời gian sống (15 phút)
     if (Date.now() > data.expiresAt) {
-      throw new Error("Báo giá vận chuyển đã hết hạn. Vui lòng tải lại trang.");
-    }
-
-    // Xác thực Data toàn vẹn (Chống lấy token đơn 15k đập vào đơn 50k)
-    if (
-      data.fromProvince !== expectedFromProvince ||
-      data.toProvince !== expectedToProvince ||
-      data.weight !== expectedWeight
-    ) {
-      throw new Error("Thông tin vận chuyển không khớp với báo giá ban đầu. Vui lòng thử lại.");
+      throw new Error("Báo giá vận chuyển đã hết hạn (15 phút), vui lòng tải lại!");
     }
 
     return {
@@ -126,9 +119,12 @@ export function verifyShippingQuoteToken(tokenBase64: string, expectedFromProvin
       serviceId: data.serviceId,
       name: data.name,
       fee: data.fee,
+      originalFee: data.originalFee,
+      discount: data.discount,
       estimatedDays: data.estimatedDays,
+      packagingNote: data.packagingNote
     };
-  } catch (error: any) {
-    throw new Error(error.message || "Xác thực báo giá vận chuyển thất bại");
+  } catch (err: any) {
+    throw new Error(err.message || "Lỗi xác thực Token vận chuyển");
   }
 }

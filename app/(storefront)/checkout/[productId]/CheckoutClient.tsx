@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { SignedShippingQuote } from "@/src/utils/shipping";
 import { 
   Loader2, ShieldCheck, MapPin, Calendar, Clock, Sparkles, 
-  Check, ArrowRight, User, Phone, Home, Shirt, Tag, AlertCircle 
+  Check, ArrowRight, User, Phone, Home, Shirt, Tag, AlertCircle, Navigation, Package 
 } from "lucide-react";
 import Image from "next/image";
 
@@ -59,6 +59,7 @@ export default function CheckoutClient({
 
   const [isLoadingShipping, setIsLoadingShipping] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [isLocatingGPS, setIsLocatingGPS] = useState(false);
   const [error, setError] = useState("");
 
   // Nạp thông tin người dùng đang đăng nhập để tự động điền sẵn
@@ -115,6 +116,60 @@ export default function CheckoutClient({
       handleFetchShipping();
     }
   }, [selectedWard]);
+
+  // Định vị vị trí hiện tại qua GPS (Shopee & TikTok Standard)
+  const handleGPSLocation = async () => {
+    if (typeof window === "undefined" || !navigator.geolocation) {
+      alert("Trình duyệt của bạn không hỗ trợ định vị GPS!");
+      return;
+    }
+
+    setIsLocatingGPS(true);
+    setError("");
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+
+          // Sử dụng OpenStreetMap Nominatim Reverse Geocoding miễn phí
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1`);
+          const data = await res.json();
+
+          if (data && data.address) {
+            const addr = data.address;
+            const detectedProvinceName = addr.city || addr.province || addr.state || "";
+            const road = addr.road || addr.suburb || "";
+            const houseNumber = addr.house_number || "";
+
+            if (road || houseNumber) {
+              setAddressDetail(`${houseNumber ? houseNumber + ' ' : ''}${road}`.trim());
+            }
+
+            // Tự động khớp tỉnh thành
+            const matchedProv = provinces.find((p: any) => 
+              detectedProvinceName.toLowerCase().includes(p.ProvinceName.toLowerCase()) ||
+              p.ProvinceName.toLowerCase().includes(detectedProvinceName.toLowerCase())
+            );
+
+            if (matchedProv) {
+              setSelectedProvince({ id: matchedProv.ProvinceID, name: matchedProv.ProvinceName });
+            }
+          }
+        } catch (err) {
+          console.error("Lỗi GPS Geocoding:", err);
+        } finally {
+          setIsLocatingGPS(false);
+        }
+      },
+      (err) => {
+        setIsLocatingGPS(false);
+        alert("Không thể truy cập GPS. Vui lòng cho phép quyền vị trí trong trình duyệt hoặc chọn trực tiếp bên dưới!");
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
+  };
 
   const handleFetchShipping = async () => {
     if (!selectedProvince || !selectedDistrict || !selectedWard) return;
@@ -293,6 +348,7 @@ export default function CheckoutClient({
         </div>
         
         {/* Bảng Kê Chi Phí Đồng Bộ Thời Gian Thực */}
+        {/* Bảng Kê Chi Phí Đồng Bộ Thời Gian Thực (Chuẩn Tâm Lý Học TMĐT) */}
         <div className="space-y-3 font-ui text-xs text-stone-600">
           
           <div className="flex justify-between items-center py-0.5">
@@ -321,19 +377,44 @@ export default function CheckoutClient({
             <span className="flex items-center gap-1.5">
               <span>Cước vận chuyển (GHN):</span>
             </span>
-            <span className="font-bold font-mono text-stone-800">
-              {isLoadingShipping ? "Đang tính..." : selectedQuote ? `+${shippingFee.toLocaleString('vi-VN')}đ` : "Chưa chọn địa chỉ"}
+            <div className="flex items-center gap-1.5 font-mono">
+              {selectedQuote?.quote.originalFee && (
+                <span className="text-stone-400 line-through text-[11px]">{selectedQuote.quote.originalFee.toLocaleString('vi-VN')}đ</span>
+              )}
+              <span className="font-bold font-mono text-stone-800">
+                {isLoadingShipping ? "Đang tính..." : selectedQuote ? `+${shippingFee.toLocaleString('vi-VN')}đ` : "Chưa chọn địa chỉ"}
+              </span>
+            </div>
+          </div>
+
+          {/* Phân tách biểu phí: Phí dịch vụ 0% Founding 100 */}
+          <div className="flex justify-between items-center py-0.5">
+            <span>Phí dịch vụ tuần hoàn (CLOOP):</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-stone-400 line-through font-mono text-[11px]">12%</span>
+              <span className="font-bold text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded text-[9.5px] font-ui">
+                0% (FOUNDING 100)
+              </span>
+            </div>
+          </div>
+
+          {/* Phân tách biểu phí: Phí cổng thanh toán / Ngân hàng */}
+          <div className="flex justify-between items-center py-0.5">
+            <span>Phí cổng thanh toán VietQR (ACB):</span>
+            <span className="font-bold text-emerald-800 text-[11px] font-ui">
+              0đ (CLOOP Trợ giá)
             </span>
           </div>
 
-          <div className="flex justify-between items-center py-0.5">
-            <span>Phí dịch vụ tuần hoàn:</span>
-            <div className="flex items-center gap-2">
-              <span className="text-stone-400 line-through font-mono">15.000đ</span>
-              <span className="font-bold text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded text-[9.5px] font-ui">
-                FREE LAUNCH
-              </span>
-            </div>
+          {/* Khóa dòng tiền bằng CloopCoins */}
+          <div className="flex justify-between items-center py-1.5 bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-200/50 text-emerald-950">
+            <span className="flex items-center gap-1.5 text-[11px] font-medium">
+              <Sparkles size={13} className="text-emerald-700 shrink-0" />
+              Thưởng Xu Lá khi trả đồ đúng hạn:
+            </span>
+            <span className="font-bold font-mono text-xs text-emerald-800">
+              +15.000 Xu Lá
+            </span>
           </div>
 
           {/* Tổng Hóa Đơn */}
@@ -355,6 +436,16 @@ export default function CheckoutClient({
           </p>
           <p className="text-stone-500 leading-relaxed font-light text-[10.5px]">
             Tiền của bạn được khóa an toàn tại Két Escrow và chỉ giải ngân cho chủ tủ khi bạn đã nhận đúng mẫu, đúng size và hoàn tất thời gian trải nghiệm.
+          </p>
+        </div>
+
+        {/* Quy chuẩn đóng gói bảo vệ cước */}
+        <div className="bg-[#F8FAF8] p-3 rounded-xl border border-emerald-200/60 text-[10.5px] text-stone-600 space-y-1 font-body">
+          <p className="font-bold text-emerald-950 flex items-center gap-1.5 font-ui">
+            <Package size={13} className="text-emerald-700" /> Quy Cách Đóng Gói Chuẩn
+          </p>
+          <p className="text-stone-500 leading-relaxed font-light">
+            Chủ tủ đóng gói tiêu chuẩn bằng túi niêm phong PE dẻo gọn nhẹ (&lt;500g) kèm tem niêm phong CLOOP để tối ưu cước phí và bảo vệ trang phục suốt lộ trình.
           </p>
         </div>
 
@@ -437,11 +528,33 @@ export default function CheckoutClient({
           </div>
         )}
 
-        {/* 3. ĐỊA CHỈ NHẬN HÀNG (GHN 3 CẤP) */}
+        {/* 3. ĐỊA CHỈ NHẬN HÀNG (TIÊU CHUẨN SHOPEE/TIKTOK + GPS ĐỊNH VỊ) */}
         <div className="space-y-3 pt-2 border-t border-stone-100">
-          <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 font-ui">
-            {isRental ? "3. Địa Chỉ Nhận Hàng Tận Nhà (Tính Cước GHN)" : "1. Địa Chỉ Giao Hàng"}
-          </label>
+          <div className="flex justify-between items-center">
+            <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 font-ui">
+              {isRental ? "3. Địa Chỉ Nhận Hàng Tận Nhà (Tính Cước GHN)" : "1. Địa Chỉ Giao Hàng"}
+            </label>
+            
+            {/* Nút định vị GPS 1 chạm (TikTok / Shopee Standard) */}
+            <button
+              type="button"
+              onClick={handleGPSLocation}
+              disabled={isLocatingGPS}
+              className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-[#EAF2EC] hover:bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-200/60 font-ui transition-colors cursor-pointer disabled:opacity-60"
+            >
+              {isLocatingGPS ? (
+                <>
+                  <Loader2 size={12} className="animate-spin text-emerald-700" />
+                  <span>Đang định vị...</span>
+                </>
+              ) : (
+                <>
+                  <Navigation size={12} className="text-emerald-700" />
+                  <span>📍 Định vị GPS (Tự điền)</span>
+                </>
+              )}
+            </button>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             <select

@@ -141,7 +141,10 @@ export async function POST(req: Request) {
           }
         });
 
-        // 5d. Tạo Hóa Đơn (Invoice)
+        // 5d. Tạo Hóa Đơn (Invoice) với chính sách 0% phí sàn cho Founding 100
+        const isFounding = (product.user as any)?.isFoundingMember ?? true;
+        const platformFee = isFounding ? 0 : Math.floor(itemPrice * 0.12);
+
         const invoice = await tx.invoice.create({
           data: {
             rentalId: rental.id,
@@ -149,7 +152,7 @@ export async function POST(req: Request) {
             rentalFee: itemPrice,
             depositAmount: depositPrice,
             shippingFeeCollected: shippingFee,
-            platformFee: Math.floor(itemPrice * 0.1),
+            platformFee: platformFee,
             status: "PENDING",
             orderCode: orderCode,
           }

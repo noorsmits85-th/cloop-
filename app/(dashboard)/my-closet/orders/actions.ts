@@ -160,17 +160,25 @@ export async function completeOrderAction(orderId: string) {
       const shippingFee = rental.invoice?.shippingFeeCollected || 0;
       const invoiceId = rental.invoice?.id;
 
-      // 💸 1. Hoàn Tiền Cọc (Refund Escrow) cho Khách Thuê:
+      // 💸 1. Hoàn Tiền Cọc (Refund Escrow) & Tặng 15 Xu Lá (CloopCoins) cho Khách Thuê:
       if (depositAmount > 0) {
         await tx.user.update({
           where: { id: rental.renterId },
-          data: { walletBalance: { increment: depositAmount } }
+          data: { 
+            walletBalance: { increment: depositAmount },
+            cloopCoins: { increment: 15 } // 🎁 Thưởng 15 Xu Lá tuần hoàn
+          }
         });
         if (invoiceId) {
           await tx.ledgerTransaction.create({
-            data: { invoiceId, type: 'REFUND_OUT', amount: depositAmount, description: `Hoàn cọc đơn ${orderId}` }
+            data: { invoiceId, type: 'REFUND_OUT', amount: depositAmount, description: `Hoàn cọc đơn ${orderId} & Thưởng 15 Xu Lá` }
           });
         }
+      } else {
+        await tx.user.update({
+          where: { id: rental.renterId },
+          data: { cloopCoins: { increment: 15 } }
+        });
       }
 
       // 💸 2. Thanh Toán Tiền Thuê (Rental Fee) cho Chủ Tủ (trừ 10% phí nền tảng):
