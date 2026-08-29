@@ -7,7 +7,7 @@ import { COIN_PACKAGES, QUEST_DEFINITIONS } from "@/lib/coinPackages";
 import { revalidatePath } from "next/cache";
 
 // 1. Tạo thanh toán mua gói Điểm Lá qua PayOS
-export async function createCoinTopUpPayment(packageCode: string) {
+export async function createCoinTopUpPayment(packageCode: string, providedOrderCode?: number) {
   try {
     const pkg = COIN_PACKAGES[packageCode];
     if (!pkg) {
@@ -26,8 +26,8 @@ export async function createCoinTopUpPayment(packageCode: string) {
     }
     const userId = authUser.id;
 
-    // Sinh orderCode ngẫu nhiên duy nhất
-    const orderCode = Number(String(Date.now()).slice(-6) + Math.floor(100 + Math.random() * 900));
+    // Sinh orderCode ngẫu nhiên hoặc dùng code client đã phát sinh
+    const orderCode = providedOrderCode || Number(String(Date.now()).slice(-6) + Math.floor(100 + Math.random() * 900));
 
     // Tạo bản ghi CoinTopUp PENDING trong DB trước
     const topUp = await prisma.coinTopUp.create({

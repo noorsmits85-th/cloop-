@@ -139,20 +139,35 @@ export function WalletClient({
     return () => clearInterval(interval);
   }, [activeTopUpData, isTopUpSuccess, coins]);
 
-  // Xử lý nạp Điểm Lá qua PayOS (Tạo mã VietQR ngay trong Popup)
+  // Xử lý nạp Điểm Lá qua PayOS (Tức thì 0.01s - Không giật lag)
   const handleBuyCoinPackage = async () => {
-    setIsBuyingCoins(true);
+    const pkg = COIN_PACKAGES[selectedPackage];
+    if (!pkg) return;
+
+    // ⚡ SINH MÃ VÀ HIỂN THỊ VIETQR NGAY LẬP TỨC (0.01 GIÂY)
+    const clientOrderCode = Number(String(Date.now()).slice(-6) + Math.floor(100 + Math.random() * 900));
+    const instantData = {
+      orderCode: clientOrderCode,
+      amount: pkg.amountVnd,
+      totalCoins: pkg.totalCoins,
+      accountNumber: "LOCCASS000340028",
+      accountName: "HOANG THI TRANG",
+      bin: "970416",
+      checkoutUrl: ""
+    };
+    setActiveTopUpData(instantData);
+
+    // Gửi request ngầm đồng bộ với PayOS & Database
     try {
-      const res = await createCoinTopUpPayment(selectedPackage);
-      if (res.success) {
-        setActiveTopUpData(res);
-      } else {
-        alert(res.message || "Không thể khởi tạo thanh toán.");
+      const res = await createCoinTopUpPayment(selectedPackage, clientOrderCode);
+      if (res.success && res.checkoutUrl) {
+        setActiveTopUpData((prev: any) => ({
+          ...prev,
+          checkoutUrl: res.checkoutUrl
+        }));
       }
     } catch (error) {
-      alert("Lỗi kết nối khi nạp Lá.");
-    } finally {
-      setIsBuyingCoins(false);
+      console.error("Background payos sync error:", error);
     }
   };
 
@@ -499,9 +514,9 @@ export function WalletClient({
                       {/* Mã VietQR */}
                       <div className="bg-white p-3 rounded-2xl border border-stone-200 shadow-xs">
                         <img 
-                          src={activeTopUpData.qrCode || `https://img.vietqr.io/image/${activeTopUpData.bin || '970416'}-${activeTopUpData.accountNumber || 'LOCCASS000340028'}-compact.png?amount=${activeTopUpData.amount}&addInfo=NAP%20LA%20${activeTopUpData.orderCode}&accountName=${encodeURIComponent(activeTopUpData.accountName || 'HOANG THI TRANG')}`} 
+                          src={`https://img.vietqr.io/image/970416-LOCCASS000340028-compact2.png?amount=${activeTopUpData.amount}&addInfo=NAP%20LA%20${activeTopUpData.orderCode}&accountName=HOANG%20THI%20TRANG`} 
                           alt="Mã VietQR ACB Nạp Lá" 
-                          className="w-48 h-48 sm:w-52 sm:h-52 object-contain mx-auto"
+                          className="w-52 h-52 sm:w-56 sm:h-56 object-contain mx-auto"
                         />
                       </div>
 
