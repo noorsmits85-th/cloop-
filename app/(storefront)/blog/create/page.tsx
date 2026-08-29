@@ -36,6 +36,35 @@ export default function CreateBlogPostPage() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [isGeneratingStory, setIsGeneratingStory] = useState(false);
+
+  const handleGenerateAiStory = async () => {
+    setIsGeneratingStory(true);
+    try {
+      const selectedProd = myProducts.find(p => p.id === selectedProductId);
+      const res = await fetch("/api/ai-story", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          category,
+          location,
+          productName: selectedProd?.title || title || "Chiếc váy yêu thích"
+        })
+      });
+      const data = await res.json();
+      if (data.story) {
+        setContent(data.story);
+        if (!title.trim()) {
+          setTitle(`Kỷ niệm cùng ${selectedProd?.title || "chiếc váy yêu thích"} tại ${location}`);
+        }
+      }
+    } catch (err) {
+      console.error("AI Story err:", err);
+    } finally {
+      setIsGeneratingStory(false);
+    }
+  };
 
   // Presets sample photos if user wants quick inspiration
   const SAMPLE_PHOTOS = [
@@ -363,9 +392,20 @@ export default function CreateBlogPostPage() {
 
             {/* 4. Nội dung bài viết / Tâm sự ký ức */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 font-ui mb-2">
-                Lời Lưu Bút / Câu Chuyện Của Bạn <span className="text-rose-500">*</span>
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-stone-700 font-ui flex items-center gap-1.5">
+                  <Feather size={13} className="text-[#37503F]" /> Lời Lưu Bút / Câu Chuyện Của Bạn <span className="text-rose-500">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={handleGenerateAiStory}
+                  disabled={isGeneratingStory}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-[#183A2D] to-[#2D5A47] hover:from-[#112a20] hover:to-[#224738] text-white rounded-full text-[10px] font-bold shadow-xs transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+                >
+                  <Sparkles size={11} className="text-amber-300 fill-amber-300" />
+                  {isGeneratingStory ? "AI đang chắp bút..." : "✨ AI Chắp Bút (Gemini Pro)"}
+                </button>
+              </div>
               <textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
