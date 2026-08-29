@@ -68,6 +68,7 @@ export async function createCoinTopUpPayment(packageCode: string, providedOrderC
       checkoutUrl: paymentLink.checkoutUrl,
       orderCode: orderCode,
       qrCode: paymentLink.qrCode,
+      description: paymentLink.description,
       accountNumber: paymentLink.accountNumber,
       accountName: paymentLink.accountName,
       bin: paymentLink.bin,
@@ -84,7 +85,7 @@ export async function createCoinTopUpPayment(packageCode: string, providedOrderC
   }
 }
 
-// Kiểm tra trạng thái nạp Lá thời gian thực (Polling Check)
+// Kiểm tra trạng thái nạp Lá thời gian thực (Active Polling + Direct PayOS Fallback)
 export async function checkCoinTopUpStatusAction(orderCode: number) {
   try {
     let authUser;
@@ -101,6 +102,50 @@ export async function checkCoinTopUpStatusAction(orderCode: number) {
 
     if (!topUp) {
       return { success: false, status: "NOT_FOUND" };
+    }
+
+    // Nếu DB vẫn là PENDING -> Chủ động hỏi PayOS API trực tiếp để phòng ngừa webhook bị delay
+    if (topUp.status === "PENDING" && payos) {
+      try {
+        const payosInfo = await payos.paymentRequests.get(orderCode);
+        if (payosInfo && (payosInfo.status === "PAID" || (payosInfo.amountPaid && payosInfo.amountPaid >= topUp.amountVnd))) {
+          await prisma.$transaction(async (tx) => {
+            await tx.coinTopUp.update({
+              where: { id: topUp.id },
+              data: { status: "PAID", paidAt: new Date() }
+            });
+            const updatedUser = await tx.user.update({
+              where: { id: topUp.userId },
+              data: { cloopCoins: { increment: topUp.totalCoins } },
+              select: { cloopCoins: true }
+            });
+            await tx.coinLedgerEntry.create({
+              data: {
+                userId: topUp.userId,
+                type: "TOP_UP_IN",
+                topUpId: topUp.id,
+                amount: topUp.totalCoins,
+                balanceAfter: updatedUser.cloopCoins,
+                description: `Nạp gói ${topUp.packageCode} (+${topUp.totalCoins} Lá)`
+              }
+            });
+          });
+
+          const refreshedUser = await prisma.user.findUnique({
+            where: { id: topUp.userId },
+            select: { cloopCoins: true }
+          });
+
+          return {
+            success: true,
+            status: "PAID",
+            totalCoins: topUp.totalCoins,
+            newBalance: refreshedUser?.cloopCoins || 0
+          };
+        }
+      } catch (payosErr) {
+        console.warn("PayOS direct check info:", payosErr);
+      }
     }
 
     return {

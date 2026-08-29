@@ -175,10 +175,10 @@ export function WalletClient({
     // Gửi request ngầm đồng bộ với PayOS & Database
     try {
       const res = await createCoinTopUpPayment(selectedPackage, clientOrderCode);
-      if (res.success && res.checkoutUrl) {
+      if (res.success) {
         setActiveTopUpData((prev: any) => ({
           ...prev,
-          checkoutUrl: res.checkoutUrl
+          ...res
         }));
       }
     } catch (error) {
@@ -554,7 +554,10 @@ export function WalletClient({
                       {/* Mã VietQR */}
                       <div className="bg-white p-3 rounded-2xl border border-stone-200 shadow-xs">
                         <img 
-                          src={`https://img.vietqr.io/image/970416-LOCCASS000340028-compact2.png?amount=${activeTopUpData.amount}&addInfo=NAP%20LA%20${activeTopUpData.orderCode}&accountName=HOANG%20THI%20TRANG`} 
+                          src={activeTopUpData.qrCode 
+                            ? `https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent(activeTopUpData.qrCode)}`
+                            : `https://img.vietqr.io/image/970416-LOCCASS000340028-compact2.png?amount=${activeTopUpData.amount}&addInfo=${encodeURIComponent(activeTopUpData.description || `NAP LA ${activeTopUpData.orderCode}`)}&accountName=HOANG%20THI%20TRANG`
+                          } 
                           alt="Mã VietQR ACB Nạp Lá" 
                           className="w-52 h-52 sm:w-56 sm:h-56 object-contain mx-auto"
                         />
@@ -588,10 +591,12 @@ export function WalletClient({
                         <div className="flex justify-between items-center">
                           <span className="text-stone-500">Nội dung CK:</span>
                           <div className="flex items-center gap-1.5">
-                            <span className="font-mono font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">NAP LA {activeTopUpData.orderCode}</span>
+                            <span className="font-mono font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                              {activeTopUpData.description || `NAP LA ${activeTopUpData.orderCode}`}
+                            </span>
                             <button 
                               type="button" 
-                              onClick={() => copyToClipboard(`NAP LA ${activeTopUpData.orderCode}`, "content")}
+                              onClick={() => copyToClipboard(activeTopUpData.description || `NAP LA ${activeTopUpData.orderCode}`, "content")}
                               className="text-amber-800 hover:text-amber-950 p-1 hover:bg-amber-100 rounded transition-colors cursor-pointer"
                               title="Sao chép nội dung"
                             >
