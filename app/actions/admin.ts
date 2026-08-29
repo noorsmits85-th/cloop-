@@ -79,15 +79,29 @@ export async function pumpCoins(userId: string, amount: number) {
       return { error: "Thông tin không hợp lệ." };
     }
 
-    // Bơm coin nguyên tử
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: {
-        cloopCoins: {
-          increment: amount,
+    // Bơm coin nguyên tử kèm Sổ Cái Kế Toán
+    const updatedUser = await prisma.$transaction(async (tx) => {
+      const u = await tx.user.update({
+        where: { id: userId },
+        data: {
+          cloopCoins: {
+            increment: amount,
+          }
+        },
+        select: { cloopCoins: true, name: true }
+      });
+
+      await tx.coinLedgerEntry.create({
+        data: {
+          userId,
+          type: "TOP_UP_IN",
+          amount,
+          balanceAfter: u.cloopCoins,
+          description: `Admin cấp tặng: +${amount.toLocaleString("vi-VN")} Lá CLOOP`
         }
-      },
-      select: { cloopCoins: true, name: true }
+      });
+
+      return u;
     });
 
     return { 

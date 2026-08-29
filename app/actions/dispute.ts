@@ -116,13 +116,21 @@ export async function resolveDispute(data: {
     if (!admin) throw new Error("Unauthorized Admin");
 
     const result = await prisma.$transaction(async (tx) => {
-      const dispute = await tx.dispute.update({
-        where: { id: data.disputeId },
+      const updateResult = await tx.dispute.updateMany({
+        where: { id: data.disputeId, status: { in: ["PENDING_REVIEW", "DISPUTED"] } },
         data: {
           finalDeduction: data.finalDeduction,
           adminNotes: data.adminNotes,
           status: "APPROVED_DEDUCTION",
         },
+      });
+
+      if (updateResult.count === 0) {
+        throw new Error("Khiếu nại này đã được xử lý hoặc không hợp lệ.");
+      }
+
+      const dispute = await tx.dispute.findUnique({
+        where: { id: data.disputeId },
       });
 
       // LƯU VẾT KIỂM TOÁN (AUDIT LOG)
@@ -131,7 +139,7 @@ export async function resolveDispute(data: {
           adminId: admin.id,
           action: "RESOLVE_DISPUTE",
           targetType: "DISPUTE",
-          targetId: dispute.id,
+          targetId: data.disputeId,
           beforeStatus: "PENDING_REVIEW",
           afterStatus: "APPROVED_DEDUCTION",
           metadata: JSON.stringify({
