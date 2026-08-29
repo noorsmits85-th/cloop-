@@ -14,51 +14,54 @@ export default async function MyClosetOrdersPage() {
 
   const userId = userAuth.id;
 
-  // 1. Escrow (Yêu cầu ký quỹ) - Người khác thuê đồ của tôi
-  const escrowRaw = await prisma.rentalHistory.findMany({
-    where: { 
-      product: { userId } 
-    },
-    take: 21,
-    include: {
-      product: { include: { images: true } },
-      invoice: true,
-      disputes: { orderBy: { createdAt: 'desc' } },
-      renter: {
-        include: {
-          reviewsReceived: {
-            where: { type: "OWNER_TO_RENTER" }
-          }
-        }
-      }
-    },
-    orderBy: { createdAt: 'desc' }
-  });
-
-  // 2. Rented (Trang phục đi thuê) - Tôi đi thuê đồ người khác
-  const rentedRaw = await prisma.rentalHistory.findMany({
-    where: { 
-      renterId: userId 
-    },
-    take: 21,
-    include: {
-      invoice: true,
-      disputes: { orderBy: { createdAt: 'desc' } },
-      product: { 
-        include: { 
-          images: true,
-          user: {
-            include: {
-              reviewsReceived: {
-                where: { type: "RENTER_TO_OWNER" }
-              }
+  // ⚡ TỐI ƯU SIÊU TỐC: Gom 2 truy vấn Escrow & Rented chạy song song (Parallel Fetching)
+  const [escrowRaw, rentedRaw] = await Promise.all([
+    // 1. Escrow (Yêu cầu ký quỹ) - Người khác thuê đồ của tôi
+    prisma.rentalHistory.findMany({
+      where: { 
+        product: { userId } 
+      },
+      take: 21,
+      include: {
+        product: { include: { images: true } },
+        invoice: true,
+        disputes: { orderBy: { createdAt: 'desc' } },
+        renter: {
+          include: {
+            reviewsReceived: {
+              where: { type: "OWNER_TO_RENTER" }
             }
           }
         }
       },
-    },
-    orderBy: { createdAt: 'desc' }
-  });
+      orderBy: { createdAt: 'desc' }
+    }),
+
+    // 2. Rented (Trang phục đi thuê) - Tôi đi thuê đồ người khác
+    prisma.rentalHistory.findMany({
+      where: { 
+        renterId: userId 
+      },
+      take: 21,
+      include: {
+        invoice: true,
+        disputes: { orderBy: { createdAt: 'desc' } },
+        product: { 
+          include: { 
+            images: true,
+            user: {
+              include: {
+                reviewsReceived: {
+                  where: { type: "RENTER_TO_OWNER" }
+                }
+              }
+            }
+          }
+        },
+      },
+      orderBy: { createdAt: 'desc' }
+    })
+  ]);
 
   // Function to calculate average review score
   const getReviewStats = (reviews: any[]) => {

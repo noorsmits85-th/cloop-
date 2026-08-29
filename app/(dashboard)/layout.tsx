@@ -158,6 +158,7 @@ export default function DashboardLayout({
                   <Link
                     key={i}
                     href={item.path}
+                    prefetch={true}
                     className={getNavClass(item.path)}
                     onClick={() => setIsSidebarOpen(false)}
                   >
