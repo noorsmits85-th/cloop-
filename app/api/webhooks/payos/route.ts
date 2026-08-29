@@ -63,8 +63,9 @@ export async function POST(req: Request) {
       // Atomic Transaction: Cập nhật CoinTopUp -> Tăng cloopCoins -> Ghi CoinLedgerEntry
       try {
         await prisma.$transaction(async (tx) => {
-          await tx.coinTopUp.update({
-            where: { id: coinTopUp.id },
+          // 🛡️ CHỐT CHẶN NGUYÊN TỬ: Chỉ cập nhật nếu status VẪN ĐANG LÀ PENDING
+          const updateResult = await tx.coinTopUp.updateMany({
+            where: { id: coinTopUp.id, status: "PENDING" },
             data: {
               status: "PAID",
               payosStatus: "success",
@@ -72,6 +73,20 @@ export async function POST(req: Request) {
               rawPayload: body
             }
           });
+
+          // Nếu updateResult.count === 0, nghĩa là Polling đã xử lý rồi -> Bỏ qua, không cộng lần 2!
+          if (updateResult.count === 0) {
+            console.log(`ℹ️ CoinTopUp ${coinTopUp.id} đã được luồng khác xử lý thành công. Bỏ qua duplicate.`);
+            return;
+          }
+
+          // Kiểm tra xem Sổ cái đã có bản ghi này chưa (Idempotency kép)
+          const existingLedger = await tx.coinLedgerEntry.findFirst({
+            where: { topUpId: coinTopUp.id, type: "TOP_UP_IN" }
+          });
+          if (existingLedger) {
+            return;
+          }
 
           const updatedUser = await tx.user.update({
             where: { id: coinTopUp.userId },
@@ -88,7 +103,7 @@ export async function POST(req: Request) {
               type: "TOP_UP_IN",
               amount: coinTopUp.totalCoins,
               balanceAfter: updatedUser.cloopCoins,
-              description: `Nạp gói ${coinTopUp.packageCode} (+${coinTopUp.totalCoins.toLocaleString()} Lá)`,
+              description: `Nạp gói ${coinTopUp.packageCode} (+${coinTopUp.totalCoins.toLocaleString("vi-VN")} Lá)`,
               metadata: {
                 orderCode: Number(orderCode),
                 amountVnd: coinTopUp.amountVnd,

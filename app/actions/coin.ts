@@ -110,15 +110,31 @@ export async function checkCoinTopUpStatusAction(orderCode: number) {
         const payosInfo = await payos.paymentRequests.get(orderCode);
         if (payosInfo && (payosInfo.status === "PAID" || (payosInfo.amountPaid && payosInfo.amountPaid >= topUp.amountVnd))) {
           await prisma.$transaction(async (tx) => {
-            await tx.coinTopUp.update({
-              where: { id: topUp.id },
+            // 🛡️ CHỐT CHẶN NGUYÊN TỬ: Chỉ cập nhật nếu CoinTopUp VẪN ĐANG LÀ PENDING
+            const updateResult = await tx.coinTopUp.updateMany({
+              where: { id: topUp.id, status: "PENDING" },
               data: { status: "PAID", paidAt: new Date() }
             });
+
+            // Nếu updateResult.count === 0, luồng khác (Webhook) đã xử lý xong -> DỪNG NGAY!
+            if (updateResult.count === 0) {
+              return;
+            }
+
+            // Kiểm tra xem Sổ cái đã có bản ghi này chưa (Idempotency kép)
+            const existingLedger = await tx.coinLedgerEntry.findFirst({
+              where: { topUpId: topUp.id, type: "TOP_UP_IN" }
+            });
+            if (existingLedger) {
+              return;
+            }
+
             const updatedUser = await tx.user.update({
               where: { id: topUp.userId },
               data: { cloopCoins: { increment: topUp.totalCoins } },
               select: { cloopCoins: true }
             });
+
             await tx.coinLedgerEntry.create({
               data: {
                 userId: topUp.userId,
@@ -126,7 +142,7 @@ export async function checkCoinTopUpStatusAction(orderCode: number) {
                 topUpId: topUp.id,
                 amount: topUp.totalCoins,
                 balanceAfter: updatedUser.cloopCoins,
-                description: `Nạp gói ${topUp.packageCode} (+${topUp.totalCoins} Lá)`
+                description: `Nạp gói ${topUp.packageCode} (+${topUp.totalCoins.toLocaleString("vi-VN")} Lá)`
               }
             });
           });
