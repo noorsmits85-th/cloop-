@@ -419,7 +419,10 @@ export default function CheckoutClient({
           )}
 
           <div className="flex justify-between items-center py-0.5">
-            <span>Cước vận chuyển (GHN):</span>
+            <div>
+              <span className="block">Cước vận chuyển 2 chiều khứ hồi:</span>
+              <span className="text-[9.5px] text-stone-400">Giao tận nơi + Lấy tận nhà khi trả</span>
+            </div>
             <span className="font-bold font-mono text-stone-800">
               {isLoadingShipping ? "Đang tính..." : selectedQuote ? `+${shippingFee.toLocaleString('vi-VN')}đ` : "Chưa chọn địa chỉ"}
             </span>
@@ -534,16 +537,27 @@ export default function CheckoutClient({
                     <div>
                       <div className="flex justify-between items-center mb-0.5">
                         <span className="font-ui font-bold text-xs text-[#0A2517]">{tier.name}</span>
-                        {isOneDayDisabled && (
+                        {isOneDayDisabled ? (
                           <span className="text-[8.5px] font-bold text-amber-800 bg-amber-100 px-1 py-0.2 rounded font-ui">
                             Chỉ nội tỉnh
                           </span>
-                        )}
+                        ) : tier.days === 7 ? (
+                          <span className="text-[8.5px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded font-ui">
+                            Giảm 30%
+                          </span>
+                        ) : tier.days === 3 ? (
+                          <span className="text-[8.5px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded font-ui">
+                            Tiết kiệm 15%
+                          </span>
+                        ) : null}
                       </div>
                       <p className="text-[10px] text-stone-500 line-clamp-1">{tier.description}</p>
                     </div>
                     <div className="pt-2 mt-2 border-t border-stone-200/60 flex justify-between items-baseline">
-                      <span className="text-[10px] font-bold text-emerald-800 font-mono">{tier.days} ngày</span>
+                      <div>
+                        <span className="text-[10px] font-bold text-emerald-800 font-mono block">{tier.days} ngày</span>
+                        <span className="text-[9px] text-stone-400 font-mono">~{Math.round(tier.price / tier.days / 1000)}k/ngày</span>
+                      </div>
                       <span className="font-bold text-sm font-mono text-[#183A2D]">{tier.price.toLocaleString('vi-VN')}đ</span>
                     </div>
                   </div>
