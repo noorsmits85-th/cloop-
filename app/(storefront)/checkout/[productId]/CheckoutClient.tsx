@@ -1,6 +1,7 @@
 "use client";
 
-import { supabase } from "@/src/lib/supabase";
+import { createClient } from "@/src/utils/supabase/client";
+import { useAuthModal } from "@/app/AuthModalContext";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SignedShippingQuote } from "@/src/utils/shipping";
@@ -29,6 +30,8 @@ export default function CheckoutClient({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const supabase = createClient();
+  const { setShowAuthModal } = useAuthModal();
 
   // Nhận tham số từ trang Chi tiết sản phẩm để thông mạch liền mạch 100%
   const urlPackage = Number(searchParams.get("package")) || 3;
@@ -66,10 +69,26 @@ export default function CheckoutClient({
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
-        if (user.user_metadata?.name) setRecipientName(user.user_metadata.name);
+        if (user.user_metadata?.name || user.user_metadata?.full_name) {
+          setRecipientName(user.user_metadata?.name || user.user_metadata?.full_name || "");
+        }
         if (user.phone) setPhone(user.phone);
       }
     });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        if (session.user.user_metadata?.name || session.user.user_metadata?.full_name) {
+          setRecipientName(session.user.user_metadata?.name || session.user.user_metadata?.full_name || "");
+        }
+        if (session.user.phone) setPhone(session.user.phone);
+        setError("");
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Fetch Danh sách Tỉnh/Thành phố
@@ -245,7 +264,10 @@ export default function CheckoutClient({
       const { data: { session } } = await supabase.auth.getSession();
       const userId = session?.user?.id;
       if (!userId) {
-        throw new Error("Vui lòng đăng nhập để hoàn tất thanh toán");
+        setShowAuthModal(true);
+        setError("Vui lòng đăng nhập hoặc kích hoạt ID Xanh để thanh toán (Đã mở hộp thoại đăng nhập).");
+        setIsProcessingPayment(false);
+        return;
       }
 
       const fullToProvinceStr = `${selectedWard.name}, ${selectedDistrict.name}, ${selectedProvince.name}`;

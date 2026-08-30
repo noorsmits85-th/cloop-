@@ -13,10 +13,42 @@ export async function requireUser() {
     throw new Error("Unauthorized: Không tìm thấy phiên đăng nhập.");
   }
 
+  const name = user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Thành viên CLOOP";
+  const email = user.email || `${user.id}@cloop.vn`;
+
+  // Đảm bảo bản ghi User luôn tồn tại trong PostgreSQL qua lệnh Upsert nguyên tử 2ms
+  try {
+    await prisma.user.upsert({
+      where: { id: user.id },
+      update: {
+        email: email,
+        name: name,
+      },
+      create: {
+        id: user.id,
+        email: email,
+        password: "supabase_auth_managed",
+        name: name,
+        walletBalance: 0,
+        cloopCoins: 100,
+        role: (user.user_metadata?.role as any) || "USER"
+      }
+    });
+  } catch (syncErr) {
+    try {
+      if (user.email) {
+        await prisma.user.update({
+          where: { email: user.email },
+          data: { id: user.id, name }
+        });
+      }
+    } catch (_) {}
+  }
+
   return {
     id: user.id,
-    email: user.email || "",
-    name: user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Thành viên CLOOP",
+    email: email,
+    name: name,
     role: (user.user_metadata?.role as any) || "USER",
     avatar: user.user_metadata?.avatar_url || null,
     walletBalance: 0,
