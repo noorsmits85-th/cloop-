@@ -9,20 +9,14 @@ import {
   Leaf, 
   RotateCcw,
   ShieldCheck, 
-  Play,
-  Pause,
-  Sparkles,
   ChevronRight,
-  Repeat,
-  Layers,
-  Sparkle
+  Repeat
 } from "lucide-react";
 
 export default function SignatureCircularFlow() {
   const [activeStep, setActiveStep] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(true);
   const [progress, setProgress] = useState(0);
-  const DURATION = 4200; // 4.2s per life stage
+  const DURATION = 3800; // 3.8s punchy dynamic auto-play
 
   const stages = [
     {
@@ -30,7 +24,8 @@ export default function SignatureCircularFlow() {
       step: "01",
       name: "Thuê Trang Phục",
       badge: "VÒNG ĐỜI #1 • KHỞI ĐẦU",
-      tagline: "Trải nghiệm đẳng cấp với 10% chi phí",
+      tagline: "Trải nghiệm đồ thiết kế với 10% chi phí",
+      title: "Trải Nghiệm Đồ Thiết Kế Với 10% Chi Phí",
       desc: "Chiếc đầm dạ hội bắt đầu hành trình từ tủ đồ của một nhà sáng tạo. Khách thuê nhận đồ sạch thơm chuẩn spa và được bảo chứng 100% qua Két Escrow.",
       img: "/step1_phone.jpg",
       garmentDetail: "Đầm Lụa Sequin Prom • CLP-8821",
@@ -45,6 +40,7 @@ export default function SignatureCircularFlow() {
       name: "Mặc & Tỏa Sáng",
       badge: "VÒNG ĐỜI #2 • GHI DẤU KỶ NIỆM",
       tagline: "Tự tin rực rỡ tại khoảnh khắc đáng nhớ",
+      title: "Tự Tin Rực Rỡ Tại Khoảnh Khắc Đáng Nhớ",
       desc: "Đồng hành cùng chủ nhân trong đêm Gala & Prom tốt nghiệp. Khoảnh khắc tỏa sáng được ghi lại và lưu giữ mãi mãi trong Hộ Chiếu Số của trang phục.",
       img: "/evening_dress.jpg",
       garmentDetail: "Đầm Lụa Sequin Prom • CLP-8821",
@@ -59,6 +55,7 @@ export default function SignatureCircularFlow() {
       name: "Pass Chuyển Nhượng",
       badge: "VÒNG ĐỜI #3 • TRAO TAY CHỦ MỚI",
       tagline: "Sang nhượng minh bạch, tối ưu giá trị",
+      title: "Sang Nhượng Minh Bạch, Tối Ưu Giá Trị Tủ Đồ",
       desc: "Khi không còn nhu cầu mặc lại, trang phục được sang nhượng với giá minh bạch cho thành viên khác trong cộng đồng. Tiền chuyển về STK chỉ trong 30 giây.",
       img: "/vintage_coat.jpg",
       garmentDetail: "Đầm Lụa Sequin Prom • CLP-8821",
@@ -72,8 +69,9 @@ export default function SignatureCircularFlow() {
       step: "04",
       name: "Tái Sinh Sáng Tạo",
       badge: "VÒNG ĐỜI #4 • TÁI SINH THÀNH MÓN MỚI",
-      tagline: "Vòng đời bất tận tại Chợ Xanh Upcycling",
-      desc: "Nguyên liệu vải cao cấp được sinh viên thiết kế & Local Brand tái cấu trúc thành chiếc áo khoác Biker hoặc túi xách mới. Hoàn tất 1 chu trình khép kín và bắt đầu lại từ Bước 01!",
+      tagline: "Vòng đời bất tận tại Chợ Xanh Upcycle",
+      title: "Tái Cấu Trúc Sáng Tạo & Vòng Đời Bất Tận",
+      desc: "Nguyên liệu vải cao cấp được sinh viên thiết kế & Local Brand tái cấu trúc thành chiếc áo khoác Biker hoặc túi xách mới. Hoàn tất 1 chu trình khép kín và tự động quay lại Bước 01!",
       img: "/hero_group.jpg",
       garmentDetail: "Set Đồ Upcycled Tái Sinh • CLP-8821-UP",
       lifecycleStory: "Tái chế từ vải đầm cũ thành Set Denim độc bản",
@@ -83,10 +81,8 @@ export default function SignatureCircularFlow() {
     }
   ];
 
-  // Auto-playing loop with live progress tracking
+  // Continuous dynamic auto-play loop (Relentless & Smooth)
   useEffect(() => {
-    if (!isPlaying) return;
-
     const intervalTime = 40;
     const increment = (intervalTime / DURATION) * 100;
 
@@ -101,7 +97,7 @@ export default function SignatureCircularFlow() {
     }, intervalTime);
 
     return () => clearInterval(timer);
-  }, [isPlaying, activeStep]);
+  }, [activeStep]);
 
   const handleSelect = (idx: number) => {
     setActiveStep(idx);
@@ -109,11 +105,7 @@ export default function SignatureCircularFlow() {
   };
 
   return (
-    <section 
-      onMouseEnter={() => setIsPlaying(false)}
-      onMouseLeave={() => setIsPlaying(true)}
-      className="w-full bg-[#FAF9F5] border-b border-stone-200/80 py-16 md:py-24 text-[#183A2D] font-body relative overflow-hidden select-none"
-    >
+    <section className="w-full bg-[#FAF9F5] border-b border-stone-200/80 py-16 md:py-24 text-[#183A2D] font-body relative overflow-hidden select-none">
       
       {/* 🌊 Ambient Aurora Light Beam */}
       <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[500px] bg-gradient-to-r from-emerald-100/35 via-teal-50/25 to-amber-50/20 rounded-full blur-3xl pointer-events-none" />
@@ -142,30 +134,27 @@ export default function SignatureCircularFlow() {
         {/* 🔄 THE LIVING INFINITY LOOP STAGE (CINEMATIC CONTAINER) */}
         <div className="bg-white/90 backdrop-blur-md rounded-3xl p-5 sm:p-7 md:p-10 border border-stone-300/80 shadow-xl relative overflow-hidden">
           
-          {/* Top Stage Control Header with Live Timer & Scrubber */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-8 pb-5 border-b border-stone-200/80">
+          {/* Top Live Broadcast Bar: Always Active */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-7 pb-4 border-b border-stone-200/80">
             <div className="flex items-center gap-2.5">
-              <button
-                onClick={() => setIsPlaying(!isPlaying)}
-                className="w-8 h-8 rounded-full bg-[#183A2D] text-white flex items-center justify-center hover:bg-emerald-800 transition-transform active:scale-95 shadow-xs cursor-pointer"
-                title={isPlaying ? "Tạm dừng" : "Tiếp tục chạy"}
-              >
-                {isPlaying ? <Pause size={13} /> : <Play size={13} className="ml-0.5" />}
-              </button>
+              <span className="flex h-2.5 w-2.5 relative shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-600"></span>
+              </span>
               <div>
                 <span className="font-mono text-xs font-bold text-[#183A2D] block">
-                  CHU TRÌNH 4 BƯỚC TUẦN HOÀN
+                  CHU TRÌNH 4 BƯỚC TUẦN HOÀN • TỰ ĐỘNG CHUYỂN BƯỚC
                 </span>
                 <span className="text-[10px] text-stone-500 font-ui">
-                  {isPlaying ? "Đang tự động phát • Rê chuột để tạm dừng" : "Đã tạm dừng • Nhấn để phát"}
+                  Hệ thống đang tự động luân chuyển liên tục từng vòng đời
                 </span>
               </div>
             </div>
 
             {/* Loop Counter Indicator */}
             <div className="flex items-center gap-2 self-start sm:self-auto">
-              <span className="text-xs font-mono font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 flex items-center gap-1.5">
-                <RotateCcw size={12} className="animate-spin text-emerald-700" style={{ animationDuration: '8s' }} />
+              <span className="text-xs font-mono font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 flex items-center gap-1.5 shadow-2xs">
+                <RotateCcw size={12} className="animate-spin text-emerald-700" style={{ animationDuration: '6s' }} />
                 Giai Đoạn {activeStep + 1} / 04
               </span>
             </div>
@@ -219,7 +208,7 @@ export default function SignatureCircularFlow() {
                     }`}>
                       {stage.name}
                     </h3>
-                    <p className={`text-[10px] sm:text-[11px] font-light truncate ${
+                    <p className={`text-[10.5px] sm:text-[11px] font-light leading-snug ${
                       isActive ? "text-emerald-200" : "text-stone-500"
                     }`}>
                       {stage.tagline}
@@ -281,12 +270,12 @@ export default function SignatureCircularFlow() {
                 {/* Right Side: Narrative Story, Eco Metrics & Seamless Action */}
                 <div className="lg:col-span-7 space-y-4 sm:space-y-5 text-left">
                   
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <span className="text-[10.5px] font-mono font-extrabold text-emerald-800 uppercase tracking-widest bg-emerald-100/80 px-2.5 py-0.5 rounded-md border border-emerald-200 font-ui inline-block">
                       {stages[activeStep].name} • VÒNG ĐỜI THỜI TRANG CLOOP
                     </span>
                     <h3 className="font-heading text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#183A2D] tracking-tight leading-snug">
-                      {stages[activeStep].tagline}
+                      {stages[activeStep].title}
                     </h3>
                   </div>
 
