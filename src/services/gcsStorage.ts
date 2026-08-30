@@ -189,3 +189,39 @@ export async function verifyUploadedDisputeFile(params: {
     return { isValid: false, error: "Không thể xác minh tệp từ máy chủ Google Cloud" };
   }
 }
+
+/**
+ * Upload ảnh sản phẩm trực tiếp lên Google Cloud Storage (Enterprise Scale)
+ */
+export async function uploadImageToGCS(
+  fileBuffer: Buffer,
+  folder: string = "cloop_products"
+): Promise<{ url: string; publicId: string } | null> {
+  const storage = getStorageClient();
+  if (!storage) return null;
+
+  try {
+    const bucketName = process.env.GCP_STORAGE_BUCKET || "cloop-disputes";
+    const bucket = storage.bucket(bucketName);
+    const fileName = `${folder}/${Date.now()}_${crypto.randomUUID().substring(0, 8)}.jpg`;
+    const file = bucket.file(fileName);
+
+    await file.save(fileBuffer, {
+      contentType: "image/jpeg",
+      resumable: false,
+      metadata: {
+        cacheControl: "public, max-age=31536000",
+      },
+    });
+
+    const publicUrl = `https://storage.googleapis.com/${bucketName}/${fileName}`;
+    return {
+      url: publicUrl,
+      publicId: fileName,
+    };
+  } catch (err) {
+    console.error("❌ [GCS Product Image Upload Error]:", err);
+    return null;
+  }
+}
+

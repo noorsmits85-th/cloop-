@@ -65,11 +65,30 @@ export const uploadImage = async (
       });
       return res;
     } catch (e) {
-      console.warn("Cloudinary upload failed, falling back to Supabase/Direct:", e);
+      console.warn("Cloudinary upload failed, falling back to Google Cloud Storage / Supabase:", e);
     }
   }
 
-  // Fallback to Supabase Storage
+  // 🌟 Tầng 2: Google Cloud Storage (Enterprise Scale, High Bandwidth, No Limits)
+  try {
+    const { uploadImageToGCS } = await import("@/src/services/gcsStorage");
+    const gcsResult = await uploadImageToGCS(fileBuffer, folder);
+    if (gcsResult) {
+      return {
+        url: gcsResult.url,
+        storageProvider: "cloudinary",
+        publicId: gcsResult.publicId,
+        width: 800,
+        height: 1066,
+        bytes: fileBuffer.length,
+        format: "jpg",
+      };
+    }
+  } catch (gcsErr) {
+    console.warn("GCS Storage upload failed, falling back to Supabase:", gcsErr);
+  }
+
+  // 🌿 Tầng 3: Supabase Media Storage
   try {
     const { supabaseAdmin } = await import("./supabase");
     if (supabaseAdmin) {
@@ -101,7 +120,7 @@ export const uploadImage = async (
     console.warn("Supabase Storage fallback failed:", sbErr);
   }
 
-  // Final emergency fallback: Base64 data URL
+  // 🚨 Tầng 4: Final emergency fallback: Base64 data URL
   const base64 = `data:image/jpeg;base64,${fileBuffer.toString("base64")}`;
   return {
     url: base64,
