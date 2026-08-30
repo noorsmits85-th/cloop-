@@ -82,35 +82,6 @@ export default function LoginPage() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-2xl sm:px-10 border border-stone-200">
-          
-          {/* TAB SWITCHER */}
-          {(mode === 'LOGIN' || mode === 'SIGNUP') && (
-            <div className="grid grid-cols-2 p-1 rounded-xl bg-stone-100 border border-stone-200 mb-6">
-              <button
-                type="button"
-                onClick={() => { setMode('LOGIN'); setMessage(null); }}
-                className={`py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${
-                  mode === 'LOGIN' 
-                    ? 'bg-white text-[#183A2D] shadow-xs' 
-                    : 'text-gray-500 hover:text-stone-800'
-                }`}
-              >
-                Đăng Nhập
-              </button>
-              <button
-                type="button"
-                onClick={() => { setMode('SIGNUP'); setMessage(null); }}
-                className={`py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${
-                  mode === 'SIGNUP' 
-                    ? 'bg-white text-[#183A2D] shadow-xs' 
-                    : 'text-gray-500 hover:text-stone-800'
-                }`}
-              >
-                Đăng Ký
-              </button>
-            </div>
-          )}
-
           <form className="space-y-6" onSubmit={handleSubmit}>
             <input type="hidden" name="nextUrl" value={nextUrl} />
             

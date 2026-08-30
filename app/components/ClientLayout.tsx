@@ -426,40 +426,13 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
               </div>
               
               <div className="text-center space-y-1">
-                <h3 className="font-heading text-2xl font-bold uppercase tracking-wider text-[#183A2D] dark:text-white">
-                  {authMode === 'login' ? 'Đăng Nhập CLOOP' : authMode === 'register' ? 'Kích Hoạt ID Xanh' : authMode === 'forgot' ? 'Quên Mật Khẩu' : 'Nhập Mã Khôi Phục'}
+                <h3 className="font-heading text-2xl font-bold uppercase tracking-wide">
+                  {authMode === 'login' ? 'Đăng nhập CLOOP' : authMode === 'register' ? 'Kích hoạt ID Xanh' : authMode === 'forgot' ? 'Quên mật khẩu' : 'Nhập mã khôi phục'}
                 </h3>
-                <p className="text-[11px] text-gray-500 font-medium">
-                  {authMode === 'login' ? 'Đồng bộ hóa tủ đồ và trải nghiệm thời trang tuần hoàn.' : authMode === 'register' ? 'Tạo tài khoản ID Xanh để thuê đồ, quản lý tủ đồ & tích Xu Lá.' : authMode === 'forgot' ? 'Nhập email để nhận mã OTP khôi phục mật khẩu.' : `Mã bảo mật đã được gửi tới ${resetEmail}. Nhập mã và mật khẩu mới.`}
+                <p className="text-[11px] text-gray-400">
+                  {authMode === 'login' ? 'Chào mừng bạn quay trở lại với thời trang tuần hoàn.' : authMode === 'register' ? 'Đăng ký tài khoản bảo mật để đồng bộ hóa và quản lý kệ đồ cá nhân.' : authMode === 'forgot' ? 'Nhập email để nhận mã OTP khôi phục mật khẩu.' : `Mã bảo mật đã được gửi tới ${resetEmail}. Nhập mã và mật khẩu mới.`}
                 </p>
               </div>
-
-              {(authMode === 'login' || authMode === 'register') && (
-                <div className="grid grid-cols-2 p-1 rounded-xl bg-stone-200/60 dark:bg-[#0F1720] border border-stone-200 dark:border-[#2B3946]">
-                  <button
-                    type="button"
-                    onClick={() => setAuthMode('login')}
-                    className={`py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${
-                      authMode === 'login' 
-                        ? 'bg-white dark:bg-[#18222B] text-[#183A2D] dark:text-white shadow-xs' 
-                        : 'text-gray-500 hover:text-stone-800 dark:hover:text-gray-300'
-                    }`}
-                  >
-                    Đăng Nhập
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAuthMode('register')}
-                    className={`py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${
-                      authMode === 'register' 
-                        ? 'bg-white dark:bg-[#18222B] text-[#183A2D] dark:text-white shadow-xs' 
-                        : 'text-gray-500 hover:text-stone-800 dark:hover:text-gray-300'
-                    }`}
-                  >
-                    Đăng Ký
-                  </button>
-                </div>
-              )}
 
               <form 
                 onSubmit={async (e) => {
