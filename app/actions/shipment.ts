@@ -189,7 +189,7 @@ export async function markShipmentBookedAction(input: unknown) {
       });
 
       return updatedShipment;
-    });
+    }, { timeout: 20000, maxWait: 10000 });
 
     revalidateShipmentViews(result.rentalId);
     return { success: true, shipmentId: result.id };
