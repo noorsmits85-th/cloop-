@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { Heart, Shirt, Info, MapPin, BadgePercent, ShieldAlert, Camera, Feather, Quote, ArrowLeft, Leaf } from "lucide-react"; 
 import { createProductAction } from "./actions";
+import { toast } from "sonner";
 const PLACEHOLDER_IMG = "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600";
 const PAPER_BG = "https://www.transparenttextures.com/patterns/cream-paper.png";
 
@@ -158,11 +159,11 @@ export default function CreateProductListingPage() {
       const validFiles: File[] = [];
       for (const file of Array.from(files)) {
         if (file.size > 15 * 1024 * 1024) {
-          alert(`Ảnh "${file.name}" vượt quá 15MB. Vui lòng chọn ảnh nhỏ hơn!`);
+          toast.error(`Ảnh "${file.name}" vượt quá 15MB. Vui lòng chọn ảnh nhỏ hơn!`);
           continue;
         }
         if (!file.type.startsWith("image/")) {
-          alert(`Tệp "${file.name}" không phải định dạng ảnh hợp lệ.`);
+          toast.error(`Tệp "${file.name}" không phải định dạng ảnh hợp lệ.`);
           continue;
         }
         validFiles.push(file);
@@ -243,12 +244,12 @@ export default function CreateProductListingPage() {
     const fieldsToScan = [product.name, product.material, product.color, product.province, product.ward];
     for (const field of fieldsToScan) {
       if (checkContactInfoLeak(field)) {
-        alert("Cậu nhớ giữ kín thông tin cá nhân ở các mục giới thiệu chung nha. Sân chơi chung cần sự riêng tư một chút nè!");
+        toast.error("Vui lòng giữ kín thông tin liên hệ cá nhân ở phần giới thiệu chung.");
         return;
       }
     }
     if (images.length === 0) {
-      alert("Chưa có ảnh món đồ mất rồi! Cậu dán thêm ít nhất một tấm ảnh thật xinh vào sổ nhé.");
+      toast.error("Vui lòng tải lên ít nhất một ảnh sản phẩm.");
       return;
     }
 
@@ -267,7 +268,7 @@ export default function CreateProductListingPage() {
         });
         if (!response.ok) {
           const errorData = await response.json().catch(() => null);
-          throw new Error(errorData?.error || "Ảnh bị lỗi khi dán vào trang rồi, cậu thử lại nhé.");
+          throw new Error(errorData?.error || "Lỗi tải ảnh lên hệ thống.");
         }
         const imageData = await response.json();
         return imageData as UploadedImageMeta;
@@ -300,16 +301,16 @@ export default function CreateProductListingPage() {
       const result = await createProductAction(payload);
 
       if (!result.success) {
-        alert("Lỗi máy chủ rùi: " + result.error);
+        toast.error(result.error || "Lỗi máy chủ khi tạo sản phẩm.");
         setIsSubmitting(false);
         return;
       }
 
-      alert("Món đồ xinh xắn của cậu đã được cất vào tủ CLOOP thành công! ✨");
-      router.push("/my-closet");
+      toast.success("Đã thêm món đồ vào tủ CLOOP thành công!");
+      router.push("/my-closet/items");
 
     } catch (error: any) {
-      alert(`Đã xảy ra lỗi nhỏ: ${error.message || error}`);
+      toast.error(`Đã xảy ra lỗi: ${error.message || error}`);
     } finally {
       setIsSubmitting(false);
       submittingRef.current = false;
