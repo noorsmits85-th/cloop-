@@ -2,10 +2,12 @@ import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  compress: true,
+  poweredByHeader: false,
   experimental: {
     serverActions: {
       bodySizeLimit: "50mb",
-      allowedOrigins: ["192.168.1.5:3000", "localhost:3000"],
+      allowedOrigins: ["192.168.1.5:3000", "localhost:3000", "cloop-sable.vercel.app", "*.vercel.app"],
     },
   },
   // 📸 VÁ LỖI HÌNH ẢNH: Mở khóa ranh giới bảo mật cho Cloudinary, Supabase, Google Storage, Unsplash

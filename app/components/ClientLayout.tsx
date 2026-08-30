@@ -19,6 +19,7 @@ import { useAuthModal } from "../AuthModalContext";
 const supabase = createClient();
 
 function HeaderNavbar({ darkMode, setDarkMode, handleFeatureRequirement, currentUser, setCurrentUser }: any) {
+  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const type = searchParams.get("type");
@@ -62,10 +63,10 @@ function HeaderNavbar({ darkMode, setDarkMode, handleFeatureRequirement, current
         </Link>
 
         <div className="flex items-center gap-4 xl:gap-5 min-w-0">
-          <div className={`hidden md:flex items-center w-[120px] xl:w-[150px] h-[40px] rounded-full px-4 shrink-0 transition-all ${darkMode ? "bg-[#1C2834] border border-[#2B3946]" : "bg-stone-100 border border-stone-200 focus-within:bg-white focus-within:border-[#183A2D]"}`}>
+          <Link href="/shop" className={`hidden md:flex items-center w-[120px] xl:w-[150px] h-[40px] rounded-full px-4 shrink-0 transition-all ${darkMode ? "bg-[#1C2834] border border-[#2B3946]" : "bg-stone-100 border border-stone-200 focus-within:bg-white focus-within:border-[#183A2D]"}`}>
             <Search size={13} className="text-gray-500 shrink-0" />
-            <input className="ml-2 flex-1 bg-transparent text-[11px] font-search outline-none placeholder:text-gray-500 text-[#183A2D]" placeholder={placeholders[placeholderIndex]} readOnly onClick={() => window.location.href = '/shop'} />
-          </div>
+            <input className="ml-2 flex-1 bg-transparent text-[11px] font-search outline-none placeholder:text-gray-500 text-[#183A2D] cursor-pointer" placeholder={placeholders[placeholderIndex]} readOnly />
+          </Link>
 
           <nav className="hidden lg:flex items-center gap-3.5 xl:gap-5 font-ui text-[11px] xl:text-[12px] uppercase tracking-wide whitespace-nowrap font-bold min-w-0 overflow-x-auto no-scrollbar">
             <Link href="/" className={getNavbarClass("/", null, null)}>Trang chủ</Link>
@@ -101,21 +102,23 @@ function HeaderNavbar({ darkMode, setDarkMode, handleFeatureRequirement, current
                 onClick={async () => { 
                   await supabase.auth.signOut();
                   setCurrentUser(null);
-                  window.location.reload(); 
+                  router.refresh(); 
                 }} 
-                className="text-[10px] font-bold text-red-500 hover:underline"
+                className="text-[10px] font-bold text-red-500 hover:underline cursor-pointer"
               >
                 Thoát
               </button>
             </div>
           ) : (
             <>
-              <button onClick={() => handleFeatureRequirement("Đăng nhập")} className="text-gray-500 hover:text-[#183A2D] transition-colors">LOG IN</button>
-              <button onClick={() => handleFeatureRequirement("Đăng ký")} className={`px-4 py-2 rounded-full border transition-all ${darkMode ? "bg-white text-black border-white" : "bg-black text-white border-black"}`}>JOIN US</button>
+              <button onClick={() => handleFeatureRequirement("Đăng nhập")} className="text-gray-500 hover:text-[#183A2D] transition-colors cursor-pointer">LOG IN</button>
+              <button onClick={() => handleFeatureRequirement("Đăng ký")} className={`px-4 py-2 rounded-full border transition-all cursor-pointer ${darkMode ? "bg-white text-black border-white" : "bg-black text-white border-black"}`}>JOIN US</button>
             </>
           )}
           <div className="w-[1px] h-5 bg-gray-200 mx-1 hidden sm:block" />
-          <ShoppingBag size={20} onClick={() => window.location.href = '/shop'} className="text-[#183A2D] dark:text-white cursor-pointer hidden sm:block" />
+          <Link href="/shop" className="cursor-pointer hidden sm:block">
+            <ShoppingBag size={20} className="text-[#183A2D] dark:text-white" />
+          </Link>
         </div>
 
       </div>
@@ -152,32 +155,34 @@ function MobileBottomNavbar({ darkMode, currentUser, handleFeatureRequirement }:
           </div>
           <span className="text-[9px] font-ui uppercase tracking-widest mt-6">Đăng bán</span>
         </Link>
-        <div 
-          onClick={() => {
-            if (currentUser) {
-              window.location.href = '/my-closet';
-            } else {
-              handleFeatureRequirement("Tủ đồ");
-            }
-          }}
-          className={getNavClass("/my-closet")}
-        >
-          <Shirt size={22} strokeWidth={pathname.startsWith("/my-closet") ? 2.5 : 2} />
-          <span className="text-[9px] font-ui uppercase tracking-widest mt-0.5">Tủ đồ</span>
-        </div>
-        <div 
-          onClick={() => {
-            if (currentUser) {
-              window.location.href = '/profile';
-            } else {
-              handleFeatureRequirement("Hồ sơ");
-            }
-          }}
-          className={getNavClass("/profile")}
-        >
-          <User size={22} strokeWidth={pathname.startsWith("/profile") ? 2.5 : 2} />
-          <span className="text-[9px] font-ui uppercase tracking-widest mt-0.5">Hồ sơ</span>
-        </div>
+        {currentUser ? (
+          <Link href="/my-closet" className={getNavClass("/my-closet")}>
+            <Shirt size={22} strokeWidth={pathname.startsWith("/my-closet") ? 2.5 : 2} />
+            <span className="text-[9px] font-ui uppercase tracking-widest mt-0.5">Tủ đồ</span>
+          </Link>
+        ) : (
+          <div 
+            onClick={() => handleFeatureRequirement("Tủ đồ")}
+            className={getNavClass("/my-closet")}
+          >
+            <Shirt size={22} strokeWidth={pathname.startsWith("/my-closet") ? 2.5 : 2} />
+            <span className="text-[9px] font-ui uppercase tracking-widest mt-0.5">Tủ đồ</span>
+          </div>
+        )}
+        {currentUser ? (
+          <Link href="/profile" className={getNavClass("/profile")}>
+            <User size={22} strokeWidth={pathname.startsWith("/profile") ? 2.5 : 2} />
+            <span className="text-[9px] font-ui uppercase tracking-widest mt-0.5">Hồ sơ</span>
+          </Link>
+        ) : (
+          <div 
+            onClick={() => handleFeatureRequirement("Hồ sơ")}
+            className={getNavClass("/profile")}
+          >
+            <User size={22} strokeWidth={pathname.startsWith("/profile") ? 2.5 : 2} />
+            <span className="text-[9px] font-ui uppercase tracking-widest mt-0.5">Hồ sơ</span>
+          </div>
+        )}
       </div>
     </div>
   );

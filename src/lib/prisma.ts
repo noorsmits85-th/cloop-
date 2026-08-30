@@ -6,10 +6,7 @@ const globalForPrisma = globalThis as unknown as {
 
 // Base Prisma Client (for Admin/Unfiltered queries)
 export const prismaAdmin = globalForPrisma.prismaBase ?? new PrismaClient();
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prismaBase = prismaAdmin;
-}
+globalForPrisma.prismaBase = prismaAdmin;
 
 // Extended Prisma Client (for End-User/Filtered queries)
 export const prisma = prismaAdmin.$extends({
