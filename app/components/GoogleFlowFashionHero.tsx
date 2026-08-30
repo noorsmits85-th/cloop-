@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -245,14 +245,32 @@ export default function GoogleFlowFashionHero() {
   const [isVisualSearchOpen, setIsVisualSearchOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<FashionItem | null>(null);
 
+  const rotatingPlaceholders = [
+    "Đầm dạ hội lụa satin...",
+    "Blazer dạ tweed 90s...",
+    "Áo dài gấm thêu sen...",
+    "Váy cúp ngực tiệc tối...",
+    "Set đồ thiết kế độc bản...",
+    "Túi xách & phụ kiện dự tiệc..."
+  ];
+
+  const [currentPlaceholderIndex, setCurrentPlaceholderIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentPlaceholderIndex((prev) => (prev + 1) % rotatingPlaceholders.length);
+    }, 2600);
+    return () => clearInterval(timer);
+  }, []);
+
   return (
     <section 
-      className="relative w-full min-h-[620px] sm:min-h-[680px] md:min-h-[740px] lg:min-h-[800px] bg-[#071C12] overflow-hidden flex items-center justify-center select-none border-b border-[#0F3120] transform-gpu"
+      className="relative w-full min-h-[640px] sm:min-h-[700px] md:min-h-[760px] lg:min-h-[820px] bg-[#05140C] overflow-hidden flex items-center justify-center select-none border-b border-[#0F3120] transform-gpu"
       style={{ contain: "content" }}
     >
       
-      {/* 🖼️ WALL-TO-WALL LIVING PHOTO CANVAS: 6 Cột Ảnh Kín Toàn Bộ Màn Hình (Không Trống Trải) */}
-      <div className="absolute inset-0 w-full h-full overflow-hidden grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2.5 md:gap-3 p-2 sm:p-3 pointer-events-auto transform-gpu opacity-90 hover:opacity-100 transition-opacity duration-500">
+      {/* 🖼️ WALL-TO-WALL LIVING PHOTO CANVAS: Nền không khí chìm sâu 20-30%, mờ dịu mắt */}
+      <div className="absolute inset-0 w-full h-full overflow-hidden grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2.5 md:gap-3 p-2 sm:p-3 pointer-events-auto transform-gpu opacity-55 hover:opacity-75 transition-opacity duration-700">
         {FULL_MOSAIC_COLUMNS.map((column, colIdx) => {
           const isOdd = colIdx % 2 !== 0;
           return (
@@ -272,12 +290,12 @@ export default function GoogleFlowFashionHero() {
               {column.map((card) => (
                 <div key={card.id} className="relative group transform-gpu">
                   
-                  {/* ✨ PULSING NEON MATCHA GLOW HALO */}
+                  {/* ✨ Subtle Glow Halo */}
                   <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-[#A3E39F] via-white to-[#A3E39F] opacity-0 group-hover:opacity-100 blur-md transition-opacity duration-300 pointer-events-none z-0" />
 
                   <div
                     onClick={() => setSelectedItem(card)}
-                    className={`relative w-full ${card.aspect} rounded-2xl overflow-hidden bg-[#0A2215] border border-white/20 hover:border-[#A3E39F] shadow-lg hover:shadow-[0_0_45px_rgba(163,227,159,0.9),_0_0_18px_rgba(255,255,255,0.75)] hover:ring-2 hover:ring-white transition-all duration-300 hover:scale-108 hover:z-50 cursor-pointer block z-10`}
+                    className={`relative w-full ${card.aspect} rounded-2xl overflow-hidden bg-[#0A2215] border border-white/10 hover:border-[#A3E39F] shadow-lg hover:shadow-[0_0_40px_rgba(163,227,159,0.8)] hover:ring-2 hover:ring-white transition-all duration-300 hover:scale-105 hover:z-50 cursor-pointer block z-10`}
                   >
                     {/* Glowing & Brightening Image */}
                     <Image
@@ -285,19 +303,16 @@ export default function GoogleFlowFashionHero() {
                       alt={card.title}
                       fill
                       sizes="(max-width: 640px) 33vw, (max-width: 1024px) 25vw, 18vw"
-                      className="object-cover transition-all duration-500 group-hover:scale-112 brightness-105 group-hover:brightness-135 group-hover:contrast-105 opacity-90 group-hover:opacity-100"
+                      className="object-cover transition-all duration-500 group-hover:scale-110 brightness-95 group-hover:brightness-125 opacity-85 group-hover:opacity-100"
                       unoptimized
                     />
 
-                    {/* ✨ LUMINOUS GLASS SHIMMER OVERLAY */}
-                    <div className="absolute inset-0 bg-gradient-to-tr from-[#A3E39F]/35 via-white/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none mix-blend-overlay" />
-
                     {/* Gradient Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent pointer-events-none group-hover:opacity-50 transition-opacity" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none group-hover:opacity-40 transition-opacity" />
 
-                    {/* Top Left: Tag Pill */}
-                    <div className="absolute top-2 left-2 z-20">
-                      <span className="text-[7.5px] uppercase font-bold tracking-wider bg-black/70 group-hover:bg-[#A3E39F] text-[#A3E39F] group-hover:text-[#07190F] group-hover:shadow-[0_0_15px_rgba(163,227,159,1)] px-2.5 py-0.5 rounded-full border border-white/18 group-hover:border-white font-ui shadow-xs transition-colors duration-200">
+                    {/* Top Left: Tag Pill (Minimal, reveals clear on hover) */}
+                    <div className="absolute top-2 left-2 z-20 opacity-75 group-hover:opacity-100 transition-opacity">
+                      <span className="text-[7.5px] uppercase font-bold tracking-wider bg-black/60 group-hover:bg-[#A3E39F] text-stone-200 group-hover:text-[#07190F] px-2 py-0.5 rounded-full border border-white/10 group-hover:border-white font-ui shadow-xs transition-colors duration-200">
                         {card.tag}
                       </span>
                     </div>
@@ -309,13 +324,13 @@ export default function GoogleFlowFashionHero() {
                       </span>
                     </div>
 
-                    {/* Bottom Info: Title, Price & Live Rentals */}
+                    {/* Bottom Info: Title & Price */}
                     <div className="absolute bottom-0 left-0 w-full p-2.5 text-white transform translate-y-0.5 group-hover:translate-y-0 transition-transform z-20">
                       <p className="text-[10px] sm:text-[11px] font-heading font-bold leading-tight line-clamp-1 group-hover:text-white group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,1)] transition-all">
                         {card.title}
                       </p>
                       <div className="flex items-center justify-between mt-0.5">
-                        <p className="text-[9px] sm:text-[9.5px] text-[#A3E39F] group-hover:text-[#D4FFD0] font-mono font-bold group-hover:drop-shadow-[0_0_8px_rgba(163,227,159,1)] transition-all">
+                        <p className="text-[9px] sm:text-[9.5px] text-[#A3E39F] font-mono font-bold">
                           {card.price}
                         </p>
                         <span className="text-[8px] text-stone-300 font-ui opacity-0 group-hover:opacity-100 transition-opacity">
@@ -332,31 +347,36 @@ export default function GoogleFlowFashionHero() {
         })}
       </div>
 
-      {/* 🍵 DEEP CENTER SPOTLIGHT MASK: Đè chìm ảnh ở tâm xuống để chữ trắng nổi bần bật, xung quanh vẫn sáng rõ */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(7,24,15,0.92)_0%,_rgba(7,24,15,0.82)_35%,_rgba(7,24,15,0.35)_70%,_rgba(5,18,10,0.85)_100%)] pointer-events-none z-20" />
+      {/* 🍵 DEEP CENTER SPOTLIGHT MASK: Đè chìm ảnh ở tâm xuống 20-30% để chữ trắng nổi bần bật */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(4,16,10,0.96)_0%,_rgba(4,16,10,0.88)_35%,_rgba(2,10,6,0.72)_75%,_rgba(1,6,4,0.98)_100%)] pointer-events-none z-20" />
 
-      {/* 🌟 CENTERPIECE CONTENT: Chữ Trắng Bật Sắc Nét, Không Bị Chìm, Đầy Đủ Tính Năng */}
+      {/* 🌟 CENTERPIECE CONTENT: LUXURY FASHION HOUSE MANIFESTO & CLEAR HIERARCHY */}
       <div className="relative z-30 max-w-3xl mx-auto px-4 text-center flex flex-col items-center justify-center pointer-events-auto my-auto py-8">
         
-        {/* Top Matcha Badge */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/15 backdrop-blur-md border border-[#A3E39F]/50 text-[#A3E39F] text-[10.5px] font-bold uppercase tracking-widest mb-3.5 shadow-lg font-ui">
-          <span className="w-2 h-2 rounded-full bg-[#A3E39F] animate-pulse"></span>
-          Tủ Đồ Tuần Hoàn Sinh Thái 2026
+        {/* Brand Label (Fashion House Identity) */}
+        <div className="text-xs sm:text-sm font-extrabold tracking-[0.35em] text-[#A3E39F] uppercase font-heading mb-3 drop-shadow-md">
+          CLOOP • CIRCULAR FASHION HOUSE
         </div>
 
-        {/* Big Bold Solid White Title */}
-        <h1 className="font-heading text-5xl sm:text-6xl md:text-7xl lg:text-[84px] font-extrabold text-white tracking-tight leading-none mb-3.5 drop-shadow-[0_4px_30px_rgba(0,0,0,0.95)]">
-          CLOOP
+        {/* Powerful Campaign Statement Headline */}
+        <h1 className="font-heading text-4xl sm:text-5xl md:text-6xl lg:text-[72px] font-extrabold text-white tracking-tight leading-[1.08] mb-4 drop-shadow-[0_4px_30px_rgba(0,0,0,0.95)]">
+          MỘT MÓN ĐỒ.<br />
+          <span className="text-[#A3E39F]">VÔ TẬN VÒNG ĐỜI.</span>
         </h1>
 
-        {/* Poetic & High-Fashion Tagline */}
-        <p className="font-body text-xs sm:text-sm md:text-[15px] text-stone-100 font-normal leading-relaxed max-w-lg mx-auto mb-6 drop-shadow-[0_2px_14px_rgba(0,0,0,0.9)]">
-          Tủ đồ thời trang thiết kế vô tận từ cộng đồng. Tiết kiệm 90% chi phí, trải nghiệm đẳng cấp và sống xanh cùng mỗi vòng đời trang phục.
-        </p>
+        {/* Poetic & High-Fashion Editorial Narrative */}
+        <div className="space-y-1 mb-6 max-w-lg mx-auto drop-shadow-[0_2px_14px_rgba(0,0,0,0.9)]">
+          <p className="font-body text-sm sm:text-base font-medium text-stone-100">
+            Thuê. Chia sẻ. Mặc lại. Những món đồ tốt không chỉ có một vòng đời.
+          </p>
+          <p className="font-body text-xs sm:text-sm text-stone-300 font-light leading-relaxed">
+            Khám phá tủ đồ tuần hoàn từ cộng đồng CLOOP.
+          </p>
+        </div>
 
-        {/* Action Buttons Row */}
-        <div className="flex flex-col sm:flex-row items-center gap-3.5 w-full sm:w-auto">
-          {/* Primary Giant White Pill Button */}
+        {/* Action Buttons Row with Strict Visual Hierarchy */}
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+          {/* Primary Solid White Button */}
           <Link
             href="/shop"
             className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-white text-[#0A2517] hover:bg-[#FAF7F0] font-heading font-extrabold text-xs sm:text-sm tracking-wider uppercase transition-all duration-300 shadow-[0_6px_25px_rgba(255,255,255,0.35)] hover:scale-105 active:scale-95 flex items-center justify-center gap-2 group font-ui"
@@ -365,25 +385,28 @@ export default function GoogleFlowFashionHero() {
             <ArrowRight size={15} className="group-hover:translate-x-1 transition-transform" />
           </Link>
 
-          {/* AI Visual Search Button */}
+          {/* AI Visual Search Button (Subordinate Ghost Action) */}
           <button
             type="button"
             onClick={() => setIsVisualSearchOpen(true)}
-            className="w-full sm:w-auto px-6 py-3.5 rounded-full bg-white/20 hover:bg-white/30 text-white border border-white/35 backdrop-blur-md font-heading font-bold text-xs sm:text-sm tracking-wider uppercase transition-all duration-300 shadow-md hover:scale-105 active:scale-95 flex items-center justify-center gap-2 group font-ui"
+            className="w-full sm:w-auto px-6 py-3.5 rounded-full bg-white/10 hover:bg-white/20 text-white/90 hover:text-white border border-white/25 hover:border-white/40 backdrop-blur-md font-heading font-bold text-xs sm:text-sm tracking-wider uppercase transition-all duration-300 active:scale-95 flex items-center justify-center gap-2 group font-ui"
           >
             <Camera size={15} className="text-[#A3E39F] group-hover:scale-110 transition-transform" />
             <span>Tìm Bằng Ảnh AI</span>
           </button>
         </div>
 
-        {/* Micro Search Bar with Quick Trending Tags */}
-        <div className="mt-6 w-full max-w-md space-y-2.5">
-          <div className="relative flex items-center bg-black/55 backdrop-blur-md border border-white/30 rounded-full px-3.5 py-1.5 shadow-inner focus-within:border-white/70 transition-all">
+        {/* Dynamic AI Discovery Search Bar */}
+        <div className="mt-7 w-full max-w-md space-y-2">
+          <p className="text-[11px] font-medium text-stone-300 font-ui tracking-wide">
+            Bạn đang tìm gì cho lần xuất hiện tiếp theo?
+          </p>
+          <div className="relative flex items-center bg-black/60 backdrop-blur-md border border-white/25 rounded-full px-3.5 py-1.5 shadow-inner focus-within:border-white/70 transition-all">
             <Search size={14} className="text-stone-300 ml-1 mr-2 shrink-0" />
             <input
               type="text"
-              placeholder="Tìm Đầm dạ hội, Blazer linen, Áo dài gấm..."
-              className="flex-1 bg-transparent border-none outline-none font-ui text-xs text-white placeholder:text-stone-300 font-medium min-w-0"
+              placeholder={rotatingPlaceholders[currentPlaceholderIndex]}
+              className="flex-1 bg-transparent border-none outline-none font-ui text-xs text-white placeholder:text-stone-400 font-medium min-w-0"
             />
             <Link
               href="/shop"
@@ -394,8 +417,7 @@ export default function GoogleFlowFashionHero() {
           </div>
 
           {/* Quick Trending Tags */}
-          <div className="flex items-center justify-center gap-1.5 flex-wrap">
-            <span className="text-[9px] uppercase font-bold text-stone-300 font-ui">Xu hướng:</span>
+          <div className="flex items-center justify-center gap-1.5 flex-wrap pt-0.5">
             {[
               { label: "Đầm Dạ Hội", q: "dạ hội" },
               { label: "Set Tweed", q: "tweed" },
@@ -405,7 +427,7 @@ export default function GoogleFlowFashionHero() {
               <Link
                 key={idx}
                 href={`/shop?q=${encodeURIComponent(chip.q)}`}
-                className="text-[9px] font-bold text-stone-200 hover:text-white bg-black/40 hover:bg-white/20 px-2.5 py-0.5 rounded-full border border-white/15 transition-colors font-ui"
+                className="text-[9px] font-bold text-stone-300 hover:text-white bg-black/40 hover:bg-white/20 px-2.5 py-0.5 rounded-full border border-white/15 transition-colors font-ui"
               >
                 #{chip.label}
               </Link>
@@ -413,23 +435,23 @@ export default function GoogleFlowFashionHero() {
           </div>
         </div>
 
-        {/* 🌿 Live ESG Mini Metrics Ticker */}
+        {/* 🌿 Live ESG Mini Metrics Ticker (Defensible Academic Labels) */}
         <div className="mt-7 pt-4 border-t border-white/15 grid grid-cols-3 gap-4 sm:gap-8 text-center w-full max-w-lg">
           <div>
             <p className="font-heading font-extrabold text-base sm:text-lg text-white">2.450+</p>
-            <p className="text-[9px] uppercase font-bold text-stone-300 font-ui">Trang Phục</p>
+            <p className="text-[9px] uppercase font-bold text-stone-300 font-ui">Trang Phục Tủ Đồ</p>
           </div>
           <div>
             <p className="font-heading font-extrabold text-base sm:text-lg text-[#A3E39F] flex items-center justify-center gap-1">
-              <Leaf size={13} className="text-[#A3E39F]" /> -18.2 Tấn
+              <Leaf size={13} className="text-[#A3E39F]" /> ~18.2 Tấn
             </p>
-            <p className="text-[9px] uppercase font-bold text-stone-300 font-ui">Giảm CO₂</p>
+            <p className="text-[9px] uppercase font-bold text-stone-300 font-ui">Ước Tính Giảm CO₂</p>
           </div>
           <div>
             <p className="font-heading font-extrabold text-base sm:text-lg text-emerald-300 flex items-center justify-center gap-1">
-              <ShieldCheck size={13} className="text-emerald-300" /> 98%
+              <ShieldCheck size={13} className="text-emerald-300" /> 100%
             </p>
-            <p className="text-[9px] uppercase font-bold text-stone-300 font-ui">Hài Lòng</p>
+            <p className="text-[9px] uppercase font-bold text-stone-300 font-ui">Két Escrow Bảo Chứng</p>
           </div>
         </div>
 

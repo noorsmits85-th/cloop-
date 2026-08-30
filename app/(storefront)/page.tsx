@@ -31,6 +31,7 @@ import VisualSearchModal from "@/app/components/VisualSearchModal";
 import LivePulseTicker from "@/app/components/LivePulseTicker";
 import EcoImpactCalculator from "@/app/components/EcoImpactCalculator";
 import GoogleFlowFashionHero from "@/app/components/GoogleFlowFashionHero";
+import SignatureCircularFlow from "@/app/components/SignatureCircularFlow";
 import MarketingLoopShowcase from "@/app/components/MarketingLoopShowcase";
 
 export default function Home() {
@@ -184,8 +185,11 @@ export default function Home() {
   return (
     <main className="min-h-screen overflow-x-hidden antialiased bg-[#FAF9F5] text-[#0A2517] pb-28 md:pb-0 font-body">
 
-      {/* SECTION 1: HERO - GOOGLE FLOW LIVING FASHION MOSAIC GRID */}
+      {/* SECTION 1: HERO - GOOGLE FLOW LIVING FASHION MOSAIC GRID (01 - DISCOVER) */}
       <GoogleFlowFashionHero />
+
+      {/* 🌟 SECTION 1.2: THE SIGNATURE CIRCULAR FLOW (02 - UNDERSTAND: MỘT MÓN ĐỒ. VÔ TẬN VÒNG ĐỜI.) */}
+      <SignatureCircularFlow />
 
       {/* 🔴 LIVE CIRCULAR PULSE TICKER: Nhịp đập tuần hoàn */}
       <LivePulseTicker />
