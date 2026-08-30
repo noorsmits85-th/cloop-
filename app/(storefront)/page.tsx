@@ -31,6 +31,7 @@ import VisualSearchModal from "@/app/components/VisualSearchModal";
 import LivePulseTicker from "@/app/components/LivePulseTicker";
 import EcoImpactCalculator from "@/app/components/EcoImpactCalculator";
 import GoogleFlowFashionHero from "@/app/components/GoogleFlowFashionHero";
+import SignatureCircularFlow from "@/app/components/SignatureCircularFlow";
 import MarketingLoopShowcase from "@/app/components/MarketingLoopShowcase";
 
 export default function Home() {
@@ -186,6 +187,9 @@ export default function Home() {
 
       {/* SECTION 1: HERO - GOOGLE FLOW LIVING FASHION MOSAIC GRID */}
       <GoogleFlowFashionHero />
+
+      {/* 🌟 SECTION 1.2: GOOGLE FLOW SIGNATURE ANIMATED TRANSITION (MỘT MÓN ĐỒ. VÔ TẬN VÒNG ĐỜI.) */}
+      <SignatureCircularFlow />
 
       {/* 🔴 LIVE CIRCULAR PULSE TICKER: Nhịp đập tuần hoàn */}
       <LivePulseTicker />
