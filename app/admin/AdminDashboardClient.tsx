@@ -23,7 +23,7 @@ import {
   Layers,
   ChevronRight
 } from "lucide-react";
-import { searchUserByEmail, pumpCoins } from "@/app/actions/admin";
+import { searchUserByEmail, pumpCoins, triggerFastEscrowReleaseAction } from "@/app/actions/admin";
 
 interface AdminDashboardClientProps {
   currentAdmin: {
@@ -60,6 +60,26 @@ export default function AdminDashboardClient({
   const [isSearching, setIsSearching] = useState(false);
   const [isPumping, setIsPumping] = useState(false);
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
+
+  const [isReleasingEscrow, setIsReleasingEscrow] = useState(false);
+  const [escrowResult, setEscrowResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  const handleTriggerFastEscrowRelease = async () => {
+    setIsReleasingEscrow(true);
+    setEscrowResult(null);
+    try {
+      const res = await triggerFastEscrowReleaseAction({ minutesThreshold: 10 });
+      if (res.success) {
+        setEscrowResult({ success: true, message: res.message || "Đã giải ngân thành công!" });
+      } else {
+        setEscrowResult({ success: false, message: res.error || "Lỗi khi giải ngân" });
+      }
+    } catch (err: any) {
+      setEscrowResult({ success: false, message: err.message || "Lỗi hệ thống" });
+    } finally {
+      setIsReleasingEscrow(false);
+    }
+  };
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -345,6 +365,44 @@ export default function AdminDashboardClient({
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* VŨ KHÍ PITCHING MỚI: BỘ KÍCH HOẠT NHẢ TIỀN KÉT ESCROW (FAST ESCROW RELEASE 10M) */}
+          <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-4 border-b border-stone-100">
+              <div>
+                <div className="inline-flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-wider text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 font-mono mb-1">
+                  <Zap size={11} className="text-emerald-700" /> Cơ Chế Nhả Tiền Tự Động (Sandbox & Techfest Demo)
+                </div>
+                <h3 className="text-base font-bold font-heading text-stone-900">
+                  Bộ Kích Hoạt Giải Ngân Két Escrow (Cửa Sổ 10 Phút / Tức Thì)
+                </h3>
+                <p className="text-xs text-stone-500 font-light">
+                  Mô phỏng thực tế: Khi khách hoàn tất trả đồ, hệ thống tự động nhả 100% tiền cọc về ví khách và chuyển tiền thuê cho chủ tủ.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleTriggerFastEscrowRelease}
+                disabled={isReleasingEscrow}
+                className="px-5 py-2.5 rounded-2xl text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer active:scale-95 bg-[#183A2D] hover:bg-[#112a20] text-white shadow-emerald-900/20 disabled:opacity-50"
+              >
+                {isReleasingEscrow ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} className="text-amber-400" />}
+                {isReleasingEscrow ? "Đang quét & giải ngân..." : "💸 KÍCH HOẠT NHẢ TIỀN ESCROW VỀ VÍ NGAY"}
+              </button>
+            </div>
+
+            {escrowResult && (
+              <div className={`p-4 rounded-2xl border text-xs font-medium flex items-center gap-2 ${
+                escrowResult.success 
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-900" 
+                  : "bg-rose-50 border-rose-200 text-rose-900"
+              }`}>
+                <CheckCircle2 size={16} className="text-emerald-700 shrink-0" />
+                <span>{escrowResult.message}</span>
+              </div>
+            )}
           </div>
 
           {/* VŨ KHÍ PITCHING 2: BẢNG ĐỐI SOÁT BLOCK 5K VẬN CHUYỂN GHN */}

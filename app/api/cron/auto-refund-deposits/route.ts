@@ -38,16 +38,19 @@ export async function GET(req: Request) {
   }
 
   try {
-    // 2. Mốc thời gian 48 giờ trước
-    const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+    // 2. Mốc thời gian (Mặc định 48h, hoặc 10 phút nếu ở chế độ Fast Demo/Sandbox)
+    const isFastDemo = url.searchParams.get("fast") === "10m" || process.env.DEMO_FAST_REFUND === "true";
+    const minutesThreshold = isFastDemo ? 10 : 48 * 60;
+    const cutoffTime = new Date(Date.now() - minutesThreshold * 60 * 1000);
 
-    // 3. Tìm các đơn thuê đã trả đồ (BORROWER_RETURNED) quá 48h, có tiền cọc > 0 và KHÔNG CÓ KHIẾU NẠI ĐANG MỞ
+    // 3. Tìm các đơn thuê đã trả đồ (BORROWER_RETURNED) quá ngưỡng thời gian, có tiền cọc > 0 và KHÔNG CÓ KHIẾU NẠI ĐANG MỞ
     const eligibleRentals = await prisma.rentalHistory.findMany({
       where: {
         status: "BORROWER_RETURNED",
-        actual_return_date: {
-          lte: fortyEightHoursAgo,
-        },
+        OR: [
+          { actual_return_date: { lte: cutoffTime } },
+          { updatedAt: { lte: cutoffTime } },
+        ],
         disputes: {
           none: {
             status: { in: ["PENDING_REVIEW", "DISPUTED"] },
