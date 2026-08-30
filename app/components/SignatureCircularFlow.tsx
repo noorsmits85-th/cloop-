@@ -121,7 +121,7 @@ export default function SignatureCircularFlow() {
         <div className="text-center max-w-2xl mx-auto space-y-3.5">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white border border-emerald-200/80 text-emerald-900 text-[10px] font-bold uppercase tracking-[0.25em] font-ui shadow-2xs">
             <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
-            GOOGLE FLOW • FASHION IN A LOOP
+            TRIẾT LÝ TUẦN HOÀN CLOOP
           </div>
 
           <h2 className="font-heading text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-[#183A2D] tracking-tight leading-[1.1]">

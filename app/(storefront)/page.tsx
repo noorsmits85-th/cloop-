@@ -185,13 +185,10 @@ export default function Home() {
   return (
     <main className="min-h-screen overflow-x-hidden antialiased bg-[#FAF9F5] text-[#0A2517] pb-28 md:pb-0 font-body">
 
-      {/* SECTION 1: HERO - GOOGLE FLOW LIVING FASHION MOSAIC GRID */}
+      {/* SECTION 1: HERO - LIVING FASHION MOSAIC GRID */}
       <GoogleFlowFashionHero />
 
-      {/* 🌟 SECTION 1.2: GOOGLE FLOW SIGNATURE ANIMATED TRANSITION (MỘT MÓN ĐỒ. VÔ TẬN VÒNG ĐỜI.) */}
-      <SignatureCircularFlow />
-
-      {/* 🔴 LIVE CIRCULAR PULSE TICKER: Nhịp đập tuần hoàn */}
+      {/* 🔴 LIVE CIRCULAR PULSE TICKER: Nhịp đập tuần hoàn (Dải chạy gắn liền ngay dưới Hero) */}
       <LivePulseTicker />
 
       {/* 📸 DẢI CUỘN TRANG PHỤC THỊNH HÀNG ĐANG ĐƯỢC THUÊ */}
@@ -259,6 +256,9 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* 🌟 SECTION 1.5: TRIẾT LÝ TUẦN HOÀN CLOOP - MỘT MÓN ĐỒ. VÔ TẬN VÒNG ĐỜI. (TỰ ĐỘNG CHUYỂN CẢNH MƯỢT MÀ) */}
+      <SignatureCircularFlow />
 
       {/* SECTION 2: BỘ SƯU TẬP THEO CẢM XÚC & DỊP SỰ KIỆN */}
       <section className="w-full max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-10 md:py-12">
