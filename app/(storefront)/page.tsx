@@ -16,6 +16,8 @@ import {
   ShieldCheck, 
   RotateCcw, 
   Leaf, 
+  Lock,
+  Award,
   Compass,
   SlidersHorizontal,
   Tag
@@ -232,8 +234,27 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 🌿 SECTION 1.5: QUẢNG BÁ MARKETING THỜI TRANG TUẦN HOÀN & HƯỚNG DẪN 4 BƯỚC */}
-      <MarketingLoopShowcase />
+      {/* 🛡️ TRUST BAR MINIMAL 1 DÒNG */}
+      <div className="w-full bg-[#FAF9F5] border-b border-stone-200/60 py-3 text-xs font-ui">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 flex flex-wrap items-center justify-between gap-3 text-stone-600">
+          <div className="flex items-center gap-1.5">
+            <ShieldCheck size={14} className="text-emerald-700" />
+            <span className="font-semibold text-[#183A2D]">Két Cọc Escrow:</span> Hoàn 100% khi trả đồ
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Lock size={14} className="text-emerald-700" />
+            <span className="font-semibold text-[#183A2D]">Định Danh KYC:</span> Rút tiền STK 30s
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Leaf size={14} className="text-emerald-700" />
+            <span className="font-semibold text-[#183A2D]">Điểm Green Pts:</span> Giảm đến 50% cọc
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Award size={14} className="text-emerald-700" />
+            <span className="font-semibold text-[#183A2D]">Kiểm Định Thật 100%:</span> Bảo hiểm trang phục
+          </div>
+        </div>
+      </div>
 
       {/* SECTION 2: BỘ SƯU TẬP THEO CẢM XÚC & DỊP SỰ KIỆN */}
       <section className="w-full max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-10 md:py-12">
@@ -514,6 +535,9 @@ export default function Home() {
         </div>
       </section>
 
+      {/* 🌿 SECTION 4.5: QUY TRÌNH THỜI TRANG TUẦN HOÀN 4 BƯỚC (ẢNH LOOKBOOK THỜI TRANG TRỰC QUAN) */}
+      <MarketingLoopShowcase />
+
       {/* SECTION 5: HỘ CHIẾU THỜI TRANG SỐ (DIGITAL GARMENT PASSPORT) */}
       <section className="w-full py-12 md:py-16 bg-[#F3EFE6] border-y border-stone-200/80">
         <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
@@ -699,23 +723,17 @@ export default function Home() {
       <section className="w-full py-12 md:py-16 bg-[#F5F2EB] border-t border-stone-200/80">
         <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
           
-          {/* Header */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-3 border-b border-stone-300/60 pb-3">
-            <div>
-              <span className="text-[9.5px] uppercase font-bold tracking-widest text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-md border border-emerald-200 font-ui mb-1 inline-block">
-                KÝ ỨC & CÂU CHUYỆN CLOOP
-              </span>
-              <h2 className="text-xl md:text-2xl font-heading font-extrabold text-[#0A2517] tracking-normal mt-1">
-                Bảo Tàng Ký Ức Tuần Hoàn
-              </h2>
-            </div>
-
-            <Link 
-              href="/blog" 
-              className="font-ui text-[11px] font-bold uppercase tracking-widest text-[#183A2D] hover:underline flex items-center gap-1"
-            >
-              Vào đọc toàn bộ nhật ký <ArrowRight size={12} />
-            </Link>
+          {/* Header Canh Giữa Chuẩn Xác */}
+          <div className="flex flex-col items-center text-center mb-8 max-w-xl mx-auto">
+            <span className="text-[9.5px] uppercase font-bold tracking-widest text-emerald-800 bg-emerald-100/80 px-2.5 py-0.5 rounded-md border border-emerald-200 font-ui mb-1.5 inline-block">
+              KÝ ỨC & CÂU CHUYỆN CLOOP
+            </span>
+            <h2 className="text-xl md:text-3xl font-heading font-extrabold text-[#0A2517] tracking-normal mb-1.5">
+              Bảo Tàng Ký Ức Tuần Hoàn
+            </h2>
+            <p className="text-xs sm:text-sm text-stone-600 font-body font-light">
+              Lắng nghe những mảnh ký ức trước khi trang phục bước vào hành trình mới.
+            </p>
           </div>
 
           {/* Stories 3 Columns */}
@@ -781,6 +799,16 @@ export default function Home() {
               </div>
             </div>
 
+          </div>
+
+          {/* Nút Xem Thêm Canh Giữa */}
+          <div className="flex justify-center mt-7">
+            <Link 
+              href="/blog" 
+              className="inline-flex items-center gap-1.5 px-6 py-2.5 bg-[#0A2517] hover:bg-emerald-950 text-white rounded-xl text-xs uppercase tracking-widest font-bold transition-all font-ui shadow-2xs"
+            >
+              Vào Đọc Toàn Bộ Ký Ức <ArrowRight size={13} />
+            </Link>
           </div>
         </div>
       </section>
