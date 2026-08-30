@@ -142,27 +142,15 @@ export default async function WalletPage({
     createdAt: item.createdAt?.toISOString ? item.createdAt.toISOString() : new Date().toISOString()
   }));
 
-  // Nếu người dùng có Lá từ hoàn tất đơn thuê nhưng chưa có dòng log trong coin_ledger_entries:
-  if (userCoins > 100 && !formattedCoinLedger.some(item => item.description?.includes("thuê") || item.amount === (userCoins - 100))) {
-    formattedCoinLedger.unshift({
-      id: "rental-bonus-synthetic",
-      type: "QUEST_REWARD",
-      amount: userCoins - 100,
-      balanceAfter: userCoins,
-      description: `🎁 Thưởng +${userCoins - 100} Xu Lá tuần hoàn khi hoàn tất đơn thuê`,
-      createdAt: new Date().toISOString()
-    });
-  }
-
-  // Luôn đảm bảo có dòng log Quà chào mừng tân thủ (+100 Lá) ở cuối lịch sử nếu số dư >= 100
-  if (userCoins >= 100 && !formattedCoinLedger.some(item => item.description?.includes("chào mừng") || item.amount === 100)) {
+  // Nếu chưa có giao dịch nào nhưng tài khoản đã có 100 Lá ban đầu -> hiển thị quà chào mừng
+  if (formattedCoinLedger.length === 0 && userCoins >= 100) {
     formattedCoinLedger.push({
       id: "welcome-bonus-synthetic",
       type: "QUEST_REWARD",
       amount: 100,
       balanceAfter: 100,
       description: "🎁 Quà kích hoạt chào mừng thành viên mới (+100 Lá)",
-      createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+      createdAt: new Date().toISOString()
     });
   }
 
