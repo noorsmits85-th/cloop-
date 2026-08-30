@@ -191,23 +191,41 @@ export async function completeOrderAction(orderId: string) {
         });
       }
 
-      // 💸 2. Thanh Toán Tiền Thuê (Rental Fee) cho Chủ Tủ (trừ 10% phí nền tảng):
-      if (rentalFee > 0) {
-        const lenderEarnings = rentalFee - platformFee;
+      // 💸 2. Thanh Toán Tiền Thuê (Rental Fee) & Thưởng +25 Xu Lá cho Chủ Tủ:
+      const ownerBonusCoins = 25; // 🎁 Thưởng 25 Xu Lá cho Chủ Tủ
+      const lenderEarnings = rentalFee > 0 ? (rentalFee - platformFee) : 0;
 
-        await tx.user.update({
-          where: { id: userAuth.id }, // userAuth is the owner according to our IDOR check
-          data: { walletBalance: { increment: lenderEarnings } }
+      const updatedOwner = await tx.user.update({
+        where: { id: userAuth.id },
+        data: { 
+          walletBalance: lenderEarnings > 0 ? { increment: lenderEarnings } : undefined,
+          cloopCoins: { increment: ownerBonusCoins }
+        },
+        select: { cloopCoins: true }
+      });
+      
+      try {
+        await tx.coinLedgerEntry.create({
+          data: {
+            userId: userAuth.id,
+            type: "QUEST_REWARD",
+            amount: ownerBonusCoins,
+            balanceAfter: updatedOwner.cloopCoins,
+            description: `🎁 Thưởng +${ownerBonusCoins} Xu Lá cho Chủ tủ khi hoàn tất đơn cho thuê #${orderId.slice(0, 8).toUpperCase()}`,
+            metadata: { orderId, type: "OWNER_RENTAL_COMPLETION" }
+          }
         });
-        
-        if (invoiceId) {
-          await tx.ledgerTransaction.create({
-            data: { invoiceId, type: 'PAYOUT_OUT', amount: lenderEarnings, description: `Thanh toán tiền thuê đơn ${orderId}` }
-          });
-          await tx.ledgerTransaction.create({
-            data: { invoiceId, type: 'FEE_RETAINED', amount: platformFee, description: `Phí nền tảng đơn ${orderId}` }
-          });
-        }
+      } catch (coinErr) {
+        console.warn("Owner coin ledger creation warning:", coinErr);
+      }
+
+      if (lenderEarnings > 0 && invoiceId) {
+        await tx.ledgerTransaction.create({
+          data: { invoiceId, type: 'PAYOUT_OUT', amount: lenderEarnings, description: `Thanh toán tiền thuê đơn ${orderId}` }
+        });
+        await tx.ledgerTransaction.create({
+          data: { invoiceId, type: 'FEE_RETAINED', amount: platformFee, description: `Phí nền tảng đơn ${orderId}` }
+        });
       }
       
       // 💸 3. Thu phí Ship cho Platform:
