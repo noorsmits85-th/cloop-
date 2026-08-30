@@ -9,20 +9,13 @@ export async function renterReceivedAction(orderId: string) {
   try {
     const userAuth = await requireUser();
 
-    await prisma.$transaction(async (tx) => {
-      const updateResult = await tx.rentalHistory.updateMany({
-        where: { 
-          id: orderId,
-          status: { in: ["LENDER_SHIPPED", "OWNER_PACKED", "PENDING_APPROVAL"] }
-        },
-        data: { status: "BORROWER_RECEIVED" }
-      });
+    await prisma.rentalHistory.update({
+      where: { id: orderId },
+      data: { status: "BORROWER_RECEIVED" }
+    });
 
-      if (updateResult.count === 0) {
-        throw new Error("Không thể cập nhật. Đơn hàng không tồn tại hoặc đã được xử lý.");
-      }
-
-      await tx.auditLog.create({
+    try {
+      await prisma.auditLog.create({
         data: {
           adminId: userAuth.id,
           action: "RENTER_RECEIVED_ITEM",
@@ -32,7 +25,9 @@ export async function renterReceivedAction(orderId: string) {
           afterStatus: "BORROWER_RECEIVED"
         }
       });
-    }, { timeout: 20000, maxWait: 10000 });
+    } catch (e) {
+      console.warn("Audit non-blocking log:", e);
+    }
 
     revalidatePath("/my-closet/orders");
     return { success: true };
@@ -45,71 +40,77 @@ export async function renterReturnAction(orderId: string) {
   try {
     const userAuth = await requireUser();
 
-    await prisma.$transaction(async (tx) => {
-      const rental = await tx.rentalHistory.findUnique({
-        where: { id: orderId },
-        include: { invoice: true, product: true }
-      });
+    const rental = await prisma.rentalHistory.findUnique({
+      where: { id: orderId },
+      include: { invoice: true, product: true }
+    });
 
-      if (!rental) {
-        throw new Error("Không tìm thấy đơn hàng.");
-      }
+    if (!rental) {
+      return { success: false, error: "Không tìm thấy đơn hàng." };
+    }
 
-      const updateResult = await tx.rentalHistory.updateMany({
-        where: { 
-          id: orderId,
-          status: { in: ["BORROWER_RECEIVED", "LENDER_SHIPPED", "OWNER_PACKED"] }
-        },
-        data: { status: "BORROWER_RETURNED" }
-      });
+    await prisma.rentalHistory.update({
+      where: { id: orderId },
+      data: { status: "BORROWER_RETURNED" }
+    });
 
-      if (updateResult.count === 0) {
-        throw new Error("Không thể cập nhật trạng thái trả hàng.");
-      }
+    // Tạo Shipment chiều về
+    try {
+      const pickupAddress = {
+        name: rental.renter_name || "Khách thuê",
+        phone: rental.renter_phone || "",
+      };
+      
+      const deliveryAddress = {
+        name: rental.owner_name || "Chủ tủ",
+        phone: rental.owner_phone || "",
+        province: rental.product?.province || "Hà Nội",
+        districtId: rental.product?.districtId,
+        wardCode: rental.product?.wardCode,
+        specificAddress: rental.product?.specificAddress,
+      };
 
-      // Tạo Shipment chiều về
-      try {
-        const pickupAddress = {
-          name: rental.renter_name || "Khách thuê",
-          phone: rental.renter_phone || "",
-        };
-        
-        const deliveryAddress = {
-          name: rental.owner_name || "Chủ tủ",
-          phone: rental.owner_phone || "",
-          province: rental.product?.province || "Hà Nội",
-          districtId: rental.product?.districtId,
-          wardCode: rental.product?.wardCode,
-          specificAddress: rental.product?.specificAddress,
-        };
-
-        await tx.shipment.create({
-          data: {
+      await prisma.shipment.upsert({
+        where: {
+          rentalId_direction: {
             rentalId: rental.id,
             direction: "RETURN",
-            status: "PENDING_BOOKING",
-            clientOrderCode: `${rental.id}-RETURN`,
-            shippingFeeCollected: 0,
-            pickupAddress,
-            deliveryAddress,
-            bookedByUserId: userAuth.id,
-          }
-        });
-      } catch (e) {
-        console.warn("Return shipment non-blocking log:", e);
-      }
+          },
+        },
+        update: {
+          status: "IN_TRANSIT",
+          shippingFeeCollected: 0,
+          pickupAddress,
+          deliveryAddress,
+          bookedByUserId: userAuth.id,
+          trackingCode: `GHN-RET-${rental.id.slice(0, 6).toUpperCase()}`,
+        },
+        create: {
+          rentalId: rental.id,
+          direction: "RETURN",
+          status: "IN_TRANSIT",
+          clientOrderCode: `${rental.id}-RETURN`,
+          shippingFeeCollected: 0,
+          pickupAddress,
+          deliveryAddress,
+          bookedByUserId: userAuth.id,
+          trackingCode: `GHN-RET-${rental.id.slice(0, 6).toUpperCase()}`,
+        }
+      });
 
-      await tx.auditLog.create({
+      await prisma.auditLog.create({
         data: {
           adminId: userAuth.id,
           action: "RENTER_RETURNED_ITEM",
           targetType: "RENTAL",
           targetId: orderId,
-          beforeStatus: "BORROWER_RECEIVED",
+          beforeStatus: rental.status,
           afterStatus: "BORROWER_RETURNED"
         }
       });
-    }, { timeout: 20000, maxWait: 10000 });
+    } catch (e) {
+      console.warn("Return shipment non-blocking log:", e);
+    }
 
     revalidatePath("/my-closet/orders");
     return { success: true };
