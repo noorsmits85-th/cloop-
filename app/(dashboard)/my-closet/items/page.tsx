@@ -18,22 +18,47 @@ export default async function MyClosetItemsPage() {
 
   const products = await prisma.product.findMany({
     where: { userId, isDeleted: false },
-    include: {
-      listings: {
-        where: { isDeleted: false }
-      },
-      blogs: true,
-      rentalHistory: {
-        where: {
-          status: { in: ["BORROWER_RECEIVED", "BORROWER_RETURNED"] }
-        }
-      },
+    select: {
+      id: true,
+      title: true,
+      category: true,
+      size: true,
+      boostExpiresAt: true,
+      isHighlighted: true,
       images: {
+        select: { url: true, isPrimary: true },
         orderBy: [
           { isPrimary: 'desc' },
           { sortOrder: 'asc' },
           { createdAt: 'asc' }
         ]
+      },
+      listings: {
+        where: { isDeleted: false },
+        select: {
+          id: true,
+          listingType: true,
+          basePrice: true,
+          status: true
+        }
+      },
+      blogs: {
+        select: {
+          id: true,
+          title: true,
+          status: true
+        },
+        take: 1
+      },
+      rentalHistory: {
+        where: {
+          status: { in: ["BORROWER_RECEIVED", "BORROWER_RETURNED"] }
+        },
+        select: {
+          id: true,
+          status: true
+        },
+        take: 1
       }
     },
     orderBy: { createdAt: 'desc' }

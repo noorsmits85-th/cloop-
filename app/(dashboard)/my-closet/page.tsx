@@ -83,11 +83,13 @@ export default async function MyClosetOverviewPage() {
         status: "LENDER_COMPLETED",
         updatedAt: { gte: sevenDaysAgo }
       },
-      include: { 
+      select: {
+        updatedAt: true,
         product: {
-          include: {
+          select: {
             listings: {
               where: { listingType: "RENT" },
+              select: { basePrice: true },
               take: 1
             }
           }
@@ -100,6 +102,10 @@ export default async function MyClosetOverviewPage() {
         status: "SOLD",
         listingType: { in: ["SELL", "RECYCLE"] },
         updatedAt: { gte: sevenDaysAgo }
+      },
+      select: {
+        basePrice: true,
+        updatedAt: true
       }
     })
   ]);
