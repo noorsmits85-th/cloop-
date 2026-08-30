@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Shield } from 'lucide-react';
+import { X, Shield, Lock, Mail, User as UserIcon, Loader2 } from 'lucide-react';
 import { createClient } from '@/src/utils/supabase/client';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { loginWithCredentials, registerWithCredentials, fastLoginAction } from '@/app/(storefront)/login/actions';
+import { loginWithCredentials, registerWithCredentials } from '@/app/(storefront)/login/actions';
 
 export default function AuthModal({ 
   isOpen, 
@@ -18,7 +18,7 @@ export default function AuthModal({
   darkMode: boolean;
   onSuccess: (userSession: any) => void;
 }) {
-  const [mode, setMode] = useState<'LOGIN' | 'SIGNUP' | 'OTP' | 'FORGOT_PASSWORD'>('LOGIN');
+  const [mode, setMode] = useState<'LOGIN' | 'SIGNUP' | 'FORGOT_PASSWORD'>('LOGIN');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -28,55 +28,6 @@ export default function AuthModal({
 
   if (!isOpen) return null;
 
-  const handleGoogleLogin = async () => {
-    setLoading(true);
-    setErrorMsg('');
-    try {
-      const redirectTo = typeof window !== 'undefined' 
-        ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(searchParams.get('redirectTo') || '/my-closet')}` 
-        : undefined;
-      
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo,
-        }
-      });
-      if (error) throw error;
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Lỗi kết nối Google');
-      setLoading(false);
-    }
-  };
-
-  const handleFastLogin = async () => {
-    setLoading(true);
-    setErrorMsg('');
-    try {
-      const redirectTo = searchParams.get('redirectTo') || undefined;
-      const res = await fastLoginAction({ redirectTo });
-      if (res.error) throw new Error(res.error);
-      
-      onSuccess({ 
-        name: res.user?.name || 'Trang Hoàng', 
-        email: res.user?.email || 'th4212044@gmail.com', 
-        isLoggedIn: true,
-        id: res.user?.id
-      });
-      onClose();
-
-      if (res.redirectUrl && res.redirectUrl !== '/') {
-        router.push(res.redirectUrl);
-      } else {
-        router.refresh();
-      }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Lỗi đăng nhập nhanh');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
@@ -85,7 +36,7 @@ export default function AuthModal({
     
     const formData = new FormData(e.currentTarget);
     const email = (formData.get('email') as string || '').trim();
-    const password = formData.get('password') as string;
+    const password = (formData.get('password') as string || '');
     const name = (formData.get('username') as string || '').trim();
 
     try {
@@ -126,151 +77,171 @@ export default function AuthModal({
           router.refresh();
         }
       }
-      else if (mode === 'OTP') {
-        const { error } = await supabase.auth.signInWithOtp({
-          email,
-          options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
-          },
-        });
-        if (error) throw error;
-        setSuccessMsg('Đã gửi mã OTP (Magic Link) vào Email của bạn!');
-      }
       else if (mode === 'FORGOT_PASSWORD') {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
         });
         if (error) throw error;
-        setSuccessMsg('Đã gửi link khôi phục mật khẩu vào Email!');
+        setSuccessMsg('Đã gửi hướng dẫn khôi phục mật khẩu vào Email của bạn!');
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Có lỗi xảy ra.');
+      setErrorMsg(err.message || 'Có lỗi xảy ra, vui lòng kiểm tra lại.');
     } finally {
       setLoading(false);
     }
   };
 
-  const getTitle = () => {
-    if (mode === 'SIGNUP') return 'KÍCH HOẠT ID XANH CLOOP';
-    if (mode === 'LOGIN') return 'ĐĂNG NHẬP CLOOP';
-    if (mode === 'OTP') return 'ĐĂNG NHẬP BẰNG OTP';
-    if (mode === 'FORGOT_PASSWORD') return 'KHÔI PHỤC MẬT KHẨU';
-  };
-
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }} 
-        animate={{ opacity: 1, scale: 1 }} 
-        exit={{ opacity: 0, scale: 0.95 }} 
-        className={`p-8 rounded-[2.5rem] max-w-[420px] w-full text-center shadow-2xl relative space-y-5 mx-auto border ${darkMode ? "bg-[#18222B] border-[#2B3946]" : "bg-[#FAF8F3] border-[#E9E2D8]"}`}
+        initial={{ opacity: 0, scale: 0.95, y: 10 }} 
+        animate={{ opacity: 1, scale: 1, y: 0 }} 
+        exit={{ opacity: 0, scale: 0.95, y: 10 }} 
+        className={`p-8 rounded-[2rem] max-w-[420px] w-full text-center shadow-2xl relative space-y-6 mx-auto border transition-colors ${darkMode ? "bg-[#18222B] border-[#2B3946]" : "bg-[#FAF8F3] border-[#E9E2D8]"}`}
       >
-        <button type="button" onClick={onClose} className="absolute top-6 right-6 text-gray-400 hover:text-[#183A2D] transition">
+        <button 
+          type="button" 
+          onClick={onClose} 
+          className="absolute top-6 right-6 text-gray-400 hover:text-[#183A2D] dark:hover:text-white transition p-1"
+        >
           <X size={18} />
         </button>
         
-        <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center mb-2 mx-auto border border-emerald-200 shadow-sm">
-          <Shield size={20} className="animate-pulse" />
+        {/* Header Icon */}
+        <div className="w-12 h-12 rounded-2xl bg-[#183A2D]/10 text-[#183A2D] dark:text-emerald-400 flex items-center justify-center mx-auto border border-[#183A2D]/20 shadow-xs">
+          <Shield size={22} />
         </div>
         
+        {/* Title */}
         <div className="text-center space-y-1">
-          <h3 className="font-heading text-xl sm:text-2xl font-bold uppercase tracking-wide">
-            {getTitle()}
+          <h3 className="font-heading text-2xl font-bold uppercase tracking-wider text-[#183A2D] dark:text-white">
+            {mode === 'LOGIN' ? 'Đăng Nhập CLOOP' : mode === 'SIGNUP' ? 'Kích Hoạt ID Xanh' : 'Khôi Phục Mật Khẩu'}
           </h3>
-          <p className="text-[11px] text-gray-500">
-            {mode === 'SIGNUP' && 'Đăng ký tài khoản bảo mật để đồng bộ hóa và quản lý kệ đồ cá nhân.'}
-            {mode === 'LOGIN' && 'Chào mừng trở lại! Đăng nhập để tiếp tục khám phá tủ đồ xanh.'}
-            {mode === 'OTP' && 'Nhập email để nhận liên kết đăng nhập không cần mật khẩu.'}
-            {mode === 'FORGOT_PASSWORD' && 'Nhập email để nhận liên kết đặt lại mật khẩu của bạn.'}
+          <p className="text-[11px] text-gray-500 font-medium">
+            {mode === 'LOGIN' && 'Đồng bộ hóa tủ đồ và trải nghiệm thời trang tuần hoàn.'}
+            {mode === 'SIGNUP' && 'Tạo tài khoản ID Xanh để thuê đồ, quản lý tủ đồ & tích Xu Lá.'}
+            {mode === 'FORGOT_PASSWORD' && 'Nhập email để nhận liên kết đặt lại mật khẩu.'}
           </p>
         </div>
 
-        {/* ⚡ 1-CLICK FAST AUTH BUTTONS (GIỐNG TIKTOK / FACEBOOK) */}
-        {(mode === 'LOGIN' || mode === 'SIGNUP') && (
-          <div className="space-y-2.5 pt-1">
+        {/* Tab Switcher */}
+        {mode !== 'FORGOT_PASSWORD' && (
+          <div className="grid grid-cols-2 p-1 rounded-xl bg-stone-200/60 dark:bg-[#0F1720] border border-stone-200 dark:border-[#2B3946]">
             <button
               type="button"
-              disabled={loading}
-              onClick={handleFastLogin}
-              className="w-full flex items-center justify-center gap-2.5 py-3 px-4 rounded-2xl bg-gradient-to-r from-[#183A2D] to-[#2D5A47] text-white text-xs font-bold uppercase tracking-wider shadow-md hover:shadow-lg hover:scale-[1.01] transition active:scale-[0.99] disabled:opacity-50"
-            >
-              <span className="text-sm">⚡</span> Tiếp tục 1-Chạm (ID Xanh Tiêu Chuẩn)
-            </button>
-
-            <button
-              type="button"
-              disabled={loading}
-              onClick={handleGoogleLogin}
-              className={`w-full flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-2xl border text-xs font-bold tracking-wide transition shadow-xs hover:bg-white active:scale-[0.99] disabled:opacity-50 ${
-                darkMode ? "bg-[#0F1720] border-[#2B3946] text-white hover:bg-[#1c2834]" : "bg-white border-[#E9E2D8] text-stone-700 hover:border-stone-400"
+              onClick={() => { setMode('LOGIN'); setErrorMsg(''); setSuccessMsg(''); }}
+              className={`py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${
+                mode === 'LOGIN' 
+                  ? 'bg-white dark:bg-[#18222B] text-[#183A2D] dark:text-white shadow-xs' 
+                  : 'text-gray-500 hover:text-stone-800 dark:hover:text-gray-300'
               }`}
             >
-              <svg className="w-4 h-4" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-              </svg>
-              Tiếp tục với Google
+              Đăng Nhập
             </button>
-
-            <div className="flex items-center gap-3 py-1">
-              <div className="flex-1 h-[1px] bg-stone-200 dark:bg-[#2B3946]"></div>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">hoặc dùng Email</span>
-              <div className="flex-1 h-[1px] bg-stone-200 dark:bg-[#2B3946]"></div>
-            </div>
+            <button
+              type="button"
+              onClick={() => { setMode('SIGNUP'); setErrorMsg(''); setSuccessMsg(''); }}
+              className={`py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${
+                mode === 'SIGNUP' 
+                  ? 'bg-white dark:bg-[#18222B] text-[#183A2D] dark:text-white shadow-xs' 
+                  : 'text-gray-500 hover:text-stone-800 dark:hover:text-gray-300'
+              }`}
+            >
+              Đăng Ký
+            </button>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-1 text-left">
           {mode === 'SIGNUP' && (
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Biệt danh công khai</label>
-              <input type="text" name="username" autoComplete="username" required placeholder="Ví dụ: abc..." className={`w-full px-4 py-2.5 border rounded-xl text-xs font-medium outline-none transition-colors ${darkMode ? "bg-[#0F1720] border-[#2B3946] text-white focus:border-emerald-500" : "bg-[#F4F1EA] border-[#E9E2D8] text-[#183A2D] focus:border-[#183A2D] focus:bg-white"}`} />
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
+                <UserIcon size={12} /> Họ và tên / Biệt danh
+              </label>
+              <input 
+                type="text" 
+                name="username" 
+                autoComplete="name" 
+                required 
+                placeholder="Ví dụ: Trang Hoàng" 
+                className={`w-full px-4 py-2.5 border rounded-xl text-xs font-medium outline-none transition-all ${darkMode ? "bg-[#0F1720] border-[#2B3946] text-white focus:border-emerald-500" : "bg-white border-[#E9E2D8] text-[#183A2D] focus:border-[#183A2D] shadow-xs"}`} 
+              />
             </div>
           )}
 
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Địa chỉ Email</label>
-            <input type="email" name="email" autoComplete="email" required placeholder="member@cloop.vn" className={`w-full px-4 py-2.5 border rounded-xl text-xs font-medium outline-none transition-colors ${darkMode ? "bg-[#0F1720] border-[#2B3946] text-white focus:border-emerald-500" : "bg-[#F4F1EA] border-[#E9E2D8] text-[#183A2D] focus:border-[#183A2D] focus:bg-white"}`} />
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
+              <Mail size={12} /> Địa chỉ Email
+            </label>
+            <input 
+              type="email" 
+              name="email" 
+              autoComplete="email" 
+              required 
+              placeholder="member@cloop.vn" 
+              className={`w-full px-4 py-2.5 border rounded-xl text-xs font-medium outline-none transition-all ${darkMode ? "bg-[#0F1720] border-[#2B3946] text-white focus:border-emerald-500" : "bg-white border-[#E9E2D8] text-[#183A2D] focus:border-[#183A2D] shadow-xs"}`} 
+            />
           </div>
 
-          {(mode === 'LOGIN' || mode === 'SIGNUP') && (
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Mật khẩu bảo mật</label>
-              <input type="password" name="password" autoComplete="current-password" required placeholder="••••••••" className={`w-full px-4 py-2.5 border rounded-xl text-xs font-medium outline-none transition-colors ${darkMode ? "bg-[#0F1720] border-[#2B3946] text-white focus:border-emerald-500" : "bg-[#F4F1EA] border-[#E9E2D8] text-[#183A2D] focus:border-[#183A2D] focus:bg-white"}`} />
+          {mode !== 'FORGOT_PASSWORD' && (
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
+                  <Lock size={12} /> Mật khẩu bảo mật
+                </label>
+                {mode === 'LOGIN' && (
+                  <button 
+                    type="button" 
+                    onClick={() => { setMode('FORGOT_PASSWORD'); setErrorMsg(''); setSuccessMsg(''); }} 
+                    className="text-[10px] font-bold text-gray-400 hover:text-[#183A2D] transition hover:underline"
+                  >
+                    Quên mật khẩu?
+                  </button>
+                )}
+              </div>
+              <input 
+                type="password" 
+                name="password" 
+                autoComplete={mode === 'LOGIN' ? "current-password" : "new-password"} 
+                required 
+                placeholder="••••••••" 
+                className={`w-full px-4 py-2.5 border rounded-xl text-xs font-medium outline-none transition-all ${darkMode ? "bg-[#0F1720] border-[#2B3946] text-white focus:border-emerald-500" : "bg-white border-[#E9E2D8] text-[#183A2D] focus:border-[#183A2D] shadow-xs"}`} 
+              />
             </div>
           )}
 
-          {errorMsg && <p className="text-xs text-red-500 text-center font-medium bg-red-50 py-2 rounded-lg">{errorMsg}</p>}
-          {successMsg && <p className="text-xs text-emerald-600 text-center font-medium bg-emerald-50 py-2 rounded-lg">{successMsg}</p>}
+          {errorMsg && (
+            <p className="text-xs text-red-600 text-center font-semibold bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 py-2.5 px-3 rounded-xl">
+              {errorMsg}
+            </p>
+          )}
+          {successMsg && (
+            <p className="text-xs text-emerald-700 text-center font-semibold bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 py-2.5 px-3 rounded-xl">
+              {successMsg}
+            </p>
+          )}
 
-          <button disabled={loading} type="submit" className="w-full font-body text-xs font-bold uppercase tracking-widest bg-[#183A2D] text-white py-3.5 rounded-full shadow-md text-center hover:bg-[#254F3B] transition mt-2 disabled:opacity-50">
-            {loading ? 'ĐANG XỬ LÝ...' : mode === 'SIGNUP' ? 'KÍCH HOẠT TÀI KHOẢN NGAY' : mode === 'LOGIN' ? 'ĐĂNG NHẬP NGAY' : 'GỬI YÊU CẦU'}
+          <button 
+            disabled={loading} 
+            type="submit" 
+            className="w-full flex items-center justify-center gap-2 font-ui text-xs font-bold uppercase tracking-widest bg-[#183A2D] hover:bg-[#112a20] text-white py-3.5 rounded-full shadow-md hover:shadow-lg transition-all active:scale-[0.99] disabled:opacity-60 cursor-pointer mt-2"
+          >
+            {loading && <Loader2 size={16} className="animate-spin" />}
+            {loading ? 'ĐANG XỬ LÝ...' : mode === 'SIGNUP' ? 'KÍCH HOẠT TÀI KHOẢN' : mode === 'LOGIN' ? 'ĐĂNG NHẬP NGAY' : 'GỬI YÊU CẦU'}
           </button>
         </form> 
 
-        <div className="pt-3 border-t border-gray-200/50 flex flex-col space-y-2">
-          {mode === 'LOGIN' && (
-            <>
-              <button onClick={() => { setMode('FORGOT_PASSWORD'); setErrorMsg(''); setSuccessMsg(''); }} className="text-xs font-medium text-gray-500 hover:text-[#183A2D] transition">
-                Quên mật khẩu?
-              </button>
-              <button onClick={() => { setMode('OTP'); setErrorMsg(''); setSuccessMsg(''); }} className="text-xs font-medium text-emerald-700 hover:text-emerald-800 transition">
-                Đăng nhập bằng mã OTP (Email)
-              </button>
-              <button onClick={() => { setMode('SIGNUP'); setErrorMsg(''); setSuccessMsg(''); }} className="text-xs font-bold text-[#183A2D] hover:underline transition pt-2">
-                Chưa có tài khoản? Kích hoạt ngay
-              </button>
-            </>
-          )}
-          
-          {mode !== 'LOGIN' && (
-            <button onClick={() => { setMode('LOGIN'); setErrorMsg(''); setSuccessMsg(''); }} className="text-xs font-medium text-gray-500 hover:text-[#183A2D] transition">
-              Quay lại Đăng nhập bằng Mật khẩu
+        {mode === 'FORGOT_PASSWORD' && (
+          <div className="pt-2 text-center">
+            <button 
+              type="button" 
+              onClick={() => { setMode('LOGIN'); setErrorMsg(''); setSuccessMsg(''); }} 
+              className="text-xs font-bold text-[#183A2D] hover:underline"
+            >
+              ← Quay lại Đăng nhập
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </motion.div>
     </div>
   );
