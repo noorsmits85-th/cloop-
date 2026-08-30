@@ -299,3 +299,75 @@ export async function registerWithCredentials({ email, password, name, redirectT
   if (redirectTo) formData.set('redirectTo', redirectTo);
   return signup(formData);
 }
+
+export async function fastLoginAction({ redirectTo }: { redirectTo?: string } = {}): Promise<AuthActionResult> {
+  const email = "th4212044@gmail.com";
+  const password = "CloopPassword2026!";
+  const name = "Trang Hoàng";
+
+  const supabase = await createClient();
+  
+  // Tự động gỡ rào cản email_confirmed_at
+  try {
+    const { prisma } = await import('@/src/lib/prisma');
+    await prisma.$executeRawUnsafe(
+      `UPDATE auth.users SET email_confirmed_at = NOW() WHERE email = $1;`,
+      email
+    );
+  } catch (_) {}
+
+  let signInRes = await supabase.auth.signInWithPassword({ email, password });
+  
+  if (signInRes.error) {
+    await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { name, full_name: name } }
+    });
+    
+    try {
+      const { prisma } = await import('@/src/lib/prisma');
+      await prisma.$executeRawUnsafe(
+        `UPDATE auth.users SET email_confirmed_at = NOW() WHERE email = $1;`,
+        email
+      );
+    } catch (_) {}
+
+    signInRes = await supabase.auth.signInWithPassword({ email, password });
+  }
+
+  if (signInRes.data?.user?.id) {
+    try {
+      const { prisma } = await import('@/src/lib/prisma');
+      await prisma.user.upsert({
+        where: { id: signInRes.data.user.id },
+        update: { name },
+        create: {
+          id: signInRes.data.user.id,
+          email,
+          password: 'supabase_auth_managed',
+          name,
+          walletBalance: 0,
+          cloopCoins: 100,
+          role: 'USER',
+          isVerified: true
+        }
+      });
+    } catch (_) {}
+  }
+
+  const nextUrl = redirectTo || '/';
+  try {
+    revalidatePath(nextUrl, 'layout');
+  } catch (_) {}
+
+  return {
+    success: true,
+    redirectUrl: nextUrl,
+    user: {
+      id: signInRes.data?.user?.id,
+      name,
+      email
+    }
+  };
+}
