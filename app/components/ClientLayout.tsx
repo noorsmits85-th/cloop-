@@ -10,6 +10,7 @@ import {
   Home, PlusCircle, User, Loader2
 } from "lucide-react";
 import { createClient } from "@/src/utils/supabase/client"; 
+import { loginWithCredentials, registerWithCredentials } from "@/app/(storefront)/login/actions";
 import "../globals.css";
 import AiStylistChat from "./AiStylistChat"; 
 import PwaInstallPrompt from "./PwaInstallPrompt";
@@ -497,63 +498,61 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                       return;
                     }
 
-                    const name = fData.get("username") as string || ""; 
+                    const name = (fData.get("username") as string || "").trim(); 
                     
-                    if (!email.trim() || !password.trim() || (authMode === 'register' && !name.trim())) return;
+                    if (!email.trim() || !password.trim() || (authMode === 'register' && !name)) return;
 
                     if (authMode === 'login') {
-                      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-                        email: email.trim(),
-                        password: password
-                      });
+                      const redirectTo = searchParams.get('redirectTo') || undefined;
+                      const res = await loginWithCredentials({ email: email.trim(), password, redirectTo });
 
-                      if (authError) {
-                        alert(`Đăng nhập thất bại: Mật khẩu hoặc Email không chính xác.`);
+                      if (res.error) {
+                        alert(`Đăng nhập thất bại: ${res.error}`);
                         return;
                       }
 
-                      let userName = authData.user?.user_metadata?.name;
-                      if (!userName && authData.user?.id) {
-                        const { data: dbUser } = await supabase
-                          .from("profiles")
-                          .select("name")
-                          .eq("id", authData.user.id)
-                          .maybeSingle();
-                        
-                        if (dbUser?.name) {
-                          userName = dbUser.name;
-                          await supabase.auth.updateUser({ data: { name: userName } });
-                        }
+                      if (res.user) {
+                        setCurrentUser({
+                          name: res.user.name || email.split('@')[0],
+                          email: res.user.email || email,
+                          isLoggedIn: true,
+                          id: res.user.id
+                        });
                       }
-                      
+
                       setShowAuthModal(false);
-                      const redirectTo = searchParams.get('redirectTo');
-                      if (redirectTo) {
-                        router.push(redirectTo);
+                      if (res.redirectUrl && res.redirectUrl !== '/') {
+                        router.push(res.redirectUrl);
                       } else {
                         router.refresh();
                       }
                       
                     } else if (authMode === 'register') {
-                      const { data: authData, error: authError } = await supabase.auth.signUp({
-                        email: email.trim(),
-                        password: password,
-                        options: {
-                          data: { name: name.trim() }
-                        }
+                      const redirectTo = searchParams.get('redirectTo') || undefined;
+                      const res = await registerWithCredentials({ 
+                        email: email.trim(), 
+                        password, 
+                        name: name,
+                        redirectTo 
                       });
                       
-                      if (authError) {
-                        alert(`Đăng ký thất bại: ${authError.message}`);
+                      if (res.error) {
+                        alert(`Đăng ký thất bại: ${res.error}`);
                         return;
                       }
-                      
-                      if (!authData.user) return;
+
+                      if (res.user) {
+                        setCurrentUser({
+                          name: res.user.name || name || email.split('@')[0],
+                          email: res.user.email || email,
+                          isLoggedIn: true,
+                          id: res.user.id
+                        });
+                      }
 
                       setShowAuthModal(false);
-                      const redirectTo = searchParams.get('redirectTo');
-                      if (redirectTo) {
-                        router.push(redirectTo);
+                      if (res.redirectUrl && res.redirectUrl !== '/') {
+                        router.push(res.redirectUrl);
                       } else {
                         router.refresh();
                       }

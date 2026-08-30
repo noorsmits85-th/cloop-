@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Shield } from 'lucide-react';
 import { createClient } from '@/src/utils/supabase/client';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { loginWithCredentials, registerWithCredentials } from '@/app/(storefront)/login/actions';
 
 export default function AuthModal({ 
   isOpen, 
@@ -34,60 +35,44 @@ export default function AuthModal({
     setSuccessMsg('');
     
     const formData = new FormData(e.currentTarget);
-    const email = formData.get('email') as string;
+    const email = (formData.get('email') as string || '').trim();
     const password = formData.get('password') as string;
-    const name = formData.get('username') as string;
+    const name = (formData.get('username') as string || '').trim();
 
     try {
       if (mode === 'SIGNUP') {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              name: name,
-              full_name: name,
-            }
-          }
-        });
-        if (error) throw error;
+        const redirectTo = searchParams.get('redirectTo') || undefined;
+        const res = await registerWithCredentials({ email, password, name, redirectTo });
+        if (res.error) throw new Error(res.error);
 
-        if (data.session) {
-          onSuccess({ 
-            name: name || email.split('@')[0], 
-            email: email, 
-            isLoggedIn: true,
-            id: data.user?.id
-          });
-          onClose();
-          const redirectTo = searchParams.get('redirectTo');
-          if (redirectTo) {
-            router.push(redirectTo);
-          } else {
-            router.refresh();
-          }
+        onSuccess({ 
+          name: res.user?.name || name || email.split('@')[0], 
+          email: email, 
+          isLoggedIn: true,
+          id: res.user?.id
+        });
+        onClose();
+        if (res.redirectUrl && res.redirectUrl !== '/') {
+          router.push(res.redirectUrl);
         } else {
-          setSuccessMsg('Đăng ký thành công! Vui lòng kiểm tra Email để xác nhận.');
+          router.refresh();
         }
       } 
       else if (mode === 'LOGIN') {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        });
-        if (error) throw error;
+        const redirectTo = searchParams.get('redirectTo') || undefined;
+        const res = await loginWithCredentials({ email, password, redirectTo });
+        if (res.error) throw new Error(res.error);
         
         onSuccess({ 
-          name: data.user.user_metadata?.name || data.user.user_metadata?.full_name || email.split('@')[0], 
+          name: res.user?.name || email.split('@')[0], 
           email: email, 
           isLoggedIn: true,
-          id: data.user.id
+          id: res.user?.id
         });
         onClose();
 
-        const redirectTo = searchParams.get('redirectTo');
-        if (redirectTo) {
-          router.push(redirectTo);
+        if (res.redirectUrl && res.redirectUrl !== '/') {
+          router.push(res.redirectUrl);
         } else {
           router.refresh();
         }
