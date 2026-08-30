@@ -84,6 +84,15 @@ export function OrdersClient({
 
   const [escrowOrders, setEscrowOrders] = useState(initialEscrow);
   const [rentedOrders, setRentedOrders] = useState(initialRented);
+
+  useEffect(() => {
+    setEscrowOrders(initialEscrow);
+  }, [initialEscrow]);
+
+  useEffect(() => {
+    setRentedOrders(initialRented);
+  }, [initialRented]);
+
   const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "RETURNED" | "DISPUTED" | "COMPLETED">("ALL");
   const [hasMoreEscrow, setHasMoreEscrow] = useState(initialHasMoreEscrow);
   const [hasMoreRented, setHasMoreRented] = useState(initialHasMoreRented);
@@ -264,13 +273,15 @@ export function OrdersClient({
 
   const handleCompleteOrder = async (orderId: string) => {
     if (completingIds[orderId]) return; // 🔒 Guard against double-click
-    if (!confirm("Xác nhận bạn đã nhận lại đồ nguyên vẹn và kết thúc đơn hàng? (Tiền cọc sẽ được hoàn lại cho người thuê)")) return;
+    if (!confirm("Xác nhận bạn đã nhận lại đồ nguyên vẹn và kết thúc đơn hàng? (Két Escrow sẽ tự động hoàn 100% tiền cọc cho người thuê)")) return;
     
     setCompletingIds(prev => ({ ...prev, [orderId]: true }));
     try {
       const res = await completeOrderAction(orderId);
       if (res.success) {
-        toast.success("Đã hoàn tất đơn hàng!", { description: "Giao dịch đã kết thúc và tiền cọc đã được mở khóa." });
+        toast.success("🎉 Đã hoàn tất đơn hàng!", { description: "Két Escrow đã hoàn trả 100% tiền cọc và mở đồ cho thuê tiếp." });
+        setEscrowOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "LENDER_COMPLETED" } : o));
+        setRentedOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "LENDER_COMPLETED" } : o));
         router.refresh();
       } else {
         toast.error("Lỗi hoàn tất", { description: res.error });
@@ -284,13 +295,15 @@ export function OrdersClient({
 
   const handleRequestPickup = async (orderId: string) => {
     if (requestingPickupIds[orderId]) return;
-    if (!confirm("Xác nhận bạn đã đóng gói xong và sẵn sàng gọi Shipper tới lấy đồ?")) return;
+    if (!confirm("Xác nhận bạn đã đóng gói xong và sẵn sàng bàn giao cho Shipper lấy đồ?")) return;
     
     setRequestingPickupIds(prev => ({ ...prev, [orderId]: true }));
     try {
       const res = await requestPickupAction(orderId);
       if (res.success) {
-        toast.success("Đã báo hệ thống đóng gói xong!", { description: "Admin sẽ điều phối Shipper tới lấy đồ sớm nhất." });
+        toast.success("🚚 Đã bàn giao cho Shipper!", { description: "Đơn hàng đã chuyển sang trạng thái Đang Vận Chuyển." });
+        setEscrowOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "LENDER_SHIPPED" } : o));
+        setRentedOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "LENDER_SHIPPED" } : o));
         router.refresh();
       } else {
         toast.error("Lỗi xác nhận", { description: res.error });
@@ -310,7 +323,9 @@ export function OrdersClient({
     try {
       const res = await renterReceivedAction(orderId);
       if (res.success) {
-        toast.success("Đã xác nhận nhận hàng!", { description: "Chúc bạn có những trải nghiệm tuyệt vời với món đồ này." });
+        toast.success("👗 Đã xác nhận nhận đồ!", { description: "Thời gian gói thuê chính thức bắt đầu đếm ngược." });
+        setRentedOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "BORROWER_RECEIVED" } : o));
+        setEscrowOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "BORROWER_RECEIVED" } : o));
         router.refresh();
       } else {
         toast.error("Lỗi xác nhận", { description: res.error });
@@ -330,7 +345,9 @@ export function OrdersClient({
     try {
       const res = await renterReturnAction(orderId);
       if (res.success) {
-        toast.success("Đã báo hệ thống hoàn trả!", { description: "Hãy giao đồ cho Shipper để gửi về nhé." });
+        toast.success("🔄 Đã báo hệ thống hoàn trả!", { description: "Hãy giao đồ cho Shipper để gửi về nhé." });
+        setRentedOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "BORROWER_RETURNED" } : o));
+        setEscrowOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "BORROWER_RETURNED" } : o));
         router.refresh();
       } else {
         toast.error("Lỗi xác nhận", { description: res.error });
