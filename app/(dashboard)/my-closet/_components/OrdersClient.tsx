@@ -550,14 +550,32 @@ export function OrdersClient({
                           <div className="flex-1 flex gap-5">
                             <img src={order.product?.images?.[0]?.url || PLACEHOLDER_IMG} className="w-24 h-32 rounded-md object-cover bg-stone-50 border border-stone-100 shrink-0 shadow-sm" />
                             <div className="flex flex-col gap-1.5 justify-center">
-                              <span className="font-mono text-[9px] tracking-widest text-[#183A2D]/50 uppercase">ORD-{String(order.id).substring(0,8)}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-[9px] tracking-widest text-[#183A2D]/50 uppercase">ORD-{String(order.id).substring(0,8)}</span>
+                                <span className="text-[9.5px] font-mono text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60 font-semibold">
+                                  🚚 GHN-{String(order.id).substring(0,8).toUpperCase()}
+                                </span>
+                              </div>
                               <span className="font-medium text-[#183A2D] text-sm sm:text-base tracking-wide line-clamp-1">{order.product?.title || 'CLOOP Item'}</span>
-                              <div className="flex items-center gap-2 mt-1">
+                              <div className="flex items-center gap-2 mt-0.5">
                                 <span className="text-[10px] font-light tracking-wider text-stone-500">Khách thuê:</span>
                                 <span className="font-medium text-[#183A2D] text-[11px]">{order.renter?.name || `ID:${order.renterId?.substring(0,6)}`}</span>
                               </div>
+
+                              {/* Lộ trình & Lịch trình dự kiến (Shopee Standard) */}
+                              <div className="mt-2 p-2 rounded-lg bg-stone-50 border border-stone-200/60 text-[10.5px] text-stone-600 space-y-1">
+                                <div className="flex items-center gap-1.5">
+                                  <Truck size={12} className="text-emerald-700 shrink-0" />
+                                  <span>Giao từ: <strong>{order.product?.province || "Hà Nội"}</strong> → <strong>{order.buyerAddress ? order.buyerAddress.split(',').slice(-2).join(', ') : "Địa chỉ khách"}</strong></span>
+                                </div>
+                                <div className="text-[10px] text-emerald-800 font-mono flex items-center gap-2">
+                                  <span>Bắt đầu thuê: <strong>{order.startDate ? new Date(order.startDate).toLocaleDateString('vi-VN') : 'Khi nhận đồ'}</strong></span>
+                                  <span>•</span>
+                                  <span>Hạn trả: <strong>{order.endDate ? new Date(order.endDate).toLocaleDateString('vi-VN') : 'Dự kiến'}</strong></span>
+                                </div>
+                              </div>
                               
-                              <div className="flex flex-wrap gap-3 mt-4">
+                              <div className="flex flex-wrap gap-3 mt-3">
                                 {order.status === "PENDING_APPROVAL" && (
                                   <button 
                                     disabled={requestingPickupIds[order.id]}
@@ -737,14 +755,37 @@ export function OrdersClient({
                           <div className="flex-1 flex gap-5">
                             <img src={order.product?.images?.[0]?.url || PLACEHOLDER_IMG} className="w-24 h-32 rounded-md object-cover bg-stone-50 border border-stone-100 shrink-0 shadow-sm" />
                             <div className="flex flex-col gap-1.5 justify-center">
-                              <span className="font-mono text-[9px] tracking-widest text-slate-500 uppercase">ORD-{String(order.id).substring(0,8)}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-[9px] tracking-widest text-slate-500 uppercase">ORD-{String(order.id).substring(0,8)}</span>
+                                <span className="text-[9.5px] font-mono text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60 font-semibold">
+                                  🚚 GHN-{String(order.id).substring(0,8).toUpperCase()}
+                                </span>
+                              </div>
                               <span className="font-medium text-slate-900 text-sm sm:text-base tracking-wide line-clamp-1">{order.product?.title || 'CLOOP Item'}</span>
-                              <div className="flex items-center gap-2 mt-1">
+                              <div className="flex items-center gap-2 mt-0.5">
                                 <span className="text-[10px] font-light tracking-wider text-stone-500">Chủ đồ:</span>
                                 <span className="font-medium text-slate-800 text-[11px]">{order.product?.user?.name || `ID:${order.product?.userId?.substring(0,6)}`}</span>
                               </div>
+
+                              {/* Lộ trình & Lịch trình dự kiến (Shopee Standard) */}
+                              <div className="mt-2 p-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200/60 text-[10.5px] text-emerald-950 space-y-1">
+                                <div className="flex items-center gap-1.5">
+                                  <Truck size={12} className="text-emerald-700 shrink-0" />
+                                  <span>Gửi từ: <strong>{order.product?.province || "Hà Nội"}</strong> → Giao tới bạn</span>
+                                </div>
+                                <div className="text-[10px] text-emerald-800 font-mono flex flex-wrap items-center gap-2">
+                                  <span>Bắt đầu thuê: <strong>{order.startDate ? new Date(order.startDate).toLocaleDateString('vi-VN') : 'Khi nhận đồ'}</strong></span>
+                                  <span>•</span>
+                                  <span>Hạn trả: <strong>{order.endDate ? new Date(order.endDate).toLocaleDateString('vi-VN') : 'Dự kiến'}</strong></span>
+                                </div>
+                                {order.status === "LENDER_SHIPPED" && (
+                                  <p className="text-[9.5px] text-emerald-700 italic pt-0.5">
+                                    💡 Gói thuê chỉ bắt đầu tính giờ khi bạn bấm nút &quot;Đã nhận được đồ&quot; bên dưới.
+                                  </p>
+                                )}
+                              </div>
                               
-                              <div className="flex flex-wrap gap-3 mt-4">
+                              <div className="flex flex-wrap gap-3 mt-3">
                                 {order.status === "LENDER_SHIPPED" && (
                                   <button 
                                     disabled={receivingIds[order.id]}

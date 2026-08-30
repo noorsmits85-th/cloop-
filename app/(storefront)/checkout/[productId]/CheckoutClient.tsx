@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { SignedShippingQuote } from "@/src/utils/shipping";
 import { 
   Loader2, ShieldCheck, MapPin, Calendar, Clock, 
-  Check, ArrowRight, User, Phone, Home, Shirt, Tag, AlertCircle, Navigation, Package 
+  Check, ArrowRight, User, Phone, Home, Shirt, Tag, AlertCircle, Navigation, Package, Truck 
 } from "lucide-react";
 import Image from "next/image";
 
@@ -589,20 +589,42 @@ export default function CheckoutClient({
           </div>
         )}
 
-        {/* 2. CHỌN LỊCH DỰ KIẾN */}
+        {/* 2. LỊCH DỰ KIẾN NHẬN & TRẢ TRANG PHỤC */}
         {isRental && (
-          <div className="space-y-2">
+          <div className="space-y-3 pt-2">
             <div className="flex justify-between items-center">
               <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 font-ui">
                 2. Lịch Dự Kiến Nhận & Trả Trang Phục
               </label>
-              <span className="text-[10px] text-stone-400 font-ui">
-                {isInterProvincial ? "Tối thiểu 3 ngày chuẩn bị & vận chuyển" : "Nhận hàng sớm nhất ngày mai"}
+              <span className="text-[10px] text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60 font-ui">
+                {selectedQuote?.quote.serviceId === "direct_pickup" ? "Gặp nhận đồ trong ngày" : isInterProvincial ? "Dự kiến 2-3 ngày vận chuyển GHN" : "Giao nhanh 24h nội tỉnh"}
               </span>
             </div>
+
+            {/* Hộp Thông Báo Tiến Trình Vận Chuyển & Thời Gian Giao Dự Kiến (Shopee Standard) */}
+            <div className="p-3.5 rounded-xl bg-[#FAF9F5] border border-[#E9E2D8] space-y-2.5">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center text-xs gap-1">
+                <div className="flex items-center gap-1.5 text-stone-700">
+                  <Truck size={14} className="text-emerald-700 shrink-0" />
+                  <span>Lộ trình: <strong>{fromProvince || product.province || "Nghệ An"}</strong> → <strong>{selectedProvince?.name || "Địa chỉ nhận"}</strong></span>
+                </div>
+                <div className="text-[11px] text-emerald-800 font-medium font-mono">
+                  Dự kiến giao: <strong>{formatDateVN(earliestDateObj)}</strong> {isInterProvincial && ` - ${formatDateVN(new Date(Date.now() + 3 * 86400000))}`}
+                </div>
+              </div>
+
+              {/* Cam kết thời gian thuê chỉ tính từ lúc nhận đồ */}
+              <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-lg p-2.5 flex items-start gap-2 text-[11px] text-emerald-950">
+                <ShieldCheck size={15} className="text-emerald-700 shrink-0 mt-0.5" />
+                <p className="leading-relaxed">
+                  <strong>Bảo chứng thời gian thuê (Chuẩn Shopee):</strong> Gói thuê <strong>{selectedTier?.days || 1} ngày</strong> chỉ bắt đầu tính giờ từ khi shipper giao đồ tận tay bạn. Toàn bộ thời gian bưu tá vận chuyển (1-3 ngày) đều <strong>hoàn toàn miễn phí</strong>!
+                </p>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[10.5px] text-stone-500 mb-1">Ngày bắt đầu nhận đồ:</label>
+                <label className="block text-[10.5px] text-stone-500 mb-1">Ngày bắt đầu mặc đồ (Dự kiến):</label>
                 <input 
                   type="date"
                   value={startDate}
@@ -612,7 +634,7 @@ export default function CheckoutClient({
                 />
               </div>
               <div className="bg-[#FAF9F5] px-3.5 py-2 rounded-xl border border-stone-200 flex flex-col justify-center">
-                <span className="text-[10px] text-stone-400 font-ui uppercase tracking-wider">Hạn hoàn trả đồ:</span>
+                <span className="text-[10px] text-stone-400 font-ui uppercase tracking-wider">Hạn hoàn trả đồ (Gói {selectedTier?.days || 1} ngày):</span>
                 <span className="text-xs font-bold text-[#183A2D] font-mono mt-0.5">
                   {calculateEndDate() || "Vui lòng chọn ngày bắt đầu"}
                 </span>
