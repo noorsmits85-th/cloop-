@@ -25,8 +25,7 @@ export async function middleware(request: NextRequest) {
 
   const isProtectedPage = 
     pathname.startsWith('/my-closet') ||
-    pathname.startsWith('/admin') ||
-    pathname.startsWith('/checkout');
+    pathname.startsWith('/admin');
 
   // Route công khai (Homepage, Shop, Product detail, Blog...) -> Cho qua tức thì
   if (!isProtectedApi && !isProtectedPage) {

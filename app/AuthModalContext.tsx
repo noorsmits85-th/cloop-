@@ -1,11 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, ReactNode, useEffect } from "react";
-import { createBrowserClient } from "@supabase/ssr";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "temporary-placeholder-key";
-const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
+import { createClient } from "@/src/utils/supabase/client";
 
 export interface CurrentUser {
   name: string;
@@ -29,13 +25,36 @@ export const AuthModalProvider = ({ children, initialUser = null }: { children: 
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [activeFeatureName, setActiveFeatureName] = useState("");
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(initialUser);
+  const supabase = createClient();
 
-  // Lắng nghe trạng thái đăng nhập từ Supabase
+  // Tự động bật Modal nếu URL có ?auth=login hoặc ?auth=signup
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("auth") === "login" || params.get("auth") === "signup") {
+        setShowAuthModal(true);
+      }
+    }
+  }, []);
+
+  // Lắng nghe và đồng bộ trạng thái đăng nhập từ Supabase Cookies
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const name = session.user.user_metadata?.name || session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "Thành viên";
+        setCurrentUser({
+          name,
+          email: session.user.email || "",
+          isLoggedIn: true,
+          id: session.user.id
+        });
+      }
+    });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (session?.user) {
-          let name = session.user.user_metadata?.name || session.user.email?.split("@")[0] || "Member";
+          let name = session.user.user_metadata?.name || session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "Thành viên";
           setCurrentUser({
             name,
             email: session.user.email || "",

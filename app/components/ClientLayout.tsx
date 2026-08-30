@@ -4,20 +4,18 @@ import { useState, useEffect, Suspense, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation"; 
+import { usePathname, useSearchParams, useRouter } from "next/navigation"; 
 import { 
   Search, ShoppingBag, Sun, Moon, Shirt, Users, Leaf, Star, X, Shield, BookOpen,
   Home, PlusCircle, User, Loader2
 } from "lucide-react";
-import { createBrowserClient } from "@supabase/ssr"; 
+import { createClient } from "@/src/utils/supabase/client"; 
 import "../globals.css";
 import AiStylistChat from "./AiStylistChat"; 
 import PwaInstallPrompt from "./PwaInstallPrompt";
 import { useAuthModal } from "../AuthModalContext";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "temporary-placeholder-key";
-const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
+const supabase = createClient();
 
 function HeaderNavbar({ darkMode, setDarkMode, handleFeatureRequirement, currentUser, setCurrentUser }: any) {
   const pathname = usePathname();
@@ -186,6 +184,8 @@ function MobileBottomNavbar({ darkMode, currentUser, handleFeatureRequirement }:
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { showAuthModal, setShowAuthModal, activeFeatureName, handleFeatureRequirement, currentUser, setCurrentUser } = useAuthModal();
   const [darkMode, setDarkMode] = useState<boolean>(false);
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot' | 'forgot_otp'>('login');
@@ -527,6 +527,12 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                       }
                       
                       setShowAuthModal(false);
+                      const redirectTo = searchParams.get('redirectTo');
+                      if (redirectTo) {
+                        router.push(redirectTo);
+                      } else {
+                        router.refresh();
+                      }
                       
                     } else if (authMode === 'register') {
                       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -545,6 +551,12 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                       if (!authData.user) return;
 
                       setShowAuthModal(false);
+                      const redirectTo = searchParams.get('redirectTo');
+                      if (redirectTo) {
+                        router.push(redirectTo);
+                      } else {
+                        router.refresh();
+                      }
                     }
                   } catch (err: any) {
                     alert(`Hệ thống gặp sự cố: ${err.message || err}`);

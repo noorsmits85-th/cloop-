@@ -11,7 +11,12 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
 
-  const nextUrl = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('next') || new URLSearchParams(window.location.search).get('returnTo') || '' : '';
+  const nextUrl = typeof window !== 'undefined' 
+    ? new URLSearchParams(window.location.search).get('next') 
+      || new URLSearchParams(window.location.search).get('returnTo') 
+      || new URLSearchParams(window.location.search).get('redirectTo') 
+      || '' 
+    : '';
 
   // ⚡ NẾU ĐÃ ĐĂNG NHẬP SẴN -> TỰ ĐỘNG CHUYỂN TIẾP NGAY LẬP TỨC
   useEffect(() => {

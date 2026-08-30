@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Shield } from 'lucide-react';
 import { createClient } from '@/src/utils/supabase/client';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function AuthModal({ 
   isOpen, 
@@ -22,6 +22,7 @@ export default function AuthModal({
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
 
   if (!isOpen) return null;
@@ -51,7 +52,23 @@ export default function AuthModal({
         });
         if (error) throw error;
 
-        setSuccessMsg('Đăng ký thành công! Vui lòng kiểm tra Email để xác nhận.');
+        if (data.session) {
+          onSuccess({ 
+            name: name || email.split('@')[0], 
+            email: email, 
+            isLoggedIn: true,
+            id: data.user?.id
+          });
+          onClose();
+          const redirectTo = searchParams.get('redirectTo');
+          if (redirectTo) {
+            router.push(redirectTo);
+          } else {
+            router.refresh();
+          }
+        } else {
+          setSuccessMsg('Đăng ký thành công! Vui lòng kiểm tra Email để xác nhận.');
+        }
       } 
       else if (mode === 'LOGIN') {
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -60,9 +77,20 @@ export default function AuthModal({
         });
         if (error) throw error;
         
-        onSuccess({ name: data.user.user_metadata?.name || email, email: email, isLoggedIn: true });
-        router.refresh();
+        onSuccess({ 
+          name: data.user.user_metadata?.name || data.user.user_metadata?.full_name || email.split('@')[0], 
+          email: email, 
+          isLoggedIn: true,
+          id: data.user.id
+        });
         onClose();
+
+        const redirectTo = searchParams.get('redirectTo');
+        if (redirectTo) {
+          router.push(redirectTo);
+        } else {
+          router.refresh();
+        }
       }
       else if (mode === 'OTP') {
         const { error } = await supabase.auth.signInWithOtp({
