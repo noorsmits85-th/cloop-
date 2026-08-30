@@ -210,12 +210,12 @@ export async function getShopProductsAction({
   try {
     const where: any = {
       isDeleted: false,
-      status: { in: ["ON_MARKET", "IN_CLOSET", "AVAILABLE"] },
+      status: { in: ["ON_MARKET", "IN_CLOSET"] },
       listings: {
         some: {
           status: "AVAILABLE",
           ...(type === "rent" ? { listingType: "RENT" } : {}),
-          ...(type === "sell" ? { listingType: { in: ["SELL", "SALE"] } } : {}),
+          ...(type === "sell" ? { listingType: { in: ["SELL", "RECYCLE"] } } : {}),
         }
       }
     };
