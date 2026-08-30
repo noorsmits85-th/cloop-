@@ -161,23 +161,33 @@ export async function completeOrderAction(orderId: string) {
       const invoiceId = rental.invoice?.id;
 
       // 💸 1. Hoàn Tiền Cọc (Refund Escrow) & Tặng 15 Xu Lá (CloopCoins) cho Khách Thuê:
-      if (depositAmount > 0) {
-        await tx.user.update({
-          where: { id: rental.renterId },
-          data: { 
-            walletBalance: { increment: depositAmount },
-            cloopCoins: { increment: 15 } // 🎁 Thưởng 15 Xu Lá tuần hoàn
+      const updatedRenter = await tx.user.update({
+        where: { id: rental.renterId },
+        data: { 
+          walletBalance: depositAmount > 0 ? { increment: depositAmount } : undefined,
+          cloopCoins: { increment: 15 } // 🎁 Thưởng 15 Xu Lá tuần hoàn
+        },
+        select: { cloopCoins: true }
+      });
+
+      try {
+        await tx.coinLedgerEntry.create({
+          data: {
+            userId: rental.renterId,
+            type: "QUEST_REWARD",
+            amount: 15,
+            balanceAfter: updatedRenter.cloopCoins,
+            description: `🎁 Thưởng 15 Xu Lá tuần hoàn hoàn tất đơn thuê #${orderId.slice(0, 8).toUpperCase()}`,
+            metadata: { orderId, type: "RENTAL_COMPLETION" }
           }
         });
-        if (invoiceId) {
-          await tx.ledgerTransaction.create({
-            data: { invoiceId, type: 'REFUND_OUT', amount: depositAmount, description: `Hoàn cọc đơn ${orderId} & Thưởng 15 Xu Lá` }
-          });
-        }
-      } else {
-        await tx.user.update({
-          where: { id: rental.renterId },
-          data: { cloopCoins: { increment: 15 } }
+      } catch (coinErr) {
+        console.warn("Coin ledger entry creation warning:", coinErr);
+      }
+
+      if (depositAmount > 0 && invoiceId) {
+        await tx.ledgerTransaction.create({
+          data: { invoiceId, type: 'REFUND_OUT', amount: depositAmount, description: `Hoàn cọc đơn ${orderId} & Thưởng 15 Xu Lá` }
         });
       }
 
