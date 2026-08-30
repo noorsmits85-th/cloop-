@@ -192,36 +192,68 @@ export async function verifyUploadedDisputeFile(params: {
 
 /**
  * Upload ảnh sản phẩm trực tiếp lên Google Cloud Storage (Enterprise Scale)
+ * Hỗ trợ đồng thời cả Google Cloud SDK lẫn Google REST API thông qua Google Pro Key.
  */
 export async function uploadImageToGCS(
   fileBuffer: Buffer,
   folder: string = "cloop_products"
 ): Promise<{ url: string; publicId: string } | null> {
+  const bucketName = process.env.GCP_STORAGE_BUCKET || "cloop-disputes";
+  const fileName = `${folder}/${Date.now()}_${crypto.randomUUID().substring(0, 8)}.jpg`;
+
+  // 1. Ưu tiên Google Cloud Storage SDK (nếu có Service Account / ADC)
   const storage = getStorageClient();
-  if (!storage) return null;
+  if (storage) {
+    try {
+      const bucket = storage.bucket(bucketName);
+      const file = bucket.file(fileName);
 
-  try {
-    const bucketName = process.env.GCP_STORAGE_BUCKET || "cloop-disputes";
-    const bucket = storage.bucket(bucketName);
-    const fileName = `${folder}/${Date.now()}_${crypto.randomUUID().substring(0, 8)}.jpg`;
-    const file = bucket.file(fileName);
+      await file.save(fileBuffer, {
+        contentType: "image/jpeg",
+        resumable: false,
+        metadata: {
+          cacheControl: "public, max-age=31536000",
+        },
+      });
 
-    await file.save(fileBuffer, {
-      contentType: "image/jpeg",
-      resumable: false,
-      metadata: {
-        cacheControl: "public, max-age=31536000",
-      },
-    });
-
-    const publicUrl = `https://storage.googleapis.com/${bucketName}/${fileName}`;
-    return {
-      url: publicUrl,
-      publicId: fileName,
-    };
-  } catch (err) {
-    console.error("❌ [GCS Product Image Upload Error]:", err);
-    return null;
+      const publicUrl = `https://storage.googleapis.com/${bucketName}/${fileName}`;
+      return {
+        url: publicUrl,
+        publicId: fileName,
+      };
+    } catch (sdkErr) {
+      console.warn("⚠️ GCS SDK direct save failed, trying Google REST API:", sdkErr);
+    }
   }
+
+  // 2. Thử Google Cloud Storage REST API sử dụng Google Pro API Key
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_DEV;
+  if (apiKey) {
+    try {
+      const res = await fetch(
+        `https://storage.googleapis.com/upload/storage/v1/b/${bucketName}/o?uploadType=media&name=${encodeURIComponent(fileName)}&key=${apiKey}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "image/jpeg",
+          },
+          body: new Uint8Array(fileBuffer),
+        }
+      );
+
+      if (res.ok) {
+        const publicUrl = `https://storage.googleapis.com/${bucketName}/${fileName}`;
+        return {
+          url: publicUrl,
+          publicId: fileName,
+        };
+      }
+    } catch (restErr) {
+      console.warn("⚠️ GCS REST upload with API key failed:", restErr);
+    }
+  }
+
+  return null;
 }
+
 
