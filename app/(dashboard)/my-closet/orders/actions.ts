@@ -764,11 +764,17 @@ export async function loadMoreOrdersAction({
       }
     });
 
+    const serializedOrders = JSON.parse(
+      JSON.stringify(mapped, (key, value) =>
+        typeof value === "bigint" ? value.toString() : value
+      )
+    );
+
     return {
       success: true,
-      orders: mapped,
+      orders: serializedOrders,
       hasMore,
-      nextCursor: mapped.length > 0 ? mapped[mapped.length - 1].id : null
+      nextCursor: serializedOrders.length > 0 ? serializedOrders[serializedOrders.length - 1].id : null
     };
   } catch (error: any) {
     console.error("Lỗi khi tải thêm đơn hàng:", error);

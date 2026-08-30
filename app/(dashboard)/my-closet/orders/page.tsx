@@ -14,54 +14,62 @@ export default async function MyClosetOrdersPage() {
 
   const userId = userAuth.id;
 
-  // ⚡ TỐI ƯU SIÊU TỐC: Gom 2 truy vấn Escrow & Rented chạy song song (Parallel Fetching)
-  const [escrowRaw, rentedRaw] = await Promise.all([
-    // 1. Escrow (Yêu cầu ký quỹ) - Người khác thuê đồ của tôi
-    prisma.rentalHistory.findMany({
-      where: { 
-        product: { userId } 
-      },
-      take: 21,
-      include: {
-        product: { include: { images: true } },
-        invoice: true,
-        disputes: { orderBy: { createdAt: 'desc' } },
-        renter: {
-          include: {
-            reviewsReceived: {
-              where: { type: "OWNER_TO_RENTER" }
-            }
-          }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
-    }),
+  let escrowRaw: any[] = [];
+  let rentedRaw: any[] = [];
 
-    // 2. Rented (Trang phục đi thuê) - Tôi đi thuê đồ người khác
-    prisma.rentalHistory.findMany({
-      where: { 
-        renterId: userId 
-      },
-      take: 21,
-      include: {
-        invoice: true,
-        disputes: { orderBy: { createdAt: 'desc' } },
-        product: { 
-          include: { 
-            images: true,
-            user: {
-              include: {
-                reviewsReceived: {
-                  where: { type: "RENTER_TO_OWNER" }
-                }
+  try {
+    const results = await Promise.all([
+      // 1. Escrow (Yêu cầu ký quỹ) - Người khác thuê đồ của tôi
+      prisma.rentalHistory.findMany({
+        where: { 
+          product: { userId } 
+        },
+        take: 21,
+        include: {
+          product: { include: { images: true, user: true } },
+          invoice: true,
+          disputes: { orderBy: { createdAt: 'desc' } },
+          renter: {
+            include: {
+              reviewsReceived: {
+                where: { type: "OWNER_TO_RENTER" }
               }
             }
           }
         },
-      },
-      orderBy: { createdAt: 'desc' }
-    })
-  ]);
+        orderBy: { createdAt: 'desc' }
+      }),
+
+      // 2. Rented (Trang phục đi thuê) - Tôi đi thuê đồ người khác
+      prisma.rentalHistory.findMany({
+        where: { 
+          renterId: userId 
+        },
+        take: 21,
+        include: {
+          invoice: true,
+          disputes: { orderBy: { createdAt: 'desc' } },
+          product: { 
+            include: { 
+              images: true,
+              user: {
+                include: {
+                  reviewsReceived: {
+                    where: { type: "RENTER_TO_OWNER" }
+                  }
+                }
+              }
+            }
+          },
+        },
+        orderBy: { createdAt: 'desc' }
+      })
+    ]);
+    escrowRaw = results[0];
+    rentedRaw = results[1];
+  } catch (err) {
+    console.error("⚠️ [OrdersPage Fetch Error]:", err);
+  }
 
   // Function to calculate average review score
   const getReviewStats = (reviews: any[]) => {
@@ -69,6 +77,14 @@ export default async function MyClosetOrdersPage() {
     const total = reviews.reduce((acc, rev) => acc + rev.rating, 0);
     return { avg: (total / reviews.length).toFixed(1), count: reviews.length };
   };
+
+  function serializeData(data: any) {
+    return JSON.parse(
+      JSON.stringify(data, (key, value) =>
+        typeof value === "bigint" ? value.toString() : value
+      )
+    );
+  }
 
   const hasMoreEscrow = escrowRaw.length > 20;
   const pagedEscrow = hasMoreEscrow ? escrowRaw.slice(0, 20) : escrowRaw;
@@ -78,28 +94,30 @@ export default async function MyClosetOrdersPage() {
 
   const initialEscrow = pagedEscrow.map(order => {
     const renterStats = getReviewStats(order.renter?.reviewsReceived || []);
+    const serialized = serializeData(order);
     return {
-      ...order,
-      renter_name: order.renter?.name || order.renterId,
+      ...serialized,
+      renter_name: order.renter?.name || order.renter_name || order.renterId || "Người thuê",
       renterAvg: renterStats.avg,
       renterReviewCount: renterStats.count,
       products: {
-        title: order.product.title,
-        image_url: order.product.images?.[0]?.url
+        title: order.product?.title || "Trang phục CLOOP",
+        image_url: order.product?.images?.[0]?.url || "/1.1.jpg"
       }
     };
   });
 
   const initialRented = pagedRented.map(order => {
-    const ownerStats = getReviewStats(order.product.user?.reviewsReceived || []);
+    const ownerStats = getReviewStats(order.product?.user?.reviewsReceived || []);
+    const serialized = serializeData(order);
     return {
-      ...order,
-      owner_name: order.product.user?.name || order.product.userId,
+      ...serialized,
+      owner_name: order.product?.user?.name || order.owner_name || "Chủ tủ đồ",
       ownerAvg: ownerStats.avg,
       ownerReviewCount: ownerStats.count,
       products: {
-        title: order.product.title,
-        image_url: order.product.images?.[0]?.url
+        title: order.product?.title || "Trang phục CLOOP",
+        image_url: order.product?.images?.[0]?.url || "/1.1.jpg"
       }
     };
   });
