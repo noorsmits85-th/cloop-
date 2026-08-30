@@ -165,7 +165,11 @@ export async function POST(req: Request) {
     }
 
     // 6. Tạo Link PayOS (Sau khi đã Đóng Transaction)
-    const YOUR_DOMAIN = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
+    const proto = req.headers.get("x-forwarded-proto") || (host?.includes("localhost") ? "http" : "https");
+    const origin = req.headers.get("origin") || (host ? `${proto}://${host}` : null);
+    const YOUR_DOMAIN = origin || process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://cloop-sable.vercel.app");
+
     const payosBody = {
       orderCode: checkoutResult.orderCode,
       amount: totalAmount,
@@ -183,7 +187,17 @@ export async function POST(req: Request) {
         data: { paymentLinkId: paymentLinkRes.paymentLinkId }
       });
 
-      return NextResponse.json({ success: true, checkoutUrl: paymentLinkRes.checkoutUrl });
+      return NextResponse.json({ 
+        success: true, 
+        checkoutUrl: paymentLinkRes.checkoutUrl,
+        orderCode: checkoutResult.orderCode,
+        qrCode: paymentLinkRes.qrCode,
+        accountNumber: paymentLinkRes.accountNumber,
+        accountName: paymentLinkRes.accountName,
+        bin: paymentLinkRes.bin,
+        amount: totalAmount,
+        description: `CLOOP GD ${checkoutResult.orderCode}`
+      });
 
     } catch (payosErr: any) {
       console.error("PayOS Error:", payosErr);

@@ -69,13 +69,23 @@ export async function createPayOSPaymentLink(rentalId: string) {
     }
 
     // 4. Gọi API PayOS để tạo Payment Link
-    const YOUR_DOMAIN = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const { headers } = await import("next/headers");
+    let dynamicDomain = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://cloop-sable.vercel.app");
+    try {
+      const headerList = await headers();
+      const host = headerList.get("x-forwarded-host") || headerList.get("host");
+      const proto = headerList.get("x-forwarded-proto") || (host?.includes("localhost") ? "http" : "https");
+      const origin = headerList.get("origin") || (host ? `${proto}://${host}` : null);
+      if (origin) dynamicDomain = origin;
+    } catch {}
+
+    const YOUR_DOMAIN = dynamicDomain;
     
     const body = {
       orderCode: orderCode,
       amount: totalAmount,
       description: `CLOOP GD ${orderCode}`,
-      returnUrl: `${YOUR_DOMAIN}/payment/success`,
+      returnUrl: `${YOUR_DOMAIN}/payment/result?orderCode=${orderCode}`,
       cancelUrl: `${YOUR_DOMAIN}/shop`
     };
 

@@ -7,7 +7,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { SignedShippingQuote } from "@/src/utils/shipping";
 import { 
   Loader2, ShieldCheck, MapPin, Calendar, Clock, 
-  Check, ArrowRight, User, Phone, Home, Shirt, Tag, AlertCircle, Navigation, Package, Truck 
+  Check, ArrowRight, User, Phone, Home, Shirt, Tag, AlertCircle, Navigation, Package, Truck,
+  Copy, CheckCircle2, ExternalLink, QrCode, X
 } from "lucide-react";
 import Image from "next/image";
 
@@ -64,6 +65,50 @@ export default function CheckoutClient({
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [isLocatingGPS, setIsLocatingGPS] = useState(false);
   const [error, setError] = useState("");
+
+  // State Modal Thanh Toán VietQR Nội Bộ
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentData, setPaymentData] = useState<{
+    orderCode: number;
+    checkoutUrl: string;
+    qrCode?: string;
+    accountNumber?: string;
+    accountName?: string;
+    bin?: string;
+    amount: number;
+    description: string;
+  } | null>(null);
+  const [isPaidSuccess, setIsPaidSuccess] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  // ⚡ Tự động quét giao dịch PayOS theo thời gian thực (In-App Realtime Settlement)
+  useEffect(() => {
+    if (!showPaymentModal || !paymentData?.orderCode || isPaidSuccess) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const { checkAndSyncPaymentStatusAction } = await import("@/app/actions/payment");
+        const res = await checkAndSyncPaymentStatusAction(paymentData.orderCode);
+        if (res.success && res.isPaid) {
+          setIsPaidSuccess(true);
+          clearInterval(interval);
+          setTimeout(() => {
+            router.push("/my-closet/orders");
+          }, 1800);
+        }
+      } catch (e) {
+        console.error("Polling payment status error:", e);
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [showPaymentModal, paymentData, isPaidSuccess, router]);
+
+  const copyToClipboard = (text: string, fieldName: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(fieldName);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
 
   // Nạp thông tin người dùng đang đăng nhập để tự động điền sẵn
   useEffect(() => {
@@ -293,9 +338,19 @@ export default function CheckoutClient({
         throw new Error(data.error || "Lỗi khởi tạo cổng thanh toán");
       }
 
-      if (data.checkoutUrl) {
-        window.location.href = data.checkoutUrl;
-      }
+      // Vận hành nội bộ: Mở Modal VietQR ngay trong trang web CLOOP (Không văng ra ngoài)
+      setPaymentData({
+        orderCode: data.orderCode,
+        checkoutUrl: data.checkoutUrl,
+        qrCode: data.qrCode,
+        accountNumber: data.accountNumber,
+        accountName: data.accountName,
+        bin: data.bin,
+        amount: data.amount || totalAmount,
+        description: data.description || `CLOOP GD ${data.orderCode}`
+      });
+      setShowPaymentModal(true);
+      setIsProcessingPayment(false);
     } catch (err: any) {
       setError(err.message);
       setIsProcessingPayment(false);
@@ -813,6 +868,161 @@ export default function CheckoutClient({
         </div>
 
       </div>
+
+      {/* ========================================================
+          MODAL THANH TOÁN VIETQR NỘI BỘ (KHÔNG VĂNG TRANG WEB)
+      ======================================================== */}
+      {showPaymentModal && paymentData && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-[#E9E2D8] relative text-[#183A2D] max-h-[92vh] overflow-y-auto">
+            
+            {/* Nút đóng */}
+            <button 
+              type="button" 
+              onClick={() => {
+                if (isPaidSuccess) {
+                  router.push("/my-closet/orders");
+                } else {
+                  setShowPaymentModal(false);
+                }
+              }}
+              className="absolute top-5 right-5 text-stone-400 hover:text-stone-700 p-1.5 rounded-full hover:bg-stone-100 transition-colors"
+            >
+              <X size={20} />
+            </button>
+
+            {isPaidSuccess ? (
+              <div className="text-center py-8 space-y-4">
+                <div className="w-16 h-16 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto animate-bounce">
+                  <CheckCircle2 size={36} />
+                </div>
+                <h3 className="font-heading text-2xl font-bold text-emerald-900">
+                  THANH TOÁN THÀNH CÔNG!
+                </h3>
+                <p className="text-xs text-stone-600 leading-relaxed max-w-xs mx-auto">
+                  Hệ thống CLOOP đã xác nhận giao dịch <strong>#{paymentData.orderCode}</strong>. Tiền cọc đã được lưu an toàn tại Két Escrow.
+                </p>
+                <div className="pt-2 flex items-center justify-center gap-2 text-xs font-bold text-emerald-800 font-ui animate-pulse">
+                  <Loader2 size={14} className="animate-spin" />
+                  <span>Đang chuyển đến trang Quản lý Đơn Hàng...</span>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="text-center space-y-1">
+                  <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-widest bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/60 font-ui inline-block">
+                    KÉT ESCROW TỰ ĐỘNG KHÓA QUỸ
+                  </span>
+                  <h3 className="font-heading text-xl font-bold text-[#0A2517] pt-1">
+                    Quét Mã VietQR Chuyển Khoản
+                  </h3>
+                  <p className="text-[11px] text-stone-500 font-ui">
+                    Mở app ngân hàng bất kỳ để quét mã QR thanh toán tức thì
+                  </p>
+                </div>
+
+                {/* Khung Mã QR Chuẩn VietQR */}
+                <div className="flex flex-col items-center justify-center bg-[#FAF9F5] p-4 rounded-2xl border border-[#E9E2D8]">
+                  <div className="relative w-56 h-56 bg-white p-2 rounded-xl border border-stone-200 shadow-xs flex items-center justify-center">
+                    <img 
+                      src={`https://api.vietqr.io/image/${paymentData.bin || '970416'}-${paymentData.accountNumber || '123456'}-compact2.jpg?amount=${paymentData.amount}&addInfo=${encodeURIComponent(paymentData.description)}&accountName=${encodeURIComponent(paymentData.accountName || 'CLOOP')}`}
+                      alt="Mã VietQR Thanh toán" 
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+
+                  <div className="mt-3 flex items-center gap-2 text-[11px] text-emerald-800 font-bold font-ui">
+                    <Loader2 size={13} className="animate-spin text-emerald-700" />
+                    <span>Đang chờ chuyển khoản... (Tự động nhận diện)</span>
+                  </div>
+                </div>
+
+                {/* Thông tin chuyển khoản chi tiết */}
+                <div className="space-y-2 font-ui text-xs bg-stone-50 p-3.5 rounded-xl border border-stone-200/70">
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="text-stone-500">Ngân hàng:</span>
+                    <span className="font-bold text-stone-900">ACB (Ngân hàng Á Châu)</span>
+                  </div>
+
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="text-stone-500">Số tài khoản:</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono font-bold text-stone-900">{paymentData.accountNumber || "Đang tạo..."}</span>
+                      {paymentData.accountNumber && (
+                        <button 
+                          type="button" 
+                          onClick={() => copyToClipboard(paymentData.accountNumber!, "accountNumber")}
+                          className="text-[10px] text-emerald-700 hover:text-emerald-900 font-bold bg-white px-1.5 py-0.5 rounded border border-stone-200 cursor-pointer"
+                        >
+                          {copiedField === "accountNumber" ? "✓ Đã chép" : "Chép"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="text-stone-500">Tên chủ tài khoản:</span>
+                    <span className="font-semibold text-stone-900">{paymentData.accountName || "CLOOP FASHION"}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="text-stone-500">Số tiền:</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono font-bold text-emerald-800 text-sm">{paymentData.amount.toLocaleString('vi-VN')}đ</span>
+                      <button 
+                        type="button" 
+                        onClick={() => copyToClipboard(String(paymentData.amount), "amount")}
+                        className="text-[10px] text-emerald-700 hover:text-emerald-900 font-bold bg-white px-1.5 py-0.5 rounded border border-stone-200 cursor-pointer"
+                      >
+                        {copiedField === "amount" ? "✓ Đã chép" : "Chép"}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="text-stone-500">Nội dung CK:</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono font-bold text-amber-900 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">{paymentData.description}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => copyToClipboard(paymentData.description, "description")}
+                        className="text-[10px] text-emerald-700 hover:text-emerald-900 font-bold bg-white px-1.5 py-0.5 rounded border border-stone-200 cursor-pointer"
+                      >
+                        {copiedField === "description" ? "✓ Đã chép" : "Chép"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Các nút hành động */}
+                <div className="space-y-2 pt-1">
+                  {paymentData.checkoutUrl && (
+                    <a
+                      href={paymentData.checkoutUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl font-ui text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <ExternalLink size={13} /> Mở trang thanh toán PayOS ngoài
+                    </a>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      router.push("/my-closet/orders");
+                    }}
+                    className="w-full py-2.5 bg-transparent hover:bg-stone-50 text-stone-500 rounded-xl font-ui text-xs transition-colors cursor-pointer"
+                  >
+                    Kiểm tra trạng thái tại Tủ Đồ của tôi ➔
+                  </button>
+                </div>
+              </div>
+            )}
+
+          </div>
+        </div>
+      )}
 
     </div>
   );
