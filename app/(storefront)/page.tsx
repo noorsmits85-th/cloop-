@@ -33,6 +33,9 @@ import EcoImpactCalculator from "@/app/components/EcoImpactCalculator";
 import GoogleFlowFashionHero from "@/app/components/GoogleFlowFashionHero";
 import SignatureCircularFlow from "@/app/components/SignatureCircularFlow";
 import MarketingLoopShowcase from "@/app/components/MarketingLoopShowcase";
+import AboutCloopSection from "@/app/components/AboutCloopSection";
+import CloopCategoryPillars from "@/app/components/CloopCategoryPillars";
+import CloopContactSection from "@/app/components/CloopContactSection";
 
 export default function Home() {
   const [activeRentalCategory, setActiveRentalCategory] = useState("Tất cả");
@@ -256,6 +259,12 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* 🌿 PHẦN 1: GIỚI THIỆU CLOOP LÀ GÌ? & NHỮNG GIÁ TRỊ CLOOP MANG ĐẾN CHO BẠN */}
+      <AboutCloopSection />
+
+      {/* 👗 PHẦN 2: CÁC DANH MỤC DỊCH VỤ CỐT LÕI (THUÊ ĐỒ, CHO THUÊ, THANH LÝ, TÁI SINH) */}
+      <CloopCategoryPillars />
 
       {/* 🌟 SECTION 1.5: TRIẾT LÝ TUẦN HOÀN CLOOP - MỘT MÓN ĐỒ. VÔ TẬN VÒNG ĐỜI. (TỰ ĐỘNG CHUYỂN CẢNH MƯỢT MÀ) */}
       <SignatureCircularFlow />
@@ -841,6 +850,9 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* 📞 PHẦN 10: LIÊN HỆ, TƯ VẤN 24/7 & HỆ THỐNG TRẠM XANH CLOOP */}
+      <CloopContactSection />
 
       {/* MODAL TÌM KIẾM HÌNH ẢNH LOOKBOOK BẰNG AI */}
       <VisualSearchModal 
