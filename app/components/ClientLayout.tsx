@@ -68,14 +68,12 @@ function HeaderNavbar({ darkMode, setDarkMode, handleFeatureRequirement, current
             <input className="ml-2 flex-1 bg-transparent text-[11px] font-search outline-none placeholder:text-gray-500 text-[#183A2D] cursor-pointer" placeholder={placeholders[placeholderIndex]} readOnly />
           </Link>
 
-          <nav className="hidden lg:flex items-center gap-3.5 xl:gap-5 font-ui text-[11px] xl:text-[12px] uppercase tracking-wide whitespace-nowrap font-bold min-w-0 overflow-x-auto no-scrollbar">
-            <Link href="/" className={getNavbarClass("/", null, null)}>Trang chủ</Link>
+          <nav className="hidden lg:flex items-center gap-4 xl:gap-6 font-ui text-[12px] uppercase tracking-wider whitespace-nowrap font-bold min-w-0">
+            <Link href="/shop" className={getNavbarClass("/shop", null, null)}>Khám phá</Link>
             <Link href="/shop?type=rent" className={getNavbarClass("/shop", "rent", null)}>Thuê đồ</Link>
-            <Link href="/my-closet/create?mode=rent" className={getNavbarClass("/my-closet/create", null, "rent")}>Cho thuê đồ</Link>
-            <Link href="/shop?type=sell" className={getNavbarClass("/shop", "sell", null)}>Sở hữu</Link>
-            <Link href="/my-closet/create?mode=consign" className={getNavbarClass("/my-closet/create", null, "consign")}>Thanh lý</Link>
-            <button onClick={() => handleFeatureRequirement("Tái chế")} className="text-gray-400 hover:text-[#183A2D] transition-colors uppercase shrink-0 whitespace-nowrap bg-transparent border-none cursor-pointer font-bold">Tái chế</button>
-            <Link href="/blog" className={getNavbarClass("/blog", null, null)}>Blog</Link>
+            <Link href="/my-closet/create?mode=rent" className={getNavbarClass("/my-closet/create", null, "rent")}>Cho thuê</Link>
+            <Link href="/shop?type=sell" className={getNavbarClass("/shop", "sell", null)}>Đổi đồ</Link>
+            <Link href="/blog" className={getNavbarClass("/blog", null, null)}>Cộng đồng</Link>
           </nav>
         </div>
 

@@ -339,29 +339,29 @@ export default function GoogleFlowFashionHero() {
       <div className="relative z-30 max-w-3xl mx-auto px-4 text-center flex flex-col items-center justify-center pointer-events-auto my-auto py-8">
         
         {/* Top Matcha Badge */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/15 backdrop-blur-md border border-[#A3E39F]/50 text-[#A3E39F] text-[10.5px] font-bold uppercase tracking-widest mb-3.5 shadow-lg font-ui">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/15 backdrop-blur-md border border-[#A3E39F]/50 text-[#A3E39F] text-[10.5px] font-bold uppercase tracking-widest mb-4 shadow-lg font-ui">
           <span className="w-2 h-2 rounded-full bg-[#A3E39F] animate-pulse"></span>
-          Tủ Đồ Tuần Hoàn Sinh Thái 2026
+          Tủ Đồ Tuần Hoàn 2026
         </div>
 
-        {/* Big Bold Solid White Title */}
-        <h1 className="font-heading text-5xl sm:text-6xl md:text-7xl lg:text-[84px] font-extrabold text-white tracking-tight leading-none mb-3.5 drop-shadow-[0_4px_30px_rgba(0,0,0,0.95)]">
-          CLOOP
+        {/* Big Bold Title */}
+        <h1 className="font-heading text-3xl sm:text-5xl md:text-6xl font-extrabold text-white tracking-tight leading-tight mb-3 drop-shadow-[0_4px_30px_rgba(0,0,0,0.95)] max-w-2xl">
+          Mặc đẹp. Không cần sở hữu tất cả.
         </h1>
 
         {/* Poetic & High-Fashion Tagline */}
-        <p className="font-body text-xs sm:text-sm md:text-[15px] text-stone-100 font-normal leading-relaxed max-w-lg mx-auto mb-6 drop-shadow-[0_2px_14px_rgba(0,0,0,0.9)]">
-          Tủ đồ thời trang thiết kế vô tận từ cộng đồng. Tiết kiệm 90% chi phí, trải nghiệm đẳng cấp và sống xanh cùng mỗi vòng đời trang phục.
+        <p className="font-body text-xs sm:text-base md:text-lg text-stone-200 font-light leading-relaxed max-w-xl mx-auto mb-7 drop-shadow-[0_2px_14px_rgba(0,0,0,0.9)]">
+          Thuê, chia sẻ và kéo dài vòng đời của thời trang. Tiết kiệm 90% chi phí, tự tin tỏa sáng mọi sự kiện.
         </p>
 
-        {/* Action Buttons Row */}
-        <div className="flex flex-col sm:flex-row items-center gap-3.5 w-full sm:w-auto">
-          {/* Primary Giant White Pill Button */}
+        {/* 2 Clear Main Action Buttons */}
+        <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+          {/* Primary CTA */}
           <Link
-            href="/shop"
-            className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-white text-[#0A2517] hover:bg-[#FAF7F0] font-heading font-extrabold text-xs sm:text-sm tracking-wider uppercase transition-all duration-300 shadow-[0_6px_25px_rgba(255,255,255,0.35)] hover:scale-105 active:scale-95 flex items-center justify-center gap-2 group font-ui"
+            href="/shop?type=rent"
+            className="w-full sm:w-auto px-8 py-3.5 sm:py-4 rounded-full bg-white text-[#0A2517] hover:bg-[#FAF7F0] font-heading font-extrabold text-xs sm:text-sm tracking-wider uppercase transition-all duration-300 shadow-[0_6px_25px_rgba(255,255,255,0.35)] hover:scale-105 active:scale-95 flex items-center justify-center gap-2 group font-ui"
           >
-            Khám Phá Tủ Đồ
+            <span>Khám Phá Tủ Đồ</span>
             <ArrowRight size={15} className="group-hover:translate-x-1 transition-transform" />
           </Link>
 
@@ -369,68 +369,11 @@ export default function GoogleFlowFashionHero() {
           <button
             type="button"
             onClick={() => setIsVisualSearchOpen(true)}
-            className="w-full sm:w-auto px-6 py-3.5 rounded-full bg-white/20 hover:bg-white/30 text-white border border-white/35 backdrop-blur-md font-heading font-bold text-xs sm:text-sm tracking-wider uppercase transition-all duration-300 shadow-md hover:scale-105 active:scale-95 flex items-center justify-center gap-2 group font-ui"
+            className="w-full sm:w-auto px-7 py-3.5 sm:py-4 rounded-full bg-white/15 hover:bg-white/25 text-white border border-white/30 backdrop-blur-md font-heading font-bold text-xs sm:text-sm tracking-wider uppercase transition-all duration-300 shadow-md hover:scale-105 active:scale-95 flex items-center justify-center gap-2 group font-ui cursor-pointer"
           >
-            <Camera size={15} className="text-[#A3E39F] group-hover:scale-110 transition-transform" />
+            <Camera size={16} className="text-[#A3E39F] group-hover:scale-110 transition-transform" />
             <span>Tìm Bằng Ảnh AI</span>
           </button>
-        </div>
-
-        {/* Micro Search Bar with Quick Trending Tags */}
-        <div className="mt-6 w-full max-w-md space-y-2.5">
-          <div className="relative flex items-center bg-black/55 backdrop-blur-md border border-white/30 rounded-full px-3.5 py-1.5 shadow-inner focus-within:border-white/70 transition-all">
-            <Search size={14} className="text-stone-300 ml-1 mr-2 shrink-0" />
-            <input
-              type="text"
-              placeholder="Tìm Đầm dạ hội, Blazer linen, Áo dài gấm..."
-              className="flex-1 bg-transparent border-none outline-none font-ui text-xs text-white placeholder:text-stone-300 font-medium min-w-0"
-            />
-            <Link
-              href="/shop"
-              className="px-4 py-1 bg-[#A3E39F] hover:bg-white text-[#071A10] font-heading font-extrabold rounded-full text-[10px] uppercase tracking-wider transition-all shrink-0 font-ui shadow-xs"
-            >
-              Tìm
-            </Link>
-          </div>
-
-          {/* Quick Trending Tags */}
-          <div className="flex items-center justify-center gap-1.5 flex-wrap">
-            <span className="text-[9px] uppercase font-bold text-stone-300 font-ui">Xu hướng:</span>
-            {[
-              { label: "Đầm Dạ Hội", q: "dạ hội" },
-              { label: "Set Tweed", q: "tweed" },
-              { label: "Áo Dài", q: "áo dài" },
-              { label: "Blazer 90s", q: "blazer" }
-            ].map((chip, idx) => (
-              <Link
-                key={idx}
-                href={`/shop?q=${encodeURIComponent(chip.q)}`}
-                className="text-[9px] font-bold text-stone-200 hover:text-white bg-black/40 hover:bg-white/20 px-2.5 py-0.5 rounded-full border border-white/15 transition-colors font-ui"
-              >
-                #{chip.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        {/* 🌿 Live ESG Mini Metrics Ticker */}
-        <div className="mt-7 pt-4 border-t border-white/15 grid grid-cols-3 gap-4 sm:gap-8 text-center w-full max-w-lg">
-          <div>
-            <p className="font-heading font-extrabold text-base sm:text-lg text-white">2.450+</p>
-            <p className="text-[9px] uppercase font-bold text-stone-300 font-ui">Trang Phục</p>
-          </div>
-          <div>
-            <p className="font-heading font-extrabold text-base sm:text-lg text-[#A3E39F] flex items-center justify-center gap-1">
-              <Leaf size={13} className="text-[#A3E39F]" /> -18.2 Tấn
-            </p>
-            <p className="text-[9px] uppercase font-bold text-stone-300 font-ui">Giảm CO₂</p>
-          </div>
-          <div>
-            <p className="font-heading font-extrabold text-base sm:text-lg text-emerald-300 flex items-center justify-center gap-1">
-              <ShieldCheck size={13} className="text-emerald-300" /> 98%
-            </p>
-            <p className="text-[9px] uppercase font-bold text-stone-300 font-ui">Hài Lòng</p>
-          </div>
         </div>
 
       </div>

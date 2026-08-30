@@ -191,17 +191,20 @@ export default function Home() {
       {/* 🔴 LIVE CIRCULAR PULSE TICKER: Nhịp đập tuần hoàn (Dải chạy gắn liền ngay dưới Hero) */}
       <LivePulseTicker />
 
-      {/* 📸 DẢI CUỘN TRANG PHỤC THỊNH HÀNG ĐANG ĐƯỢC THUÊ */}
-      <section className="w-full py-6 bg-[#F4F1EA] border-b border-stone-200/80 overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 mb-3 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
-            <h3 className="font-heading text-xs sm:text-sm font-bold text-[#183A2D] uppercase tracking-wider">
-              Xu Hướng Tủ Đồ • Được Thuê Nhiều Nhất
+      {/* 02 — DISCOVER: ĐANG ĐƯỢC CỘNG ĐỒNG YÊU THÍCH */}
+      <section className="w-full py-8 bg-[#F4F1EA] border-b border-stone-200/80 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 mb-4 flex justify-between items-end">
+          <div>
+            <span className="text-[9.5px] uppercase font-bold tracking-wider text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded-md border border-emerald-200 font-ui">
+              TUYỂN CHỌN HÔM NAY
+            </span>
+            <h3 className="font-heading text-lg sm:text-xl font-bold text-[#183A2D] tracking-tight mt-1">
+              Đang Được Cộng Đồng Yêu Thích
             </h3>
           </div>
-          <Link href="/shop" className="text-[11px] font-semibold text-[#28422A] hover:underline font-ui">
-            Xem tất cả &rarr;
+          <Link href="/shop?type=rent" className="text-xs font-semibold text-[#28422A] hover:underline font-ui flex items-center gap-1">
+            <span>Xem tất cả</span>
+            <ArrowRight size={12} />
           </Link>
         </div>
 
@@ -210,8 +213,8 @@ export default function Home() {
           {communityLookbookReel.map((item, index) => (
             <Link
               key={index}
-              href="/shop"
-              className="group w-[150px] sm:w-[170px] md:w-[185px] shrink-0 bg-white rounded-lg overflow-hidden border border-stone-200/80 hover:border-[#37503F] hover:shadow-sm transition-all flex flex-col"
+              href="/shop?type=rent"
+              className="group w-[150px] sm:w-[170px] md:w-[185px] shrink-0 bg-white rounded-xl overflow-hidden border border-stone-200/80 hover:border-[#37503F] hover:shadow-md transition-all flex flex-col"
             >
               <div className="relative aspect-[3/4] bg-stone-100 overflow-hidden">
                 <Image src={item.src} alt={item.title} fill className="object-cover transition-opacity duration-700 opacity-100 group-hover:opacity-0" unoptimized />
@@ -220,14 +223,14 @@ export default function Home() {
                   {item.tag}
                 </div>
               </div>
-              <div className="p-2 space-y-0.5">
+              <div className="p-2.5 space-y-1">
                 <p className="text-[8.5px] text-stone-400 font-ui uppercase line-clamp-1">{item.user}</p>
-                <h4 className="text-[11px] font-heading font-bold text-[#183A2D] line-clamp-1 group-hover:text-emerald-800 transition-colors">
+                <h4 className="text-[11.5px] font-heading font-bold text-[#183A2D] line-clamp-1 group-hover:text-emerald-800 transition-colors">
                   {item.title}
                 </h4>
-                <div className="flex justify-between items-center pt-0.5 border-t border-stone-100 text-[10.5px]">
+                <div className="flex justify-between items-center pt-1 border-t border-stone-100 text-[11px]">
                   <span className="font-extrabold text-[#183A2D] font-mono">{item.price}</span>
-                  <span className="text-[8.5px] text-emerald-800 font-bold uppercase">Thuê</span>
+                  <span className="text-[9px] text-emerald-800 font-bold uppercase bg-emerald-50 px-1.5 py-0.5 rounded">Thuê</span>
                 </div>
               </div>
             </Link>
@@ -612,41 +615,41 @@ export default function Home() {
                 MINH BẠCH VÒNG ĐỜI
               </span>
               <h2 className="font-heading text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#183A2D] leading-tight">
-                Mỗi Bộ Trang Phục <br />
-                <span className="text-emerald-800">Một Cuốn Hộ Chiếu Số</span>
+                Mỗi Món Đồ Đều Có Một Hộ Chiếu
               </h2>
               <p className="text-stone-600 text-sm font-light leading-relaxed">
-                Quét mã để tra cứu lịch sử du hành qua từng thành phố, số lượt người mặc trước đó và chỉ số CO₂ tiết kiệm cho hành tinh.
+                Theo dõi ai đã mặc, đã đi đâu và đã được tái sử dụng bao nhiêu lần. Từng đường kim mũi chỉ đều được định danh và bảo chứng minh bạch.
               </p>
 
-              {/* 3 Bullet points like high-end fashion platforms */}
+              {/* 3 Bullet points */}
               <div className="space-y-2.5 pt-1 text-xs text-stone-700 font-medium font-ui">
                 <div className="flex items-center gap-2.5">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
                     <Check size={12} strokeWidth={3} />
                   </div>
-                  <span>Định danh chống hàng giả & kiểm định đồ thật 100%</span>
+                  <span>Định danh nguồn gốc & kiểm định đồ thật 100%</span>
                 </div>
                 <div className="flex items-center gap-2.5">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
                     <Check size={12} strokeWidth={3} />
                   </div>
-                  <span>Lưu giữ ký ức và thông điệp gửi gắm cho người mặc kế tiếp</span>
+                  <span>Lưu giữ câu chuyện và kỷ niệm của từng người mặc</span>
                 </div>
                 <div className="flex items-center gap-2.5">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
                     <Check size={12} strokeWidth={3} />
                   </div>
-                  <span>Tích lũy Điểm Lá thưởng cho mỗi vòng đời tuần hoàn</span>
+                  <span>Tự động tính toán lượng CO₂ và nước sạch tiết kiệm</span>
                 </div>
               </div>
 
-              <div className="pt-3">
+              <div className="pt-2">
                 <Link
-                  href="/shop"
-                  className="px-6 py-3 bg-[#183A2D] hover:bg-[#112a20] text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all font-ui shadow-xs inline-flex items-center gap-2"
+                  href="/shop?type=rent"
+                  className="px-7 py-3.5 bg-[#183A2D] hover:bg-[#112a20] text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all font-ui shadow-sm inline-flex items-center gap-2"
                 >
-                  Khám Phá Sàn Đồ Có Hộ Chiếu <ArrowRight size={14} />
+                  <span>Khám Phá Sàn Đồ Có Hộ Chiếu</span>
+                  <ArrowRight size={14} />
                 </Link>
               </div>
             </div>
@@ -723,20 +726,49 @@ export default function Home() {
         </div>
       </section>
 
-      {/* SECTION 7: BẢO TÀNG KÝ ỨC TUẦN HOÀN (STORIES OF GARMENTS) */}
+      {/* 06 — IMPACT: MỖI LẦN THUÊ LÀ MỘT LẦN GIẢM MUA MỚI */}
+      <section className="w-full max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-10 md:py-14">
+        <EcoImpactCalculator />
+      </section>
+
+      {/* 07 — UPCYCLING & CHỢ XANH: CLOOP KHÔNG CHỈ LÀ THUÊ ĐỒ */}
+      <section className="w-full bg-[#37503F] text-white py-16 px-4 md:px-6 relative overflow-hidden">
+        <div className="max-w-3xl mx-auto text-center relative z-10 space-y-4">
+          <span className="text-[10px] uppercase font-bold tracking-widest text-[#A3E39F] bg-white/10 px-3 py-1 rounded-full border border-white/20 font-ui inline-block">
+            VÒNG ĐỜI BẤT TẬN
+          </span>
+          <h2 className="font-heading text-2xl sm:text-4xl font-extrabold tracking-normal text-white">
+            CLOOP Không Chỉ Là Thuê Đồ
+          </h2>
+          <p className="text-xs sm:text-sm text-stone-200 font-light leading-relaxed max-w-xl mx-auto font-body">
+            Chợ Xanh là nơi kết nối sinh viên thiết kế, Local Brand và các tín đồ Upcycling săn vải thừa, phụ kiện tái sinh và kéo dài tối đa vòng đời thời trang.
+          </p>
+          <div className="pt-2">
+            <Link 
+              href="/shop?category=Upcycle" 
+              className="inline-flex items-center justify-center px-7 py-3 bg-white text-[#183A2D] hover:bg-[#F4F1EA] font-extrabold rounded-full text-xs uppercase tracking-widest transition-all font-ui shadow-md"
+            >
+              <span>Khám Phá Chợ Xanh Upcycle</span>
+              <ArrowRight size={13} className="ml-1.5" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* 08 — GARMENT STORIES / MUSEUM: NHỮNG MÓN ĐỒ CÓ KÝ ỨC */}
       <section className="w-full py-12 md:py-16 bg-[#F5F2EB] border-t border-stone-200/80">
         <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
           
           {/* Header Canh Giữa Chuẩn Xác */}
           <div className="flex flex-col items-center text-center mb-8 max-w-xl mx-auto">
             <span className="text-[9.5px] uppercase font-bold tracking-widest text-emerald-800 bg-emerald-100/80 px-2.5 py-0.5 rounded-md border border-emerald-200 font-ui mb-1.5 inline-block">
-              KÝ ỨC & CÂU CHUYỆN CLOOP
+              CÂU CHUYỆN & KÝ ỨC TRANG PHỤC
             </span>
             <h2 className="text-xl md:text-3xl font-heading font-extrabold text-[#0A2517] tracking-normal mb-1.5">
-              Bảo Tàng Ký Ức Tuần Hoàn
+              Mỗi Món Đồ Đều Có Một Câu Chuyện
             </h2>
             <p className="text-xs sm:text-sm text-stone-600 font-body font-light">
-              Lắng nghe những mảnh ký ức trước khi trang phục bước vào hành trình mới.
+              Lắng nghe những mảnh ký ức trước khi trang phục bước vào hành trình mới cùng bạn.
             </p>
           </div>
 
@@ -809,34 +841,40 @@ export default function Home() {
           <div className="flex justify-center mt-7">
             <Link 
               href="/blog" 
-              className="inline-flex items-center gap-1.5 px-6 py-2.5 bg-[#0A2517] hover:bg-emerald-950 text-white rounded-xl text-xs uppercase tracking-widest font-bold transition-all font-ui shadow-2xs"
+              className="inline-flex items-center gap-1.5 px-7 py-3 bg-[#0A2517] hover:bg-emerald-950 text-white rounded-xl text-xs uppercase tracking-widest font-bold transition-all font-ui shadow-sm"
             >
-              Vào Đọc Toàn Bộ Ký Ức <ArrowRight size={13} />
+              <span>Xem Những Câu Chuyện</span>
+              <ArrowRight size={13} />
             </Link>
           </div>
         </div>
       </section>
 
-      {/* SECTION 8: ECO-IMPACT LIVE SIMULATOR (Máy tính tác động sinh thái) */}
-      <section className="w-full max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-10 md:py-14">
-        <EcoImpactCalculator />
-      </section>
-
-      {/* SECTION 9: CHỢ XANH CLOOP (Màu Xanh Rêu Matcha Mộc #37503F, Nút Trắng Tối Giản) */}
-      <section className="w-full bg-[#37503F] text-white pt-16 pb-12 relative overflow-hidden">
-        <div className="max-w-3xl mx-auto px-4 md:px-6 text-center relative z-10 space-y-4">
-          <h2 className="font-heading text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-normal text-white">
-            Chợ Xanh CLOOP
+      {/* 🌟 09 — FINAL CTA BANNER */}
+      <section className="w-full bg-[#183A2D] text-white py-16 px-4 md:px-8 border-t border-emerald-800 relative overflow-hidden">
+        <div className="max-w-4xl mx-auto text-center space-y-5 relative z-10">
+          <span className="text-[10px] uppercase font-bold tracking-widest text-[#A3E39F] bg-white/10 px-3.5 py-1 rounded-full border border-white/20 font-ui inline-block">
+            THỜI TRANG TUẦN HOÀN 2026
+          </span>
+          <h2 className="font-heading text-3xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight">
+            Sẵn Sàng Cho Vòng Đời Tiếp Theo?
           </h2>
-          <p className="text-xs sm:text-sm text-stone-200 font-light leading-relaxed max-w-xl mx-auto">
-            Kéo dài vòng đời thời trang. Nơi dành riêng cho sinh viên thiết kế, Local Brand và các tín đồ Upcycling săn nguyên liệu độc đáo.
+          <p className="text-stone-200 text-sm sm:text-base font-light max-w-xl mx-auto font-body">
+            Mặc đẹp hơn, chi tiêu thông minh hơn và cùng hàng ngàn tín đồ thời trang chung tay bảo vệ hành tinh xanh.
           </p>
-          <div className="pt-2">
-            <Link 
-              href="/shop?category=Upcycle" 
-              className="inline-flex items-center justify-center px-6 py-2.5 bg-white text-[#183A2D] hover:bg-[#F4F1EA] font-extrabold rounded-md text-[11px] uppercase tracking-widest transition-all font-ui shadow-2xs"
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link
+              href="/shop?type=rent"
+              className="w-full sm:w-auto px-8 py-4 bg-white hover:bg-[#FAF7F0] text-[#0A2517] font-heading font-extrabold text-xs sm:text-sm uppercase tracking-wider rounded-full shadow-lg hover:scale-105 transition-all flex items-center justify-center gap-2 font-ui"
             >
-              KHÁM PHÁ NGUYÊN LIỆU
+              <span>Khám Phá Tủ Đồ Ngay</span>
+              <ArrowRight size={15} />
+            </Link>
+            <Link
+              href="/my-closet/create?mode=rent"
+              className="w-full sm:w-auto px-7 py-4 bg-white/15 hover:bg-white/25 text-white font-heading font-bold text-xs sm:text-sm uppercase tracking-wider rounded-full border border-white/30 backdrop-blur-md hover:scale-105 transition-all flex items-center justify-center gap-2 font-ui"
+            >
+              <span>Đăng Tủ Đồ Cho Thuê</span>
             </Link>
           </div>
         </div>
