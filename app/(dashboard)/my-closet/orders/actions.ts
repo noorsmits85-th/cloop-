@@ -207,6 +207,18 @@ export async function completeOrderAction(orderId: string) {
         });
       }
       
+      // 🔄 KHI HOÀN TẤT ĐỒ VỀ TAY CHỦ TỦ: Tự động kích hoạt lại trạng thái Sẵn Sàng Cho Thuê trên Sàn & Tủ đồ
+      if (rental.product_id) {
+        await tx.listing.updateMany({
+          where: { productId: rental.product_id, isDeleted: false },
+          data: { status: "AVAILABLE" }
+        });
+        await tx.product.update({
+          where: { id: rental.product_id },
+          data: { status: "ON_MARKET" }
+        });
+      }
+
       // Ghi Audit
       await tx.auditLog.create({
         data: {
@@ -566,6 +578,18 @@ export async function acceptDisputeProposalAction(disputeId: string) {
 
       if (ledgerRows.length > 0) {
         await tx.ledgerTransaction.createMany({ data: ledgerRows });
+      }
+
+      // 🔄 KHI GIẢI QUYẾT XONG KHIẾU NẠI & ĐỒ VỀ TAY CHỦ TỦ: Kích hoạt lại trạng thái Sẵn Sàng Cho Thuê
+      if (rental.product_id) {
+        await tx.listing.updateMany({
+          where: { productId: rental.product_id, isDeleted: false },
+          data: { status: "AVAILABLE" }
+        });
+        await tx.product.update({
+          where: { id: rental.product_id },
+          data: { status: "ON_MARKET" }
+        });
       }
 
       // 7f. Audit Log
