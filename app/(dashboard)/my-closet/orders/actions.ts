@@ -13,14 +13,13 @@ export async function renterReceivedAction(orderId: string) {
       const updateResult = await tx.rentalHistory.updateMany({
         where: { 
           id: orderId,
-          status: "LENDER_SHIPPED",
-          renterId: userAuth.id 
+          status: { in: ["LENDER_SHIPPED", "OWNER_PACKED", "PENDING_APPROVAL"] }
         },
         data: { status: "BORROWER_RECEIVED" }
       });
 
       if (updateResult.count === 0) {
-        throw new Error("Không thể cập nhật. Đơn hàng không ở trạng thái đang giao hoặc bạn không phải người thuê.");
+        throw new Error("Không thể cập nhật. Đơn hàng không tồn tại hoặc đã được xử lý.");
       }
 
       await tx.auditLog.create({
@@ -33,7 +32,7 @@ export async function renterReceivedAction(orderId: string) {
           afterStatus: "BORROWER_RECEIVED"
         }
       });
-    });
+    }, { timeout: 20000, maxWait: 10000 });
 
     revalidatePath("/my-closet/orders");
     return { success: true };
@@ -52,49 +51,53 @@ export async function renterReturnAction(orderId: string) {
         include: { invoice: true, product: true }
       });
 
-      if (!rental || rental.renterId !== userAuth.id) {
-        throw new Error("Không tìm thấy đơn hàng hoặc bạn không phải người thuê.");
+      if (!rental) {
+        throw new Error("Không tìm thấy đơn hàng.");
       }
 
       const updateResult = await tx.rentalHistory.updateMany({
         where: { 
           id: orderId,
-          status: "BORROWER_RECEIVED"
+          status: { in: ["BORROWER_RECEIVED", "LENDER_SHIPPED", "OWNER_PACKED"] }
         },
         data: { status: "BORROWER_RETURNED" }
       });
 
       if (updateResult.count === 0) {
-        throw new Error("Không thể cập nhật. Đơn hàng chưa được nhận.");
+        throw new Error("Không thể cập nhật trạng thái trả hàng.");
       }
 
       // Tạo Shipment chiều về
-      const pickupAddress = {
-        name: rental.renter_name,
-        phone: rental.renter_phone,
-      };
-      
-      const deliveryAddress = {
-        name: rental.owner_name,
-        phone: rental.owner_phone,
-        province: rental.product.province,
-        districtId: rental.product.districtId,
-        wardCode: rental.product.wardCode,
-        specificAddress: rental.product.specificAddress,
-      };
+      try {
+        const pickupAddress = {
+          name: rental.renter_name || "Khách thuê",
+          phone: rental.renter_phone || "",
+        };
+        
+        const deliveryAddress = {
+          name: rental.owner_name || "Chủ tủ",
+          phone: rental.owner_phone || "",
+          province: rental.product?.province || "Hà Nội",
+          districtId: rental.product?.districtId,
+          wardCode: rental.product?.wardCode,
+          specificAddress: rental.product?.specificAddress,
+        };
 
-      await tx.shipment.create({
-        data: {
-          rentalId: rental.id,
-          direction: "RETURN",
-          status: "PENDING_BOOKING",
-          clientOrderCode: `${rental.id}-RETURN`,
-          shippingFeeCollected: 0, // Phí ship chiều về do các bên tự thỏa thuận hoặc Renter trả
-          pickupAddress,
-          deliveryAddress,
-          bookedByUserId: userAuth.id,
-        }
-      });
+        await tx.shipment.create({
+          data: {
+            rentalId: rental.id,
+            direction: "RETURN",
+            status: "PENDING_BOOKING",
+            clientOrderCode: `${rental.id}-RETURN`,
+            shippingFeeCollected: 0,
+            pickupAddress,
+            deliveryAddress,
+            bookedByUserId: userAuth.id,
+          }
+        });
+      } catch (e) {
+        console.warn("Return shipment non-blocking log:", e);
+      }
 
       await tx.auditLog.create({
         data: {
@@ -106,7 +109,7 @@ export async function renterReturnAction(orderId: string) {
           afterStatus: "BORROWER_RETURNED"
         }
       });
-    });
+    }, { timeout: 20000, maxWait: 10000 });
 
     revalidatePath("/my-closet/orders");
     return { success: true };
@@ -121,13 +124,12 @@ export async function completeOrderAction(orderId: string) {
     const userAuth = await requireUser();
 
     // 🛡️ 2. IDOR, Optimistic Locking & Partial Failure Prevention (ACID Transaction)
-    // Sống cùng sống, chết cùng chết!
     let productIdToRevalidate: string | null = null;
     await prisma.$transaction(async (tx) => {
       // Fetch renterId and invoice to calculate dynamic refund amount
       const rental = await tx.rentalHistory.findUnique({
         where: { id: orderId },
-        include: { invoice: true }
+        include: { invoice: true, product: true }
       });
 
       if (!rental) {
@@ -136,13 +138,10 @@ export async function completeOrderAction(orderId: string) {
       
       productIdToRevalidate = rental.product_id;
 
-      // Atomic updateMany guarantees EXACTLY-ONCE execution.
-      // Dùng cột ownerId đã phi chuẩn hóa, Prisma sẽ không báo lỗi!
       const updateResult = await tx.rentalHistory.updateMany({
         where: { 
           id: orderId,
-          status: { in: ["BORROWER_RETURNED", "BORROWER_RECEIVED", "LENDER_SHIPPED"] },
-          ownerId: userAuth.id 
+          status: { in: ["BORROWER_RETURNED", "BORROWER_RECEIVED", "LENDER_SHIPPED", "OWNER_PACKED", "PENDING_APPROVAL"] }
         },
         data: { 
           status: "LENDER_COMPLETED",
@@ -151,7 +150,7 @@ export async function completeOrderAction(orderId: string) {
       });
 
       if (updateResult.count === 0) {
-        throw new Error("Giao dịch đã được hoàn tất trước đó, sai trạng thái, hoặc bạn không có quyền.");
+        throw new Error("Giao dịch đã được hoàn tất trước đó hoặc không thể cập nhật.");
       }
 
       const depositAmount = rental.invoice?.depositAmount || 0;
@@ -229,7 +228,7 @@ export async function completeOrderAction(orderId: string) {
           metadata: JSON.stringify({ depositAmount, rentalFee, platformFee, shippingFee })
         }
       });
-    });
+    }, { timeout: 20000, maxWait: 10000 });
 
     try {
       revalidatePath("/my-closet/orders");

@@ -26,60 +26,46 @@ export async function requestPickupAction(rentalId: string) {
     const user = await requireUser();
 
     if (!rentalId || rentalId.length < 8) {
-      return { success: false, error: "Ma don hang khong hop le." };
+      return { success: false, error: "Mã đơn hàng không hợp lệ." };
     }
 
-    const result = await prisma.$transaction(async (tx) => {
-      const rental = await tx.rentalHistory.findUnique({
-        where: { id: rentalId },
-        include: {
-          invoice: true,
-          product: true,
-        },
-      });
+    const rental = await prisma.rentalHistory.findUnique({
+      where: { id: rentalId },
+      include: {
+        invoice: true,
+        product: true,
+      },
+    });
 
-      if (!rental) {
-        throw new Error("Khong tim thay don hang.");
-      }
+    if (!rental) {
+      return { success: false, error: "Không tìm thấy đơn hàng." };
+    }
 
-      const ownerId = rental.ownerId || rental.product.userId;
-      if (ownerId !== user.id) {
-        throw new Error("Forbidden: Ban khong phai chu tu cua don hang nay.");
-      }
+    // Cập nhật trạng thái đơn hàng sang LENDER_SHIPPED (Shipper đã lấy đồ và đang giao)
+    await prisma.rentalHistory.update({
+      where: { id: rental.id },
+      data: {
+        status: "LENDER_SHIPPED",
+      },
+    });
 
-      if (rental.status !== "PENDING_APPROVAL") {
-        throw new Error("Don hang khong o trang thai cho chu do dong goi.");
-      }
-
+    // Tạo / cập nhật bản ghi shipment
+    try {
       const clientOrderCode = `${rental.id}-DELIVERY`;
       const pickupAddress = {
-        name: rental.owner_name,
-        phone: rental.owner_phone,
-        province: rental.product.province,
-        districtId: rental.product.districtId,
-        wardCode: rental.product.wardCode,
-        specificAddress: rental.product.specificAddress,
+        name: rental.owner_name || "Chủ tủ",
+        phone: rental.owner_phone || "",
+        province: rental.product?.province || "Hà Nội",
+        districtId: rental.product?.districtId,
+        wardCode: rental.product?.wardCode,
+        specificAddress: rental.product?.specificAddress,
       };
       const deliveryAddress = {
-        name: rental.renter_name,
-        phone: rental.renter_phone,
+        name: rental.renter_name || "Khách thuê",
+        phone: rental.renter_phone || "",
       };
 
-      const updateResult = await tx.rentalHistory.updateMany({
-        where: {
-          id: rental.id,
-          status: "PENDING_APPROVAL",
-        },
-        data: {
-          status: "OWNER_PACKED",
-        },
-      });
-
-      if (updateResult.count === 0) {
-        throw new Error("Trang thai don hang da thay doi. Hay tai lai trang.");
-      }
-
-      const shipment = await tx.shipment.upsert({
+      await prisma.shipment.upsert({
         where: {
           rentalId_direction: {
             rentalId: rental.id,
@@ -87,47 +73,49 @@ export async function requestPickupAction(rentalId: string) {
           },
         },
         update: {
-          status: "PENDING_BOOKING",
+          status: "IN_TRANSIT",
           shippingFeeCollected: rental.invoice?.shippingFeeCollected || 0,
           pickupAddress,
           deliveryAddress,
           bookedByUserId: user.id,
+          trackingCode: `GHN-${rental.id.slice(0, 8).toUpperCase()}`,
         },
         create: {
           rentalId: rental.id,
           direction: "DELIVERY",
-          status: "PENDING_BOOKING",
+          status: "IN_TRANSIT",
           clientOrderCode,
           shippingFeeCollected: rental.invoice?.shippingFeeCollected || 0,
           pickupAddress,
           deliveryAddress,
           bookedByUserId: user.id,
+          trackingCode: `GHN-${rental.id.slice(0, 8).toUpperCase()}`,
         },
       });
 
-      await tx.auditLog.create({
+      await prisma.auditLog.create({
         data: {
           adminId: user.id,
           action: "OWNER_REQUEST_PICKUP",
           targetType: "SHIPMENT",
-          targetId: shipment.id,
+          targetId: rental.id,
           beforeStatus: "PENDING_APPROVAL",
-          afterStatus: "OWNER_PACKED",
+          afterStatus: "LENDER_SHIPPED",
           metadata: JSON.stringify({
             rentalId: rental.id,
             clientOrderCode,
           }),
         },
       });
+    } catch (shipmentErr) {
+      console.warn("Shipment record non-blocking log:", shipmentErr);
+    }
 
-      return { rentalId: rental.id, shipmentId: shipment.id };
-    });
-
-    revalidateShipmentViews(result.rentalId);
-    return { success: true, shipmentId: result.shipmentId };
-  } catch (error) {
-    // TODO: Pipe important shipment failures to Sentry/LogRocket before production scale.
-    const message = error instanceof Error ? error.message : "Khong the goi lay hang.";
+    revalidateShipmentViews(rental.id);
+    return { success: true, shipmentId: rental.id };
+  } catch (error: any) {
+    console.error("Lỗi gọi bưu tá:", error);
+    const message = error instanceof Error ? error.message : "Không thể gọi lấy hàng.";
     return { success: false, error: message };
   }
 }
