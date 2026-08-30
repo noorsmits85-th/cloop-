@@ -675,7 +675,39 @@ export default function CheckoutClient({
 
           {isLoadingShipping && (
             <div className="text-xs text-emerald-800 flex items-center gap-2 font-ui animate-pulse">
-              <Loader2 size={13} className="animate-spin" /> Đang tính cước phí vận chuyển GHN tối ưu nhất...
+              <Loader2 size={13} className="animate-spin" /> Đang kiểm tra phương thức vận chuyển...
+            </div>
+          )}
+
+          {shippingQuotes.length > 0 && (
+            <div className="space-y-2 pt-1">
+              <label className="block text-[11px] font-bold text-stone-700 font-ui uppercase tracking-wider">
+                Phương Thức Giao Nhận
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {shippingQuotes.map((sq, idx) => {
+                  const isSelected = selectedQuote?.quote.serviceId === sq.quote.serviceId;
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => setSelectedQuote(sq)}
+                      className={`p-3 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
+                        isSelected
+                          ? "bg-emerald-50/80 border-emerald-700 ring-1 ring-emerald-700 text-emerald-950 shadow-xs"
+                          : "bg-white border-stone-200 hover:border-stone-300 text-stone-700"
+                      }`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <span className="font-bold text-xs">{sq.quote.name}</span>
+                        <span className="font-mono font-bold text-xs text-emerald-800 shrink-0 ml-1">
+                          {sq.quote.fee === 0 ? "0đ (Miễn phí)" : `${sq.quote.fee.toLocaleString("vi-VN")}đ`}
+                        </span>
+                      </div>
+                      <p className="text-[10.5px] text-stone-500 mt-1">{sq.quote.packagingNote}</p>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 

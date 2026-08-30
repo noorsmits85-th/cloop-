@@ -46,21 +46,31 @@ export async function POST(req: Request) {
       });
       const data = await res.json();
       const rawFee = (data.code === 200 && data.data?.total) ? data.data.total : 21000;
-      
-      // 🛡️ CÔNG THỨC BIÊN ĐỘ "BLOCK 5K" (+10% rủi ro thể tích / hoàn hàng & làm tròn lên nhịp 5.000đ)
       const safeFee = rawFee * 1.1;
       const normalizedFee = Math.ceil(safeFee / 5000) * 5000;
 
-      quotes = [{
-        provider: "GHN",
-        serviceId: "standard",
-        name: "Giao Tiêu Chuẩn (GHN Express)",
-        fee: normalizedFee,
-        originalFee: normalizedFee + 10000,
-        discount: 10000,
-        estimatedDays: 2,
-        packagingNote: "Quy cách chuẩn: Túi niêm phong PE dẻo (<500g)"
-      }];
+      quotes = [
+        {
+          provider: "DIRECT",
+          serviceId: "direct_pickup",
+          name: "🤝 Tự Giao Nhận Trực Tiếp (Gần nhau / Team nội bộ)",
+          fee: 0,
+          originalFee: 0,
+          discount: 0,
+          estimatedDays: 0,
+          packagingNote: "Hai bên tự hẹn gặp trao đổi đồ trực tiếp (Miễn phí vận chuyển 0đ)"
+        },
+        {
+          provider: "GHN",
+          serviceId: "standard",
+          name: "🚚 Giao Tiêu Chuẩn (GHN Express)",
+          fee: normalizedFee,
+          originalFee: normalizedFee + 10000,
+          discount: 10000,
+          estimatedDays: 2,
+          packagingNote: "Bưu tá GHN đến lấy và giao tận nơi 2 chiều"
+        }
+      ];
     } else {
       // NẾU KHÔNG CÓ TOKEN -> CHẠY MOCK LOGIC THÔNG MINH
       quotes = await getShippingQuotes(fromProvince, toProvince, weight);

@@ -45,9 +45,19 @@ export async function getShippingQuotes(
 
   const quotes: ShippingQuote[] = [
     {
+      provider: "DIRECT",
+      serviceId: "direct_pickup",
+      name: "🤝 Tự Giao Nhận Trực Tiếp (Gần nhau / Team nội bộ)",
+      fee: 0,
+      originalFee: 0,
+      discount: 0,
+      estimatedDays: 0,
+      packagingNote: "Hai bên tự hẹn gặp trao đổi đồ trực tiếp (Miễn phí 0đ)"
+    },
+    {
       provider: "GHN",
       serviceId: "standard",
-      name: "Giao Tiêu Chuẩn (GHN Express)",
+      name: "🚚 Giao Tiêu Chuẩn (GHN Express)",
       fee: finalFee,
       originalFee: originalRetailFee,
       discount: b2bDiscount,
