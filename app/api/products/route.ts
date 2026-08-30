@@ -48,3 +48,35 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, message: "Khong the luu san pham." }, { status: 500 });
   }
 }
+
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const type = searchParams.get("type") || "all";
+    const category = searchParams.get("category");
+    const occasion = searchParams.get("occasion");
+    const search = searchParams.get("search");
+    const size = searchParams.get("size");
+    const material = searchParams.get("material");
+    const page = parseInt(searchParams.get("page") || "1", 10);
+    const limit = parseInt(searchParams.get("limit") || "16", 10);
+
+    const { getShopProductsAction } = await import("@/app/actions/product");
+    const result = await getShopProductsAction({
+      type,
+      category,
+      occasion,
+      search: search || undefined,
+      size: size || undefined,
+      material: material || undefined,
+      page,
+      limit
+    });
+
+    return NextResponse.json(result);
+  } catch (error: any) {
+    console.error("GET /api/products error:", error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+

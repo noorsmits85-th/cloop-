@@ -129,8 +129,12 @@ export async function GET(
         bust: product.bust,
         waist: product.waist,
         hips: product.hips,
-        images: images.length > 0 ? images : ["https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600"],
-        image: images[0] || "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600",
+        images: images.map((img: string) => {
+          if (img.includes("photo-1548624149-19d45e4ab558")) return "/vintage_coat.jpg";
+          if (img.includes("photo-1584916201218-f4242ceb4809")) return "/step2_bag.jpg";
+          return img;
+        }).filter(Boolean),
+        image: (images[0]?.includes("photo-1548624149-19d45e4ab558") ? "/vintage_coat.jpg" : (images[0]?.includes("photo-1584916201218-f4242ceb4809") ? "/step2_bag.jpg" : images[0])) || "/vintage_coat.jpg",
         rentalPrice,
         salePrice,
         isRental,

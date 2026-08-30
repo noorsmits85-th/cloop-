@@ -187,3 +187,159 @@ export async function bumpProductAction(productId: string) {
     return { success: false, error: "Đã xảy ra lỗi." };
   }
 }
+
+export async function getShopProductsAction({
+  type = "all",
+  category,
+  occasion,
+  search,
+  size,
+  material,
+  page = 1,
+  limit = 24
+}: {
+  type?: string;
+  category?: string | null;
+  occasion?: string | null;
+  search?: string;
+  size?: string;
+  material?: string;
+  page?: number;
+  limit?: number;
+}) {
+  try {
+    const where: any = {
+      isDeleted: false,
+      status: { in: ["ON_MARKET", "IN_CLOSET", "AVAILABLE"] },
+      listings: {
+        some: {
+          status: "AVAILABLE",
+          ...(type === "rent" ? { listingType: "RENT" } : {}),
+          ...(type === "sell" ? { listingType: { in: ["SELL", "SALE"] } } : {}),
+        }
+      }
+    };
+
+    if (search && search.trim() !== "") {
+      const q = search.trim();
+      where.OR = [
+        { title: { contains: q, mode: "insensitive" } },
+        { description: { contains: q, mode: "insensitive" } },
+        { category: { contains: q, mode: "insensitive" } },
+        { occasion: { contains: q, mode: "insensitive" } },
+      ];
+    }
+
+    if (category && category !== "Tất cả" && category !== "all") {
+      where.OR = [
+        { category: { contains: category, mode: "insensitive" } },
+        { occasion: { contains: category, mode: "insensitive" } },
+        { title: { contains: category, mode: "insensitive" } },
+      ];
+    } else if (occasion && occasion !== "Tất cả" && occasion !== "all") {
+      where.OR = [
+        { occasion: { contains: occasion, mode: "insensitive" } },
+        { category: { contains: occasion, mode: "insensitive" } },
+        { title: { contains: occasion, mode: "insensitive" } },
+      ];
+    }
+
+    if (size && size !== "all") {
+      where.size = size;
+    }
+
+    if (material && material !== "all") {
+      where.material = { contains: material, mode: "insensitive" };
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [rawProducts, totalCount] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        include: {
+          images: {
+            orderBy: { sortOrder: "asc" }
+          },
+          listings: {
+            where: { isDeleted: false, status: "AVAILABLE" }
+          },
+          user: {
+            select: {
+              id: true,
+              name: true,
+              avatar: true,
+              rating: true,
+              isVerified: true
+            }
+          }
+        }
+      }),
+      prisma.product.count({ where })
+    ]);
+
+    // Map into clean frontend-ready items
+    const products = rawProducts.map((p) => {
+      const rentListing = p.listings.find((l) => l.listingType === "RENT");
+      const sellListing = p.listings.find((l) => l.listingType === "SELL" || (l.listingType as any) === "SALE");
+
+      const rentPrice = rentListing?.basePrice || 0;
+      const sellPrice = sellListing?.basePrice || 0;
+
+      let primaryImg = p.images[0]?.url || "/1.1.jpg";
+      // Auto-fallback for broken unsplash images
+      if (primaryImg.includes("photo-1548624149-19d45e4ab558")) primaryImg = "/vintage_coat.jpg";
+      if (primaryImg.includes("photo-1584916201218-f4242ceb4809")) primaryImg = "/step2_bag.jpg";
+
+      let displayPrice = "";
+      let listingTypeRaw = "RENT";
+      let priceNumber = 0;
+
+      if (type === "rent" || (type === "all" && rentPrice > 0)) {
+        displayPrice = `${rentPrice.toLocaleString("vi-VN")}đ / ngày`;
+        listingTypeRaw = "RENT";
+        priceNumber = rentPrice;
+      } else if (type === "sell" || (type === "all" && sellPrice > 0)) {
+        displayPrice = `${sellPrice.toLocaleString("vi-VN")}đ`;
+        listingTypeRaw = "SELL";
+        priceNumber = sellPrice;
+      }
+
+      return {
+        id: p.id,
+        title: p.title,
+        image: primaryImg,
+        images: p.images.map((img) => img.url),
+        type: listingTypeRaw === "RENT" ? "Thuê" : "Mua sắm",
+        listingTypeRaw,
+        price: priceNumber,
+        priceDisplay: displayPrice,
+        location: p.province || "Hà Nội",
+        rating: "5.0",
+        condition: p.condition === "EXCELLENT" ? "Mới 98%" : "Mới 95%",
+        storeRetailPrice: rentPrice > 0 ? rentPrice * 8 : (sellPrice > 0 ? sellPrice * 2 : 500000),
+        occasion: p.occasion || "Sự kiện",
+        ownerName: p.user?.name || "Thành viên CLOOP",
+        userId: p.userId || "anonymous",
+        size: p.size || "M",
+        material: p.material || "Lụa",
+        createdAt: p.createdAt.toISOString(),
+        isBoosted: Boolean(p.isHighlighted)
+      };
+    });
+
+    return {
+      success: true,
+      products,
+      totalCount,
+      hasMore: skip + products.length < totalCount
+    };
+  } catch (error: any) {
+    console.error("getShopProductsAction error:", error);
+    return { success: false, error: error.message, products: [] };
+  }
+}
+
