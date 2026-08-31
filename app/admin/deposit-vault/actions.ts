@@ -1,51 +1,74 @@
 "use server";
 
 import { prisma } from "@/src/lib/prisma";
-import { supabaseAdmin } from "@/src/lib/supabase";
+import { requireAdmin } from "@/src/lib/auth";
+
+const OPEN_RENTAL_STATUSES = [
+  "PENDING_APPROVAL",
+  "OWNER_PACKED",
+  "LENDER_SHIPPED",
+  "BORROWER_RECEIVED",
+  "BORROWER_RETURNED",
+  "DISPUTE",
+] as const;
 
 export async function getDepositVaultMetricsAction() {
   try {
+    await requireAdmin();
+
+    const today = new Date();
     const rentalHistory = await prisma.rentalHistory.findMany({
-      include: { product: { select: { title: true } } }
+      where: {
+        status: { in: [...OPEN_RENTAL_STATUSES] },
+        invoice: { status: "PAID" },
+      },
+      select: {
+        id: true,
+        end_date: true,
+        status: true,
+        product: { select: { title: true } },
+        invoice: {
+          select: {
+            depositAmount: true,
+            rentalFee: true,
+            shippingFeeCollected: true,
+            amount: true,
+          },
+        },
+      },
+      orderBy: { end_date: "asc" },
     });
-    const listingsData = await prisma.listing.findMany();
 
     let totalVault = 0;
     let pendingReturn = 0;
-    const today = new Date();
 
-    const formattedTx = rentalHistory.map((rent: any) => {
-      const listing = listingsData.find((l: any) => String(l.productId) === String(rent.productId));
-      const rentPrice = listing?.basePrice || 0;
-      const depositPercent = listing?.deposit || 100;
-      const depositAmount = (rentPrice * depositPercent) / 100;
+    const formattedTx = rentalHistory.map((rent) => {
+      const depositAmount = rent.invoice?.depositAmount || 0;
+      const expectedReturnDate = rent.end_date;
+      const daysUntilReturn = Math.ceil(
+        (expectedReturnDate.getTime() - today.getTime()) / (1000 * 3600 * 24)
+      );
 
-      let status = "HOLDING";
-      let expectedReturnDate = new Date(rent.endDate);
-      const isOverdue = today > expectedReturnDate;
-      const daysUntilReturn = Math.ceil((expectedReturnDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
-
-      if (["CANCELLED", "COMPLETED_AND_RATED", "DISPUTED"].includes(rent.status)) {
-        status = "RELEASED";
-      } else {
-        totalVault += depositAmount;
-        if (daysUntilReturn >= 0 && daysUntilReturn <= 7) {
-          pendingReturn += depositAmount;
-        }
+      totalVault += depositAmount;
+      if (daysUntilReturn >= 0 && daysUntilReturn <= 7) {
+        pendingReturn += depositAmount;
       }
 
       return {
         id: rent.id,
-        item: rent.product?.title || "Sản phẩm ẩn",
+        item: rent.product?.title || "San pham CLOOP",
         deposit: depositAmount,
-        status,
-        expectedReturn: rent.endDate,
-        isOverdue: isOverdue && status === "HOLDING"
+        status: "HOLDING",
+        expectedReturn: expectedReturnDate,
+        isOverdue: today > expectedReturnDate,
+        invoiceAmount: rent.invoice?.amount || 0,
+        rentalFee: rent.invoice?.rentalFee || 0,
+        shippingFeeCollected: rent.invoice?.shippingFeeCollected || 0,
       };
     });
 
     const availableLiquidity = totalVault - pendingReturn;
-    const estimatedInterest = (availableLiquidity * 0.05) / 365 * 30; // 5%/năm trong 30 ngày
+    const estimatedInterest = (availableLiquidity * 0.05) / 365 * 30;
 
     return {
       success: true,
@@ -54,12 +77,13 @@ export async function getDepositVaultMetricsAction() {
           totalVault,
           pendingReturn,
           availableLiquidity,
-          estimatedInterest
+          estimatedInterest,
         },
-        transactions: formattedTx
-      }
+        transactions: formattedTx,
+      },
     };
   } catch (error: any) {
+    // TODO: Tich hop Sentry/LogRocket de tracking loi admin vault that.
     return { success: false, error: error.message };
   }
 }

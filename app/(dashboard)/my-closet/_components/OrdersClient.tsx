@@ -75,15 +75,30 @@ export function OrdersClient({
   const searchParams = useSearchParams();
   const pathname = usePathname();
   
-  const mode = searchParams.get("mode") || "owner";
+  const [mode, setMode] = useState<"owner" | "renter">(
+    searchParams.get("mode") === "renter" ? "renter" : "owner"
+  );
   const isOwnerMode = mode === "owner";
   
   const handleModeChange = (newMode: "owner" | "renter") => {
-    router.push(`${pathname}?mode=${newMode}`);
+    setMode(newMode);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("mode", newMode);
+    window.history.pushState(null, "", `${pathname}?${params.toString()}`);
   };
 
   const [escrowOrders, setEscrowOrders] = useState(initialEscrow);
   const [rentedOrders, setRentedOrders] = useState(initialRented);
+
+  useEffect(() => {
+    const syncModeFromUrl = () => {
+      const params = new URLSearchParams(window.location.search);
+      setMode(params.get("mode") === "renter" ? "renter" : "owner");
+    };
+
+    window.addEventListener("popstate", syncModeFromUrl);
+    return () => window.removeEventListener("popstate", syncModeFromUrl);
+  }, []);
 
   useEffect(() => {
     setEscrowOrders(initialEscrow);

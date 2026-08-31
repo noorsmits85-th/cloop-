@@ -3,6 +3,7 @@ import { prisma } from "@/src/lib/prisma";
 import { requireUser } from "@/src/lib/auth";
 import { verifyShippingQuoteToken } from "@/src/utils/shipping";
 import { payos } from "@/src/utils/payos";
+import { generatePayOSOrderCode } from "@/src/utils/order-code";
 import { startOfDay, endOfDay, addDays, subDays } from "date-fns";
 import { z } from "zod";
 
@@ -19,6 +20,10 @@ const CheckoutSchema = z.object({
 
 export async function POST(req: Request) {
   try {
+    if (!payos) {
+      return NextResponse.json({ error: "Cau hinh PayOS chua san sang tren server." }, { status: 500 });
+    }
+
     // 1. Xác thực Phiên Người Dùng Server-Side (Chống IDOR & Giả mạo danh tính)
     const sessionUser = await requireUser();
     if (!sessionUser) {
@@ -125,7 +130,7 @@ export async function POST(req: Request) {
           throw new Error("Lịch thuê quá sát nhau, không kịp vận chuyển và giặt ủi. Vui lòng chọn ngày khác!");
         }
 
-        const orderCode = Number(String(Date.now()).slice(-9)); // Mã orderCode 9 số cho PayOS
+        const orderCode = generatePayOSOrderCode();
 
         // 5c. Tạo Hợp đồng thuê (Order) với realUserId đã xác thực
         const rental = await tx.rentalHistory.create({

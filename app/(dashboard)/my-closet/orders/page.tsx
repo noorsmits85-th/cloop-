@@ -21,17 +21,51 @@ export default async function MyClosetOrdersPage() {
     const results = await Promise.all([
       // 1. Escrow (Yêu cầu ký quỹ) - Người khác thuê đồ của tôi
       prisma.rentalHistory.findMany({
-        where: { 
-          product: { userId } 
+        where: {
+          product: { userId }
         },
         take: 21,
-        include: {
-          product: { include: { images: true, user: true } },
-          invoice: true,
+        select: {
+          id: true,
+          renterId: true,
+          ownerId: true,
+          start_date: true,
+          end_date: true,
+          status: true,
+          createdAt: true,
+          product: {
+            select: {
+              id: true,
+              title: true,
+              province: true,
+              userId: true,
+              images: { select: { url: true }, orderBy: { sortOrder: "asc" }, take: 1 },
+              user: { select: { id: true, name: true, rating: true, reviewCount: true } }
+            }
+          },
+          invoice: {
+            select: {
+              id: true,
+              amount: true,
+              rentalFee: true,
+              depositAmount: true,
+              shippingFeeCollected: true,
+              platformFee: true,
+              status: true,
+              orderCode: true,
+              payosStatus: true
+            }
+          },
           disputes: { orderBy: { createdAt: 'desc' } },
           renter: {
-            include: {
+            select: {
+              id: true,
+              name: true,
+              avatar: true,
+              rating: true,
+              reviewCount: true,
               reviewsReceived: {
+                select: { rating: true },
                 where: { type: "OWNER_TO_RENTER" }
               }
             }
@@ -42,19 +76,47 @@ export default async function MyClosetOrdersPage() {
 
       // 2. Rented (Trang phục đi thuê) - Tôi đi thuê đồ người khác
       prisma.rentalHistory.findMany({
-        where: { 
-          renterId: userId 
+        where: {
+          renterId: userId
         },
         take: 21,
-        include: {
-          invoice: true,
+        select: {
+          id: true,
+          renterId: true,
+          ownerId: true,
+          start_date: true,
+          end_date: true,
+          status: true,
+          createdAt: true,
+          invoice: {
+            select: {
+              id: true,
+              amount: true,
+              rentalFee: true,
+              depositAmount: true,
+              shippingFeeCollected: true,
+              platformFee: true,
+              status: true,
+              orderCode: true,
+              payosStatus: true
+            }
+          },
           disputes: { orderBy: { createdAt: 'desc' } },
-          product: { 
-            include: { 
-              images: true,
+          product: {
+            select: {
+              id: true,
+              title: true,
+              province: true,
+              userId: true,
+              images: { select: { url: true }, orderBy: { sortOrder: "asc" }, take: 1 },
               user: {
-                include: {
+                select: {
+                  id: true,
+                  name: true,
+                  rating: true,
+                  reviewCount: true,
                   reviewsReceived: {
+                    select: { rating: true },
                     where: { type: "RENTER_TO_OWNER" }
                   }
                 }
@@ -97,6 +159,8 @@ export default async function MyClosetOrdersPage() {
     const serialized = serializeData(order);
     return {
       ...serialized,
+      startDate: order.start_date,
+      endDate: order.end_date,
       renter_name: order.renter?.name || order.renter_name || order.renterId || "Người thuê",
       renterAvg: renterStats.avg,
       renterReviewCount: renterStats.count,
@@ -112,6 +176,8 @@ export default async function MyClosetOrdersPage() {
     const serialized = serializeData(order);
     return {
       ...serialized,
+      startDate: order.start_date,
+      endDate: order.end_date,
       owner_name: order.product?.user?.name || order.owner_name || "Chủ tủ đồ",
       ownerAvg: ownerStats.avg,
       ownerReviewCount: ownerStats.count,
@@ -138,11 +204,11 @@ export default async function MyClosetOrdersPage() {
             Theo dõi tiến trình cho thuê, nhận đồ, đối soát ký quỹ và xử lý khiếu nại.
           </p>
         </div>
-        
+
         <Suspense fallback={<div className="p-8 text-center text-stone-400">Đang tải dữ liệu...</div>}>
-          <OrdersClient 
-            initialEscrow={initialEscrow} 
-            initialRented={initialRented} 
+          <OrdersClient
+            initialEscrow={initialEscrow}
+            initialRented={initialRented}
             initialHasMoreEscrow={hasMoreEscrow}
             initialHasMoreRented={hasMoreRented}
           />
@@ -151,3 +217,4 @@ export default async function MyClosetOrdersPage() {
     </div>
   );
 }
+

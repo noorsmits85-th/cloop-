@@ -2,6 +2,7 @@
 
 import { prisma } from "@/src/lib/prisma";
 import { payos } from "@/src/utils/payos";
+import { generatePayOSOrderCode } from "@/src/utils/order-code";
 
 import { createClient } from "@/src/utils/supabase/server";
 
@@ -12,6 +13,10 @@ export async function createPayOSPaymentLink(rentalId: string) {
 
     if (authError || !user) {
       return { success: false, error: "Bạn cần đăng nhập để thanh toán." };
+    }
+
+    if (!payos) {
+      return { success: false, error: "Cau hinh PayOS chua san sang tren server." };
     }
 
     // 1. Lấy thông tin Hợp đồng thuê (Bảo vệ IDOR)
@@ -45,7 +50,7 @@ export async function createPayOSPaymentLink(rentalId: string) {
       where: { rentalId: rentalId }
     });
 
-    const orderCode = Number(String(Date.now()).slice(-9)); // Giới hạn độ dài để an toàn với PayOS orderCode
+    const orderCode = generatePayOSOrderCode();
 
     if (invoice && invoice.payosStatus === "PAID") {
       throw new Error("Hóa đơn này đã được thanh toán thành công, không thể tạo lại QR code.");
@@ -80,7 +85,7 @@ export async function createPayOSPaymentLink(rentalId: string) {
     } catch {}
 
     const YOUR_DOMAIN = dynamicDomain;
-    
+
     const body = {
       orderCode: orderCode,
       amount: totalAmount,
@@ -112,6 +117,10 @@ export async function checkAndSyncPaymentStatusAction(orderCode: number) {
       return { success: false, error: "Mã đơn hàng không hợp lệ" };
     }
 
+    if (!payos) {
+      return { success: false, error: "Cau hinh PayOS chua san sang tren server." };
+    }
+
     const invoice = await prisma.invoice.findUnique({
       where: { orderCode: BigInt(orderCode) },
       include: { rental: true }
@@ -129,17 +138,16 @@ export async function checkAndSyncPaymentStatusAction(orderCode: number) {
     // 🛡️ Webhook Fallback: Gọi trực tiếp PayOS API để hỏi thăm trạng thái
     try {
       const paymentInfo = await payos.paymentRequests.get(orderCode);
-      
+
       if (paymentInfo && (paymentInfo.status as string === "PAID" || paymentInfo.status as string === "SUCCESS")) {
         // Thực thi Atomic Settlement Inflow giống Webhook
         await prisma.$transaction(async (tx) => {
-          const checkInvoice = await tx.invoice.findUnique({ where: { id: invoice.id } });
-          if (checkInvoice?.status === "PAID") return; // Idempotent check
-
-          await tx.invoice.update({
-            where: { id: invoice.id },
+          const updateResult = await tx.invoice.updateMany({
+            where: { id: invoice.id, status: "PENDING" },
             data: { status: "PAID", payosStatus: "success" }
           });
+
+          if (updateResult.count === 0) return;
 
           await tx.ledgerTransaction.create({
             data: {
@@ -184,3 +192,4 @@ export async function checkAndSyncPaymentStatusAction(orderCode: number) {
     return { success: false, error: error.message || "Lỗi đồng bộ" };
   }
 }
+

@@ -210,7 +210,7 @@ export function WalletClient({
 
     // Gửi request ngầm đồng bộ với PayOS & Database
     try {
-      const res = await createCoinTopUpPayment(selectedPackage, clientOrderCode);
+      const res = await createCoinTopUpPayment(selectedPackage);
       if (res.success) {
         setActiveTopUpData((prev: any) => ({
           ...prev,

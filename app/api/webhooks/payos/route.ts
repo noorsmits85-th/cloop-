@@ -131,10 +131,18 @@ export async function POST(req: Request) {
     // ===== NHÁNH 2: THANH TOÁN ĐƠN THUÊ TRANG PHỤC (Invoice) =====
     if (verifiedData.amount !== invoice.amount) {
       console.error(`⚠️ CẢNH BÁO: Lệch số tiền! Yêu cầu: ${invoice.amount}, Thực tế: ${verifiedData.amount}`);
-      
+
       // Ghi log TransactionHistory với trạng thái AMOUNT_MISMATCH
-      await prisma.transactionHistory.create({
-        data: {
+      await prisma.transactionHistory.upsert({
+        where: { orderCode: BigInt(orderCode) },
+        update: {
+          eventId: verifiedData.reference,
+          amount: verifiedData.amount,
+          invoiceAmount: invoice.amount,
+          status: 'AMOUNT_MISMATCH',
+          rawPayload: body
+        },
+        create: {
           eventId: verifiedData.reference,
           orderCode: BigInt(orderCode),
           invoiceId: invoice.id,
@@ -165,6 +173,15 @@ export async function POST(req: Request) {
           console.log(`ℹ️ Transaction ${orderCode} đã tồn tại (Lặp Webhook). Đánh dấu DUPLICATE...`);
           return;
         }
+        console.log(`➤ Cập nhật Invoice thành PAID/COMPLETED và Ghi Sổ Cái DEPOSIT_IN`);
+        const invoiceUpdate = await tx.invoice.updateMany({
+          where: { id: invoice.id, status: 'PENDING' },
+          data: { status: 'PAID', payosStatus: 'success' }
+        });
+
+        if (invoiceUpdate.count === 0) {
+          return;
+        }
 
         console.log(`➤ Ghi nhận TransactionHistory (VERIFIED -> PROCESSED) cho orderCode ${orderCode}`);
         await tx.transactionHistory.create({
@@ -180,11 +197,6 @@ export async function POST(req: Request) {
           }
         });
 
-        console.log(`➤ Cập nhật Invoice thành PAID/COMPLETED và Ghi Sổ Cái DEPOSIT_IN`);
-        await tx.invoice.update({
-          where: { id: invoice.id },
-          data: { status: 'PAID', payosStatus: 'success' }
-        });
 
         await tx.ledgerTransaction.create({
           data: {
@@ -236,3 +248,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
   }
 }
+

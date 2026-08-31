@@ -22,7 +22,7 @@ function setCachedData(key: string, data: any) {
   memoryCache.set(key, { data, expiry: Date.now() + CACHE_TTL_MS });
 }
 
-export function clearShopMemoryCache() {
+export async function clearShopMemoryCache() {
   memoryCache.clear();
 }
 
@@ -140,7 +140,7 @@ export async function createProductAction({
       return newProduct.id;
     });
 
-    clearShopMemoryCache();
+    await clearShopMemoryCache();
     try {
       revalidatePath("/shop");
       revalidatePath("/");
@@ -189,7 +189,7 @@ export async function bumpProductAction(productId: string) {
       data: { lastBumpedAt: now }
     });
 
-    clearShopMemoryCache();
+    await clearShopMemoryCache();
     try {
       revalidatePath('/');
       revalidatePath('/shop');

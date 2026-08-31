@@ -18,7 +18,7 @@ export async function requireUser() {
 
   // Đảm bảo bản ghi User luôn tồn tại trong PostgreSQL qua lệnh Upsert nguyên tử 2ms
   try {
-    await prisma.user.upsert({
+    const profile = await prisma.user.upsert({
       where: { id: user.id },
       update: {
         email: email,
@@ -31,16 +31,46 @@ export async function requireUser() {
         name: name,
         walletBalance: 0,
         cloopCoins: 100,
-        role: (user.user_metadata?.role as any) || "USER"
+        role: "USER"
+      },
+      select: {
+        role: true,
+        walletBalance: true,
+        cloopCoins: true,
       }
     });
+
+    return {
+      id: user.id,
+      email: email,
+      name: name,
+      role: profile.role,
+      avatar: user.user_metadata?.avatar_url || null,
+      walletBalance: profile.walletBalance,
+      cloopCoins: profile.cloopCoins,
+    };
   } catch (syncErr) {
     try {
       if (user.email) {
-        await prisma.user.update({
+        const profile = await prisma.user.update({
           where: { email: user.email },
-          data: { id: user.id, name }
+          data: { id: user.id, name },
+          select: {
+            role: true,
+            walletBalance: true,
+            cloopCoins: true,
+          }
         });
+
+        return {
+          id: user.id,
+          email: email,
+          name: name,
+          role: profile.role,
+          avatar: user.user_metadata?.avatar_url || null,
+          walletBalance: profile.walletBalance,
+          cloopCoins: profile.cloopCoins,
+        };
       }
     } catch (_) {}
   }
@@ -49,7 +79,7 @@ export async function requireUser() {
     id: user.id,
     email: email,
     name: name,
-    role: (user.user_metadata?.role as any) || "USER",
+    role: "USER",
     avatar: user.user_metadata?.avatar_url || null,
     walletBalance: 0,
     cloopCoins: 100,

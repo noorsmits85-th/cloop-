@@ -5,8 +5,8 @@ import { useAuthModal } from "@/app/AuthModalContext";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SignedShippingQuote } from "@/src/utils/shipping";
-import { 
-  Loader2, ShieldCheck, MapPin, Calendar, Clock, 
+import {
+  Loader2, ShieldCheck, MapPin, Calendar, Clock,
   Check, ArrowRight, User, Phone, Home, Shirt, Tag, AlertCircle, Navigation, Package, Truck,
   Copy, CheckCircle2, ExternalLink, QrCode, X
 } from "lucide-react";
@@ -43,19 +43,19 @@ export default function CheckoutClient({
   const [recipientName, setRecipientName] = useState("");
   const [phone, setPhone] = useState("");
   const [addressDetail, setAddressDetail] = useState("");
-  
+
   // GHN Address States
   const [provinces, setProvinces] = useState<any[]>([]);
   const [districts, setDistricts] = useState<any[]>([]);
   const [wards, setWards] = useState<any[]>([]);
-  
+
   const [selectedProvince, setSelectedProvince] = useState<{ id: string; name: string } | null>(null);
   const [selectedDistrict, setSelectedDistrict] = useState<{ id: string; name: string } | null>(null);
   const [selectedWard, setSelectedWard] = useState<{ id: string; name: string } | null>(null);
 
   const [shippingQuotes, setShippingQuotes] = useState<SignedShippingQuote[]>([]);
   const [selectedQuote, setSelectedQuote] = useState<SignedShippingQuote | null>(null);
-  
+
   // Gói thuê & Lịch (Khởi tạo chuẩn xác từ lựa chọn của khách ở trang sản phẩm)
   const initialTier = pricingTiers.find(t => t.days === urlPackage) || pricingTiers[1] || pricingTiers[0];
   const [selectedTier, setSelectedTier] = useState<any>(initialTier);
@@ -212,7 +212,7 @@ export default function CheckoutClient({
             }
 
             // Tự động khớp tỉnh thành
-            const matchedProv = provinces.find((p: any) => 
+            const matchedProv = provinces.find((p: any) =>
               detectedProvinceName.toLowerCase().includes(p.ProvinceName.toLowerCase()) ||
               p.ProvinceName.toLowerCase().includes(detectedProvinceName.toLowerCase())
             );
@@ -237,19 +237,19 @@ export default function CheckoutClient({
 
   const handleFetchShipping = async () => {
     if (!selectedProvince || !selectedDistrict || !selectedWard) return;
-    
+
     setError("");
     setIsLoadingShipping(true);
-    
+
     const fullToProvinceStr = `${selectedWard.name}, ${selectedDistrict.name}, ${selectedProvince.name}`;
 
     try {
       const res = await fetch("/api/shipping/quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          fromProvince: fromProvince || product.province || "Hà Nội", 
-          toProvince: fullToProvinceStr, 
+        body: JSON.stringify({
+          fromProvince: fromProvince || product.province || "Hà Nội",
+          toProvince: fullToProvinceStr,
           fromDistrictId: (product as any)?.districtId,
           fromWardCode: (product as any)?.wardCode,
           toDistrictId: selectedDistrict.id,
@@ -258,10 +258,10 @@ export default function CheckoutClient({
           isRental: isRental
         }),
       });
-      
+
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Lỗi tính phí giao hàng");
-      
+
       setShippingQuotes(data.options || []);
       if (data.options && data.options.length > 0) {
         setSelectedQuote(data.options[0]);
@@ -290,7 +290,7 @@ export default function CheckoutClient({
       setError("Vui lòng nhập số điện thoại người nhận hàng.");
       return;
     }
-    
+
     const phoneClean = phone.replace(/[\s.-]+/g, "");
     const phoneRegex = /(84|0[3|5|7|8|9])+([0-9]{8})\b/;
     if (!phoneRegex.test(phoneClean)) {
@@ -334,7 +334,7 @@ export default function CheckoutClient({
       });
 
       const data = await res.json();
-      
+
       if (!res.ok) {
         throw new Error(data.error || "Lỗi khởi tạo cổng thanh toán");
       }
@@ -361,7 +361,7 @@ export default function CheckoutClient({
   // Phát hiện đơn liên tỉnh (VD: Hà Nội -> Nghệ An / TP.HCM)
   const originProvinceStr = (fromProvince || product.province || "Hà Nội").trim().toLowerCase();
   const isInterProvincial = Boolean(
-    selectedProvince && 
+    selectedProvince &&
     !originProvinceStr.includes(selectedProvince.name.trim().toLowerCase()) &&
     !selectedProvince.name.trim().toLowerCase().includes(originProvinceStr)
   );
@@ -409,12 +409,12 @@ export default function CheckoutClient({
 
   return (
     <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-      
+
       {/* ========================================================
           CỘT TRÁI (5/12): HÓA ĐƠN ĐẶT ĐỒ & THÔNG TIN CHỦ TỦ
       ======================================================== */}
       <div className="lg:col-span-5 bg-white p-6 sm:p-7 rounded-2xl shadow-xs border border-[#E9E2D8] space-y-5 text-[#183A2D] font-body">
-        
+
         <div>
           <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-800 bg-[#EAF2EC] px-2.5 py-1 rounded-md border border-emerald-200/60 font-ui">
             ĐƠN ĐẶT {isRental ? "THUÊ" : "MUA"} TUẦN HOÀN
@@ -423,25 +423,25 @@ export default function CheckoutClient({
             Tóm Tắt Đơn Hàng
           </h2>
         </div>
-        
+
         {/* Thông tin Món Đồ & Chủ Tủ (Chính xác 100% từ Database) */}
         <div className="flex gap-4 pb-4 border-b border-stone-100">
           <div className="relative w-24 h-32 rounded-xl overflow-hidden bg-[#FAF9F5] border border-[#E9E2D8] shrink-0">
-            <Image 
-              src={product.images?.[0]?.url || product.image || "/placeholder-clothing.png"} 
-              alt={product.title} 
-              fill 
-              className="object-cover" 
-              unoptimized 
+            <Image
+              src={product.images?.[0]?.url || product.image || "/placeholder-clothing.png"}
+              alt={product.title}
+              fill
+              className="object-cover"
+              unoptimized
             />
           </div>
-          
+
           <div className="flex flex-col justify-between py-0.5">
             <div>
               <h3 className="font-heading font-bold text-sm text-[#0A2517] leading-snug line-clamp-2">
                 {product.title}
               </h3>
-              
+
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {product.size && (
                   <span className="text-[9.5px] font-bold text-stone-600 bg-stone-100 px-2 py-0.5 rounded font-ui">
@@ -469,10 +469,10 @@ export default function CheckoutClient({
             </div>
           </div>
         </div>
-        
+
         {/* Bảng Kê Chi Phí Đồng Bộ Thời Gian Thực */}
         <div className="space-y-3 font-ui text-xs text-stone-600">
-          
+
           <div className="flex justify-between items-center py-0.5">
             <span className="font-medium text-stone-800 flex items-center gap-1.5">
               <Clock size={13} className="text-emerald-800" />
@@ -566,7 +566,7 @@ export default function CheckoutClient({
           CỘT PHẢI (7/12): FORM GIAO NHẬN, LỊCH THUÊ & THANH TOÁN
       ======================================================== */}
       <div className="lg:col-span-7 bg-white p-6 sm:p-7 rounded-2xl shadow-xs border border-[#E9E2D8] flex flex-col space-y-5 text-[#183A2D] font-body">
-        
+
         <div>
           <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-800 bg-[#EAF2EC] px-2.5 py-1 rounded-md border border-emerald-200/60 font-ui">
             THÔNG TIN GIAO NHẬN
@@ -575,7 +575,7 @@ export default function CheckoutClient({
             Lịch Thuê & Địa Chỉ Nhận Hàng
           </h2>
         </div>
-        
+
         {/* 1. CHỌN GÓI THUÊ THÔNG MINH */}
         {isRental && (
           <div className="space-y-2">
@@ -595,7 +595,7 @@ export default function CheckoutClient({
                 const isOneDayDisabled = isInterProvincial && tier.days === 1;
 
                 return (
-                  <div 
+                  <div
                     key={idx}
                     onClick={() => {
                       if (isOneDayDisabled) {
@@ -605,10 +605,10 @@ export default function CheckoutClient({
                       setSelectedTier(tier);
                     }}
                     className={`p-3 rounded-xl border transition-all flex flex-col justify-between ${
-                      isOneDayDisabled 
-                        ? 'opacity-45 bg-stone-100 border-stone-200 cursor-not-allowed' 
-                        : isSelected 
-                          ? 'border-[#183A2D] bg-[#F4F9F5] shadow-2xs ring-1 ring-[#183A2D] cursor-pointer' 
+                      isOneDayDisabled
+                        ? 'opacity-45 bg-stone-100 border-stone-200 cursor-not-allowed'
+                        : isSelected
+                          ? 'border-[#183A2D] bg-[#F4F9F5] shadow-2xs ring-1 ring-[#183A2D] cursor-pointer'
                           : 'border-stone-200 hover:border-stone-300 bg-[#FAF9F5] cursor-pointer'
                     }`}
                   >
@@ -681,7 +681,7 @@ export default function CheckoutClient({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-[10.5px] text-stone-500 mb-1">Ngày bắt đầu mặc đồ (Dự kiến):</label>
-                <input 
+                <input
                   type="date"
                   value={startDate}
                   min={earliestStartDate}
@@ -705,7 +705,7 @@ export default function CheckoutClient({
             <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 font-ui">
               {isRental ? "3. Địa Chỉ Nhận Hàng Tận Nhà (Tính Cước GHN)" : "1. Địa Chỉ Giao Hàng"}
             </label>
-            
+
             {/* Nút định vị GPS 1 chạm */}
             <button
               type="button"
@@ -814,8 +814,8 @@ export default function CheckoutClient({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-[11px] font-bold text-stone-600 mb-1 font-ui">Số nhà, tên đường *</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 placeholder="Ví dụ: 124 Lê Lợi, Tòa A..."
                 value={addressDetail}
                 onChange={(e) => setAddressDetail(e.target.value)}
@@ -825,8 +825,8 @@ export default function CheckoutClient({
 
             <div>
               <label className="block text-[11px] font-bold text-stone-600 mb-1 font-ui">Số điện thoại nhận hàng *</label>
-              <input 
-                type="tel" 
+              <input
+                type="tel"
                 placeholder="Ví dụ: 0987654321..."
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
@@ -846,7 +846,7 @@ export default function CheckoutClient({
 
         {/* NÚT BẤM THANH TOÁN VIETQR PAYOS */}
         <div className="pt-2 mt-auto">
-          <button 
+          <button
             type="button"
             onClick={handleCheckout}
             disabled={isProcessingPayment}
@@ -862,7 +862,7 @@ export default function CheckoutClient({
               </>
             )}
           </button>
-          
+
           <p className="text-center text-[10.5px] text-stone-400 mt-2.5 font-ui">
             Chuyển khoản an toàn 24/7 qua mã VietQR Ngân hàng ACB • Hộ chiếu số bảo chứng
           </p>
@@ -876,10 +876,10 @@ export default function CheckoutClient({
       {showPaymentModal && paymentData && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-[#E9E2D8] relative text-[#183A2D] max-h-[92vh] overflow-y-auto">
-            
+
             {/* Nút đóng */}
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={() => {
                 if (isPaidSuccess) {
                   router.push("/my-closet/orders");
@@ -924,12 +924,23 @@ export default function CheckoutClient({
 
                 {/* Khung Mã QR Chuẩn VietQR */}
                 <div className="flex flex-col items-center justify-center bg-[#FAF9F5] p-4 rounded-2xl border border-[#E9E2D8]">
-                  <div className="relative w-56 h-56 bg-white p-2 rounded-xl border border-stone-200 shadow-xs flex items-center justify-center">
-                    <img 
-                      src={`https://api.vietqr.io/image/${paymentData.bin || '970416'}-${paymentData.accountNumber || '123456'}-compact2.jpg?amount=${paymentData.amount}&addInfo=${encodeURIComponent(paymentData.description)}&accountName=${encodeURIComponent(paymentData.accountName || 'CLOOP')}`}
-                      alt="Mã VietQR Thanh toán" 
-                      className="w-full h-full object-contain"
-                    />
+                  <div className="relative w-56 h-56 bg-white p-2 rounded-xl border border-stone-200 shadow-xs flex items-center justify-center">                    {paymentData.bin && paymentData.accountNumber ? (
+                      <img
+                        src={`https://api.vietqr.io/image/${paymentData.bin}-${paymentData.accountNumber}-compact2.jpg?amount=${paymentData.amount}&addInfo=${encodeURIComponent(paymentData.description)}&accountName=${encodeURIComponent(paymentData.accountName || 'CLOOP')}`}
+                        alt="Ma VietQR Thanh toan"
+                        className="w-full h-full object-contain"
+                      />
+                    ) : paymentData.qrCode ? (
+                      <img
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent(paymentData.qrCode)}`}
+                        alt="Ma VietQR Thanh toan"
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <div className="text-xs text-stone-500 text-center px-4">
+                        Dang cho PayOS tra ve ma QR an toan...
+                      </div>
+                    )}
                   </div>
 
                   <div className="mt-3 flex items-center gap-2 text-[11px] text-emerald-800 font-bold font-ui">
@@ -950,8 +961,8 @@ export default function CheckoutClient({
                     <div className="flex items-center gap-1.5">
                       <span className="font-mono font-bold text-stone-900">{paymentData.accountNumber || "Đang tạo..."}</span>
                       {paymentData.accountNumber && (
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           onClick={() => copyToClipboard(paymentData.accountNumber!, "accountNumber")}
                           className="text-[10px] text-emerald-700 hover:text-emerald-900 font-bold bg-white px-1.5 py-0.5 rounded border border-stone-200 cursor-pointer"
                         >
@@ -970,8 +981,8 @@ export default function CheckoutClient({
                     <span className="text-stone-500">Số tiền:</span>
                     <div className="flex items-center gap-1.5">
                       <span className="font-mono font-bold text-emerald-800 text-sm">{paymentData.amount.toLocaleString('vi-VN')}đ</span>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         onClick={() => copyToClipboard(String(paymentData.amount), "amount")}
                         className="text-[10px] text-emerald-700 hover:text-emerald-900 font-bold bg-white px-1.5 py-0.5 rounded border border-stone-200 cursor-pointer"
                       >
@@ -984,8 +995,8 @@ export default function CheckoutClient({
                     <span className="text-stone-500">Nội dung CK:</span>
                     <div className="flex items-center gap-1.5">
                       <span className="font-mono font-bold text-amber-900 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">{paymentData.description}</span>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         onClick={() => copyToClipboard(paymentData.description, "description")}
                         className="text-[10px] text-emerald-700 hover:text-emerald-900 font-bold bg-white px-1.5 py-0.5 rounded border border-stone-200 cursor-pointer"
                       >
@@ -1028,3 +1039,4 @@ export default function CheckoutClient({
     </div>
   );
 }
+

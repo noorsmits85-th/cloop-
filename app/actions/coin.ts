@@ -5,9 +5,10 @@ import { payos } from "@/lib/payos";
 import { requireUser } from "@/src/lib/auth";
 import { COIN_PACKAGES, QUEST_DEFINITIONS } from "@/lib/coinPackages";
 import { revalidatePath } from "next/cache";
+import { generatePayOSOrderCode } from "@/src/utils/order-code";
 
 // 1. Tạo thanh toán mua gói Điểm Lá qua PayOS
-export async function createCoinTopUpPayment(packageCode: string, providedOrderCode?: number) {
+export async function createCoinTopUpPayment(packageCode: string) {
   try {
     const pkg = COIN_PACKAGES[packageCode];
     if (!pkg) {
@@ -27,7 +28,7 @@ export async function createCoinTopUpPayment(packageCode: string, providedOrderC
     const userId = authUser.id;
 
     // Sinh orderCode ngẫu nhiên hoặc dùng code client đã phát sinh
-    const orderCode = providedOrderCode || Number(String(Date.now()).slice(-6) + Math.floor(100 + Math.random() * 900));
+    const orderCode = generatePayOSOrderCode();
 
     // Tạo bản ghi CoinTopUp PENDING trong DB trước
     const topUp = await prisma.coinTopUp.create({
@@ -102,6 +103,10 @@ export async function checkCoinTopUpStatusAction(orderCode: number) {
 
     if (!topUp) {
       return { success: false, status: "NOT_FOUND" };
+    }
+
+    if (topUp.userId !== authUser.id) {
+      return { success: false, status: "FORBIDDEN" };
     }
 
     // Nếu DB vẫn là PENDING -> Chủ động hỏi PayOS API trực tiếp để phòng ngừa webhook bị delay

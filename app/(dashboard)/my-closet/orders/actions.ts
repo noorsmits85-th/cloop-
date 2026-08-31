@@ -9,10 +9,14 @@ export async function renterReceivedAction(orderId: string) {
   try {
     const userAuth = await requireUser();
 
-    await prisma.rentalHistory.update({
-      where: { id: orderId },
+    const updateResult = await prisma.rentalHistory.updateMany({
+      where: { id: orderId, renterId: userAuth.id, status: "LENDER_SHIPPED" },
       data: { status: "BORROWER_RECEIVED" }
     });
+
+    if (updateResult.count === 0) {
+      return { success: false, error: "Forbidden hoac trang thai don hang khong hop le." };
+    }
 
     try {
       await prisma.auditLog.create({
@@ -40,8 +44,8 @@ export async function renterReturnAction(orderId: string) {
   try {
     const userAuth = await requireUser();
 
-    const rental = await prisma.rentalHistory.findUnique({
-      where: { id: orderId },
+    const rental = await prisma.rentalHistory.findFirst({
+      where: { id: orderId, renterId: userAuth.id },
       include: { invoice: true, product: true }
     });
 
@@ -49,10 +53,14 @@ export async function renterReturnAction(orderId: string) {
       return { success: false, error: "Không tìm thấy đơn hàng." };
     }
 
-    await prisma.rentalHistory.update({
-      where: { id: orderId },
+    const updateResult = await prisma.rentalHistory.updateMany({
+      where: { id: orderId, renterId: userAuth.id, status: "BORROWER_RECEIVED" },
       data: { status: "BORROWER_RETURNED" }
     });
+
+    if (updateResult.count === 0) {
+      return { success: false, error: "Forbidden hoac trang thai don hang khong hop le." };
+    }
 
     // Tạo Shipment chiều về
     try {
@@ -60,7 +68,7 @@ export async function renterReturnAction(orderId: string) {
         name: rental.renter_name || "Khách thuê",
         phone: rental.renter_phone || "",
       };
-      
+
       const deliveryAddress = {
         name: rental.owner_name || "Chủ tủ",
         phone: rental.owner_phone || "",
@@ -136,15 +144,37 @@ export async function completeOrderAction(orderId: string) {
       if (!rental) {
         throw new Error("Không tìm thấy đơn hàng.");
       }
-      
+
+      const ownerId = rental.ownerId || rental.product?.userId;
+      if (!ownerId || ownerId !== userAuth.id) {
+        throw new Error("Forbidden: Chi chu do cua don hang moi duoc quyet toan.");
+      }
+
+      if (!rental.invoice || rental.invoice.status !== "PAID") {
+        throw new Error("Hoa don chua duoc thanh toan thanh cong, khong the quyet toan.");
+      }
+
       productIdToRevalidate = rental.product_id;
 
+      const invoiceId = rental.invoice.id;
+      const existingSettlement = await tx.ledgerTransaction.findFirst({
+        where: {
+          invoiceId,
+          type: { in: ["REFUND_OUT", "PAYOUT_OUT", "FEE_RETAINED", "SHIPPING_RETAINED"] },
+          status: "COMPLETED"
+        }
+      });
+
+      if (existingSettlement) {
+        throw new Error("Giao dich nay da duoc quyet toan tren so cai.");
+      }
+
       const updateResult = await tx.rentalHistory.updateMany({
-        where: { 
+        where: {
           id: orderId,
           status: { in: ["BORROWER_RETURNED", "BORROWER_RECEIVED", "LENDER_SHIPPED", "OWNER_PACKED", "PENDING_APPROVAL"] }
         },
-        data: { 
+        data: {
           status: "LENDER_COMPLETED",
           completedAt: new Date()
         }
@@ -156,14 +186,14 @@ export async function completeOrderAction(orderId: string) {
 
       const depositAmount = rental.invoice?.depositAmount || 0;
       const rentalFee = rental.invoice?.rentalFee || 0;
-      const platformFee = rental.invoice?.platformFee || Math.floor(rentalFee * 0.1);
+      const rawPlatformFee = rental.invoice?.platformFee || Math.floor(rentalFee * 0.1);
+      const platformFee = Math.min(rawPlatformFee, rentalFee);
       const shippingFee = rental.invoice?.shippingFeeCollected || 0;
-      const invoiceId = rental.invoice?.id;
 
       // 💸 1. Hoàn Tiền Cọc (Refund Escrow) & Tặng 15 Xu Lá (CloopCoins) cho Khách Thuê:
       const updatedRenter = await tx.user.update({
         where: { id: rental.renterId },
-        data: { 
+        data: {
           walletBalance: depositAmount > 0 ? { increment: depositAmount } : undefined,
           cloopCoins: { increment: 15 } // 🎁 Thưởng 15 Xu Lá tuần hoàn
         },
@@ -195,21 +225,27 @@ export async function completeOrderAction(orderId: string) {
       // Tự động cấn trừ 25.000đ cước GHN chiều về (Chủ tủ chịu chi phí thu hồi tài sản)
       const returnShippingFee = 25000;
       const ownerBonusCoins = 25; // 🎁 Thưởng 25 Xu Lá cho Chủ Tủ
-      const lenderEarnings = rentalFee > 0 ? Math.max(0, rentalFee - platformFee - returnShippingFee) : 0;
+      const returnShippingRetained = Math.min(returnShippingFee, Math.max(0, rentalFee - platformFee));
+      const lenderEarnings = Math.max(0, rentalFee - platformFee - returnShippingRetained);
+      const allocatedAmount = depositAmount + lenderEarnings + platformFee + returnShippingRetained + shippingFee;
+
+      if (allocatedAmount !== rental.invoice.amount) {
+        throw new Error("Loi can so: tong tien phan bo khong khop hoa don da thu.");
+      }
 
       const updatedOwner = await tx.user.update({
-        where: { id: userAuth.id },
-        data: { 
+        where: { id: ownerId },
+        data: {
           walletBalance: lenderEarnings > 0 ? { increment: lenderEarnings } : undefined,
           cloopCoins: { increment: ownerBonusCoins }
         },
         select: { cloopCoins: true }
       });
-      
+
       try {
         await tx.coinLedgerEntry.create({
           data: {
-            userId: userAuth.id,
+            userId: ownerId,
             type: "QUEST_REWARD",
             amount: ownerBonusCoins,
             balanceAfter: updatedOwner.cloopCoins,
@@ -221,25 +257,31 @@ export async function completeOrderAction(orderId: string) {
         console.warn("Owner coin ledger creation warning:", coinErr);
       }
 
-      if (lenderEarnings > 0 && invoiceId) {
-        await tx.ledgerTransaction.create({
-          data: { invoiceId, type: 'PAYOUT_OUT', amount: lenderEarnings, description: `Thanh toán tiền thuê đơn ${orderId} (Đã trừ phí sàn và 25k ship chiều về)` }
-        });
-        await tx.ledgerTransaction.create({
-          data: { invoiceId, type: 'FEE_RETAINED', amount: platformFee, description: `Phí nền tảng đơn ${orderId}` }
-        });
-        await tx.ledgerTransaction.create({
-          data: { invoiceId, type: 'SHIPPING_RETAINED', amount: returnShippingFee, description: `Phí vận chuyển chiều về giữ lại đơn ${orderId}` }
-        });
+      if (invoiceId) {
+        if (lenderEarnings > 0) {
+          await tx.ledgerTransaction.create({
+            data: { invoiceId, type: 'PAYOUT_OUT', amount: lenderEarnings, description: `Thanh toan tien thue don ${orderId} sau tru phi san va ship chieu ve` }
+          });
+        }
+        if (platformFee > 0) {
+          await tx.ledgerTransaction.create({
+            data: { invoiceId, type: 'FEE_RETAINED', amount: platformFee, description: `Phi nen tang don ${orderId}` }
+          });
+        }
+        if (returnShippingRetained > 0) {
+          await tx.ledgerTransaction.create({
+            data: { invoiceId, type: 'SHIPPING_RETAINED', amount: returnShippingRetained, description: `Phi van chuyen chieu ve giu lai don ${orderId}` }
+          });
+        }
       }
-      
-      // 💸 3. Thu phí Ship chiều đi cho Platform:
+
+      // MONEY: Thu phi ship chieu di cho Platform.
       if (shippingFee > 0 && invoiceId) {
         await tx.ledgerTransaction.create({
           data: { invoiceId, type: 'SHIPPING_RETAINED', amount: shippingFee, description: `Phí vận chuyển chiều đi giữ lại đơn ${orderId}` }
         });
       }
-      
+
       // 🔄 KHI HOÀN TẤT ĐỒ VỀ TAY CHỦ TỦ: Tự động kích hoạt lại trạng thái Sẵn Sàng Cho Thuê trên Sàn & Tủ đồ
       if (rental.product_id) {
         await tx.listing.updateMany({
@@ -272,7 +314,7 @@ export async function completeOrderAction(orderId: string) {
     } catch(e) {
       console.error("Cache purge failed:", e);
     }
-    
+
     return { success: true };
   } catch (error: any) {
     console.error("Lỗi khi hoàn tất đơn:", error);
@@ -299,8 +341,8 @@ export async function raiseDisputeWithProposalAction(
     }
 
     // URL validation: must be secure HTTPS from trusted media hosts
-    const isValidImages = images.every(img => 
-      typeof img === "string" && 
+    const isValidImages = images.every(img =>
+      typeof img === "string" &&
       (img.startsWith("https://res.cloudinary.com/") || img.startsWith("https://") || img.startsWith("/"))
     );
     if (!isValidImages) {
@@ -752,6 +794,7 @@ export async function loadMoreOrdersAction({
   try {
     const userAuth = await requireUser();
     const isOwner = mode === "owner";
+    const safeLimit = Math.min(Math.max(Number(limit) || 20, 1), 50);
 
     const getReviewStats = (reviews: any[]) => {
       if (!reviews || reviews.length === 0) return { avg: "5.0", count: 0 };
@@ -763,26 +806,89 @@ export async function loadMoreOrdersAction({
       where: isOwner
         ? { product: { userId: userAuth.id } }
         : { renterId: userAuth.id },
-      take: limit + 1,
+      take: safeLimit + 1,
       skip: cursor ? 1 : 0,
       cursor: cursor ? { id: cursor } : undefined,
       orderBy: { createdAt: 'desc' },
-      include: isOwner
+      select: isOwner
         ? {
-            product: { include: { images: true } },
+            id: true,
+            renterId: true,
+            ownerId: true,
+            start_date: true,
+            end_date: true,
+            status: true,
+            createdAt: true,
+            invoice: {
+              select: {
+                id: true,
+                amount: true,
+                rentalFee: true,
+                depositAmount: true,
+                shippingFeeCollected: true,
+                platformFee: true,
+                status: true,
+                orderCode: true,
+                payosStatus: true,
+              },
+            },
+            disputes: { orderBy: { createdAt: "desc" } },
+            product: {
+              select: {
+                id: true,
+                title: true,
+                province: true,
+                userId: true,
+                images: { select: { url: true }, orderBy: { sortOrder: "asc" }, take: 1 },
+              },
+            },
             renter: {
-              include: {
-                reviewsReceived: { where: { type: "OWNER_TO_RENTER" } }
+              select: {
+                id: true,
+                name: true,
+                avatar: true,
+                rating: true,
+                reviewCount: true,
+                reviewsReceived: { select: { rating: true }, where: { type: "OWNER_TO_RENTER" } }
               }
             }
           }
         : {
+            id: true,
+            renterId: true,
+            ownerId: true,
+            start_date: true,
+            end_date: true,
+            status: true,
+            createdAt: true,
+            invoice: {
+              select: {
+                id: true,
+                amount: true,
+                rentalFee: true,
+                depositAmount: true,
+                shippingFeeCollected: true,
+                platformFee: true,
+                status: true,
+                orderCode: true,
+                payosStatus: true,
+              },
+            },
+            disputes: { orderBy: { createdAt: "desc" } },
             product: {
-              include: {
-                images: true,
+              select: {
+                id: true,
+                title: true,
+                province: true,
+                userId: true,
+                images: { select: { url: true }, orderBy: { sortOrder: "asc" }, take: 1 },
                 user: {
-                  include: {
-                    reviewsReceived: { where: { type: "RENTER_TO_OWNER" } }
+                  select: {
+                    id: true,
+                    name: true,
+                    rating: true,
+                    reviewCount: true,
+                    reviewsReceived: { select: { rating: true }, where: { type: "RENTER_TO_OWNER" } }
                   }
                 }
               }
@@ -790,14 +896,16 @@ export async function loadMoreOrdersAction({
           }
     });
 
-    const hasMore = rawOrders.length > limit;
-    const pagedOrders = hasMore ? rawOrders.slice(0, limit) : rawOrders;
+    const hasMore = rawOrders.length > safeLimit;
+    const pagedOrders = hasMore ? rawOrders.slice(0, safeLimit) : rawOrders;
 
     const mapped = pagedOrders.map((order: any) => {
       if (isOwner) {
         const renterStats = getReviewStats(order.renter?.reviewsReceived || []);
         return {
           ...order,
+          startDate: order.start_date,
+          endDate: order.end_date,
           renter_name: order.renter?.name || order.renterId,
           renterAvg: renterStats.avg,
           renterReviewCount: renterStats.count,
@@ -810,6 +918,8 @@ export async function loadMoreOrdersAction({
         const ownerStats = getReviewStats(order.product?.user?.reviewsReceived || []);
         return {
           ...order,
+          startDate: order.start_date,
+          endDate: order.end_date,
           owner_name: order.product?.user?.name || order.product?.userId,
           ownerAvg: ownerStats.avg,
           ownerReviewCount: ownerStats.count,
@@ -990,3 +1100,4 @@ export async function getScrubbedReviewsAction(targetUserId: string, currentUser
     return { success: false, error: "Không thể lấy đánh giá." };
   }
 }
+

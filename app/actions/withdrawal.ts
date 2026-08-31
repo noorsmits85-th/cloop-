@@ -3,6 +3,15 @@
 import { prisma } from "@/src/lib/prisma";
 import { requireUser } from "@/src/lib/auth";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
+
+const WithdrawalSchema = z.object({
+  amount: z.number().int().min(50000).max(50000000),
+  bankName: z.string().trim().min(2).max(80),
+  bankAccountNumber: z.string().trim().regex(/^[0-9]{6,32}$/),
+  bankAccountHolder: z.string().trim().min(2).max(80),
+  password: z.string().optional(),
+});
 
 function normalizeVietnamese(str: string) {
   return str
@@ -46,7 +55,12 @@ export async function requestWithdrawalAction(data: {
     }
     const userId = authUser.id;
 
-    const { amount, bankName, bankAccountNumber, bankAccountHolder } = data;
+    const parsed = WithdrawalSchema.safeParse(data);
+    if (!parsed.success) {
+      return { success: false, message: "Thong tin rut tien khong hop le. Vui long kiem tra so tien va thong tin ngan hang." };
+    }
+
+    const { amount, bankName, bankAccountNumber, bankAccountHolder } = parsed.data;
 
     if (!amount || amount < 50000) {
       return { success: false, message: "Số tiền rút tối thiểu là 50,000 VNĐ." };
