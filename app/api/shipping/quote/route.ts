@@ -11,7 +11,8 @@ export async function POST(req: Request) {
       fromWardCode, 
       toDistrictId, 
       toWardCode, 
-      weight = 500 
+      weight = 500,
+      isRental = true
     } = body;
 
     if (!fromProvince || !toProvince) {
@@ -45,35 +46,41 @@ export async function POST(req: Request) {
         body: JSON.stringify(ghnBody)
       });
       const data = await res.json();
-      const rawFee = (data.code === 200 && data.data?.total) ? data.data.total : 21000;
-      const safeFee = rawFee * 1.1;
-      const normalizedFee = Math.ceil(safeFee / 5000) * 5000;
+      const rawOneWayFee = (data.code === 200 && data.data?.total) ? data.data.total : 25000;
+      
+      // Đơn thuê thời trang là giao dịch KHỨ HỒI 2 CHIỀU (Giao hàng + Trả hàng)
+      const multiplier = isRental ? 2 : 1;
+      const totalRawFee = rawOneWayFee * multiplier;
+      const safeFee = totalRawFee * 1.05; // 5% buffer an toàn
+      const normalizedFee = Math.ceil(safeFee / 5000) * 5000; // Làm tròn Block 5K
 
       quotes = [
         {
           provider: "DIRECT",
           serviceId: "direct_pickup",
-          name: "🤝 Tự Giao Nhận Trực Tiếp (Gần nhau / Team nội bộ)",
+          name: "🤝 Tự Giao Nhận Trực Tiếp (Gần nhau / Hẹn gặp)",
           fee: 0,
           originalFee: 0,
           discount: 0,
           estimatedDays: 0,
-          packagingNote: "Hai bên tự hẹn gặp trao đổi đồ trực tiếp (Miễn phí vận chuyển 0đ)"
+          packagingNote: "Hai bên tự hẹn gặp trao đổi và gửi trả đồ trực tiếp (Miễn phí 0đ)"
         },
         {
           provider: "GHN",
           serviceId: "standard",
-          name: "🚚 Giao Tiêu Chuẩn (GHN Express)",
+          name: isRental ? "🚚 GHN Khứ Hồi 2 Chiều (Giao đồ + Trả đồ)" : "🚚 Giao Tiêu Chuẩn GHN (1 Chiều)",
           fee: normalizedFee,
-          originalFee: normalizedFee + 10000,
-          discount: 10000,
+          originalFee: normalizedFee + 15000,
+          discount: 15000,
           estimatedDays: 2,
-          packagingNote: "Bưu tá GHN đến lấy và giao tận nơi 2 chiều"
+          packagingNote: isRental 
+            ? "Trọn gói 2 chiều: Đã bao gồm cước gửi đến & cước bưu tá đến lấy trả về chủ tủ" 
+            : "Bưu tá GHN đến lấy và giao tận nơi"
         }
       ];
     } else {
       // NẾU KHÔNG CÓ TOKEN -> CHẠY MOCK LOGIC THÔNG MINH
-      quotes = await getShippingQuotes(fromProvince, toProvince, weight);
+      quotes = await getShippingQuotes(fromProvince, toProvince, weight, isRental);
     }
 
     // Ký (Sign) từng báo giá để trả về cho Frontend

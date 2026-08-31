@@ -254,7 +254,8 @@ export default function CheckoutClient({
           fromWardCode: (product as any)?.wardCode,
           toDistrictId: selectedDistrict.id,
           toWardCode: selectedWard.id || (selectedWard as any).code,
-          weight 
+          weight,
+          isRental: isRental
         }),
       });
       
