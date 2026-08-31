@@ -61,7 +61,7 @@ export default function Home() {
       tag: "180+ Mẫu Thiết Kế",
       desc: "Đầm lụa thướt tha, set dạ tweed sang trọng & sequin lấp lánh.", 
       image: "/evening_dress.jpg",
-      link: "/shop?category=Dạ hội"
+      link: "/shop?occasion=Tiệc cưới"
     },
     { 
       id: "gala", 
@@ -69,7 +69,7 @@ export default function Home() {
       tag: "Độc Quyền",
       desc: "Thiết kế cao cấp, xẻ tà quyến rũ cho những đêm tiệc tỏa sáng.", 
       image: "/1.1.jpg",
-      link: "/shop?category=Đi tiệc"
+      link: "/shop?occasion=Dạ hội"
     },
     { 
       id: "heritage", 
@@ -77,7 +77,7 @@ export default function Home() {
       tag: "Tơ Tằm Gấm Thêu",
       desc: "Gấm dệt thủ công, phom dáng thanh tao cho ngày trọng đại.", 
       image: "/anhbia.png",
-      link: "/shop?category=Áo dài"
+      link: "/shop?occasion=Áo dài"
     },
     { 
       id: "minimal", 
@@ -85,7 +85,7 @@ export default function Home() {
       tag: "Clean Luxury",
       desc: "Blazer linen, set đồ dạo phố thanh lịch và phong khoáng.", 
       image: "/vintage_coat.jpg",
-      link: "/shop?category=Vintage"
+      link: "/shop?occasion=Vintage"
     },
     { 
       id: "bags", 
@@ -93,7 +93,7 @@ export default function Home() {
       tag: "Hàng Hiệu Tuyển Chọn",
       desc: "Túi da cao cấp, boots và trang sức hoàn thiện outfit hoàn hảo.", 
       image: "/step2_bag.jpg",
-      link: "/shop?category=Phụ kiện"
+      link: "/shop?occasion=Phụ kiện"
     }
   ];
 
@@ -249,6 +249,7 @@ export default function Home() {
 
           <Link 
             href="/shop?type=rent" 
+            prefetch={true}
             className="font-ui text-xs font-bold uppercase tracking-widest text-[#183A2D] hover:text-emerald-800 flex items-center gap-1 group shrink-0"
           >
             <span>Tất Cả Phong Cách</span>
@@ -262,6 +263,7 @@ export default function Home() {
             <Link
               key={col.id}
               href={col.link}
+              prefetch={true}
               className="group relative aspect-[3/4] sm:aspect-[4/5] rounded-2xl overflow-hidden shadow-xs hover:shadow-xl transition-all duration-700 flex flex-col justify-end p-5 cursor-pointer border border-stone-200/80"
             >
               <Image 
@@ -315,6 +317,7 @@ export default function Home() {
 
           <Link 
             href="/shop?type=rent" 
+            prefetch={true}
             className="group font-ui text-xs font-bold text-[#0A2517] hover:text-emerald-800 uppercase tracking-widest flex items-center gap-1.5 shrink-0"
           >
             <span>Xem Toàn Bộ Sàn Thuê</span>
