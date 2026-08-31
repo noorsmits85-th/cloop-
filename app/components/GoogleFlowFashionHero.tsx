@@ -345,39 +345,31 @@ export default function GoogleFlowFashionHero() {
         </div>
 
         {/* Big Bold Headline */}
-        <h1 className="font-heading text-3xl sm:text-5xl md:text-6xl font-extrabold text-white tracking-tight leading-tight mb-4 drop-shadow-[0_4px_30px_rgba(0,0,0,0.95)] max-w-2xl">
-          Mặc Đẹp. Không Cần Sở Hữu Tất Cả.
+        <h1 className="font-heading text-5xl sm:text-6xl md:text-7xl lg:text-[84px] font-extrabold text-white tracking-tight leading-none mb-3.5 drop-shadow-[0_4px_30px_rgba(0,0,0,0.95)]">
+          CLOOP
         </h1>
 
         {/* Poetic & High-Fashion Tagline */}
-        <p className="font-body text-xs sm:text-base md:text-lg text-stone-200 font-light leading-relaxed max-w-xl mx-auto mb-8 drop-shadow-[0_2px_14px_rgba(0,0,0,0.9)]">
+        <p className="font-body text-xs sm:text-sm md:text-[15px] text-stone-100 font-normal leading-relaxed max-w-lg mx-auto mb-6 drop-shadow-[0_2px_14px_rgba(0,0,0,0.9)]">
           Biến tủ đồ của bạn thành nguồn thu nhập. Đăng cho thuê, chuyển nhượng dễ dàng và trải nghiệm hàng nghìn mẫu thiết kế với giá cực hời.
         </p>
 
-        {/* 2 Clear Primary/Secondary Buttons + AI Search */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 sm:gap-4 w-full sm:w-auto">
-          {/* Primary Rent Button */}
+        {/* 2 Clear Action Buttons */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 w-full sm:w-auto">
+          {/* Primary Giant White Pill Button */}
           <Link
             href="/shop?type=rent"
-            className="w-full sm:w-auto px-8 py-3.5 sm:py-4 rounded-full bg-white text-[#0A2517] hover:bg-[#FAF7F0] font-heading font-extrabold text-xs sm:text-sm tracking-wider uppercase transition-all duration-300 shadow-[0_6px_25px_rgba(255,255,255,0.35)] hover:scale-105 active:scale-95 flex items-center justify-center gap-2 group font-ui"
+            className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-white text-[#0A2517] hover:bg-[#FAF7F0] font-heading font-extrabold text-xs sm:text-sm tracking-wider uppercase transition-all duration-300 shadow-[0_6px_25px_rgba(255,255,255,0.35)] hover:scale-105 active:scale-95 flex items-center justify-center gap-2 group font-ui"
           >
-            <span>Khám Phá & Thuê Đồ</span>
+            <span>Khám Phá Tủ Đồ</span>
             <ArrowRight size={15} className="group-hover:translate-x-1 transition-transform" />
           </Link>
 
-          {/* Secondary Lend Button */}
-          <Link
-            href="/my-closet/create?mode=rent"
-            className="w-full sm:w-auto px-7 py-3.5 sm:py-4 rounded-full bg-white/15 hover:bg-white/25 text-white border border-white/30 backdrop-blur-md font-heading font-bold text-xs sm:text-sm tracking-wider uppercase transition-all duration-300 shadow-md hover:scale-105 active:scale-95 flex items-center justify-center gap-2 group font-ui"
-          >
-            <span>Đăng Tủ Cho Thuê</span>
-          </Link>
-
-          {/* AI Search Feature */}
+          {/* AI Visual Search Button */}
           <button
             type="button"
             onClick={() => setIsVisualSearchOpen(true)}
-            className="w-full sm:w-auto px-5 py-3.5 sm:py-4 rounded-full bg-black/40 hover:bg-black/60 text-[#A3E39F] border border-[#A3E39F]/40 backdrop-blur-md font-heading font-bold text-xs sm:text-sm tracking-wider uppercase transition-all duration-300 hover:scale-105 active:scale-95 flex items-center justify-center gap-1.5 group font-ui cursor-pointer"
+            className="w-full sm:w-auto px-6 py-3.5 rounded-full bg-white/20 hover:bg-white/30 text-white border border-white/35 backdrop-blur-md font-heading font-bold text-xs sm:text-sm tracking-wider uppercase transition-all duration-300 shadow-md hover:scale-105 active:scale-95 flex items-center justify-center gap-2 group font-ui cursor-pointer"
           >
             <Camera size={15} className="text-[#A3E39F] group-hover:scale-110 transition-transform" />
             <span>Tìm Bằng Ảnh AI</span>

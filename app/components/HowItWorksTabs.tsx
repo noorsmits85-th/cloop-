@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState } from "react";
 import Link from "next/link";
@@ -93,7 +93,7 @@ export default function HowItWorksTabs() {
                   : "text-stone-600 hover:text-[#183A2D]"
               }`}
             >
-              👗 Dành Cho Người Thuê
+              Dành Cho Người Thuê
             </button>
             <button
               onClick={() => setActiveTab("lender")}
@@ -103,7 +103,7 @@ export default function HowItWorksTabs() {
                   : "text-stone-600 hover:text-[#183A2D]"
               }`}
             >
-              💎 Dành Cho Chủ Tủ
+              Dành Cho Chủ Tủ
             </button>
           </div>
         </div>

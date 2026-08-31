@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
@@ -194,7 +194,7 @@ export default function Home() {
     {
       id: 0,
       username: 'the.archive',
-      name: 'Thu Trang',
+      name: 'Elena Vance',
       tag: 'BỘ SƯU TẬP HIẾM',
       trustScore: '99.8/100',
       rating: '5.0 (48 lượt thuê)',
@@ -206,7 +206,7 @@ export default function Home() {
     {
       id: 1,
       username: 'leena.vintage',
-      name: 'Lê Na',
+      name: 'Chloe Laurent',
       tag: 'CHỦ TỦ TIÊU BIỂU',
       trustScore: '99.4/100',
       rating: '4.9 (62 lượt thuê)',
@@ -218,7 +218,7 @@ export default function Home() {
     {
       id: 2,
       username: 'minimal.edit',
-      name: 'Mai Chi',
+      name: 'Sophie Moreau',
       tag: 'LỐI SỐNG BỀN VỮNG',
       trustScore: '99.1/100',
       rating: '5.0 (35 lượt thuê)',
@@ -234,28 +234,6 @@ export default function Home() {
 
       {/* 🌟 01 — HERO EDITORIAL */}
       <GoogleFlowFashionHero />
-
-      {/* 🛡️ 02 — TRUST BAR 1 DÒNG TINH TẾ */}
-      <div className="w-full bg-[#FAF9F5] border-b border-stone-200/80 py-3.5 text-xs font-ui">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 flex flex-wrap items-center justify-between gap-3 text-stone-600">
-          <div className="flex items-center gap-2">
-            <ShieldCheck size={16} className="text-emerald-700 shrink-0" />
-            <span><strong className="text-[#183A2D]">Két Cọc Escrow 100%:</strong> Hoàn tiền cọc tự động khi trả đồ</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Sparkles size={15} className="text-emerald-700 shrink-0" />
-            <span><strong className="text-[#183A2D]">Giặt Hấp Chuẩn Spa:</strong> Kiểm định chất lượng & thơm tho tuyệt đối</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Lock size={15} className="text-emerald-700 shrink-0" />
-            <span><strong className="text-[#183A2D]">Bảo Hiểm Trang Phục:</strong> Miễn phí hỗ trợ các vết bẩn và lỗi nhẹ</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Leaf size={15} className="text-emerald-700 shrink-0" />
-            <span><strong className="text-[#183A2D]">Thời Trang Tuần Hoàn:</strong> Giảm tới 196kg CO₂ mỗi vòng đời</span>
-          </div>
-        </div>
-      </div>
 
       {/* 👗 03 — OCCASION CURATIONS (KHÁM PHÁ THEO DỊP) */}
       <section className="w-full max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-12 md:py-16">
