@@ -8,6 +8,7 @@ export interface CurrentUser {
   email: string;
   isLoggedIn: boolean;
   id?: string;
+  avatar?: string;
 }
 
 interface AuthModalContextType {

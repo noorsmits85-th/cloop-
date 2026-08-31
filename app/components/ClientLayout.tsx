@@ -14,6 +14,7 @@ import { loginWithCredentials, registerWithCredentials, fastLoginAction } from "
 import "../globals.css";
 import AiStylistChat from "./AiStylistChat"; 
 import PwaInstallPrompt from "./PwaInstallPrompt";
+import MobileBottomDock from "./MobileBottomDock";
 import { useAuthModal } from "../AuthModalContext";
 
 const supabase = createClient();
@@ -675,6 +676,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         )}
       </AnimatePresence>
       <PwaInstallPrompt />
+      <MobileBottomDock />
     </div>
   );
 }
