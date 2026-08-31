@@ -192,8 +192,10 @@ export async function completeOrderAction(orderId: string) {
       }
 
       // 💸 2. Thanh Toán Tiền Thuê (Rental Fee) & Thưởng +25 Xu Lá cho Chủ Tủ:
+      // Tự động cấn trừ 25.000đ cước GHN chiều về (Chủ tủ chịu chi phí thu hồi tài sản)
+      const returnShippingFee = 25000;
       const ownerBonusCoins = 25; // 🎁 Thưởng 25 Xu Lá cho Chủ Tủ
-      const lenderEarnings = rentalFee > 0 ? (rentalFee - platformFee) : 0;
+      const lenderEarnings = rentalFee > 0 ? Math.max(0, rentalFee - platformFee - returnShippingFee) : 0;
 
       const updatedOwner = await tx.user.update({
         where: { id: userAuth.id },
@@ -221,17 +223,20 @@ export async function completeOrderAction(orderId: string) {
 
       if (lenderEarnings > 0 && invoiceId) {
         await tx.ledgerTransaction.create({
-          data: { invoiceId, type: 'PAYOUT_OUT', amount: lenderEarnings, description: `Thanh toán tiền thuê đơn ${orderId}` }
+          data: { invoiceId, type: 'PAYOUT_OUT', amount: lenderEarnings, description: `Thanh toán tiền thuê đơn ${orderId} (Đã trừ phí sàn và 25k ship chiều về)` }
         });
         await tx.ledgerTransaction.create({
           data: { invoiceId, type: 'FEE_RETAINED', amount: platformFee, description: `Phí nền tảng đơn ${orderId}` }
         });
+        await tx.ledgerTransaction.create({
+          data: { invoiceId, type: 'SHIPPING_RETAINED', amount: returnShippingFee, description: `Phí vận chuyển chiều về giữ lại đơn ${orderId}` }
+        });
       }
       
-      // 💸 3. Thu phí Ship cho Platform:
+      // 💸 3. Thu phí Ship chiều đi cho Platform:
       if (shippingFee > 0 && invoiceId) {
         await tx.ledgerTransaction.create({
-          data: { invoiceId, type: 'SHIPPING_RETAINED', amount: shippingFee, description: `Phí vận chuyển giữ lại đơn ${orderId}` }
+          data: { invoiceId, type: 'SHIPPING_RETAINED', amount: shippingFee, description: `Phí vận chuyển chiều đi giữ lại đơn ${orderId}` }
         });
       }
       
