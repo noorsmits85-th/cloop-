@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useRef } from "react";
 import Link from "next/link";
@@ -10,8 +10,6 @@ import {
   User, 
   Camera, 
   ExternalLink, 
-  Copy, 
-  Check, 
   Sparkles, 
   Save, 
   Loader2, 
@@ -23,7 +21,6 @@ import {
 import { supabase } from "@/lib/supabase";
 
 export function ProfileClient({ userProfile }: { userProfile: any }) {
-  const [copied, setCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isUploadingId, setIsUploadingId] = useState(false);
@@ -32,7 +29,6 @@ export function ProfileClient({ userProfile }: { userProfile: any }) {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const userId = userProfile?.id || "";
-  const publicClosetUrl = typeof window !== "undefined" ? `${window.location.origin}/closet/${userId}` : `/closet/${userId}`;
 
   // Form state for live public profile editing
   const [formData, setFormData] = useState({
@@ -49,12 +45,6 @@ export function ProfileClient({ userProfile }: { userProfile: any }) {
   const trustScore = 45;
   const maxScore = 100;
   const progressPercent = Math.min((trustScore / maxScore) * 100, 100);
-
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(publicClosetUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
-  };
 
   const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -185,9 +175,9 @@ export function ProfileClient({ userProfile }: { userProfile: any }) {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="text-[11px] font-bold text-[#183A2D] hover:text-emerald-700 hover:underline flex items-center gap-1 cursor-pointer"
+              className="text-[11px] font-bold text-[#183A2D] hover:text-emerald-700 hover:underline flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer mt-1"
             >
-              <Camera size={12} />
+              <Camera size={13} className="shrink-0" />
               <span>{isUploadingAvatar ? "Đang tải ảnh..." : "Đổi ảnh đại diện"}</span>
             </button>
           </div>
@@ -207,9 +197,8 @@ export function ProfileClient({ userProfile }: { userProfile: any }) {
           </div>
         </div>
 
-        {/* Right: 2 Social Action Buttons */}
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-          {/* View Public Closet Button */}
+        {/* Right: Public Closet Button */}
+        <div className="flex items-center w-full md:w-auto">
           <Link
             href={`/closet/${userId}`}
             target="_blank"
@@ -218,25 +207,6 @@ export function ProfileClient({ userProfile }: { userProfile: any }) {
             <span>Xem Tủ Đồ Công Khai</span>
             <ExternalLink size={14} />
           </Link>
-
-          {/* Copy Public Link Button */}
-          <button
-            type="button"
-            onClick={handleCopyLink}
-            className="w-full sm:w-auto px-5 py-3.5 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 border border-stone-200 cursor-pointer"
-          >
-            {copied ? (
-              <>
-                <Check size={14} className="text-emerald-600" />
-                <span className="text-emerald-700">Đã Copy Link!</span>
-              </>
-            ) : (
-              <>
-                <Copy size={14} />
-                <span>Sao Chép Link</span>
-              </>
-            )}
-          </button>
         </div>
 
       </div>
