@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import Link from "next/link";
 import { 
   ShieldCheck, 
@@ -12,7 +12,6 @@ import {
   ExternalLink, 
   Copy, 
   Check, 
-  Share2, 
   Sparkles, 
   Save, 
   Loader2, 
@@ -27,9 +26,11 @@ export function ProfileClient({ userProfile }: { userProfile: any }) {
   const [copied, setCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
+  const [isUploadingId, setIsUploadingId] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [kycStatus, setKycStatus] = useState(userProfile?.kyc_status || 'unverified');
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const userId = userProfile?.id || "";
   const publicClosetUrl = typeof window !== "undefined" ? `${window.location.origin}/closet/${userId}` : `/closet/${userId}`;
 
@@ -53,6 +54,42 @@ export function ProfileClient({ userProfile }: { userProfile: any }) {
     navigator.clipboard.writeText(publicClosetUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
+  };
+
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingAvatar(true);
+    const form = new FormData();
+    form.append("file", file);
+    form.append("folder", "cloop_profiles");
+
+    try {
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: form,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Không thể tải ảnh lên.");
+
+      const newAvatarUrl = data.url;
+      setFormData(prev => ({ ...prev, avatar: newAvatarUrl }));
+
+      // Cập nhật ngay vào database
+      if (userId) {
+        await supabase
+          .from("profiles")
+          .update({ avatar: newAvatarUrl, avatar_url: newAvatarUrl })
+          .eq("id", userId);
+      }
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (error: any) {
+      alert(`Lỗi upload ảnh đại diện: ${error.message}`);
+    } finally {
+      setIsUploadingAvatar(false);
+    }
   };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -87,9 +124,9 @@ export function ProfileClient({ userProfile }: { userProfile: any }) {
   };
 
   const handleUploadId = () => {
-    setIsUploading(true);
+    setIsUploadingId(true);
     setTimeout(() => {
-      setIsUploading(false);
+      setIsUploadingId(false);
       setKycStatus('pending');
       alert("Đã tải lên giấy tờ tuỳ thân thành công. Hệ thống CLOOP sẽ xét duyệt trong 24h.");
     }, 1500);
@@ -101,19 +138,58 @@ export function ProfileClient({ userProfile }: { userProfile: any }) {
       {/* 🌟 1. TỔNG QUAN TÀI KHOẢN & KẾT NỐI TỦ ĐỒ CÔNG KHAI (CHIA SẺ LINK IN BIO) */}
       <div className="bg-white rounded-3xl border border-stone-200/80 shadow-xs p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
         
-        {/* Left: Avatar & Info */}
+        {/* Left: Avatar Upload & Info */}
         <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
-          <div className="relative">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-stone-100 border-4 border-emerald-50 shadow-sm overflow-hidden flex items-center justify-center text-stone-300">
-              {formData.avatar ? (
-                <img src={formData.avatar} alt="Avatar" className="w-full h-full object-cover" />
-              ) : (
-                <User size={38} />
-              )}
+          
+          {/* Avatar with click-to-upload */}
+          <div className="flex flex-col items-center gap-2">
+            <div 
+              className="relative group cursor-pointer" 
+              onClick={() => fileInputRef.current?.click()}
+              title="Nhấn để tải lên ảnh đại diện mới"
+            >
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-stone-100 border-4 border-emerald-50 shadow-sm overflow-hidden flex items-center justify-center text-stone-300 relative">
+                {formData.avatar ? (
+                  <img src={formData.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <User size={38} />
+                )}
+                {/* Hover overlay */}
+                <div className="absolute inset-0 bg-black/45 flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
+                  <Camera size={18} />
+                  <span className="text-[9px] font-bold mt-0.5 uppercase">Đổi ảnh</span>
+                </div>
+              </div>
+              
+              <button 
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  fileInputRef.current?.click();
+                }}
+                className="absolute bottom-0 right-0 w-8 h-8 bg-[#183A2D] hover:bg-emerald-700 text-white rounded-full flex items-center justify-center shadow-md border-2 border-white transition-colors cursor-pointer"
+                title="Tải ảnh đại diện mới"
+              >
+                {isUploadingAvatar ? <Loader2 size={13} className="animate-spin text-emerald-300" /> : <Camera size={13} />}
+              </button>
+
+              <input 
+                ref={fileInputRef}
+                type="file" 
+                accept="image/*" 
+                className="hidden" 
+                onChange={handleAvatarFileChange} 
+              />
             </div>
-            <div className="absolute bottom-0 right-0 w-7 h-7 bg-[#183A2D] text-white rounded-full flex items-center justify-center shadow-xs border-2 border-white">
-              <ShieldCheck size={14} className="text-emerald-300" />
-            </div>
+
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="text-[11px] font-bold text-[#183A2D] hover:text-emerald-700 hover:underline flex items-center gap-1 cursor-pointer"
+            >
+              <Camera size={12} />
+              <span>{isUploadingAvatar ? "Đang tải ảnh..." : "Đổi ảnh đại diện"}</span>
+            </button>
           </div>
 
           <div className="space-y-1">
@@ -373,10 +449,10 @@ export function ProfileClient({ userProfile }: { userProfile: any }) {
                 
                 <button 
                   onClick={handleUploadId}
-                  disabled={isUploading}
+                  disabled={isUploadingId}
                   className="px-7 py-3 bg-[#183A2D] text-white text-xs font-bold uppercase tracking-widest rounded-full shadow-sm hover:bg-[#112a20] transition-colors disabled:opacity-50 cursor-pointer"
                 >
-                  {isUploading ? "Đang tải lên..." : "Chọn ảnh tải lên"}
+                  {isUploadingId ? "Đang tải lên..." : "Chọn ảnh tải lên"}
                 </button>
               </div>
             </div>
