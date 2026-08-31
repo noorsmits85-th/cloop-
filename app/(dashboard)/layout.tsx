@@ -206,6 +206,7 @@ export default function DashboardLayout({
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#E9E2D8] px-3 py-2 flex items-center justify-around shadow-lg">
         <Link
           href="/"
+          prefetch={true}
           className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-lg text-[10px] font-medium transition-all ${
             pathname === "/" ? "text-[#183A2D] font-bold" : "text-stone-500 hover:text-stone-900"
           }`}
@@ -216,6 +217,7 @@ export default function DashboardLayout({
 
         <Link
           href="/my-closet/items"
+          prefetch={true}
           className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-lg text-[10px] font-medium transition-all ${
             pathname.startsWith("/my-closet/items") ? "text-[#183A2D] font-bold" : "text-stone-500 hover:text-stone-900"
           }`}
@@ -227,6 +229,7 @@ export default function DashboardLayout({
         {/* Nút Đăng Đồ Nổi Bật Chính Giữa */}
         <Link
           href="/my-closet/create"
+          prefetch={true}
           className="flex flex-col items-center -mt-5 group"
         >
           <div className="w-11 h-11 rounded-full bg-[#183A2D] text-white flex items-center justify-center shadow-md shadow-[#183A2D]/30 group-active:scale-95 transition-transform border-2 border-white">
@@ -237,6 +240,7 @@ export default function DashboardLayout({
 
         <Link
           href="/my-closet/wishlist"
+          prefetch={true}
           className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-lg text-[10px] font-medium transition-all relative ${
             pathname.startsWith("/my-closet/wishlist") ? "text-rose-600 font-bold" : "text-stone-500 hover:text-stone-900"
           }`}
@@ -247,6 +251,7 @@ export default function DashboardLayout({
 
         <Link
           href="/my-closet/orders"
+          prefetch={true}
           className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-lg text-[10px] font-medium transition-all ${
             pathname.startsWith("/my-closet/orders") ? "text-[#183A2D] font-bold" : "text-stone-500 hover:text-stone-900"
           }`}
