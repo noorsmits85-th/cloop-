@@ -46,13 +46,12 @@ export async function POST(req: Request) {
         body: JSON.stringify(ghnBody)
       });
       const data = await res.json();
-      const rawOneWayFee = (data.code === 200 && data.data?.total) ? data.data.total : 25000;
+      const rawOneWayFee = (data.code === 200 && data.data?.total) ? data.data.total : 21000;
       
-      // Đơn thuê thời trang là giao dịch KHỨ HỒI 2 CHIỀU (Giao hàng + Trả hàng)
-      const multiplier = isRental ? 2 : 1;
-      const totalRawFee = rawOneWayFee * multiplier;
-      const safeFee = totalRawFee * 1.05; // 5% buffer an toàn
-      const normalizedFee = Math.ceil(safeFee / 5000) * 5000; // Làm tròn Block 5K
+      // Mô hình San Sẻ Vận Chuyển 50/50: Khách trả chiều đi, Chủ tủ chịu chiều về
+      // Áp dụng Block 5K Buffer để bảo hiểm chi phí phát sinh khi bưu tá giao lại lần 2
+      const safeOneWayFee = rawOneWayFee * 1.05; // 5% buffer an toàn
+      const normalizedFee = Math.ceil(safeOneWayFee / 5000) * 5000; // Làm tròn Block 5K (VD: 21k -> 25k)
 
       quotes = [
         {
@@ -68,13 +67,13 @@ export async function POST(req: Request) {
         {
           provider: "GHN",
           serviceId: "standard",
-          name: isRental ? "🚚 GHN Khứ Hồi 2 Chiều (Giao đồ + Trả đồ)" : "🚚 Giao Tiêu Chuẩn GHN (1 Chiều)",
+          name: isRental ? "🚚 Giao Tiêu Chuẩn GHN (San sẻ 50/50: Chiều đi)" : "🚚 Giao Tiêu Chuẩn GHN (1 Chiều)",
           fee: normalizedFee,
-          originalFee: normalizedFee + 15000,
-          discount: 15000,
+          originalFee: normalizedFee + 10000,
+          discount: 10000,
           estimatedDays: 2,
           packagingNote: isRental 
-            ? "Trọn gói 2 chiều: Đã bao gồm cước gửi đến & cước bưu tá đến lấy trả về chủ tủ" 
+            ? "Khách chỉ trả cước chiều đi lúc đặt. Chiều trả đồ về miễn phí 0đ (Chủ tủ chịu cước thu hồi tài sản)" 
             : "Bưu tá GHN đến lấy và giao tận nơi"
         }
       ];

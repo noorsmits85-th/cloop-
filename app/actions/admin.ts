@@ -137,7 +137,10 @@ export async function releaseSingleEscrowOrderAction(rentalId: string) {
     const depositAmount = rental.invoice?.depositAmount || 1000000;
     const rentalFee = rental.invoice?.rentalFee || (rental.invoice?.amount ? Math.max(0, rental.invoice.amount - depositAmount) : 350000);
     const platformFee = Math.floor(rentalFee * 0.12);
-    const lenderEarnings = Math.max(0, rentalFee - platformFee);
+    
+    // Mô hình San Sẻ Vận Chuyển 50/50: Chủ tủ chịu cước chiều về (Thu hồi tài sản) 25.000₫
+    const returnShippingFee = rental.shippingCode ? 25000 : 0;
+    const lenderEarnings = Math.max(0, rentalFee - platformFee - returnShippingFee);
     const invoiceId = rental.invoice?.id;
 
     await prisma.$transaction(async (tx) => {
@@ -172,7 +175,7 @@ export async function releaseSingleEscrowOrderAction(rentalId: string) {
         }
       }
 
-      // 3. Trả tiền thuê cho chủ đồ
+      // 3. Trả tiền thuê cho chủ đồ (đã trừ 12% phí sàn & 25k cước chiều về)
       const ownerId = rental.ownerId || rental.product?.userId;
       if (ownerId && lenderEarnings > 0) {
         await tx.user.update({
@@ -188,7 +191,7 @@ export async function releaseSingleEscrowOrderAction(rentalId: string) {
               invoiceId,
               type: "PAYOUT_OUT",
               amount: lenderEarnings,
-              description: `[Escrow Settlement] Chi trả tiền thuê đơn #${rental.id.slice(0, 8)} cho chủ tủ`
+              description: `[Escrow Settlement] Chi trả tiền thuê đơn #${rental.id.slice(0, 8)} cho chủ tủ (Đã trừ phí sàn 12% & ship chiều về 25k)`
             }
           });
           await tx.ledgerTransaction.create({
@@ -199,6 +202,16 @@ export async function releaseSingleEscrowOrderAction(rentalId: string) {
               description: `[Escrow Settlement] Phí dịch vụ 12% giữ lại nền tảng đơn #${rental.id.slice(0, 8)}`
             }
           });
+          if (returnShippingFee > 0) {
+            await tx.ledgerTransaction.create({
+              data: {
+                invoiceId,
+                type: "SHIPPING_RETAINED",
+                amount: returnShippingFee,
+                description: `[Escrow Settlement] Cước GHN chiều về thu hồi đồ đơn #${rental.id.slice(0, 8)}`
+              }
+            });
+          }
         }
       }
 
@@ -209,7 +222,7 @@ export async function releaseSingleEscrowOrderAction(rentalId: string) {
           action: "ESCROW_SETTLEMENT",
           targetType: "RENTAL",
           targetId: rental.id,
-          metadata: JSON.stringify({ depositAmount, rentalFee, lenderEarnings, platformFee })
+          metadata: JSON.stringify({ depositAmount, rentalFee, lenderEarnings, platformFee, returnShippingFee })
         }
       });
     });

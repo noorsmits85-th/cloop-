@@ -19,29 +19,23 @@ export interface SignedShippingQuote {
 }
 
 /**
- * 1. Hàm tính phí ship GHN kết hợp Khứ hồi 2 chiều & Block 5K Buffer
+ * 1. Hàm tính phí ship GHN theo Mô hình San Sẻ Vận Chuyển 50/50 (Co-sharing Logistics & Block 5K)
  */
 export async function getShippingQuotes(
   fromProvince: string,
   toProvince: string,
   weight: number = 500,
-  isTwoWay: boolean = true
+  isRental: boolean = true
 ): Promise<ShippingQuote[]> {
   const isSameProvince = fromProvince.trim().toLowerCase() === toProvince.trim().toLowerCase();
   const isRuralArea = /(huyện|xã|thôn|ấp|cần giờ|củ chi|ba vì|sóc sơn)/i.test(toProvince);
 
-  // Cước 1 chiều tiêu chuẩn GHN (đã trừ chiết khấu B2B sản lượng lớn)
-  let oneWayFee = isSameProvince ? (isRuralArea ? 20000 : 18000) : 25000;
+  // Cước 1 chiều tiêu chuẩn GHN (đã làm tròn Block 5K để tạo Quỹ dự phòng bảo vệ cước)
+  let oneWayFee = isSameProvince ? (isRuralArea ? 25000 : 20000) : 25000;
+  let originalFee = isSameProvince ? 30000 : 35000;
   let estimatedDays = isSameProvince ? 1 : 2;
 
-  // Cước khứ hồi 2 chiều (Giao tận nơi + Thu hồi đồ về cho chủ tủ)
-  const multiplier = isTwoWay ? 2 : 1;
-  const rawRoundTripFee = oneWayFee * multiplier + (Math.max(0, weight - 500) * 10);
-  
-  // Làm tròn theo Block 5K để tạo Quỹ dự phòng bảo vệ cước vận chuyển
-  const roundTripFee = Math.ceil(rawRoundTripFee / 5000) * 5000;
-  const originalFee = roundTripFee + (isTwoWay ? 15000 : 10000);
-
+  // Với đơn thuê đồ, áp dụng cơ chế 50/50: Khách trả chiều đi, Chủ tủ chịu chiều về cấn trừ Payout
   const quotes: ShippingQuote[] = [
     {
       provider: "DIRECT",
@@ -56,16 +50,16 @@ export async function getShippingQuotes(
     {
       provider: "GHN",
       serviceId: "standard",
-      name: isTwoWay 
-        ? "🚚 GHN Khứ Hồi 2 Chiều (Giao đồ + Trả đồ)"
+      name: isRental 
+        ? "🚚 Giao Tiêu Chuẩn GHN (San sẻ 50/50: Chiều đi)"
         : "🚚 Giao Tiêu Chuẩn GHN (1 Chiều)",
-      fee: roundTripFee,
+      fee: oneWayFee,
       originalFee: originalFee,
-      discount: originalFee - roundTripFee,
+      discount: originalFee - oneWayFee,
       estimatedDays: estimatedDays,
-      packagingNote: isTwoWay 
-        ? "Trọn gói 2 chiều: Đã bao gồm cước gửi đến & cước bưu tá đến lấy trả về chủ tủ" 
-        : "Giao nhận 1 chiều tiêu chuẩn"
+      packagingNote: isRental 
+        ? "Khách trả cước chiều đi lúc đặt. Chiều trả đồ về miễn phí 0đ (Chủ tủ chịu cước thu hồi tài sản)" 
+        : "Giao nhận 1 chiều tiêu chuẩn bưu tá đến lấy tận nơi"
     }
   ];
 
@@ -73,12 +67,12 @@ export async function getShippingQuotes(
     quotes.push({
       provider: "GHN",
       serviceId: "express",
-      name: isTwoWay ? "⚡ Hỏa Tốc Khứ Hồi 2 Chiều" : "⚡ Giao Hỏa Tốc (Trong Ngày)",
-      fee: isTwoWay ? 65000 : 38000,
-      originalFee: isTwoWay ? 80000 : 50000,
-      discount: 15000,
+      name: "⚡ Giao Hỏa Tốc (Trong Ngày)",
+      fee: 35000,
+      originalFee: 45000,
+      discount: 10000,
       estimatedDays: 0,
-      packagingNote: "Giao nhận nhanh bằng xe máy nội thành 2 chiều"
+      packagingNote: "Giao nhanh bằng xe máy nội thành"
     });
   }
 
