@@ -316,8 +316,36 @@ export default function ClosetProfilePage() {
       <div className="absolute top-0 left-0 w-64 h-96 opacity-40 pointer-events-none z-0" style={{ background: "radial-gradient(circle, rgba(107,163,122,0.15) 0%, rgba(245,242,235,0) 70%)" }} />
       <div className="absolute bottom-0 right-0 w-[500px] h-[500px] opacity-30 pointer-events-none z-0" style={{ background: "radial-gradient(circle, rgba(212,175,140,0.15) 0%, rgba(245,242,235,0) 70%)" }} />
 
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 relative z-10 space-y-8">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 relative z-10 space-y-6">
         
+        {/* 🌟 OWNER CONNECT BAR: Kết nối liền mạch với Hồ Sơ & Dashboard */}
+        {isMe && (
+          <div className="bg-[#183A2D] text-white rounded-2xl p-4 sm:px-6 shadow-md flex flex-col sm:flex-row items-center justify-between gap-3 border border-emerald-700/60 font-ui">
+            <div className="flex items-center gap-2.5 text-center sm:text-left">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
+              <p className="text-xs sm:text-sm font-medium text-emerald-100">
+                Bạn đang xem <strong>Tủ Đồ Công Khai</strong> của chính mình trên CLOOP.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Link
+                href="/my-closet/profile"
+                className="px-4 py-2 rounded-full bg-white text-[#183A2D] hover:bg-emerald-50 text-xs font-bold uppercase tracking-wider transition-all shadow-xs flex items-center gap-1.5"
+              >
+                <Settings size={13} />
+                <span>Quản Lý Hồ Sơ & Uy Tín</span>
+              </Link>
+              <Link
+                href="/my-closet/create?mode=rent"
+                className="px-4 py-2 rounded-full bg-emerald-800 hover:bg-emerald-700 text-white text-xs font-bold uppercase tracking-wider transition-all border border-emerald-600 flex items-center gap-1.5"
+              >
+                <Plus size={13} />
+                <span>Đăng Món Mới</span>
+              </Link>
+            </div>
+          </div>
+        )}
+
         <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-bold text-stone-400 hover:text-[#183A2D] transition-colors uppercase tracking-wider">
           <ArrowLeft size={14} /> Quay lại trang chủ
         </Link>
@@ -415,7 +443,16 @@ export default function ClosetProfilePage() {
                             <Shirt size={14} /> THUÊ ĐỒ TỪ TỦ NÀY
                         </button>
                     )}
-                    <button className="w-11 h-11 rounded-full border border-stone-200 flex items-center justify-center text-stone-500 hover:bg-stone-50 transition-colors bg-white shadow-3xs cursor-pointer">
+                    <button 
+                      onClick={() => {
+                        if (typeof window !== "undefined") {
+                          navigator.clipboard.writeText(window.location.href);
+                          alert("🎉 Đã sao chép link tủ đồ! Bạn có thể dán vào Bio Instagram, TikTok hoặc gửi cho bạn bè.");
+                        }
+                      }}
+                      className="w-11 h-11 rounded-full border border-stone-200 flex items-center justify-center text-stone-500 hover:text-[#183A2D] hover:bg-stone-50 transition-colors bg-white shadow-3xs cursor-pointer"
+                      title="Sao chép link tủ đồ để chia sẻ"
+                    >
                         <Share2 size={16} />
                     </button>
                 </div>
