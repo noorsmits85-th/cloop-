@@ -612,41 +612,41 @@ export default function Home() {
                 MINH BẠCH VÒNG ĐỜI
               </span>
               <h2 className="font-heading text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#183A2D] leading-tight">
-                Mỗi Bộ Trang Phục <br />
-                <span className="text-emerald-800">Một Cuốn Hộ Chiếu Số</span>
+                Mỗi Món Đồ Đều Có Một Hộ Chiếu
               </h2>
               <p className="text-stone-600 text-sm font-light leading-relaxed">
-                Quét mã để tra cứu lịch sử du hành qua từng thành phố, số lượt người mặc trước đó và chỉ số CO₂ tiết kiệm cho hành tinh.
+                Theo dõi ai đã mặc, đã đi đâu và đã được tái sử dụng bao nhiêu lần. Từng đường kim mũi chỉ đều được định danh và bảo chứng minh bạch.
               </p>
 
-              {/* 3 Bullet points like high-end fashion platforms */}
+              {/* 3 Bullet points */}
               <div className="space-y-2.5 pt-1 text-xs text-stone-700 font-medium font-ui">
                 <div className="flex items-center gap-2.5">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
                     <Check size={12} strokeWidth={3} />
                   </div>
-                  <span>Định danh chống hàng giả & kiểm định đồ thật 100%</span>
+                  <span>Định danh nguồn gốc & kiểm định đồ thật 100%</span>
                 </div>
                 <div className="flex items-center gap-2.5">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
                     <Check size={12} strokeWidth={3} />
                   </div>
-                  <span>Lưu giữ ký ức và thông điệp gửi gắm cho người mặc kế tiếp</span>
+                  <span>Lưu giữ câu chuyện và kỷ niệm của từng người mặc</span>
                 </div>
                 <div className="flex items-center gap-2.5">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
                     <Check size={12} strokeWidth={3} />
                   </div>
-                  <span>Tích lũy Điểm Lá thưởng cho mỗi vòng đời tuần hoàn</span>
+                  <span>Tự động tính toán lượng CO₂ và nước sạch tiết kiệm</span>
                 </div>
               </div>
 
-              <div className="pt-3">
+              <div className="pt-2">
                 <Link
-                  href="/shop"
-                  className="px-6 py-3 bg-[#183A2D] hover:bg-[#112a20] text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all font-ui shadow-xs inline-flex items-center gap-2"
+                  href="/shop?type=rent"
+                  className="px-7 py-3.5 bg-[#183A2D] hover:bg-[#112a20] text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all font-ui shadow-sm inline-flex items-center gap-2"
                 >
-                  Khám Phá Sàn Đồ Có Hộ Chiếu <ArrowRight size={14} />
+                  <span>Khám Phá Sàn Đồ Có Hộ Chiếu</span>
+                  <ArrowRight size={14} />
                 </Link>
               </div>
             </div>
@@ -839,6 +839,24 @@ export default function Home() {
               KHÁM PHÁ NGUYÊN LIỆU
             </Link>
           </div>
+        </div>
+      </section>
+
+      {/* 🌿 BRAND SLOGAN MANIFESTO: SẴN SÀNG CHO VÒNG ĐỜI TIẾP THEO */}
+      <section className="w-full bg-[#183A2D] text-white py-20 px-4 md:px-8 border-t border-emerald-800/60 relative overflow-hidden">
+        {/* Subtle Ambient Glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-[#A3E39F]/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="max-w-3xl mx-auto text-center space-y-4 relative z-10">
+          <span className="text-[10px] uppercase font-bold tracking-widest text-[#A3E39F] bg-white/10 px-3.5 py-1 rounded-full border border-white/20 font-ui inline-block shadow-xs">
+            THỜI TRANG TUẦN HOÀN 2026
+          </span>
+          <h2 className="font-heading text-3xl sm:text-5xl md:text-6xl font-extrabold text-white tracking-tight leading-tight">
+            Sẵn Sàng Cho Vòng Đời Tiếp Theo?
+          </h2>
+          <p className="text-stone-200 text-xs sm:text-base font-light leading-relaxed max-w-xl mx-auto font-body">
+            Mặc đẹp hơn, chi tiêu thông minh hơn và cùng hàng ngàn tín đồ thời trang chung tay bảo vệ hành tinh xanh.
+          </p>
         </div>
       </section>
 
