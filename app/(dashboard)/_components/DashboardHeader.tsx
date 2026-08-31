@@ -1,9 +1,10 @@
-"use client";
+﻿"use client";
 
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { Search, Bell, Plus, Award, LogOut, Menu } from "lucide-react";
+import { Search, Bell, Plus, Award, LogOut, Menu, Package, Wallet, Leaf, Truck, CheckCircle2, AlertTriangle, Star, Clock, Check, Loader2 } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
+import { getUserNotificationsAction, NotificationItem } from "@/app/actions/notification";
 
 export function DashboardHeader({
   currentUser,
@@ -14,15 +15,62 @@ export function DashboardHeader({
   setCurrentUser: any;
   setIsSidebarOpen: (v: boolean) => void;
 }) {
-  const [showNotifications, setShowNotifications] = React.useState(false);
-  const notifRef = React.useRef<HTMLDivElement>(null);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isLoadingNotifs, setIsLoadingNotifs] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "temporary-placeholder-key";
   const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
 
+  // ⚡ TẢI THÔNG BÁO THỰC TẾ TỪ SERVER
+  const loadNotifications = async () => {
+    try {
+      setIsLoadingNotifs(true);
+      const res = await getUserNotificationsAction();
+      if (res.success) {
+        setNotifications(res.notifications);
+        setUnreadCount(res.unreadCount);
+      }
+    } catch (e) {
+      console.error("Lỗi tải thông báo header:", e);
+    } finally {
+      setIsLoadingNotifs(false);
+    }
+  };
+
+  useEffect(() => {
+    loadNotifications();
+
+    // 🔔 Supabase Realtime Channel: Tự động làm mới khi có đơn hàng hoặc biến động số dư
+    const channel = supabase
+      .channel("header_notifications_sync")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "rental_history" },
+        () => loadNotifications()
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "coin_ledger_entries" },
+        () => loadNotifications()
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "ledger_transactions" },
+        () => loadNotifications()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   // Đóng notification khi click ra ngoài
-  React.useEffect(() => {
+  useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
         setShowNotifications(false);
@@ -32,11 +80,36 @@ export function DashboardHeader({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const handleMarkAllRead = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    setUnreadCount(0);
+  };
+
+  const getNotifIcon = (iconType: string) => {
+    switch (iconType) {
+      case "package":
+        return <div className="w-8 h-8 rounded-full bg-emerald-100 text-[#183A2D] flex items-center justify-center shrink-0"><Package size={15} /></div>;
+      case "wallet":
+        return <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center shrink-0"><Wallet size={15} /></div>;
+      case "coin":
+        return <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center shrink-0"><Leaf size={15} /></div>;
+      case "truck":
+        return <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center shrink-0"><Truck size={15} /></div>;
+      case "check":
+        return <div className="w-8 h-8 rounded-full bg-teal-100 text-teal-800 flex items-center justify-center shrink-0"><CheckCircle2 size={15} /></div>;
+      case "alert":
+        return <div className="w-8 h-8 rounded-full bg-rose-100 text-rose-800 flex items-center justify-center shrink-0"><AlertTriangle size={15} /></div>;
+      default:
+        return <div className="w-8 h-8 rounded-full bg-stone-100 text-stone-700 flex items-center justify-center shrink-0"><Star size={15} /></div>;
+    }
+  };
+
   return (
     <header className="sticky top-0 z-40 h-[72px] md:h-[88px] bg-white/95 backdrop-blur-md border-b border-[#E9E2D8] flex items-center justify-between px-4 md:px-8 shrink-0">
       <div className="flex items-center gap-4">
         <button
-          className="md:hidden text-[#183A2D] p-2 -ml-2 rounded-lg hover:bg-stone-100"
+          className="md:hidden text-[#183A2D] p-2 -ml-2 rounded-lg hover:bg-stone-100 cursor-pointer"
           onClick={() => setIsSidebarOpen(true)}
         >
           <Menu size={24} />
@@ -58,76 +131,108 @@ export function DashboardHeader({
         <div className="relative" ref={notifRef}>
           <button 
             type="button"
-            onClick={() => setShowNotifications(!showNotifications)}
+            onClick={() => {
+              if (!showNotifications) loadNotifications();
+              setShowNotifications(!showNotifications);
+            }}
             className="relative p-2 text-stone-500 hover:text-[#183A2D] hover:bg-stone-100 rounded-full transition-colors cursor-pointer"
             aria-label="Thông báo"
           >
             <Bell size={20} />
-            <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-emerald-700 rounded-full border-2 border-white animate-pulse"></span>
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 min-w-[18px] h-[18px] bg-rose-500 text-white text-[9.5px] font-bold rounded-full flex items-center justify-center px-1 border-2 border-white animate-pulse">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
           </button>
 
           {/* DROPDOWN DANH SÁCH THÔNG BÁO */}
           {showNotifications && (
-            <div className="absolute right-0 mt-3 w-80 sm:w-96 bg-white border border-stone-200 rounded-2xl shadow-2xl z-50 overflow-hidden text-left animate-in fade-in zoom-in-95 duration-150">
+            <div className="absolute right-0 mt-3 w-80 sm:w-96 bg-white border border-stone-200 rounded-3xl shadow-2xl z-50 overflow-hidden text-left animate-in fade-in zoom-in-95 duration-150 font-body">
+              
+              {/* Header Dropdown */}
               <div className="px-4 py-3 bg-[#183A2D] text-white flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider">Thông báo CLOOP</span>
-                <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-medium">3 mới</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wider font-ui">Thông báo CLOOP</span>
+                  {unreadCount > 0 ? (
+                    <span className="text-[10px] bg-rose-500 text-white px-2 py-0.5 rounded-full font-bold font-ui">
+                      {unreadCount} mới
+                    </span>
+                  ) : (
+                    <span className="text-[10px] bg-white/20 text-stone-200 px-2 py-0.5 rounded-full font-medium font-ui">
+                      Cập nhật
+                    </span>
+                  )}
+                </div>
+
+                {unreadCount > 0 && (
+                  <button 
+                    onClick={handleMarkAllRead}
+                    className="text-[10px] text-emerald-200 hover:text-white underline cursor-pointer font-ui flex items-center gap-1"
+                  >
+                    <Check size={11} /> Đã đọc hết
+                  </button>
+                )}
               </div>
 
+              {/* Danh sách thông báo */}
               <div className="divide-y divide-stone-100 max-h-[380px] overflow-y-auto">
-                <Link
-                  href="/my-closet/orders"
-                  onClick={() => setShowNotifications(false)}
-                  className="p-3.5 hover:bg-emerald-50/60 transition-colors flex gap-3 items-start block"
-                >
-                  <div className="w-8 h-8 rounded-full bg-emerald-100 text-[#183A2D] flex items-center justify-center shrink-0 text-sm">
-                    📦
+                {isLoadingNotifs && notifications.length === 0 ? (
+                  <div className="p-8 text-center text-stone-400 text-xs flex flex-col items-center gap-2">
+                    <Loader2 size={20} className="animate-spin text-emerald-700" />
+                    <span>Đang nạp thông báo thực tế...</span>
                   </div>
-                  <div className="space-y-0.5 flex-1">
-                    <p className="text-xs font-bold text-stone-900">Đơn thuê mới cần chuẩn bị đồ</p>
-                    <p className="text-[11px] text-stone-600 leading-snug">Khách vừa đặt thuê váy từ Tủ đồ của bạn. Hãy kiểm tra và xác nhận giao đồ.</p>
-                    <span className="text-[9.5px] text-stone-400 font-mono">10 phút trước</span>
+                ) : notifications.length > 0 ? (
+                  notifications.slice(0, 6).map((item) => (
+                    <Link
+                      key={item.id}
+                      href={item.link}
+                      prefetch={true}
+                      onClick={() => setShowNotifications(false)}
+                      className={`p-3.5 transition-colors flex gap-3 items-start block hover:bg-emerald-50/50 ${
+                        !item.isRead ? "bg-emerald-50/30 font-medium" : ""
+                      }`}
+                    >
+                      {getNotifIcon(item.iconType)}
+                      <div className="space-y-0.5 flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-1">
+                          <p className="text-xs font-bold text-stone-900 font-heading line-clamp-1">
+                            {item.title}
+                          </p>
+                          {!item.isRead && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0"></span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-stone-600 leading-snug line-clamp-2">
+                          {item.message}
+                        </p>
+                        <div className="flex items-center gap-1.5 text-[9.5px] text-stone-400 font-mono pt-0.5">
+                          <Clock size={9.5} />
+                          <span>{item.timeRelative}</span>
+                          <span>•</span>
+                          <span>{item.timeFormatted}</span>
+                        </div>
+                      </div>
+                    </Link>
+                  ))
+                ) : (
+                  <div className="p-8 text-center text-stone-400 text-xs space-y-1">
+                    <Bell size={24} className="mx-auto text-stone-300 mb-2" />
+                    <p className="font-semibold text-stone-600">Chưa có thông báo nào</p>
+                    <p className="text-[11px]">Hoạt động đơn hàng và tài chính của bạn sẽ xuất hiện tại đây.</p>
                   </div>
-                </Link>
-
-                <Link
-                  href="/my-closet/wallet"
-                  onClick={() => setShowNotifications(false)}
-                  className="p-3.5 hover:bg-emerald-50/60 transition-colors flex gap-3 items-start block"
-                >
-                  <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 text-sm">
-                    💰
-                  </div>
-                  <div className="space-y-0.5 flex-1">
-                    <p className="text-xs font-bold text-stone-900">Tiền thuê đã cộng vào Ví</p>
-                    <p className="text-[11px] text-stone-600 leading-snug">Đơn thuê hoàn tất thành công. Tiền thuê khả dụng đã được cộng vào tài khoản.</p>
-                    <span className="text-[9.5px] text-stone-400 font-mono">1 giờ trước</span>
-                  </div>
-                </Link>
-
-                <Link
-                  href="/my-closet"
-                  onClick={() => setShowNotifications(false)}
-                  className="p-3.5 hover:bg-emerald-50/60 transition-colors flex gap-3 items-start block"
-                >
-                  <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center shrink-0 text-sm">
-                    🌿
-                  </div>
-                  <div className="space-y-0.5 flex-1">
-                    <p className="text-xs font-bold text-stone-900">Thưởng +50 Điểm Lá ESG</p>
-                    <p className="text-[11px] text-stone-600 leading-snug">Bạn vừa đóng góp giảm 1.5kg CO₂ vào mạng lưới thời trang tuần hoàn CLOOP.</p>
-                    <span className="text-[9.5px] text-stone-400 font-mono">Hôm nay</span>
-                  </div>
-                </Link>
+                )}
               </div>
 
-              <div className="p-2.5 bg-stone-50 border-t border-stone-100 text-center">
+              {/* Footer */}
+              <div className="p-2.5 bg-stone-50 border-t border-stone-100 text-center font-ui">
                 <Link
-                  href="/my-closet/orders"
+                  href="/my-closet/notifications"
+                  prefetch={true}
                   onClick={() => setShowNotifications(false)}
-                  className="text-[11px] font-bold text-[#183A2D] hover:underline"
+                  className="text-[11px] font-bold text-[#183A2D] hover:underline block"
                 >
-                  Xem toàn bộ đơn hàng & hoạt động →
+                  Xem toàn bộ lịch sử hoạt động ({notifications.length}) →
                 </Link>
               </div>
             </div>
@@ -136,6 +241,7 @@ export function DashboardHeader({
 
         <Link
           href="/my-closet/create"
+          prefetch={true}
           className="hidden sm:flex items-center gap-2 bg-[#183A2D] hover:bg-[#112a20] text-white px-4 md:px-5 py-2 md:py-2.5 rounded-full text-xs font-bold transition-all shadow-md hover:shadow-lg font-ui"
         >
           <Plus size={16} />
@@ -164,10 +270,13 @@ export function DashboardHeader({
               <div className="text-xs font-bold text-[#183A2D] capitalize">{currentUser?.name || "Member"}</div>
               <div className="text-[10px] text-emerald-600 font-bold">Trustworthy</div>
             </div>
-            <Link href="/my-closet/profile" className="block px-4 py-2.5 text-xs font-medium text-gray-700 hover:bg-stone-50 hover:text-[#183A2D]">
+            <Link href="/my-closet/profile" prefetch={true} className="block px-4 py-2.5 text-xs font-medium text-gray-700 hover:bg-stone-50 hover:text-[#183A2D]">
               Xem hồ sơ
             </Link>
-            <Link href="/my-closet/create" className="block sm:hidden px-4 py-2.5 text-xs font-medium text-emerald-600 hover:bg-stone-50 hover:text-emerald-700">
+            <Link href="/my-closet/notifications" prefetch={true} className="block px-4 py-2.5 text-xs font-medium text-gray-700 hover:bg-stone-50 hover:text-[#183A2D]">
+              Trung tâm thông báo
+            </Link>
+            <Link href="/my-closet/create" prefetch={true} className="block sm:hidden px-4 py-2.5 text-xs font-medium text-emerald-600 hover:bg-stone-50 hover:text-emerald-700">
               + Thêm đồ mới
             </Link>
             <div className="h-[1px] bg-gray-100 my-1"></div>
@@ -177,7 +286,7 @@ export function DashboardHeader({
                 setCurrentUser(null);
                 window.location.href = "/";
               }}
-              className="w-full text-left px-4 py-2.5 text-xs font-medium text-red-600 hover:bg-red-50 flex items-center gap-2"
+              className="w-full text-left px-4 py-2.5 text-xs font-medium text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer"
             >
               <LogOut size={14} />
               Đăng xuất

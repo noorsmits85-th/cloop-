@@ -81,6 +81,7 @@ export default function DashboardLayout({
       title: "Tổng quan",
       items: [
         { name: "Dashboard", path: "/my-closet", icon: <LayoutDashboard size={20} /> },
+        { name: "Thông báo & Hoạt động", path: "/my-closet/notifications", icon: <Bell size={20} /> },
       ],
     },
     {
