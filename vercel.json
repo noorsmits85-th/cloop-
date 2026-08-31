@@ -1,15 +1,7 @@
-﻿{
+{
   "crons": [
     {
       "path": "/api/cron/escrow-sla",
-      "schedule": "*/30 * * * *"
-    },
-    {
-      "path": "/api/cron/release-locks",
-      "schedule": "*/15 * * * *"
-    },
-    {
-      "path": "/api/cron/expire-leaf-coins",
       "schedule": "0 0 * * *"
     }
   ]
