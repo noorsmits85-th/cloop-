@@ -822,26 +822,6 @@ export default function Home() {
         <EcoImpactCalculator />
       </section>
 
-      {/* SECTION 9: CHỢ XANH CLOOP (Màu Xanh Rêu Matcha Mộc #37503F, Nút Trắng Tối Giản) */}
-      <section className="w-full bg-[#37503F] text-white pt-16 pb-12 relative overflow-hidden">
-        <div className="max-w-3xl mx-auto px-4 md:px-6 text-center relative z-10 space-y-4">
-          <h2 className="font-heading text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-normal text-white">
-            Chợ Xanh CLOOP
-          </h2>
-          <p className="text-xs sm:text-sm text-stone-200 font-light leading-relaxed max-w-xl mx-auto">
-            Kéo dài vòng đời thời trang. Nơi dành riêng cho sinh viên thiết kế, Local Brand và các tín đồ Upcycling săn nguyên liệu độc đáo.
-          </p>
-          <div className="pt-2">
-            <Link 
-              href="/shop?category=Upcycle" 
-              className="inline-flex items-center justify-center px-6 py-2.5 bg-white text-[#183A2D] hover:bg-[#F4F1EA] font-extrabold rounded-md text-[11px] uppercase tracking-widest transition-all font-ui shadow-2xs"
-            >
-              KHÁM PHÁ NGUYÊN LIỆU
-            </Link>
-          </div>
-        </div>
-      </section>
-
       {/* 🌿 BRAND SLOGAN MANIFESTO: SẴN SÀNG CHO VÒNG ĐỜI TIẾP THEO */}
       <section className="w-full bg-[#183A2D] text-white py-20 px-4 md:px-8 border-t border-emerald-800/60 relative overflow-hidden">
         {/* Subtle Ambient Glow */}

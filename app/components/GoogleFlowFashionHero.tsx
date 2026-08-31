@@ -351,7 +351,7 @@ export default function GoogleFlowFashionHero() {
 
         {/* Poetic & High-Fashion Tagline */}
         <p className="font-body text-xs sm:text-sm md:text-[15px] text-stone-100 font-normal leading-relaxed max-w-lg mx-auto mb-6 drop-shadow-[0_2px_14px_rgba(0,0,0,0.9)]">
-          Tủ đồ thời trang thiết kế vô tận từ cộng đồng. Tiết kiệm 90% chi phí, trải nghiệm đẳng cấp và sống xanh cùng mỗi vòng đời trang phục.
+          Biến tủ đồ của bạn thành nguồn thu nhập. Đăng cho thuê, chuyển nhượng dễ dàng và trải nghiệm hàng nghìn mẫu thiết kế với giá cực hời.
         </p>
 
         {/* Action Buttons Row */}
