@@ -6,6 +6,7 @@ import { requireUser } from "@/src/lib/auth";
 import { COIN_PACKAGES, QUEST_DEFINITIONS } from "@/lib/coinPackages";
 import { revalidatePath } from "next/cache";
 import { generatePayOSOrderCode } from "@/src/utils/order-code";
+import { checkRateLimit } from "@/src/utils/rate-limit";
 
 // 1. Tạo thanh toán mua gói Điểm Lá qua PayOS
 export async function createCoinTopUpPayment(packageCode: string) {
@@ -26,6 +27,15 @@ export async function createCoinTopUpPayment(packageCode: string) {
       return { success: false, message: "Vui lòng đăng nhập để nạp Lá." };
     }
     const userId = authUser.id;
+
+    // 🛡️ CHỐNG SPAM TẠO MÃ NẠP XU (Max 5 requests / phút / User)
+    const rateLimit = checkRateLimit(`coin_topup_${userId}`, 5, 60 * 1000);
+    if (!rateLimit.success) {
+      return {
+        success: false,
+        message: `Bạn đang tạo yêu cầu quá nhanh. Vui lòng thử lại sau ${rateLimit.resetInSec} giây.`
+      };
+    }
 
     // Sinh orderCode ngẫu nhiên hoặc dùng code client đã phát sinh
     const orderCode = generatePayOSOrderCode();

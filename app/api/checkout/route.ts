@@ -4,6 +4,7 @@ import { requireUser } from "@/src/lib/auth";
 import { verifyShippingQuoteToken } from "@/src/utils/shipping";
 import { payos } from "@/src/utils/payos";
 import { generatePayOSOrderCode } from "@/src/utils/order-code";
+import { checkRateLimit } from "@/src/utils/rate-limit";
 import { startOfDay, endOfDay, addDays, subDays } from "date-fns";
 import { z } from "zod";
 
@@ -30,6 +31,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized: Vui lòng đăng nhập để thực hiện thanh toán!" }, { status: 401 });
     }
     const realUserId = sessionUser.id;
+
+    // 🛡️ CHỐNG SPAM / DDOS TẠO MÃ THANH TOÁN (Max 5 requests / phút / User)
+    const rateLimit = checkRateLimit(`checkout_${realUserId}`, 5, 60 * 1000);
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { error: `Bạn đang tạo đơn quá nhanh. Vui lòng thử lại sau ${rateLimit.resetInSec} giây.` },
+        { status: 429 }
+      );
+    }
 
     const body = await req.json();
     

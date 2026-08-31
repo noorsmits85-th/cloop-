@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 
 import { prisma } from "@/src/lib/prisma";
 import { payos } from "@/lib/payos";
+import * as Sentry from "@sentry/nextjs";
 
 export async function POST(req: Request) {
   try {
@@ -220,6 +221,7 @@ export async function POST(req: Request) {
         }
       });
     } catch (err) {
+      Sentry.captureException(err, { extra: { orderCode, context: "PAYOS_WEBHOOK_DATABASE_ERROR" } });
       console.error("❌ Lỗi khi lưu Transaction vào Database:", err);
       // Ném lỗi 500 để PayOS tự động Retry sau 5 phút theo chuẩn "Kế toán thép"
       return NextResponse.json({ success: false, message: "Database Error" }, { status: 500 });
@@ -241,6 +243,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, message: "Webhook processed perfectly" }, { status: 200 });
 
   } catch (error) {
+    Sentry.captureException(error, { extra: { context: "PAYOS_WEBHOOK_GLOBAL_ERROR" } });
     console.error("❌ Lỗi hệ thống khi xử lý webhook:", error);
     if (error instanceof SyntaxError) {
       return NextResponse.json({ success: false, message: "Invalid JSON body" }, { status: 400 });
