@@ -18,7 +18,6 @@ import {
 import { supabase } from "@/lib/supabase";
 import VisualSearchModal from "@/app/components/VisualSearchModal";
 import GoogleFlowFashionHero from "@/app/components/GoogleFlowFashionHero";
-import LivePulseTicker from "@/app/components/LivePulseTicker";
 import HowItWorksTabs from "@/app/components/HowItWorksTabs";
 import { getTrendingProductsAction } from "@/app/actions/favorite";
 
@@ -235,9 +234,6 @@ export default function Home() {
 
       {/* 🌟 01 — HERO EDITORIAL */}
       <GoogleFlowFashionHero />
-
-      {/* ⚡ 02 — NHỊP ĐẬP TUẦN HOÀN (LIVE MARQUEE TICKER) */}
-      <LivePulseTicker />
 
       {/* 👗 03 — OCCASION CURATIONS (KHÁM PHÁ THEO DỊP) */}
       <section className="w-full max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-12 md:py-16">

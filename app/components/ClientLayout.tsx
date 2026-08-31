@@ -15,6 +15,7 @@ import "../globals.css";
 import AiStylistChat from "./AiStylistChat"; 
 import PwaInstallPrompt from "./PwaInstallPrompt";
 import MobileBottomDock from "./MobileBottomDock";
+import LivePulseTicker from "./LivePulseTicker";
 import { useAuthModal } from "../AuthModalContext";
 
 const supabase = createClient();
@@ -317,6 +318,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
             currentUser={currentUser} 
             setCurrentUser={setCurrentUser}
           />
+          <LivePulseTicker />
         </Suspense>
       )}
 
