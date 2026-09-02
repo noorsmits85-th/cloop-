@@ -13,6 +13,7 @@ import {
 
 import RentalBookingBox from "@/components/RentalBookingBox"; 
 import LiveViewerBadge from "@/components/LiveViewerBadge";
+import DigitalProductPassport from "@/app/components/DigitalProductPassport";
 import { supabase } from "@/lib/supabase";
 
 const PLACEHOLDER_IMG = "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600";
@@ -391,6 +392,17 @@ function ProductDetailContent() {
                 </div>
               </div>
             </div>
+
+            {/* 🌿 HỘ CHIẾU SỐ THỜI TRANG (EU-STANDARD DIGITAL PRODUCT PASSPORT - DPP) */}
+            <DigitalProductPassport 
+              productId={product.id}
+              productTitle={product.title || product.name || "Trang phục CLOOP"}
+              material={product.material}
+              category={product.category}
+              province={product.province}
+              brand={product.brand}
+              ownerName={product.ownerRealName || product.user?.name}
+            />
 
             {/* 💬 MÔ TẢ TỪ CHỦ TỦ ĐỒ */}
             <div className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-5 shadow-2xs space-y-2">
