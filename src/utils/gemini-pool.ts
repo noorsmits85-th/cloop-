@@ -1,5 +1,3 @@
-﻿import "server-only";
-
 interface KeyState {
   key: string;
   cooldownUntil: number;
