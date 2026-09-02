@@ -1,25 +1,12 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
+import { executeWithGeminiPool } from "@/src/utils/gemini-pool";
 
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   try {
     const { title, category, location, productName } = await req.json();
-
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: "Thiếu GEMINI_API_KEY" }, { status: 500 });
-    }
-
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: "gemini-3.5-flash-lite",
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 600
-      }
-    });
 
     const prompt = `
 Bạn là Nhà Biên Tập Thời Trang & Tác Giả Tản Văn Lãng Mạn của CLOOP (Nền tảng Thời Trang Tuần Hoàn).
@@ -33,8 +20,30 @@ Phong cách viết: Thơ mộng, hoài niệm, trân trọng từng đường ki
 Không dùng emoji lấp lánh ✨.
 `;
 
-    const res = await model.generateContent(prompt);
-    const text = res.response.text();
+    const text = await executeWithGeminiPool(async (apiKey) => {
+      const genAI = new GoogleGenerativeAI(apiKey);
+      try {
+        const model = genAI.getGenerativeModel({
+          model: "gemini-3.5-flash-lite",
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 600,
+          },
+        });
+        const res = await model.generateContent(prompt);
+        return res.response.text();
+      } catch (err) {
+        const fallbackModel = genAI.getGenerativeModel({
+          model: "gemini-1.5-flash",
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 600,
+          },
+        });
+        const res = await fallbackModel.generateContent(prompt);
+        return res.response.text();
+      }
+    });
 
     return NextResponse.json({ success: true, story: text });
   } catch (err: any) {

@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
+import { executeWithGeminiPool } from "@/src/utils/gemini-pool";
 
 export const runtime = "nodejs";
 
@@ -9,21 +10,6 @@ export async function POST(req: Request) {
     if (!base64Image) {
       return NextResponse.json({ error: "Thiếu dữ liệu ảnh" }, { status: 400 });
     }
-
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || process.env.GEMINI_API_KEY_DEV;
-    if (!apiKey) {
-      return NextResponse.json({ error: "Thiếu GEMINI_API_KEY" }, { status: 500 });
-    }
-
-    const genAI = new GoogleGenerativeAI(apiKey);
-    
-    let model = genAI.getGenerativeModel({ 
-      model: "gemini-3.5-flash-lite",
-      generationConfig: {
-        responseMimeType: "application/json",
-        temperature: 0.2,
-      }
-    });
 
     const mimeType = base64Image.match(/:(.*?);/)?.[1] || "image/jpeg";
     const base64Data = base64Image.includes(",") ? base64Image.split(",")[1] : base64Image;
@@ -60,17 +46,26 @@ Trả về đúng cấu trúc JSON sau:
 }
 `;
 
-    let result;
-    try {
-      result = await model.generateContent([prompt, imagePart]);
-    } catch (e) {
-      console.warn("Autofill primary model error, trying fallback:", e);
-      const fallbackModel = genAI.getGenerativeModel({
-        model: "gemini-3.6-flash",
-        generationConfig: { responseMimeType: "application/json", temperature: 0.2 },
-      });
-      result = await fallbackModel.generateContent([prompt, imagePart]);
-    }
+    const result = await executeWithGeminiPool(async (apiKey) => {
+      const genAI = new GoogleGenerativeAI(apiKey);
+      try {
+        const model = genAI.getGenerativeModel({
+          model: "gemini-3.5-flash-lite",
+          generationConfig: {
+            responseMimeType: "application/json",
+            temperature: 0.2,
+          },
+        });
+        return await model.generateContent([prompt, imagePart]);
+      } catch (e) {
+        console.warn("Autofill primary model error, trying fallback:", e);
+        const fallbackModel = genAI.getGenerativeModel({
+          model: "gemini-1.5-flash",
+          generationConfig: { responseMimeType: "application/json", temperature: 0.2 },
+        });
+        return await fallbackModel.generateContent([prompt, imagePart]);
+      }
+    });
 
     const responseText = result.response.text();
     const parsedData = JSON.parse(responseText);

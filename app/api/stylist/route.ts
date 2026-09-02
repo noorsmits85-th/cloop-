@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { prisma } from "@/src/lib/prisma";
+import { executeWithGeminiPool, getAllGeminiKeys } from "@/src/utils/gemini-pool";
 
 export const runtime = "nodejs";
 
@@ -78,9 +79,8 @@ export async function POST(request: Request) {
       return new Response("Thiếu nội dung chat hoặc ảnh.", { status: 400 });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || process.env.GEMINI_API_KEY_DEV;
-    if (!apiKey) {
-      return new Response("Thiếu GEMINI_API_KEY.", { status: 500 });
+    if (getAllGeminiKeys().length === 0) {
+      return new Response("Thiếu cấu hình GEMINI_API_KEY trong hệ thống.", { status: 500 });
     }
 
     // ⚡ LẤY TOÀN BỘ KHO ĐỒ WEB SẴN CÓ ĐỂ AI NẮM 100% DỮ LIỆU
@@ -134,7 +134,6 @@ export async function POST(request: Request) {
       type: p.listingType === "RENT" ? "Cho thuê" : "Bán/Thanh lý"
     }));
 
-    const genAI = new GoogleGenerativeAI(apiKey);
     const systemInstruction = [
       "Bạn là Trợ Lý Thời Trang Cá Nhân & AI Stylist độc quyền của CLOOP (nền tảng thời trang tuần hoàn).",
       "",
@@ -185,29 +184,31 @@ export async function POST(request: Request) {
     }
     contentParts.push(promptText);
 
-    let result;
-    try {
-      const model = genAI.getGenerativeModel({
-        model: "gemini-3.5-flash-lite",
-        generationConfig: {
-          temperature: 0.6,
-          maxOutputTokens: 500,
-        },
-        systemInstruction,
-      });
-      result = await model.generateContentStream(contentParts.length === 1 ? contentParts[0] : contentParts);
-    } catch (err) {
-      console.warn("Stylist primary model error, trying fallback:", err);
-      const fallbackModel = genAI.getGenerativeModel({
-        model: "gemini-1.5-flash",
-        generationConfig: {
-          temperature: 0.6,
-          maxOutputTokens: 500,
-        },
-        systemInstruction,
-      });
-      result = await fallbackModel.generateContentStream(contentParts.length === 1 ? contentParts[0] : contentParts);
-    }
+    const result = await executeWithGeminiPool(async (apiKey) => {
+      const genAI = new GoogleGenerativeAI(apiKey);
+      try {
+        const model = genAI.getGenerativeModel({
+          model: "gemini-3.5-flash-lite",
+          generationConfig: {
+            temperature: 0.6,
+            maxOutputTokens: 500,
+          },
+          systemInstruction,
+        });
+        return await model.generateContentStream(contentParts.length === 1 ? contentParts[0] : contentParts);
+      } catch (err) {
+        console.warn("Stylist primary model error, trying fallback:", err);
+        const fallbackModel = genAI.getGenerativeModel({
+          model: "gemini-1.5-flash",
+          generationConfig: {
+            temperature: 0.6,
+            maxOutputTokens: 500,
+          },
+          systemInstruction,
+        });
+        return await fallbackModel.generateContentStream(contentParts.length === 1 ? contentParts[0] : contentParts);
+      }
+    });
 
     const encoder = new TextEncoder();
 

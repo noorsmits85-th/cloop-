@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+import { executeWithGeminiPool } from "@/src/utils/gemini-pool";
 
 export async function POST(req: Request) {
   try {
@@ -26,9 +25,6 @@ export async function POST(req: Request) {
       userBase64 = parts[1];
     }
 
-    // 3. Khởi tạo Gemini 3.5 Flash-Lite model
-    const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash-lite" });
-
     const prompt = `Bạn là một AI Stylist chuyên nghiệp của CLOOP (nền tảng thời trang tuần hoàn). 
 Dưới đây là 2 bức ảnh: Ảnh 1 là người dùng, Ảnh 2 là trang phục. 
 Hãy phân tích xem trang phục này có hợp với vóc dáng, tông màu hoặc phong cách của người dùng không. 
@@ -50,9 +46,20 @@ Chỉ trả về tối đa 3-4 câu ngắn gọn, súc tích, văn phong lịch 
       },
     ];
 
-    const result = await model.generateContent([prompt, ...imageParts]);
-    const response = await result.response;
-    const text = response.text();
+    const text = await executeWithGeminiPool(async (apiKey) => {
+      const genAI = new GoogleGenerativeAI(apiKey);
+      try {
+        const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash-lite" });
+        const result = await model.generateContent([prompt, ...imageParts]);
+        const response = await result.response;
+        return response.text();
+      } catch (err) {
+        const fallbackModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const result = await fallbackModel.generateContent([prompt, ...imageParts]);
+        const response = await result.response;
+        return response.text();
+      }
+    });
 
     return NextResponse.json({ feedback: text });
   } catch (error: any) {
