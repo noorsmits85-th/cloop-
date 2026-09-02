@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     // 1. Lấy khóa API và cấu hình chuẩn tên thư viện đầy đủ
     const apiKey = process.env.GEMINI_API_KEY;
     const genAI = new GoogleGenerativeAI(apiKey || "");
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash-lite" });
 
     // 2. Định dạng cấu trúc ảnh gửi lên Google
     const imagePart = {
