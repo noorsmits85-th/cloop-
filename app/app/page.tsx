@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Search, Camera, Sparkles, Bell, Heart, MapPin, 
   Shirt, ArrowRight, Home, ShoppingBag, Plus, User,
-  CheckCircle2, RefreshCw
+  CheckCircle2, Flame, Star
 } from "lucide-react";
 import VisualSearchModal from "@/app/components/VisualSearchModal";
 import { getTrendingProductsAction } from "@/app/actions/favorite";
@@ -22,6 +22,7 @@ export default function MobileAppPage() {
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [activeCategoryTab, setActiveCategoryTab] = useState("all");
   const [unreadCount, setUnreadCount] = useState(0);
+  const [likedItems, setLikedItems] = useState<Record<string, boolean>>({});
 
   // 🌿 1. QUẢN LÝ MÀN HÌNH CHÀO NGHỆ THUẬT (CHỈ CHẠY RIÊNG TRONG /app)
   useEffect(() => {
@@ -46,7 +47,12 @@ export default function MobileAppPage() {
         ]);
 
         if (prodRes?.success && prodRes.products) {
-          setProducts(prodRes.products);
+          // Lọc bỏ các ảnh rác / ảnh không phải quần áo nếu có
+          const validProducts = (prodRes.products as any[]).filter((p: any) => {
+            const img = p.primaryImage || p.imageUrl || p.image_url || p.images?.[0]?.url || "";
+            return !img.includes("wine") && !img.includes("bottle");
+          });
+          setProducts(validProducts.length > 0 ? validProducts : prodRes.products);
         }
         if (notifRes?.success && notifRes.unreadCount) {
           setUnreadCount(notifRes.unreadCount);
@@ -67,6 +73,12 @@ export default function MobileAppPage() {
     }
   };
 
+  const toggleLike = (id: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setLikedItems(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
   const filteredProducts = products.filter(p => {
     if (activeCategoryTab === "all") return true;
     if (activeCategoryTab === "rent") return true;
@@ -75,443 +87,510 @@ export default function MobileAppPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#ECE7DE] flex justify-center selection:bg-emerald-100">
-      <div className="w-full max-w-md min-h-screen bg-[#FAF9F5] text-stone-800 antialiased pb-24 shadow-2xl border-x border-[#E2DDD3] relative overflow-x-hidden select-none">
+    <div className="min-h-screen bg-[#E5DFD5] py-0 sm:py-6 flex justify-center selection:bg-emerald-200">
       
-      {/* ========================================================
-          🌸 1. MÀN HÌNH CHÀO ĐỘC BẢN CHO APP ("Fashion in a loop")
-          ======================================================== */}
-      <AnimatePresence>
-        {showSplash && (
-          <motion.div
-            key="app-dedicated-splash"
-            initial={{ opacity: 1 }}
-            exit={{ 
-              opacity: 0, 
-              scale: 1.04,
-              filter: "blur(10px)",
-              transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] } 
-            }}
-            onClick={() => setShowSplash(false)}
-            className="fixed inset-0 z-[9999] flex flex-col items-center justify-center select-none cursor-pointer overflow-hidden max-w-md mx-auto"
-            style={{
-              background: "radial-gradient(ellipse at 50% 40%, #FFFFFF 0%, #F4FAF5 45%, #E2EFE7 100%)",
-            }}
-          >
-            {/* Lớp lụa matcha bồng bềnh */}
+      {/* 📱 KHUNG MÁY DI ĐỘNG CAO CẤP (SMARTPHONE FRAMEWORK) */}
+      <div className="w-full max-w-md min-h-screen sm:min-h-[92vh] sm:max-h-[94vh] sm:rounded-[2.8rem] bg-[#FAF8F5] text-stone-900 antialiased shadow-[0_25px_70px_rgba(24,58,45,0.22)] border-x sm:border-[5px] border-[#D4CBBF] sm:border-[#1E3B2D]/90 relative overflow-y-auto overflow-x-hidden select-none pb-24 no-scrollbar">
+        
+        {/* ========================================================
+            🌸 1. MÀN HÌNH CHÀO ĐỘC BẢN CHO APP ("Fashion in a loop")
+            ======================================================== */}
+        <AnimatePresence>
+          {showSplash && (
             <motion.div
-              animate={{
-                scale: [1, 1.25, 1],
-                rotate: [0, 15, 0],
-                x: [-15, 20, -15],
-                y: [-10, 15, -10],
+              key="app-dedicated-splash"
+              initial={{ opacity: 1 }}
+              exit={{ 
+                opacity: 0, 
+                scale: 1.04,
+                filter: "blur(10px)",
+                transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] } 
               }}
-              transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute top-1/5 -left-12 w-[320px] h-[320px] rounded-full bg-gradient-to-tr from-[#C5DFD0]/50 via-[#E4F3EB]/40 to-transparent blur-3xl pointer-events-none"
-            />
-
-            {/* Dải lụa 3D tuần hoàn */}
-            <div className="relative z-10 flex flex-col items-center text-center px-6">
+              onClick={() => setShowSplash(false)}
+              className="absolute inset-0 z-[9999] flex flex-col items-center justify-center select-none cursor-pointer overflow-hidden sm:rounded-[2.5rem]"
+              style={{
+                background: "radial-gradient(ellipse at 50% 40%, #FFFFFF 0%, #F4FAF5 45%, #E2EFE7 100%)",
+              }}
+            >
               <motion.div
-                initial={{ scale: 0.6, opacity: 0, y: 15 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-                className="relative w-24 h-24 mb-2 flex items-center justify-center"
-              >
-                <div className="absolute inset-0 bg-gradient-to-tr from-[#98C8A8]/40 via-[#B4DCBF]/30 to-[#E8F4EC]/60 rounded-full blur-xl animate-pulse" />
-                <Image
-                  src="/loogo.png"
-                  alt="CLOOP"
-                  width={88}
-                  height={88}
-                  priority
-                  className="object-contain mix-blend-multiply drop-shadow-sm"
-                />
-              </motion.div>
+                animate={{
+                  scale: [1, 1.25, 1],
+                  rotate: [0, 15, 0],
+                  x: [-15, 20, -15],
+                  y: [-10, 15, -10],
+                }}
+                transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute top-1/5 -left-12 w-[320px] h-[320px] rounded-full bg-gradient-to-tr from-[#C5DFD0]/50 via-[#E4F3EB]/40 to-transparent blur-3xl pointer-events-none"
+              />
 
-              {/* CLOOP Title */}
-              <motion.h1
-                initial={{ opacity: 0, y: 10, letterSpacing: "0.25em" }}
-                animate={{ opacity: 1, y: 0, letterSpacing: "0.15em" }}
-                transition={{ duration: 0.8, delay: 0.25 }}
-                className="font-brand-title text-4xl font-extrabold tracking-[0.15em] pl-[0.15em] leading-none animate-brand-shimmer drop-shadow-xs font-heading text-[#183A2D]"
-              >
-                CLOOP
-              </motion.h1>
-
-              {/* Fashion in a loop */}
-              <motion.div
-                initial={{ opacity: 0, y: 8, scale: 0.92 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.9, delay: 0.55 }}
-                className="mt-2.5 flex items-center justify-center gap-2.5"
-              >
-                <span className="w-5 h-[1px] bg-gradient-to-r from-transparent to-[#4A785D]" />
-                <p 
-                  className="font-handwriting text-2xl text-[#1E4B35] italic"
-                  style={{ fontFamily: "var(--font-dancing-script), cursive" }}
+              <div className="relative z-10 flex flex-col items-center text-center px-6">
+                <motion.div
+                  initial={{ scale: 0.6, opacity: 0, y: 15 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+                  className="relative w-24 h-24 mb-2 flex items-center justify-center"
                 >
-                  Fashion in a loop
-                </p>
-                <span className="w-5 h-[1px] bg-gradient-to-l from-transparent to-[#4A785D]" />
-              </motion.div>
+                  <div className="absolute inset-0 bg-gradient-to-tr from-[#98C8A8]/40 via-[#B4DCBF]/30 to-[#E8F4EC]/60 rounded-full blur-xl animate-pulse" />
+                  <Image
+                    src="/loogo.png"
+                    alt="CLOOP"
+                    width={88}
+                    height={88}
+                    priority
+                    className="object-contain mix-blend-multiply drop-shadow-sm"
+                  />
+                </motion.div>
 
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 0.7 }}
-                transition={{ duration: 0.7, delay: 0.8 }}
-                className="text-[9px] uppercase tracking-[0.3em] text-[#36634A] font-ui mt-3 font-semibold"
-              >
-                Tủ Đồ Tuần Hoàn • Thời Trang Bền Vững
-              </motion.p>
-            </div>
+                <motion.h1
+                  initial={{ opacity: 0, y: 10, letterSpacing: "0.25em" }}
+                  animate={{ opacity: 1, y: 0, letterSpacing: "0.15em" }}
+                  transition={{ duration: 0.8, delay: 0.25 }}
+                  className="font-brand-title text-4xl font-extrabold tracking-[0.15em] pl-[0.15em] leading-none animate-brand-shimmer drop-shadow-xs font-heading text-[#183A2D]"
+                >
+                  CLOOP
+                </motion.h1>
 
-            <div className="absolute bottom-10 flex items-center gap-1.5 opacity-60">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#4A785D] animate-bounce" />
-              <span className="w-1.5 h-1.5 rounded-full bg-[#6C9E80] animate-bounce [animation-delay:0.2s]" />
-              <span className="w-1.5 h-1.5 rounded-full bg-[#9DC6AD] animate-bounce [animation-delay:0.4s]" />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                <motion.div
+                  initial={{ opacity: 0, y: 8, scale: 0.92 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ duration: 0.9, delay: 0.55 }}
+                  className="mt-2.5 flex items-center justify-center gap-2.5"
+                >
+                  <span className="w-5 h-[1px] bg-gradient-to-r from-transparent to-[#4A785D]" />
+                  <p 
+                    className="font-handwriting text-2xl text-[#1E4B35] italic"
+                    style={{ fontFamily: "var(--font-dancing-script), cursive" }}
+                  >
+                    Fashion in a loop
+                  </p>
+                  <span className="w-5 h-[1px] bg-gradient-to-l from-transparent to-[#4A785D]" />
+                </motion.div>
 
-      {/* ========================================================
-          📱 2. APP HEADER BAR (TỐI GIẢN, HIỆN ĐẠI, CAO CẤP)
-          ======================================================== */}
-      <header className="sticky top-0 z-40 bg-[#FAF9F5]/90 backdrop-blur-md px-4 py-3 border-b border-[#EBE6D8] flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Image 
-            src="/loogo.png" 
-            alt="CLOOP" 
-            width={34} 
-            height={34} 
-            className="mix-blend-multiply" 
-          />
-          <div>
-            <span className="font-brand-title text-xl font-extrabold tracking-[0.1em] text-[#183A2D] leading-none block font-heading">
-              CLOOP
-            </span>
-            <span className="font-handwriting text-[10px] text-[#4A785D] italic -mt-0.5 block">
-              Fashion in a loop
-            </span>
-          </div>
-        </div>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 0.7 }}
+                  transition={{ duration: 0.7, delay: 0.8 }}
+                  className="text-[9px] uppercase tracking-[0.3em] text-[#36634A] font-ui mt-3 font-semibold"
+                >
+                  Tủ Đồ Tuần Hoàn • Thời Trang Bền Vững
+                </motion.p>
+              </div>
 
-        <div className="flex items-center gap-2.5">
-          <Link 
-            href="/ai-stylist" 
-            className="w-9 h-9 rounded-full bg-white border border-[#EBE6D8] flex items-center justify-center text-[#183A2D] shadow-3xs active:scale-90 transition-transform"
-            title="AI Stylist"
-          >
-            <Sparkles size={16} className="text-emerald-700" />
-          </Link>
-
-          <Link 
-            href="/my-closet/notifications" 
-            onClick={(e) => handleAuthGuarded(e, "/my-closet/notifications")}
-            className="w-9 h-9 rounded-full bg-white border border-[#EBE6D8] flex items-center justify-center text-stone-600 shadow-3xs relative active:scale-90 transition-transform"
-            title="Hộp thư thông báo"
-          >
-            <Bell size={17} />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[15px] h-[15px] bg-rose-500 text-white text-[8.5px] font-extrabold rounded-full flex items-center justify-center px-0.5 border border-white">
-                {unreadCount > 9 ? "9+" : unreadCount}
-              </span>
-            )}
-          </Link>
-        </div>
-      </header>
-
-      {/* ========================================================
-          🔍 3. THANH TÌM KIẾM & CHỤP ẢNH AI LOOKBOOK
-          ======================================================== */}
-      <div className="p-4 space-y-3.5">
-        <div className="flex items-center gap-2">
-          <Link
-            href="/shop"
-            className="flex-1 h-11 rounded-full bg-white border border-[#E0D9CE] px-4 flex items-center gap-2 text-stone-400 shadow-3xs active:scale-98 transition-transform"
-          >
-            <Search size={16} className="text-[#183A2D]" />
-            <span className="text-xs font-medium text-stone-500 truncate">
-              Tìm đầm dạ hội, áo dài, túi hiệu...
-            </span>
-          </Link>
-          <button
-            type="button"
-            onClick={() => setIsVisualSearchOpen(true)}
-            className="w-11 h-11 rounded-full bg-[#183A2D] text-white flex items-center justify-center shadow-md active:scale-90 transition-transform shrink-0 cursor-pointer"
-            title="Tìm kiếm bằng ảnh AI"
-          >
-            <Camera size={18} />
-          </button>
-        </div>
+              <div className="absolute bottom-10 flex items-center gap-1.5 opacity-60">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#4A785D] animate-bounce" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[#6C9E80] animate-bounce [animation-delay:0.2s]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[#9DC6AD] animate-bounce [animation-delay:0.4s]" />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* ========================================================
-            🎀 4. BỘ SƯU TẬP THEO DỊP (ẢNH THỜI TRANG THẬT THU NHỎ, KHÔNG DÙNG EMOJI)
+            📱 2. APP HEADER BAR (SẮC NÉT, ĐẲNG CẤP, CÓ HỒN)
             ======================================================== */}
-        <div className="flex items-center gap-3.5 overflow-x-auto no-scrollbar py-1 -mx-4 px-4">
-          {[
-            { label: "Đầm Dạ Hội", img: "/1.1.jpg", link: "/shop?occasion=Dạ hội" },
-            { label: "Áo Dài Di Sản", img: "/anhbia.png", link: "/shop?occasion=Áo dài" },
-            { label: "Tiệc Cưới & Prom", img: "/evening_dress.jpg", link: "/shop?occasion=Tiệc cưới" },
-            { label: "Túi & Phụ Kiện", img: "/step2_bag.jpg", link: "/shop?occasion=Phụ kiện" },
-            { label: "Tủ Đồ Xanh", img: "/macro_fabric.jpg", link: "/shop?occasion=Vintage" },
-            { label: "Tối Giản Paris", img: "/vintage_coat.jpg", link: "/shop?type=rent" },
-          ].map((cat, idx) => (
-            <Link
-              key={idx}
-              href={cat.link}
-              className="flex flex-col items-center gap-2 shrink-0 group active:scale-95 transition-transform"
+        <header className="sticky top-0 z-40 bg-[#FAF8F5]/95 backdrop-blur-md px-4 py-3 border-b border-[#E8E1D5] flex items-center justify-between shadow-3xs">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-full bg-white border border-[#E0D8CB] shadow-3xs flex items-center justify-center p-0.5">
+              <Image 
+                src="/loogo.png" 
+                alt="CLOOP" 
+                width={32} 
+                height={32} 
+                className="mix-blend-multiply" 
+              />
+            </div>
+            <div>
+              <span className="font-brand-title text-2xl font-extrabold tracking-[0.12em] text-[#183A2D] leading-none block font-heading drop-shadow-3xs">
+                CLOOP
+              </span>
+              <span className="font-handwriting text-[11px] text-[#346E4E] italic -mt-0.5 block font-serif font-bold">
+                Fashion in a loop
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Link 
+              href="/ai-stylist" 
+              className="px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200/80 flex items-center gap-1 text-emerald-800 text-xs font-bold shadow-3xs active:scale-95 transition-transform"
+              title="Trợ lý AI Stylist"
             >
-              <div className="w-[60px] h-[60px] rounded-full p-[2px] bg-white border border-[#DDD6CA] shadow-3xs group-hover:border-[#183A2D] transition-colors">
-                <div className="w-full h-full rounded-full overflow-hidden relative bg-stone-100">
+              <Sparkles size={14} className="text-emerald-700 animate-spin [animation-duration:6s]" />
+              <span className="text-[10px] uppercase font-ui tracking-wider">AI Stylist</span>
+            </Link>
+
+            <Link 
+              href="/my-closet/notifications" 
+              onClick={(e) => handleAuthGuarded(e, "/my-closet/notifications")}
+              className="w-9 h-9 rounded-full bg-white border border-[#E0D8CB] flex items-center justify-center text-stone-700 shadow-3xs relative active:scale-95 transition-transform"
+              title="Hộp thư thông báo"
+            >
+              <Bell size={17} />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[15px] h-[15px] bg-rose-500 text-white text-[8.5px] font-extrabold rounded-full flex items-center justify-center px-0.5 border-2 border-white shadow-xs animate-pulse">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </Link>
+          </div>
+        </header>
+
+        {/* ========================================================
+            🔍 3. THANH TÌM KIẾM CAO CẤP & CAMERA AI
+            ======================================================== */}
+        <div className="p-4 space-y-4">
+          <div className="flex items-center gap-2.5">
+            <Link
+              href="/shop"
+              className="flex-1 h-12 rounded-full bg-white border border-[#DDD5C7] px-4 flex items-center gap-2.5 text-stone-400 shadow-xs hover:border-[#183A2D] transition-colors group"
+            >
+              <Search size={17} className="text-[#183A2D] group-hover:scale-110 transition-transform" />
+              <span className="text-xs font-medium text-stone-600 truncate font-ui">
+                Tìm đầm tiệc, áo dài gấm, túi hiệu...
+              </span>
+            </Link>
+            <button
+              type="button"
+              onClick={() => setIsVisualSearchOpen(true)}
+              className="w-12 h-12 rounded-full bg-gradient-to-tr from-[#183A2D] to-[#2B6349] text-white flex items-center justify-center shadow-md hover:shadow-lg active:scale-90 transition-all shrink-0 cursor-pointer border border-emerald-700/50"
+              title="Tìm kiếm bằng ảnh AI Lookbook"
+            >
+              <Camera size={19} />
+            </button>
+          </div>
+
+          {/* ========================================================
+              🎀 4. THẺ STORY THỜI TRANG ĐỨNG (EDITORIAL STORY CARDS)
+              ======================================================== */}
+          <div>
+            <div className="flex items-center justify-between mb-2.5 px-0.5">
+              <span className="text-[10.5px] font-extrabold tracking-wider uppercase text-[#183A2D] font-ui flex items-center gap-1.5">
+                <Sparkles size={12} className="text-[#C89D56]" />
+                Bộ Sưu Tập Nổi Bật
+              </span>
+              <span className="text-[10px] text-stone-400 font-medium">Vuốt sang →</span>
+            </div>
+
+            <div className="flex items-center gap-3 overflow-x-auto no-scrollbar py-1 -mx-4 px-4">
+              {[
+                { 
+                  title: "Dạ Tiệc & Gala", 
+                  tag: "Lụa Satin",
+                  img: "/1.1.jpg", 
+                  link: "/shop?occasion=Dạ hội" 
+                },
+                { 
+                  title: "Áo Dài Di Sản", 
+                  tag: "Gấm Sen",
+                  img: "/anhbia.png", 
+                  link: "/shop?occasion=Áo dài" 
+                },
+                { 
+                  title: "Tiệc Cưới Prom", 
+                  tag: "Sequin Lấp Lánh",
+                  img: "/evening_dress.jpg", 
+                  link: "/shop?occasion=Tiệc cưới" 
+                },
+                { 
+                  title: "Túi & Phụ Kiện", 
+                  tag: "Da Thủ Công",
+                  img: "/step2_bag.jpg", 
+                  link: "/shop?occasion=Phụ kiện" 
+                },
+                { 
+                  title: "Tủ Đồ Xanh", 
+                  tag: "Eco Linen",
+                  img: "/macro_fabric.jpg", 
+                  link: "/shop?occasion=Vintage" 
+                },
+                { 
+                  title: "Tối Giản Paris", 
+                  tag: "Cashmere",
+                  img: "/vintage_coat.jpg", 
+                  link: "/shop?type=rent" 
+                },
+              ].map((card, idx) => (
+                <Link
+                  key={idx}
+                  href={card.link}
+                  className="relative w-[105px] h-[145px] rounded-2xl overflow-hidden shrink-0 group active:scale-95 transition-all shadow-sm hover:shadow-md border border-stone-200/80"
+                >
                   <Image
-                    src={cat.img}
-                    alt={cat.label}
+                    src={card.img}
+                    alt={card.title}
                     fill
-                    className="object-cover transition-transform duration-500 group-hover:scale-110"
+                    className="object-cover transition-transform duration-700 group-hover:scale-110"
                     unoptimized
                   />
-                </div>
-              </div>
-              <span className="text-[10px] font-bold text-stone-700 tracking-tight whitespace-nowrap font-heading">
-                {cat.label}
-              </span>
-            </Link>
-          ))}
-        </div>
-
-        {/* ========================================================
-            🌿 5. BANNER LỤA MATCHA SANG TRỌNG (ẢNH MẪU THẬT, KHÔNG EMOJI)
-            ======================================================== */}
-        <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-[#183A2D] via-[#23503E] to-[#142F24] p-4 text-white shadow-sm flex items-center justify-between border border-[#2D604B]/40">
-          <div className="space-y-1.5 max-w-[68%]">
-            <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#A3E39F] animate-pulse" />
-              <span className="text-[8.5px] uppercase tracking-[0.2em] font-semibold text-[#A3E39F] font-ui">
-                Tủ Đồ Tuần Hoàn 2026
-              </span>
-            </div>
-            <h3 className="font-heading text-sm font-extrabold leading-snug text-white tracking-wide">
-              Trang Phục Sự Kiện • Giảm 85% Chi Phí Mặc Đẹp
-            </h3>
-            <Link
-              href="/shop?type=rent"
-              className="inline-flex items-center gap-1 text-[11px] font-bold text-[#A3E39F] hover:text-white pt-1 group"
-            >
-              <span>Khám phá bộ sưu tập</span>
-              <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </div>
-
-          <div className="relative w-16 h-20 rounded-xl overflow-hidden border border-white/20 shadow-md shrink-0 bg-stone-800">
-            <Image 
-              src="/evening_dress.jpg" 
-              alt="CLOOP Evening Dress" 
-              fill 
-              className="object-cover" 
-              unoptimized 
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-          </div>
-        </div>
-
-        {/* ========================================================
-            🏷️ 6. BỘ LỌC DANH MỤC NHANH
-            ======================================================== */}
-        <div className="flex items-center justify-between pt-1 border-b border-[#EBE6D8] pb-2.5">
-          <div className="flex items-center gap-1.5">
-            {[
-              { id: "all", label: "Tất cả" },
-              { id: "rent", label: "Đang cho thuê" },
-              { id: "sale", label: "Hàng tuyển chọn" },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveCategoryTab(tab.id)}
-                className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
-                  activeCategoryTab === tab.id
-                    ? "bg-[#183A2D] text-white shadow-3xs"
-                    : "bg-white text-stone-500 border border-stone-200/80 hover:bg-stone-50"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          <Link
-            href="/shop"
-            className="text-[11px] font-bold text-[#183A2D] flex items-center gap-0.5 hover:underline"
-          >
-            <span>Xem thêm</span>
-            <ArrowRight size={11} />
-          </Link>
-        </div>
-
-        {/* ========================================================
-            👗 7. LƯỚI SẢN PHẨM THỜI TRANG (2 CỘT CHUẨN MOBILE APP)
-            ======================================================== */}
-        {isLoadingProducts ? (
-          <div className="grid grid-cols-2 gap-3 py-6">
-            {[1, 2, 3, 4].map((n) => (
-              <div key={n} className="space-y-2 animate-pulse">
-                <div className="w-full aspect-[3/4] bg-stone-200 rounded-2xl" />
-                <div className="h-3 bg-stone-200 rounded-md w-3/4" />
-                <div className="h-3 bg-stone-200 rounded-md w-1/2" />
-              </div>
-            ))}
-          </div>
-        ) : filteredProducts.length === 0 ? (
-          <div className="py-12 text-center text-stone-400 bg-white rounded-2xl border border-dashed border-stone-200">
-            <Shirt size={28} className="mx-auto mb-2 opacity-40" />
-            <p className="text-xs font-medium">Chưa có trang phục nào thuộc mục này.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            {filteredProducts.map((p) => {
-              const primaryImg = p.imageUrl || p.image_url || p.images?.[0]?.url || "/placeholder-clothing.png";
-              const rentPrice = p.rental_price || p.rentalPrice || p.listings?.[0]?.basePrice || 0;
-              const displayPrice = rentPrice > 0 
-                ? `${new Intl.NumberFormat("vi-VN").format(rentPrice)}₫ / ngày`
-                : "Liên hệ";
-
-              return (
-                <Link
-                  href={`/product/${p.id}`}
-                  key={p.id}
-                  className="block group relative bg-white rounded-2xl overflow-hidden border border-stone-200/60 shadow-3xs hover:shadow-sm transition-all"
-                >
-                  <div className="relative w-full aspect-[3/4] bg-stone-100 overflow-hidden">
-                    <Image
-                      src={primaryImg}
-                      alt={p.title || p.name || "CLOOP Outfit"}
-                      fill
-                      unoptimized
-                      className="object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-
-                    <span className="absolute top-2 left-2 text-[8px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded bg-[#183A2D] text-white shadow-xs font-heading">
-                      RENTAL
+                  {/* Gradient phủ tối cho chữ nổi bật */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
+                  
+                  <div className="absolute top-2 left-2">
+                    <span className="text-[7.5px] uppercase font-bold tracking-widest text-[#E8DFD0] bg-black/60 backdrop-blur-xs px-2 py-0.5 rounded-full border border-white/20">
+                      {card.tag}
                     </span>
-
-                    <button 
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                      className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-stone-400 hover:text-red-500 shadow-sm transition-colors z-20"
-                    >
-                      <Heart size={12} />
-                    </button>
-
-                    {p.size && (
-                      <span className="absolute bottom-2 left-2 bg-stone-900/70 backdrop-blur-md text-[8.5px] font-bold text-white px-2 py-0.5 rounded font-heading">
-                        SIZE {p.size}
-                      </span>
-                    )}
                   </div>
 
-                  <div className="p-2.5 space-y-1">
-                    <p className="text-xs font-bold text-stone-800 line-clamp-1 font-heading group-hover:text-[#183A2D] transition-colors">
-                      {p.title || p.name}
-                    </p>
-                    <div className="flex flex-col gap-0.5 text-[10px] text-stone-400">
-                      <span className="flex items-center gap-0.5 truncate">
-                        <MapPin size={10} className="text-[#6BA37A] shrink-0" />
-                        {p.province || "Toàn quốc"}
-                      </span>
-                      <span className="font-mono font-bold text-[#183A2D] text-xs mt-0.5">
-                        {displayPrice}
-                      </span>
-                    </div>
+                  <div className="absolute bottom-2.5 left-2 right-2">
+                    <h4 className="font-heading text-xs font-bold text-white leading-tight drop-shadow-sm">
+                      {card.title}
+                    </h4>
                   </div>
                 </Link>
-              );
-            })}
+              ))}
+            </div>
           </div>
-        )}
-      </div>
 
-      {/* ========================================================
-          📱 8. THANH ĐIỀU HƯỚNG ĐÁY CHUẨN APP NATIVE (5 TABS)
-          ======================================================== */}
-      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto z-50 bg-white/95 backdrop-blur-lg border-t border-[#E9E2D8] px-2 py-1.5 flex items-center justify-around shadow-[0_-4px_20px_rgba(0,0,0,0.06)] pb-[calc(0.4rem+env(safe-area-inset-bottom,0px))]">
-        
-        {/* TAB 1: KHÁM PHÁ (ACTIVE) */}
-        <Link
-          href="/app"
-          className="flex flex-col items-center justify-center flex-1 py-1 text-[#183A2D] font-bold select-none"
-        >
-          <div className="relative">
-            <Home size={20} strokeWidth={2.5} />
-            <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-[#183A2D] rounded-full" />
-          </div>
-          <span className="text-[9.5px] tracking-tight mt-0.5 font-ui">Khám phá</span>
-        </Link>
+          {/* ========================================================
+              🌿 5. BANNER LỤA MATCHA CAO CẤP (KHÔNG NHẠT NHÒA)
+              ======================================================== */}
+          <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-[#0F2E20] via-[#1B4D35] to-[#0A2217] p-5 text-white shadow-lg border border-[#326B4E]/60">
+            {/* Vầng sáng hữu cơ */}
+            <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-emerald-400/20 blur-2xl pointer-events-none" />
+            
+            <div className="relative z-10 flex items-center justify-between gap-3">
+              <div className="space-y-1.5 max-w-[65%]">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 border border-emerald-400/40 text-[#A3E39F] text-[9px] font-extrabold tracking-widest uppercase">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#A3E39F] animate-pulse" />
+                  Tuần Hoàn 2026
+                </div>
+                <h3 className="font-heading text-base sm:text-lg font-extrabold leading-tight text-white tracking-wide drop-shadow-sm">
+                  Mặc Đẹp Mọi Sự Kiện Tiết Kiệm Đến 85%
+                </h3>
+                <p className="text-[10px] text-emerald-100/80 font-ui leading-relaxed line-clamp-2">
+                  Trải nghiệm hàng trăm thiết kế lộng lẫy không cần tốn tiền mua đứt.
+                </p>
+                <Link
+                  href="/shop?type=rent"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#FAF8F5] text-[#183A2D] text-[10.5px] font-extrabold uppercase tracking-wider hover:bg-white shadow-md active:scale-95 transition-all mt-1 font-ui"
+                >
+                  <span>Thuê đồ ngay</span>
+                  <ArrowRight size={11} />
+                </Link>
+              </div>
 
-        {/* TAB 2: SÀN THUÊ */}
-        <Link
-          href="/shop?type=rent"
-          className="flex flex-col items-center justify-center flex-1 py-1 text-stone-400 hover:text-stone-600 font-medium select-none"
-        >
-          <ShoppingBag size={20} strokeWidth={1.8} />
-          <span className="text-[9.5px] tracking-tight mt-0.5 font-ui">Sàn thuê</span>
-        </Link>
-
-        {/* TAB 3: NÚT TRÒN ĐĂNG ĐỒ NỔI BẬT */}
-        <div className="flex-1 flex justify-center -mt-6">
-          <Link
-            href="/my-closet/create"
-            onClick={(e) => handleAuthGuarded(e, "/my-closet/create")}
-            className="group relative flex flex-col items-center active:scale-95 transition-transform"
-            aria-label="Đăng trang phục mới"
-          >
-            <div className="w-[48px] h-[48px] rounded-full bg-gradient-to-tr from-[#183A2D] via-[#21523F] to-[#2E6F55] p-[2px] shadow-lg shadow-emerald-950/25 flex items-center justify-center border-2 border-white">
-              <div className="w-full h-full rounded-full bg-[#183A2D] flex items-center justify-center text-white transition-colors group-hover:bg-[#112a20]">
-                <Plus size={22} strokeWidth={2.8} />
+              <div className="relative w-24 h-28 rounded-2xl overflow-hidden border-2 border-white/30 shadow-xl shrink-0 bg-stone-900 group">
+                <Image 
+                  src="/evening_dress.jpg" 
+                  alt="CLOOP Evening Dress" 
+                  fill 
+                  className="object-cover group-hover:scale-105 transition-transform duration-500" 
+                  unoptimized 
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                <span className="absolute bottom-1.5 left-1.5 right-1.5 text-[8px] font-bold text-center text-white bg-black/60 backdrop-blur-xs py-0.5 rounded">
+                  Dạ tiệc 2026
+                </span>
               </div>
             </div>
-            <span className="text-[9px] font-extrabold text-[#183A2D] tracking-tighter mt-0.5 uppercase font-ui">
-              Đăng đồ
-            </span>
-          </Link>
+          </div>
+
+          {/* ========================================================
+              🏷️ 6. BỘ LỌC DANH MỤC & TIÊU ĐỀ
+              ======================================================== */}
+          <div className="flex items-center justify-between pt-1 border-b border-[#E8E1D5] pb-3">
+            <div className="flex items-center gap-1.5">
+              {[
+                { id: "all", label: "Tất cả" },
+                { id: "rent", label: "Đang cho thuê" },
+                { id: "sale", label: "Hàng hiệu tuyển chọn" },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveCategoryTab(tab.id)}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer font-ui ${
+                    activeCategoryTab === tab.id
+                      ? "bg-[#183A2D] text-white shadow-xs"
+                      : "bg-white text-stone-600 border border-[#DCD5C8] hover:bg-stone-50"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            <Link
+              href="/shop"
+              className="text-xs font-bold text-[#183A2D] flex items-center gap-0.5 hover:underline font-ui"
+            >
+              <span>Xem tất cả</span>
+              <ArrowRight size={12} />
+            </Link>
+          </div>
+
+          {/* ========================================================
+              👗 7. LƯỚI SẢN PHẨM THỜI TRANG NỔI BẬT (2 CỘT SẮC NÉT)
+              ======================================================== */}
+          {isLoadingProducts ? (
+            <div className="grid grid-cols-2 gap-3.5 py-6">
+              {[1, 2, 3, 4].map((n) => (
+                <div key={n} className="space-y-2.5 animate-pulse bg-white p-2.5 rounded-2xl border border-stone-200">
+                  <div className="w-full aspect-[3/4] bg-stone-200 rounded-xl" />
+                  <div className="h-3.5 bg-stone-200 rounded w-3/4" />
+                  <div className="h-3 bg-stone-200 rounded w-1/2" />
+                </div>
+              ))}
+            </div>
+          ) : filteredProducts.length === 0 ? (
+            <div className="py-12 text-center text-stone-400 bg-white rounded-2xl border border-dashed border-stone-200">
+              <Shirt size={28} className="mx-auto mb-2 opacity-40 text-stone-500" />
+              <p className="text-xs font-medium font-heading">Chưa có trang phục nào thuộc mục này.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3.5">
+              {filteredProducts.map((p: any) => {
+                const primaryImg = p.primaryImage || p.imageUrl || p.image_url || p.images?.[0]?.url || "/placeholder-clothing.png";
+                const rentPrice = p.rental_price || p.rentalPrice || p.listings?.[0]?.basePrice || 0;
+                const displayPrice = rentPrice > 0 
+                  ? `${new Intl.NumberFormat("vi-VN").format(rentPrice)}₫ / ngày`
+                  : "Liên hệ";
+                const isLiked = !!likedItems[p.id];
+
+                return (
+                  <Link
+                    href={`/product/${p.id}`}
+                    key={p.id}
+                    className="block group relative bg-white rounded-2xl overflow-hidden border border-[#E0D8CB] shadow-3xs hover:shadow-md transition-all hover:border-[#183A2D]/40"
+                  >
+                    <div className="relative w-full aspect-[3/4] bg-stone-100 overflow-hidden">
+                      <Image
+                        src={primaryImg}
+                        alt={p.title || p.name || "CLOOP Outfit"}
+                        fill
+                        unoptimized
+                        className="object-cover transition-transform duration-500 group-hover:scale-106"
+                      />
+
+                      {/* Tag RENTAL sang xịn */}
+                      <span className="absolute top-2.5 left-2.5 text-[8.5px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#183A2D] text-[#FAF8F5] shadow-xs font-heading">
+                        CHO THUÊ
+                      </span>
+
+                      {/* Nút tim yêu thích */}
+                      <button 
+                        onClick={(e) => toggleLike(p.id, e)}
+                        className={`absolute top-2.5 right-2.5 w-7 h-7 rounded-full backdrop-blur-md flex items-center justify-center shadow-xs transition-all z-20 ${
+                          isLiked 
+                            ? "bg-rose-50 text-rose-500" 
+                            : "bg-white/90 text-stone-400 hover:text-rose-500"
+                        }`}
+                        title="Thêm vào yêu thích"
+                      >
+                        <Heart size={13} className={isLiked ? "fill-rose-500" : ""} />
+                      </button>
+
+                      {p.size && (
+                        <span className="absolute bottom-2.5 left-2.5 bg-stone-900/80 backdrop-blur-md text-[8.5px] font-bold text-white px-2 py-0.5 rounded-md font-heading">
+                          SIZE {p.size}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="p-3 space-y-1.5">
+                      <p className="text-xs font-bold text-stone-900 line-clamp-1 font-heading group-hover:text-[#183A2D] transition-colors">
+                        {p.title || p.name}
+                      </p>
+                      
+                      <div className="flex items-center gap-1 text-[10.5px] text-stone-500">
+                        <MapPin size={11} className="text-[#3D7A58] shrink-0" />
+                        <span className="truncate">{p.province || "Hà Nội"}</span>
+                      </div>
+
+                      <div className="pt-0.5 border-t border-stone-100 flex items-center justify-between">
+                        <span className="font-mono font-extrabold text-[#183A2D] text-[12.5px]">
+                          {displayPrice}
+                        </span>
+                        <span className="text-[8.5px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                          Cọc an toàn
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        {/* TAB 4: THÔNG BÁO */}
-        <Link
-          href="/my-closet/notifications"
-          onClick={(e) => handleAuthGuarded(e, "/my-closet/notifications")}
-          className="flex flex-col items-center justify-center flex-1 py-1 text-stone-400 hover:text-stone-600 font-medium relative select-none"
-        >
-          <div className="relative">
-            <Bell size={20} strokeWidth={1.8} />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1.5 min-w-[14px] h-[14px] bg-rose-500 text-white text-[8px] font-extrabold rounded-full flex items-center justify-center px-0.5 border border-white">
-                {unreadCount > 9 ? "9+" : unreadCount}
+        {/* ========================================================
+            📱 8. THANH ĐIỀU HƯỚNG ĐÁY CHUẨN APP NATIVE (5 TABS)
+            ======================================================== */}
+        <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto z-50 bg-[#FAF8F5]/95 backdrop-blur-lg border-t border-[#E0D8CB] px-2 py-1.5 flex items-center justify-around shadow-[0_-6px_25px_rgba(24,58,45,0.08)] pb-[calc(0.4rem+env(safe-area-inset-bottom,0px))] sm:rounded-b-[2.5rem]">
+          
+          {/* TAB 1: KHÁM PHÁ (ACTIVE) */}
+          <Link
+            href="/app"
+            className="flex flex-col items-center justify-center flex-1 py-1 text-[#183A2D] font-extrabold select-none"
+          >
+            <div className="relative">
+              <Home size={21} strokeWidth={2.6} />
+              <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-[#183A2D] rounded-full" />
+            </div>
+            <span className="text-[10px] tracking-tight mt-0.5 font-ui">Khám phá</span>
+          </Link>
+
+          {/* TAB 2: SÀN THUÊ */}
+          <Link
+            href="/shop?type=rent"
+            className="flex flex-col items-center justify-center flex-1 py-1 text-stone-500 hover:text-[#183A2D] font-semibold select-none transition-colors"
+          >
+            <ShoppingBag size={20} strokeWidth={1.8} />
+            <span className="text-[10px] tracking-tight mt-0.5 font-ui">Sàn thuê</span>
+          </Link>
+
+          {/* TAB 3: NÚT TRÒN ĐĂNG ĐỒ NỔI BẬT */}
+          <div className="flex-1 flex justify-center -mt-6">
+            <Link
+              href="/my-closet/create"
+              onClick={(e) => handleAuthGuarded(e, "/my-closet/create")}
+              className="group relative flex flex-col items-center active:scale-95 transition-transform"
+              aria-label="Đăng trang phục mới"
+            >
+              <div className="w-[50px] h-[50px] rounded-full bg-gradient-to-tr from-[#183A2D] via-[#235840] to-[#2E6F55] p-[2.5px] shadow-lg shadow-emerald-950/30 flex items-center justify-center border-2 border-white">
+                <div className="w-full h-full rounded-full bg-[#183A2D] flex items-center justify-center text-white transition-colors group-hover:bg-[#122c21]">
+                  <Plus size={24} strokeWidth={2.8} />
+                </div>
+              </div>
+              <span className="text-[9px] font-extrabold text-[#183A2D] tracking-tighter mt-0.5 uppercase font-ui">
+                Đăng đồ
               </span>
-            )}
+            </Link>
           </div>
-          <span className="text-[9.5px] tracking-tight mt-0.5 font-ui">Hộp thư</span>
-        </Link>
 
-        {/* TAB 5: TỦ ĐỒ CỦA TÔI */}
-        <Link
-          href="/my-closet"
-          onClick={(e) => handleAuthGuarded(e, "/my-closet")}
-          className="flex flex-col items-center justify-center flex-1 py-1 text-stone-400 hover:text-stone-600 font-medium select-none"
-        >
-          <User size={20} strokeWidth={1.8} />
-          <span className="text-[9.5px] tracking-tight mt-0.5 font-ui">Tủ đồ</span>
-        </Link>
+          {/* TAB 4: THÔNG BÁO */}
+          <Link
+            href="/my-closet/notifications"
+            onClick={(e) => handleAuthGuarded(e, "/my-closet/notifications")}
+            className="flex flex-col items-center justify-center flex-1 py-1 text-stone-500 hover:text-[#183A2D] font-semibold relative select-none transition-colors"
+          >
+            <div className="relative">
+              <Bell size={20} strokeWidth={1.8} />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1.5 min-w-[15px] h-[15px] bg-rose-500 text-white text-[8px] font-extrabold rounded-full flex items-center justify-center px-0.5 border-2 border-white">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] tracking-tight mt-0.5 font-ui">Hộp thư</span>
+          </Link>
 
-      </nav>
+          {/* TAB 5: TỦ ĐỒ CỦA TÔI */}
+          <Link
+            href="/my-closet"
+            onClick={(e) => handleAuthGuarded(e, "/my-closet")}
+            className="flex flex-col items-center justify-center flex-1 py-1 text-stone-500 hover:text-[#183A2D] font-semibold select-none transition-colors"
+          >
+            <User size={20} strokeWidth={1.8} />
+            <span className="text-[10px] tracking-tight mt-0.5 font-ui">Tủ đồ</span>
+          </Link>
 
-      {/* MODAL TÌM KIẾM BẰNG ẢNH AI */}
-      <VisualSearchModal
-        isOpen={isVisualSearchOpen}
-        onClose={() => setIsVisualSearchOpen(false)}
-      />
+        </nav>
+
+        {/* MODAL TÌM KIẾM BẰNG ẢNH AI */}
+        <VisualSearchModal
+          isOpen={isVisualSearchOpen}
+          onClose={() => setIsVisualSearchOpen(false)}
+        />
 
       </div>
     </div>
