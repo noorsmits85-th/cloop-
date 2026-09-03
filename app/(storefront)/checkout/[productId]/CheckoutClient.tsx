@@ -264,7 +264,8 @@ export default function CheckoutClient({
 
       setShippingQuotes(data.options || []);
       if (data.options && data.options.length > 0) {
-        setSelectedQuote(data.options[0]);
+        const ghnQuote = data.options.find((o: any) => o.quote?.serviceId === "standard") || data.options[0];
+        setSelectedQuote(ghnQuote);
       }
     } catch (err: any) {
       setError(err.message);
@@ -498,11 +499,16 @@ export default function CheckoutClient({
 
           <div className="flex justify-between items-center py-0.5">
             <div>
-              <span className="block">Cước vận chuyển 2 chiều khứ hồi:</span>
-              <span className="text-[9.5px] text-stone-400">Giao tận nơi + Lấy tận nhà khi trả</span>
+              <div className="flex items-center gap-1.5">
+                <span className="block font-medium">Cước vận chuyển 2 chiều GHN:</span>
+                <span className="text-[9px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200/60 font-ui">
+                  Block 5K
+                </span>
+              </div>
+              <span className="text-[9.5px] text-stone-400 block">San sẻ 50/50: Khách trả chiều đi • Chiều trả đồ 0đ</span>
             </div>
             <span className="font-bold font-mono text-stone-800">
-              {isLoadingShipping ? "Đang tính..." : selectedQuote ? `+${shippingFee.toLocaleString('vi-VN')}đ` : "Chưa chọn địa chỉ"}
+              {isLoadingShipping ? "Đang tính..." : selectedQuote ? (shippingFee === 0 ? "0đ (Trực tiếp)" : `+${shippingFee.toLocaleString('vi-VN')}đ`) : "Chưa chọn địa chỉ"}
             </span>
           </div>
 
