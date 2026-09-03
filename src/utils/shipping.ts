@@ -1,6 +1,14 @@
 import crypto from "crypto";
 
-const SHIPPING_SECRET = process.env.SHIPPING_SECRET || "cloop-super-secret-2026-fallback";
+const SHIPPING_SECRET = process.env.SHIPPING_SECRET;
+
+function requireShippingSecret() {
+  if (!SHIPPING_SECRET) {
+    throw new Error("SHIPPING_SECRET is required on the server.");
+  }
+
+  return SHIPPING_SECRET;
+}
 
 export interface ShippingQuote {
   provider: string;
@@ -155,7 +163,7 @@ export function calculateDynamicGhnFee(
   // 🛡️ NÂNG LÊN BLOCK 5.000đ (CEIL TO 5K BLOCK)
   // Công thức: Math.ceil(rawFee / 5000) * 5000
   // Ví dụ: 17.500đ -> 20.000đ | 22.500đ -> 25.000đ | 27.500đ -> 30.000đ | 32.500đ -> 35.000đ | 37.500đ -> 40.000đ
-  const normalizedFee = Math.ceil(rawFee / 5000) * 5000;
+  const normalizedFee = Math.max(5000, Math.ceil(rawFee / 5000) * 5000);
   const originalMarketFee = normalizedFee + 10000; // Giá thị trường bưu cục ngoài
 
   return {
@@ -228,6 +236,7 @@ export async function getShippingQuotes(
  * 2. Hàm sinh "Signed Quote Token" (Chữ ký điện tử cho báo giá)
  */
 export function signShippingQuote(quote: ShippingQuote, fromProvince: string, toProvince: string, weight: number): SignedShippingQuote {
+  const shippingSecret = requireShippingSecret();
   const payload = JSON.stringify({
     ...quote,
     fromProvince,
@@ -236,7 +245,7 @@ export function signShippingQuote(quote: ShippingQuote, fromProvince: string, to
     expiresAt: Date.now() + 15 * 60 * 1000, // Token sống 15 phút
   });
 
-  const hmac = crypto.createHmac("sha256", SHIPPING_SECRET);
+  const hmac = crypto.createHmac("sha256", shippingSecret);
   hmac.update(payload);
   const signature = hmac.digest("hex");
 
@@ -250,10 +259,11 @@ export function signShippingQuote(quote: ShippingQuote, fromProvince: string, to
  */
 export function verifyShippingQuoteToken(tokenBase64: string, expectedFromProvince: string, expectedToProvince: string, expectedWeight: number): ShippingQuote {
   try {
+    const shippingSecret = requireShippingSecret();
     const decodedStr = Buffer.from(tokenBase64, "base64").toString("utf-8");
     const { payload, signature } = JSON.parse(decodedStr);
 
-    const hmac = crypto.createHmac("sha256", SHIPPING_SECRET);
+    const hmac = crypto.createHmac("sha256", shippingSecret);
     hmac.update(payload);
     const expectedSig = hmac.digest("hex");
 

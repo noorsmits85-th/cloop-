@@ -91,10 +91,33 @@ export async function getUserNotificationsAction(): Promise<{
           where: {
             OR: [{ ownerId: userId }, { product: { userId: userId } }]
           },
-          include: {
-            product: { select: { title: true, images: true, province: true } },
-            invoice: true,
-            renter: { select: { name: true } }
+          select: {
+            id: true,
+            status: true,
+            createdAt: true,
+            updatedAt: true,
+            completedAt: true,
+            renter_name: true,
+            product: {
+              select: {
+                title: true,
+                province: true,
+              }
+            },
+            invoice: {
+              select: {
+                rentalFee: true,
+                depositAmount: true,
+                shippingFeeCollected: true,
+                platformFee: true,
+                amount: true
+              }
+            },
+            renter: {
+              select: {
+                name: true
+              }
+            }
           },
           orderBy: { createdAt: "desc" },
           take: 10
@@ -103,9 +126,26 @@ export async function getUserNotificationsAction(): Promise<{
         // 2. Đơn đi thuê (Tôi là Khách thuê)
         prisma.rentalHistory.findMany({
           where: { renterId: userId },
-          include: {
-            product: { select: { title: true, images: true, province: true, user: { select: { name: true } } } },
-            invoice: true
+          select: {
+            id: true,
+            status: true,
+            createdAt: true,
+            updatedAt: true,
+            completedAt: true,
+            product: {
+              select: {
+                title: true,
+                province: true,
+                user: { select: { name: true } }
+              }
+            },
+            invoice: {
+              select: {
+                depositAmount: true,
+                shippingFeeCollected: true,
+                amount: true
+              }
+            }
           },
           orderBy: { createdAt: "desc" },
           take: 10
@@ -132,7 +172,12 @@ export async function getUserNotificationsAction(): Promise<{
               OR: [{ renterId: userId }, { ownerId: userId }]
             }
           },
-          include: {
+          select: {
+            id: true,
+            status: true,
+            updatedAt: true,
+            createdAt: true,
+            direction: true,
             rental: { select: { id: true, product: { select: { title: true } } } }
           },
           orderBy: { updatedAt: "desc" },
@@ -181,7 +226,9 @@ export async function getUserNotificationsAction(): Promise<{
         } else if (order.status === "LENDER_COMPLETED") {
           const dateObj = order.completedAt || order.updatedAt || order.createdAt;
           const { formatted, relative } = formatDateTimeVN(dateObj);
-          const payoutEst = Math.max(0, rentalFee - Math.floor(rentalFee * 0.12) - 25000);
+          const platformFee = order.invoice?.platformFee || Math.floor(rentalFee * 0.12);
+          const shippingFee = order.invoice?.shippingFeeCollected || 0;
+          const payoutEst = Math.max(0, rentalFee - platformFee - shippingFee);
           notifList.push({
             id: `order-owner-completed-${order.id}`,
             type: "WALLET",
@@ -358,7 +405,7 @@ export async function getUserNotificationsAction(): Promise<{
       const recentGlobalOrders = await prisma.rentalHistory.findMany({
         take: 3,
         orderBy: { createdAt: "desc" },
-        include: { product: { select: { title: true } } }
+        select: { id: true, createdAt: true, product: { select: { title: true } } }
       });
 
       for (const gOrder of recentGlobalOrders) {

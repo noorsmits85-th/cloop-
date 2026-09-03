@@ -1,19 +1,37 @@
 import { NextResponse } from "next/server";
 import { getShippingQuotes, signShippingQuote } from "@/src/utils/shipping";
+import { z } from "zod";
+
+const QuoteSchema = z.object({
+  fromProvince: z.string().min(2),
+  toProvince: z.string().min(2),
+  fromDistrictId: z.union([z.string(), z.number()]).optional(),
+  fromWardCode: z.string().optional(),
+  toDistrictId: z.union([z.string(), z.number()]).optional(),
+  toWardCode: z.string().optional(),
+  weight: z.number().int().min(100).max(20000).default(500),
+  isRental: z.boolean().default(true),
+});
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { 
-      fromProvince, 
-      toProvince, 
-      fromDistrictId, 
-      fromWardCode, 
-      toDistrictId, 
-      toWardCode, 
-      weight = 500,
-      isRental = true
-    } = body;
+    const parsed = QuoteSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Du lieu tinh phi ship khong hop le" }, { status: 400 });
+    }
+
+    const {
+      fromProvince,
+      toProvince,
+      fromDistrictId,
+      fromWardCode,
+      toDistrictId,
+      toWardCode,
+      weight,
+      isRental,
+    } = parsed.data;
 
     if (!fromProvince || !toProvince) {
       return NextResponse.json({ error: "Thiếu thông tin địa chỉ giao nhận" }, { status: 400 });
@@ -22,12 +40,12 @@ export async function POST(req: Request) {
     const GHN_TOKEN = process.env.GHN_API_TOKEN;
     const GHN_FEE_URL = "https://online-gateway.ghn.vn/shiip/public-api/v2/shipping-order/fee";
     
-    let quotes: any[] = [];
+    let quotes: Awaited<ReturnType<typeof getShippingQuotes>> = [];
 
     // 1. NẾU CÓ TOKEN GHN & CÓ MÃ QUẬN HUYỆN -> THỬ GỌI TRỰC TIẾP TỪ GHN GATEWAY
     if (GHN_TOKEN && toDistrictId) {
       try {
-        const ghnBody: any = {
+        const ghnBody: Record<string, string | number> = {
           from_district_id: Number(fromDistrictId) || 1442,
           service_type_id: 2,
           to_district_id: Number(toDistrictId),
@@ -56,7 +74,7 @@ export async function POST(req: Request) {
           const rawOneWayFee = data.data.total;
           // Áp dụng 5% buffer an toàn và nâng lên Block 5K
           const safeOneWayFee = rawOneWayFee * 1.05;
-          const normalizedFee = Math.ceil(safeOneWayFee / 5000) * 5000;
+          const normalizedFee = Math.max(5000, Math.ceil(safeOneWayFee / 5000) * 5000);
 
           quotes = [
             {
