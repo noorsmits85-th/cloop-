@@ -2,6 +2,7 @@ import React from "react";
 import { requireUser } from "@/src/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { ProfileClient } from "../_components/ProfileClient";
+import ReviewSection from "@/app/(storefront)/closet/[userId]/_components/ReviewSection";
 import { redirect } from "next/navigation";
 
 export const revalidate = 0;
@@ -40,11 +41,16 @@ export default async function ProfilePage() {
             Hồ Sơ & Uy Tín
           </h1>
           <p className="text-stone-500 text-xs sm:text-sm mt-1.5 font-body">
-            Quản lý độ uy tín TrustScore, huy hiệu sinh thái và xác thực danh tính cá nhân.
+            Quản lý độ uy tín TrustScore, huy hiệu sinh thái và đánh giá cộng đồng từ các giao dịch.
           </p>
         </div>
         
         <ProfileClient userProfile={userProfile || { id: userId, name: userAuth.name }} />
+
+        {/* 🌟 ĐÁNH GIÁ CỘNG ĐỒNG ĐÃ NHẬN (LIÊN KẾT TRỰC TIẾP VỚI TỦ ĐỒ CÔNG KHAI) */}
+        <div className="pt-2">
+          <ReviewSection targetUserId={userId} />
+        </div>
       </div>
     </div>
   );

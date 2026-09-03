@@ -1003,6 +1003,7 @@ export async function submitReviewAction({
       const newReview = await tx.review.create({
         data: {
           rentalId,
+          productId: rental.product_id,
           reviewerId,
           revieweeId,
           rating,
@@ -1074,7 +1075,35 @@ export async function getScrubbedReviewsAction(targetUserId: string, currentUser
       orderBy: { createdAt: 'desc' },
       include: {
         reviewer: { select: { id: true, name: true, avatar: true } },
-        rental: { select: { id: true, product: { select: { title: true } } } }
+        rental: {
+          select: {
+            id: true,
+            product: {
+              select: {
+                id: true,
+                title: true,
+                category: true,
+                images: {
+                  select: { url: true, isPrimary: true },
+                  orderBy: { isPrimary: "desc" },
+                  take: 1
+                }
+              }
+            }
+          }
+        },
+        product: {
+          select: {
+            id: true,
+            title: true,
+            category: true,
+            images: {
+              select: { url: true, isPrimary: true },
+              orderBy: { isPrimary: "desc" },
+              take: 1
+            }
+          }
+        }
       }
     });
 
