@@ -308,7 +308,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
-      {!pathname?.startsWith('/my-closet') && (
+      {!pathname?.startsWith('/my-closet') && !pathname?.startsWith('/app') && (
         <Suspense fallback={<div className="p-4 text-center text-xs text-stone-400 font-bold uppercase tracking-widest">Đang kết nối cổng điều phối CLOOP...</div>}>
           <HeaderNavbar 
             darkMode={darkMode} 
@@ -324,7 +324,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         {children}
       </div>
 
-      {!pathname?.startsWith('/my-closet') && (
+      {!pathname?.startsWith('/my-closet') && !pathname?.startsWith('/app') && (
         <>
           <footer className="w-full bg-[#0A2517] text-white pt-16 pb-8 border-t border-white/10">
             <div className="max-w-[1536px] mx-auto px-4 md:px-8 lg:px-12">
@@ -675,8 +675,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           </div>
         )}
       </AnimatePresence>
-      <PwaInstallPrompt />
-      <MobileBottomDock />
+      {!pathname?.startsWith('/app') && <PwaInstallPrompt />}
+      {!pathname?.startsWith('/app') && <MobileBottomDock />}
     </div>
   );
 }
