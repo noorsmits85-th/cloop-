@@ -2,20 +2,22 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 
 export default function AppSplashScreen() {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    // Chỉ hiện Splash khi mở app lần đầu trong phiên duyệt
+    // Chỉ hiện Splash khi mở app lần đầu trong phiên
     const hasSeenSplash = sessionStorage.getItem("cloop_app_splash_seen");
     if (!hasSeenSplash) {
       setIsVisible(true);
       sessionStorage.setItem("cloop_app_splash_seen", "true");
 
+      // Tự động lướt mở vào app êm ái sau 1.8 giây, không bắt người dùng bấm chờ
       const timer = setTimeout(() => {
         setIsVisible(false);
-      }, 2500);
+      }, 1900);
 
       return () => clearTimeout(timer);
     }
@@ -27,187 +29,151 @@ export default function AppSplashScreen() {
     <AnimatePresence>
       {isVisible && (
         <motion.div
-          key="cloop-splash-silk"
+          key="cloop-splash-couture"
           initial={{ opacity: 1 }}
-          exit={{ opacity: 0, transition: { duration: 0.9, ease: [0.22, 1, 0.36, 1] } }}
+          exit={{ 
+            opacity: 0, 
+            scale: 1.03,
+            filter: "blur(8px)",
+            transition: { duration: 0.75, ease: [0.22, 1, 0.36, 1] } 
+          }}
           onClick={() => setIsVisible(false)}
           className="fixed inset-0 z-[9999] flex flex-col items-center justify-center select-none cursor-pointer overflow-hidden"
           style={{
-            background: "linear-gradient(175deg, #FAF8F5 0%, #F1F6F2 45%, #E3EFE7 100%)",
+            background: "radial-gradient(ellipse at 50% 40%, #FFFFFF 0%, #F5FAF6 40%, #E2EFE7 100%)",
           }}
         >
-          {/* 🌿 LỚP LỤA BAY BAY MIX TRẮNG & XANH MATCHA (AIRY FLOATING SILK MIST) */}
+          {/* 🍃 1. LỚP LỤA MATCHA BAY BAY BỒNG BỀNH (AURA SILK FLOW) */}
           <motion.div
             animate={{
-              scale: [1, 1.18, 1],
-              x: [-15, 20, -15],
-              y: [-10, 15, -10],
+              scale: [1, 1.2, 1],
+              rotate: [0, 15, 0],
+              x: [-20, 20, -20],
+              y: [-15, 20, -15],
             }}
-            transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute top-1/4 -left-20 w-[380px] h-[380px] rounded-full bg-gradient-to-tr from-[#C5DFD0]/40 to-[#E8F3EC]/50 blur-3xl pointer-events-none"
+            transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute top-1/6 -left-12 w-[340px] h-[340px] rounded-full bg-gradient-to-tr from-[#C2E0CC]/50 via-[#DCEFE3]/40 to-transparent blur-3xl pointer-events-none"
           />
 
           <motion.div
             animate={{
-              scale: [1.1, 0.95, 1.1],
-              x: [20, -15, 20],
-              y: [15, -20, 15],
+              scale: [1.15, 0.95, 1.15],
+              rotate: [0, -20, 0],
+              x: [20, -25, 20],
+              y: [20, -15, 20],
             }}
-            transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute bottom-1/4 -right-16 w-[400px] h-[400px] rounded-full bg-gradient-to-bl from-[#D4E8DC]/50 via-[#F5F8F5]/60 to-transparent blur-3xl pointer-events-none"
+            transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute bottom-1/6 -right-12 w-[360px] h-[360px] rounded-full bg-gradient-to-bl from-[#B8DBC4]/45 via-[#E6F3EB]/50 to-transparent blur-3xl pointer-events-none"
           />
 
-          {/* Họa tiết vân giấy lụa mỏng nhẹ */}
+          {/* Họa tiết giấy lụa mỏng nhẹ tự nhiên */}
           <div 
-            className="absolute inset-0 opacity-25 pointer-events-none mix-blend-multiply"
+            className="absolute inset-0 opacity-20 pointer-events-none mix-blend-multiply"
             style={{ backgroundImage: `url('https://www.transparenttextures.com/patterns/cream-paper.png')` }}
           />
 
-          {/* 🌿 KHỐI TRUNG TÂM NGHỆ THUẬT */}
-          <div className="relative z-10 flex flex-col items-center text-center px-6 max-w-sm">
+          {/* 🌿 2. KHỐI LOGO & TYPOGRAPHY TRUNG TÂM */}
+          <div className="relative z-10 flex flex-col items-center text-center px-6">
             
-            {/* 🎀 DẢI LỤA VÔ CỰC TUẦN HOÀN (VECTOR SVG SILK INFINITY LOOP - THAY THẾ LOGO HỘP VUÔNG) */}
+            {/* 🎀 BIỂU TƯỢNG VÒNG LỤA TUẦN HOÀN 3D CHÂN THỰC (KHÔNG BỊ VIỀN VUÔNG) */}
             <motion.div
-              initial={{ scale: 0.8, opacity: 0, y: 10 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
-              className="relative w-28 h-20 mb-3 flex items-center justify-center"
+              initial={{ scale: 0.6, opacity: 0, y: 15 }}
+              animate={{ 
+                scale: [0.95, 1.05, 1],
+                opacity: 1, 
+                y: 0 
+              }}
+              transition={{ duration: 1.0, ease: [0.16, 1, 0.3, 1] }}
+              className="relative w-28 h-28 mb-3 flex items-center justify-center"
             >
-              {/* Vầng sáng matcha mềm mại phía sau */}
-              <div className="absolute inset-0 bg-gradient-to-r from-emerald-200/50 via-[#99C5A8]/30 to-emerald-200/50 rounded-full blur-xl scale-90 animate-pulse" />
+              {/* Vầng sáng matcha ấm tỏa tròn sau logo */}
+              <div className="absolute inset-0 bg-gradient-to-tr from-[#98C8A8]/40 via-[#B4DCBF]/30 to-[#E8F4EC]/60 rounded-full blur-2xl scale-110 animate-pulse" />
 
-              <svg 
-                viewBox="0 0 130 90" 
-                className="w-full h-full drop-shadow-[0_4px_12px_rgba(40,90,65,0.15)] overflow-visible"
-              >
-                <defs>
-                  {/* Dải gradient matcha lụa cao cấp */}
-                  <linearGradient id="matchaSilkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#2D5A43" />
-                    <stop offset="35%" stopColor="#6C9E80" />
-                    <stop offset="65%" stopColor="#A8CBB5" />
-                    <stop offset="85%" stopColor="#C89D56" />
-                    <stop offset="100%" stopColor="#1E4432" />
-                  </linearGradient>
-
-                  <linearGradient id="glowGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#7DAF91" stopOpacity="0.8" />
-                    <stop offset="100%" stopColor="#E9D7A5" stopOpacity="0.9" />
-                  </linearGradient>
-                </defs>
-
-                {/* Đường dẫn bóng mờ mềm mại */}
-                <path
-                  d="M 35,45 C 35,26, 49,26, 65,45 C 81,64, 95,64, 95,45 C 95,26, 81,26, 65,45 C 49,64, 35,64, 35,45 Z"
-                  fill="none"
-                  stroke="#8FA697"
-                  strokeWidth="5"
-                  strokeLinecap="round"
-                  opacity="0.15"
+              <div className="relative w-24 h-24 flex items-center justify-center">
+                <Image
+                  src="/loogo.png"
+                  alt="CLOOP Silk Loop"
+                  width={96}
+                  height={96}
+                  priority
+                  className="object-contain mix-blend-multiply drop-shadow-[0_8px_20px_rgba(24,58,45,0.18)]"
                 />
-
-                {/* Dải lụa chính uốn lượn tự vẽ (Draw-in animation) */}
-                <motion.path
-                  d="M 35,45 C 35,26, 49,26, 65,45 C 81,64, 95,64, 95,45 C 95,26, 81,26, 65,45 C 49,64, 35,64, 35,45 Z"
-                  fill="none"
-                  stroke="url(#matchaSilkGrad)"
-                  strokeWidth="3.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  initial={{ pathLength: 0, opacity: 0 }}
-                  animate={{ pathLength: 1, opacity: 1 }}
-                  transition={{ duration: 1.6, ease: [0.22, 1, 0.36, 1] }}
-                />
-
-                {/* Hạt ngọc lụa chuyển động theo quỹ đạo */}
-                <motion.circle
-                  r="3"
-                  fill="url(#glowGrad)"
-                  filter="drop-shadow(0 0 4px #D4AF37)"
-                  initial={{ opacity: 0 }}
-                  animate={{
-                    opacity: [0, 1, 1, 0],
-                    offsetDistance: ["0%", "100%"],
-                  }}
-                  transition={{
-                    duration: 2.2,
-                    ease: "easeInOut",
-                    repeat: Infinity,
-                  }}
-                  style={{
-                    offsetPath: "path('M 35,45 C 35,26, 49,26, 65,45 C 81,64, 95,64, 95,45 C 95,26, 81,26, 65,45 C 49,64, 35,64, 35,45 Z')",
-                  }}
-                />
-              </svg>
+              </div>
             </motion.div>
 
-            {/* 🌿 CHỮ CLOOP ĐIỆU ĐÀ, THANH THOÁT (HAUTE COUTURE EDITORIAL TYPOGRAPHY) */}
+            {/* 🌿 CHỮ CLOOP ĐIỆU ĐÀ, SANG TRỌNG VỚI HIỆU ỨNG ÁNH KIM THỜI TRANG */}
             <motion.div
-              initial={{ opacity: 0, y: 8, letterSpacing: "0.42em" }}
-              animate={{ opacity: 1, y: 0, letterSpacing: "0.32em" }}
-              transition={{ duration: 1.0, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-              className="mt-1"
+              initial={{ opacity: 0, y: 12, letterSpacing: "0.22em" }}
+              animate={{ opacity: 1, y: 0, letterSpacing: "0.14em" }}
+              transition={{ duration: 0.9, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
+              className="relative select-none"
             >
-              <h1 className="font-serif text-3xl sm:text-4xl font-light text-[#1B3B2B] tracking-[0.32em] pl-[0.32em] uppercase select-none drop-shadow-xs">
-                C L O O P
+              <h1 className="font-brand-title text-4xl sm:text-5xl font-extrabold tracking-[0.14em] pl-[0.14em] leading-none animate-brand-shimmer drop-shadow-sm">
+                CLOOP
               </h1>
             </motion.div>
 
-            {/* 🌿 DÒNG CHỮ "Fashion in a loop" XUẤT HIỆN ĐIỆU NGHỆ, UỐN LƯỢN MỀM MẠI */}
+            {/* 🌿 CHỮ "Fashion in a loop" VIẾT TAY UỐN LƯỢN ĐIỆU NGHỆ */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.92, y: 8 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ duration: 1.1, delay: 0.65, ease: [0.16, 1, 0.3, 1] }}
-              className="mt-2.5 flex items-center justify-center gap-3 w-full"
+              initial={{ opacity: 0, y: 10, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 1.0, delay: 0.55, ease: [0.16, 1, 0.3, 1] }}
+              className="mt-3 relative flex items-center justify-center gap-3"
             >
-              {/* Dải nhánh lụa trái */}
+              {/* Dải chỉ lụa vàng matcha mảnh mềm mại */}
               <motion.span 
                 initial={{ width: 0, opacity: 0 }}
-                animate={{ width: 28, opacity: 0.5 }}
-                transition={{ duration: 0.8, delay: 0.8 }}
-                className="h-[1px] bg-gradient-to-r from-transparent to-[#6B967C]"
+                animate={{ width: 24, opacity: 0.6 }}
+                transition={{ duration: 0.8, delay: 0.7 }}
+                className="h-[1px] bg-gradient-to-r from-transparent to-[#4A785D]"
               />
 
               <p 
-                className="font-serif italic text-xl sm:text-2xl text-[#2F5843] font-normal tracking-wide drop-shadow-3xs"
-                style={{ fontFamily: "var(--font-dancing-script), 'Playfair Display', Georgia, cursive" }}
+                className="font-handwriting text-2xl sm:text-3xl text-[#1E4B35] font-normal tracking-wide drop-shadow-xs"
+                style={{ 
+                  fontFamily: "var(--font-dancing-script), cursive",
+                  textShadow: "0 1px 2px rgba(24,58,45,0.1)" 
+                }}
               >
                 Fashion in a loop
               </p>
 
-              {/* Dải nhánh lụa phải */}
               <motion.span 
                 initial={{ width: 0, opacity: 0 }}
-                animate={{ width: 28, opacity: 0.5 }}
-                transition={{ duration: 0.8, delay: 0.8 }}
-                className="h-[1px] bg-gradient-to-l from-transparent to-[#6B967C]"
+                animate={{ width: 24, opacity: 0.6 }}
+                transition={{ duration: 0.8, delay: 0.7 }}
+                className="h-[1px] bg-gradient-to-l from-transparent to-[#4A785D]"
               />
             </motion.div>
 
-            {/* 🌿 SUBTITLE TINH TẾ & BỀN VỮNG */}
+            {/* 🌿 ĐỊNH VỊ THƯƠNG HIỆU */}
             <motion.p
               initial={{ opacity: 0 }}
-              animate={{ opacity: 0.65 }}
-              transition={{ duration: 0.8, delay: 1.0 }}
-              className="text-[9.5px] uppercase tracking-[0.28em] text-[#486B58] font-ui mt-3.5 font-semibold"
+              animate={{ opacity: 0.75 }}
+              transition={{ duration: 0.8, delay: 0.85 }}
+              className="text-[9.5px] uppercase tracking-[0.32em] text-[#36634A] font-ui mt-3 font-semibold"
             >
-              Tủ Đồ Tuần Hoàn • Thời Trang Xanh
+              Tủ Đồ Tuần Hoàn • Thời Trang Bền Vững
             </motion.p>
           </div>
 
-          {/* 🌿 THANH TIẾN TRÌNH MATCHA THANH MẢNH DƯỚI ĐÁY */}
-          <div className="absolute bottom-9 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
-            <div className="w-24 h-[2px] bg-[#D1E3D7] rounded-full overflow-hidden">
-              <motion.div
-                initial={{ width: "0%" }}
-                animate={{ width: "100%" }}
-                transition={{ duration: 2.0, ease: "easeInOut" }}
-                className="h-full bg-gradient-to-r from-[#6B9A7D] via-[#3B6E52] to-[#6B9A7D] rounded-full"
-              />
-            </div>
-            <span className="text-[8.5px] text-[#7A9886] font-ui tracking-widest uppercase font-medium">
-              Chạm nhẹ để tiếp tục
-            </span>
+          {/* 🌿 VÒNG XOAY LỤA NHẸ NHÀNG DƯỚI ĐÁY THAY VÌ NÚT BẤM CỨNG */}
+          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-1.5 opacity-60">
+            <motion.span 
+              animate={{ scale: [1, 1.4, 1], opacity: [0.4, 1, 0.4] }}
+              transition={{ duration: 1.2, repeat: Infinity, delay: 0 }}
+              className="w-1.5 h-1.5 rounded-full bg-[#4A785D]"
+            />
+            <motion.span 
+              animate={{ scale: [1, 1.4, 1], opacity: [0.4, 1, 0.4] }}
+              transition={{ duration: 1.2, repeat: Infinity, delay: 0.2 }}
+              className="w-1.5 h-1.5 rounded-full bg-[#6C9E80]"
+            />
+            <motion.span 
+              animate={{ scale: [1, 1.4, 1], opacity: [0.4, 1, 0.4] }}
+              transition={{ duration: 1.2, repeat: Infinity, delay: 0.4 }}
+              className="w-1.5 h-1.5 rounded-full bg-[#9DC6AD]"
+            />
           </div>
         </motion.div>
       )}
