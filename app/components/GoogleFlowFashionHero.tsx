@@ -246,11 +246,82 @@ export default function GoogleFlowFashionHero() {
   const [selectedItem, setSelectedItem] = useState<FashionItem | null>(null);
 
   return (
-    <section 
-      className="relative w-full min-h-[620px] sm:min-h-[680px] md:min-h-[740px] lg:min-h-[800px] bg-[#071C12] overflow-hidden flex items-center justify-center select-none border-b border-[#0F3120] transform-gpu"
-      style={{ contain: "content" }}
-    >
-      
+    <>
+      {/* 📱 1. GIAO DIỆN DI ĐỘNG NHẸ BÃNG (KHÔNG CÒN ẢNH BÌA ĐƠ CỨNG) */}
+      <div className="md:hidden w-full bg-[#FAF8F5] px-4 pt-3 pb-3 space-y-3.5 border-b border-[#EBE6D8]">
+        {/* Thanh tìm kiếm & Camera AI */}
+        <div className="flex items-center gap-2">
+          <Link
+            href="/shop"
+            className="flex-1 h-11 rounded-full bg-white border border-[#E0D9CE] px-4 flex items-center gap-2 text-stone-400 shadow-3xs hover:border-[#183A2D] transition-colors"
+          >
+            <Search size={16} className="text-[#183A2D]" />
+            <span className="text-xs font-medium text-stone-500 truncate">
+              Tìm váy tiệc, áo dài, túi hiệu...
+            </span>
+          </Link>
+          <button
+            type="button"
+            onClick={() => setIsVisualSearchOpen(true)}
+            className="w-11 h-11 rounded-full bg-[#183A2D] text-white flex items-center justify-center shadow-md active:scale-95 transition-transform shrink-0"
+            title="Tìm kiếm bằng ảnh AI"
+          >
+            <Camera size={18} />
+          </button>
+        </div>
+
+        {/* Vòng tròn danh mục nổi bật (Lướt ngang nhẹ nhàng) */}
+        <div className="flex items-center gap-3 overflow-x-auto no-scrollbar py-1 -mx-4 px-4">
+          {[
+            { label: "Đầm Dạ Hội", icon: "💃", link: "/shop?occasion=Dạ hội" },
+            { label: "Áo Dài Di Sản", icon: "🪡", link: "/shop?occasion=Áo dài" },
+            { label: "Tiệc Cưới", icon: "👗", link: "/shop?occasion=Tiệc cưới" },
+            { label: "Túi & Phụ Kiện", icon: "👜", link: "/shop?occasion=Phụ kiện" },
+            { label: "Tủ Đồ Xanh", icon: "🌿", link: "/shop?occasion=Vintage" },
+          ].map((cat, idx) => (
+            <Link
+              key={idx}
+              href={cat.link}
+              className="flex flex-col items-center gap-1.5 shrink-0 group active:scale-95 transition-transform"
+            >
+              <div className="w-13 h-13 rounded-full bg-white border border-[#E5DFD5] shadow-3xs flex items-center justify-center text-xl group-hover:border-[#183A2D] transition-colors">
+                <span>{cat.icon}</span>
+              </div>
+              <span className="text-[10px] font-bold text-stone-700 tracking-tight whitespace-nowrap">
+                {cat.label}
+              </span>
+            </Link>
+          ))}
+        </div>
+
+        {/* Mini-Banner Matcha Lụa (Cao chỉ 110px, nhẹ nhàng, không bị đơ) */}
+        <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-[#183A2D] via-[#245240] to-[#183A2D] p-3.5 text-white shadow-sm flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="inline-block text-[8.5px] uppercase tracking-widest font-extrabold text-[#A3E39F] bg-white/10 px-2 py-0.5 rounded-full">
+              Tuần Hoàn Tủ Đồ 2026
+            </span>
+            <h3 className="font-heading text-sm font-extrabold leading-tight text-white">
+              Thuê Đồ Thiết Kế Chỉ Từ 80k/ngày
+            </h3>
+            <Link
+              href="/shop?type=rent"
+              className="inline-flex items-center gap-1 text-[11px] font-bold text-[#A3E39F] hover:text-white pt-0.5"
+            >
+              <span>Khám phá ngay</span>
+              <ArrowRight size={12} />
+            </Link>
+          </div>
+          <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center text-3xl shrink-0">
+            👗
+          </div>
+        </div>
+      </div>
+
+      {/* 💻 2. DESKTOP HERO EDITORIAL (DÀNH RIÊNG MÀN HÌNH MÁY TÍNH) */}
+      <section 
+        className="hidden md:flex relative w-full min-h-[740px] lg:min-h-[800px] bg-[#071C12] overflow-hidden items-center justify-center select-none border-b border-[#0F3120] transform-gpu"
+        style={{ contain: "content" }}
+      >
       {/* 🖼️ WALL-TO-WALL LIVING PHOTO CANVAS: 6 Cột Ảnh Kín Toàn Bộ Màn Hình (Không Trống Trải) */}
       <div className="absolute inset-0 w-full h-full overflow-hidden grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2.5 md:gap-3 p-2 sm:p-3 pointer-events-auto transform-gpu opacity-90 hover:opacity-100 transition-opacity duration-500">
         {FULL_MOSAIC_COLUMNS.map((column, colIdx) => {
@@ -490,5 +561,6 @@ export default function GoogleFlowFashionHero() {
       />
 
     </section>
+    </>
   );
 }

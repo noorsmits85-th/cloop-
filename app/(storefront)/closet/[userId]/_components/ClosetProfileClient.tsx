@@ -189,29 +189,9 @@ export default function ClosetProfileClient({
         </Link>
 
         {/* 🌿 HERO SECTION */}
-        <div className="relative bg-[#FCFBFA] border border-[#EBE6D8] rounded-[2.5rem] p-6 shadow-sm flex flex-col md:flex-row items-center gap-8 md:gap-12">
+        <div className="relative bg-[#FCFBFA] border border-[#EBE6D8] rounded-[2.5rem] p-6 sm:p-8 shadow-sm flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="tape w-24 h-6 -top-2 left-10 -rotate-3" />
           <div className="tape w-16 h-5 -bottom-2 right-20 rotate-2" />
-
-          <div className="w-full md:w-[280px] h-[360px] rounded-3xl overflow-hidden relative shrink-0 shadow-inner border border-stone-100 group">
-            <Image 
-              src={ownerInfo.coverImage || DEFAULT_VINTAGE_COVER} 
-              alt="Cover" 
-              fill 
-              unoptimized 
-              className="object-cover transition-transform duration-500 group-hover:scale-105" 
-            />
-            {isCurrentUser && (
-              <button
-                type="button"
-                onClick={handleOpenEditModal}
-                className="absolute bottom-3 right-3 px-3 py-1.5 rounded-full bg-black/60 hover:bg-[#183A2D] text-white text-[10px] font-bold backdrop-blur-md transition-all flex items-center gap-1.5 shadow-md cursor-pointer opacity-90 group-hover:opacity-100"
-                title="Đổi ảnh bìa / mẫu tủ đồ"
-              >
-                <Camera size={12} /> Đổi ảnh bìa
-              </button>
-            )}
-          </div>
 
           <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left space-y-4 w-full">
             <div className="flex items-center gap-2">
@@ -561,35 +541,22 @@ export default function ClosetProfileClient({
 
               <div className="p-6 space-y-6">
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-stone-700">Ảnh Bìa (Cover)</label>
-                    <div className="relative w-full h-32 bg-stone-100 rounded-2xl overflow-hidden border border-stone-200 group">
-                      <Image src={editForm.coverImage || DEFAULT_VINTAGE_COVER} alt="Cover Preview" fill className="object-cover" />
-                      <label className="absolute inset-0 bg-stone-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer">
-                        {uploadingField === "coverImage" ? <Loader2 className="animate-spin" size={24} /> : <Camera size={24} />}
-                        <span className="text-[10px] mt-1 font-medium">Thay đổi</span>
-                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, "coverImage")} disabled={!!uploadingField} />
-                      </label>
-                    </div>
+                <div className="flex flex-col items-center justify-center p-4 bg-[#F5F2EB]/60 rounded-2xl border border-stone-200">
+                  <label className="text-xs font-bold text-stone-700 mb-2">Ảnh Đại Diện (Avatar)</label>
+                  <div className="relative w-24 h-24 bg-stone-100 rounded-full overflow-hidden border-4 border-white shadow-sm group">
+                    {editForm.avatar ? (
+                      <Image src={editForm.avatar} alt="Avatar Preview" fill className="object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-[#F5F2EB] text-[#183A2D] text-3xl font-bold font-heading">
+                        {(editForm.name || "C").charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <label className="absolute inset-0 bg-stone-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer">
+                      {uploadingField === "avatar" ? <Loader2 className="animate-spin" size={20} /> : <Camera size={20} />}
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, "avatar")} disabled={!!uploadingField} />
+                    </label>
                   </div>
-
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-stone-700">Ảnh Đại Diện (Avatar)</label>
-                    <div className="relative w-24 h-24 bg-stone-100 rounded-full overflow-hidden border-4 border-white shadow-sm group mx-auto sm:mx-0">
-                      {editForm.avatar ? (
-                        <Image src={editForm.avatar} alt="Avatar Preview" fill className="object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-[#F5F2EB] text-[#183A2D] text-3xl font-bold font-heading">
-                          {(editForm.name || "C").charAt(0).toUpperCase()}
-                        </div>
-                      )}
-                      <label className="absolute inset-0 bg-stone-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer">
-                        {uploadingField === "avatar" ? <Loader2 className="animate-spin" size={20} /> : <Camera size={20} />}
-                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, "avatar")} disabled={!!uploadingField} />
-                      </label>
-                    </div>
-                  </div>
+                  <span className="text-[10px] text-stone-400 mt-2">Bấm vào ảnh để tải ảnh mới</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
