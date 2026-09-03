@@ -15,7 +15,6 @@ import "../globals.css";
 import AiStylistChat from "./AiStylistChat"; 
 import PwaInstallPrompt from "./PwaInstallPrompt";
 import MobileBottomDock from "./MobileBottomDock";
-import AppSplashScreen from "./AppSplashScreen";
 import { useAuthModal } from "../AuthModalContext";
 
 const supabase = createClient();
@@ -678,7 +677,6 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       </AnimatePresence>
       <PwaInstallPrompt />
       <MobileBottomDock />
-      <AppSplashScreen />
     </div>
   );
 }
