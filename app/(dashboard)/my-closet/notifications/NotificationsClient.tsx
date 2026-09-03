@@ -1,6 +1,6 @@
-﻿"use client";
+"use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
   Bell, Package, Wallet, Leaf, Truck, CheckCircle2, AlertTriangle, 
@@ -19,6 +19,21 @@ export function NotificationsClient({
   const [activeTab, setActiveTab] = useState<"ALL" | "ORDER" | "WALLET" | "COIN">("ALL");
   const [unreadOnly, setUnreadOnly] = useState(false);
 
+  // ⚡ ĐỒNG BỘ TRẠNG THÁI ĐÃ ĐỌC TỪ LOCALSTORAGE (PERSISTENT TRACKER)
+  useEffect(() => {
+    try {
+      const readIds: string[] = JSON.parse(localStorage.getItem("cloop_read_notif_ids") || "[]");
+      if (readIds.length > 0) {
+        setNotifications(prev => prev.map(n => ({
+          ...n,
+          isRead: n.isRead || readIds.includes(n.id)
+        })));
+      }
+    } catch {}
+  }, []);
+
+  const unreadCount = notifications.filter(n => !n.isRead).length;
+
   const filteredNotifications = notifications.filter(item => {
     if (activeTab !== "ALL" && item.type !== activeTab) return false;
     if (unreadOnly && item.isRead) return false;
@@ -26,7 +41,26 @@ export function NotificationsClient({
   });
 
   const handleMarkAllRead = () => {
+    try {
+      const allIds = notifications.map(n => n.id);
+      const existingRead: string[] = JSON.parse(localStorage.getItem("cloop_read_notif_ids") || "[]");
+      const combined = Array.from(new Set([...existingRead, ...allIds]));
+      localStorage.setItem("cloop_read_notif_ids", JSON.stringify(combined));
+    } catch {}
     setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    window.dispatchEvent(new CustomEvent("notifications-updated"));
+  };
+
+  const handleItemClick = (item: NotificationItem) => {
+    try {
+      const existingRead: string[] = JSON.parse(localStorage.getItem("cloop_read_notif_ids") || "[]");
+      if (!existingRead.includes(item.id)) {
+        const combined = [...existingRead, item.id];
+        localStorage.setItem("cloop_read_notif_ids", JSON.stringify(combined));
+        setNotifications(prev => prev.map(n => n.id === item.id ? { ...n, isRead: true } : n));
+        window.dispatchEvent(new CustomEvent("notifications-updated"));
+      }
+    } catch {}
   };
 
   const getIcon = (type: string, iconType: string) => {
@@ -58,9 +92,9 @@ export function NotificationsClient({
             <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-800 bg-[#EAF2EC] px-2.5 py-1 rounded-md border border-emerald-200/60 font-ui">
               TRUNG TÂM HOẠT ĐỘNG
             </span>
-            {initialUnreadCount > 0 && (
-              <span className="text-[10px] font-bold bg-rose-500 text-white px-2 py-0.5 rounded-full font-ui">
-                {initialUnreadCount} mới
+            {unreadCount > 0 && (
+              <span className="text-[10px] font-bold bg-rose-500 text-white px-2 py-0.5 rounded-full font-ui animate-pulse">
+                {unreadCount} mới
               </span>
             )}
           </div>
@@ -145,6 +179,7 @@ export function NotificationsClient({
               key={item.id}
               href={item.link}
               prefetch={true}
+              onClick={() => handleItemClick(item)}
               className={`block bg-white p-4 sm:p-5 rounded-2xl border transition-all duration-200 hover:shadow-md hover:border-[#183A2D]/30 group ${
                 !item.isRead ? "border-emerald-300/80 bg-emerald-50/20" : "border-[#E9E2D8]"
               }`}

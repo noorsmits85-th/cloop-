@@ -85,6 +85,15 @@ export default async function MyClosetOverviewPage() {
       },
       select: {
         updatedAt: true,
+        start_date: true,
+        end_date: true,
+        invoice: {
+          select: {
+            rentalFee: true,
+            platformFee: true,
+            amount: true
+          }
+        },
         product: {
           select: {
             listings: {
@@ -105,6 +114,7 @@ export default async function MyClosetOverviewPage() {
       },
       select: {
         basePrice: true,
+        salePrice: true,
         updatedAt: true
       }
     })
@@ -158,10 +168,20 @@ export default async function MyClosetOverviewPage() {
     
     const dayData = past7Days.find(d => d.dateObj.getTime() === rentalDate.getTime());
     if (dayData) {
-      const basePrice = rental.product.listings[0]?.basePrice || 0;
-      const days = Math.ceil((new Date(rental.end_date).getTime() - new Date(rental.start_date).getTime()) / (1000 * 60 * 60 * 24));
-      const rentalDays = days > 0 ? days : 1;
-      dayData.rent += basePrice * rentalDays;
+      const invoiceEarnings = rental.invoice?.rentalFee 
+        ? Math.max(0, rental.invoice.rentalFee - (rental.invoice.platformFee || 0)) 
+        : 0;
+      
+      if (invoiceEarnings > 0) {
+        dayData.rent += invoiceEarnings;
+      } else {
+        const basePrice = rental.product.listings?.[0]?.basePrice || 0;
+        const diffDays = rental.start_date && rental.end_date
+          ? Math.ceil((new Date(rental.end_date).getTime() - new Date(rental.start_date).getTime()) / (1000 * 60 * 60 * 24))
+          : 1;
+        const rentalDays = Math.max(1, isNaN(diffDays) ? 1 : diffDays);
+        dayData.rent += basePrice * rentalDays;
+      }
     }
   });
 

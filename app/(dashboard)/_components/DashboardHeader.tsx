@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
@@ -25,14 +25,25 @@ export function DashboardHeader({
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "temporary-placeholder-key";
   const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
 
-  // ⚡ TẢI THÔNG BÁO THỰC TẾ TỪ SERVER
+  // ⚡ TẢI THÔNG BÁO THỰC TẾ TỪ SERVER VÀ ĐỒNG BỘ TRẠNG THÁI ĐÃ ĐỌC PERSISTENT
   const loadNotifications = async () => {
     try {
       setIsLoadingNotifs(true);
       const res = await getUserNotificationsAction();
       if (res.success) {
-        setNotifications(res.notifications);
-        setUnreadCount(res.unreadCount);
+        let readIds: string[] = [];
+        try {
+          readIds = JSON.parse(localStorage.getItem("cloop_read_notif_ids") || "[]");
+        } catch {}
+
+        const updated = res.notifications.map(n => ({
+          ...n,
+          isRead: n.isRead || readIds.includes(n.id)
+        }));
+
+        setNotifications(updated);
+        const unread = updated.filter(n => !n.isRead).length;
+        setUnreadCount(unread);
       }
     } catch (e) {
       console.error("Lỗi tải thông báo header:", e);
@@ -64,8 +75,13 @@ export function DashboardHeader({
       )
       .subscribe();
 
+    window.addEventListener("notifications-updated", loadNotifications);
+    window.addEventListener("focus", loadNotifications);
+
     return () => {
       supabase.removeChannel(channel);
+      window.removeEventListener("notifications-updated", loadNotifications);
+      window.removeEventListener("focus", loadNotifications);
     };
   }, []);
 
@@ -82,8 +98,30 @@ export function DashboardHeader({
 
   const handleMarkAllRead = (e: React.MouseEvent) => {
     e.stopPropagation();
+    try {
+      const allIds = notifications.map(n => n.id);
+      const existingRead: string[] = JSON.parse(localStorage.getItem("cloop_read_notif_ids") || "[]");
+      const combined = Array.from(new Set([...existingRead, ...allIds]));
+      localStorage.setItem("cloop_read_notif_ids", JSON.stringify(combined));
+    } catch {}
+
     setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
     setUnreadCount(0);
+    window.dispatchEvent(new CustomEvent("notifications-updated"));
+  };
+
+  const handleNotificationItemClick = (item: NotificationItem) => {
+    try {
+      const existingRead: string[] = JSON.parse(localStorage.getItem("cloop_read_notif_ids") || "[]");
+      if (!existingRead.includes(item.id)) {
+        const combined = [...existingRead, item.id];
+        localStorage.setItem("cloop_read_notif_ids", JSON.stringify(combined));
+        setNotifications(prev => prev.map(n => n.id === item.id ? { ...n, isRead: true } : n));
+        setUnreadCount(prev => Math.max(0, prev - 1));
+        window.dispatchEvent(new CustomEvent("notifications-updated"));
+      }
+    } catch {}
+    setShowNotifications(false);
   };
 
   const getNotifIcon = (iconType: string) => {
@@ -188,7 +226,7 @@ export function DashboardHeader({
                       key={item.id}
                       href={item.link}
                       prefetch={true}
-                      onClick={() => setShowNotifications(false)}
+                      onClick={() => handleNotificationItemClick(item)}
                       className={`p-3.5 transition-colors flex gap-3 items-start block hover:bg-emerald-50/50 ${
                         !item.isRead ? "bg-emerald-50/30 font-medium" : ""
                       }`}

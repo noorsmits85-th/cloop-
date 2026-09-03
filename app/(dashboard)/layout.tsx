@@ -26,6 +26,7 @@ import {
 import { useAuthModal } from "@/app/AuthModalContext";
 import { DashboardHeader } from "./_components/DashboardHeader";
 import { getUserDisputeStats } from "@/app/actions/getDisputeStats";
+import { getUserNotificationsAction } from "@/app/actions/notification";
 
 export default function DashboardLayout({
   children,
@@ -36,34 +37,51 @@ export default function DashboardLayout({
   const { currentUser, setCurrentUser } = useAuthModal();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [disputeCount, setDisputeCount] = useState(0);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
 
   useEffect(() => {
     let isMounted = true;
     async function loadStats() {
       try {
-        const res = await getUserDisputeStats();
-        if (isMounted && res.success && typeof res.count === "number") {
-          setDisputeCount(res.count);
+        const [disputeRes, notifRes] = await Promise.all([
+          getUserDisputeStats(),
+          getUserNotificationsAction()
+        ]);
+        if (!isMounted) return;
+
+        if (disputeRes.success && typeof disputeRes.count === "number") {
+          setDisputeCount(disputeRes.count);
+        }
+
+        if (notifRes.success && Array.isArray(notifRes.notifications)) {
+          let readIds: string[] = [];
+          try {
+            readIds = JSON.parse(localStorage.getItem("cloop_read_notif_ids") || "[]");
+          } catch {}
+          const unread = notifRes.notifications.filter(n => !n.isRead && !readIds.includes(n.id)).length;
+          setUnreadNotifCount(unread);
         }
       } catch (err: any) {
-        console.error("⚠️ [Dashboard DisputeStats Fetch Error]:", err?.message || err);
+        console.error("⚠️ [Dashboard Stats Fetch Error]:", err?.message || err);
       }
     }
 
     loadStats();
 
-    // 🔔 Đồng bộ badge khiếu nại tức thì khi có mutation hoặc focus lại tab
-    const handleDisputeUpdate = () => {
+    // 🔔 Đồng bộ badge khiếu nại & thông báo tức thì
+    const handleSync = () => {
       loadStats();
     };
 
-    window.addEventListener("dispute-updated", handleDisputeUpdate);
-    window.addEventListener("focus", handleDisputeUpdate);
+    window.addEventListener("dispute-updated", handleSync);
+    window.addEventListener("notifications-updated", handleSync);
+    window.addEventListener("focus", handleSync);
 
     return () => {
       isMounted = false;
-      window.removeEventListener("dispute-updated", handleDisputeUpdate);
-      window.removeEventListener("focus", handleDisputeUpdate);
+      window.removeEventListener("dispute-updated", handleSync);
+      window.removeEventListener("notifications-updated", handleSync);
+      window.removeEventListener("focus", handleSync);
     };
   }, []);
 
@@ -168,6 +186,11 @@ export default function DashboardLayout({
                     {item.path === "/my-closet/orders" && disputeCount > 0 && (
                       <span className="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse shadow-sm">
                         {disputeCount}
+                      </span>
+                    )}
+                    {item.path === "/my-closet/notifications" && unreadNotifCount > 0 && (
+                      <span className="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse shadow-sm">
+                        {unreadNotifCount > 9 ? "9+" : unreadNotifCount}
                       </span>
                     )}
                   </Link>

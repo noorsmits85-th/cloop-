@@ -492,9 +492,9 @@ export function WalletClient({
                   <div key={tx.id} className="p-4 sm:px-6 sm:py-4.5 hover:bg-stone-50/50 transition-colors flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3.5">
                       <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
-                        tx.type === 'INCOME' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                        tx.amount > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
                       }`}>
-                        {tx.type === 'INCOME' ? <ArrowDownLeft size={18} /> : <ArrowUpRight size={18} />}
+                        {tx.amount > 0 ? <ArrowDownLeft size={18} /> : <ArrowUpRight size={18} />}
                       </div>
                       <div className="flex flex-col">
                         <span className="font-semibold text-stone-800 text-xs sm:text-sm">{tx.desc}</span>
@@ -506,12 +506,13 @@ export function WalletClient({
                     
                     <div className="flex flex-col items-end shrink-0">
                       <span className={`font-mono font-bold text-xs sm:text-sm ${
-                        tx.type === 'INCOME' ? 'text-emerald-600' : 'text-stone-800'
+                        tx.amount > 0 ? 'text-emerald-600' : 'text-rose-600'
                       }`}>
-                        {tx.type === 'INCOME' ? '+' : ''}{tx.amount.toLocaleString()}₫
+                        {tx.amount > 0 ? '+' : ''}{tx.amount.toLocaleString()}₫
                       </span>
                       {tx.status === 'SUCCESS' && <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1"><CheckCircle2 size={10} /> Đã quyết toán</span>}
                       {tx.status === 'PENDING' && <span className="text-[10px] font-bold text-amber-600 flex items-center gap-1"><Clock size={10} /> Đang xử lý</span>}
+                      {tx.status === 'FAILED' && <span className="text-[10px] font-bold text-rose-600 flex items-center gap-1"><AlertCircle size={10} /> Thất bại</span>}
                     </div>
                   </div>
                 ))}

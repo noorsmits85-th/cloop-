@@ -89,7 +89,8 @@ export default async function WalletPage({
         where: { 
           OR: [
             { rental: { ownerId: userId } },
-            { rental: { product: { userId } } }
+            { rental: { product: { userId } } },
+            { rental: { renterId: userId } }
           ],
           status: "PAID" 
         },
@@ -99,7 +100,7 @@ export default async function WalletPage({
           } 
         },
         orderBy: { createdAt: "desc" },
-        take: 20
+        take: 30
       })
     ]);
 
@@ -154,31 +155,84 @@ export default async function WalletPage({
     });
   }
 
-  const vndTransactions = [
-    ...(realWithdrawals || []).map(w => ({
-      id: w.id,
+  // 💰 BẢNG ĐỐI SOÁT TIỀN VÀO - TIỀN RA (CASH FLOW RECONCILIATION)
+  const vndTransactions: Array<{
+    id: string;
+    type: "INCOME" | "EXPENSE" | "WITHDRAW";
+    amount: number;
+    desc: string;
+    date: string;
+    status: "SUCCESS" | "PENDING" | "FAILED";
+  }> = [];
+
+  // 1. Tiền Ra: Các lệnh rút tiền về tài khoản ngân hàng
+  (realWithdrawals || []).forEach(w => {
+    vndTransactions.push({
+      id: `w-${w.id}`,
       type: "WITHDRAW",
       amount: -w.amount,
-      desc: `Lệnh rút tiền về ${w.bankName} (${w.bankAccountNumber})`,
+      desc: `Lệnh rút tiền về ${w.bankName || "Ngân hàng"} (${w.bankAccountNumber || "STK"})`,
       date: w.createdAt?.toISOString ? w.createdAt.toISOString() : new Date().toISOString(),
       status: w.status === "COMPLETED" ? "SUCCESS" : w.status === "PENDING" ? "PENDING" : "FAILED"
-    })),
-    ...(realInvoices || []).map(inv => ({
-      id: inv.id,
-      type: "INCOME",
-      amount: inv.amount,
-      desc: `Thu nhập cho thuê "${inv.rental?.product?.title || "Sản phẩm"}"`,
-      date: inv.createdAt?.toISOString ? inv.createdAt.toISOString() : new Date().toISOString(),
-      status: "SUCCESS"
-    }))
-  ];
+    });
+  });
 
+  // 2. Tiền Vào & Tiền Ra từ các đơn thuê trang phục
+  (realInvoices || []).forEach(inv => {
+    const isOwner = inv.rental?.ownerId === userId || inv.rental?.product?.userId === userId;
+    const isRenter = inv.rental?.renterId === userId;
+    const itemTitle = inv.rental?.product?.title || "Trang phục";
+    const orderShortId = inv.rental?.id ? inv.rental.id.slice(0, 8).toUpperCase() : "";
+
+    // 🔴 Nếu tôi là Khách thuê (Renter) -> Tiền ra thanh toán tiền thuê + cọc qua VietQR PayOS
+    if (isRenter) {
+      vndTransactions.push({
+        id: `pay-${inv.id}`,
+        type: "EXPENSE",
+        amount: -inv.amount,
+        desc: `Thanh toán thuê & cọc đơn #${orderShortId} ("${itemTitle}")`,
+        date: inv.createdAt?.toISOString ? inv.createdAt.toISOString() : new Date().toISOString(),
+        status: "SUCCESS"
+      });
+
+      // 🟢 Nếu đơn hàng đã hoàn tất (LENDER_COMPLETED) -> Tiền vào: Hoàn cọc 100% về ví
+      if (inv.rental?.status === "LENDER_COMPLETED" && (inv.depositAmount || 0) > 0) {
+        const refundDate = (inv.rental as any).completedAt || inv.updatedAt || inv.createdAt;
+        vndTransactions.push({
+          id: `refund-${inv.id}`,
+          type: "INCOME",
+          amount: inv.depositAmount,
+          desc: `Hoàn tiền cọc 100% đơn #${orderShortId} ("${itemTitle}")`,
+          date: refundDate?.toISOString ? refundDate.toISOString() : new Date().toISOString(),
+          status: "SUCCESS"
+        });
+      }
+    }
+
+    // 🟢 Nếu tôi là Chủ tủ (Owner) -> Tiền vào: Thu nhập tiền thuê (Sau khấu trừ phí sàn 12%)
+    if (isOwner) {
+      const netEarnings = Math.max(0, (inv.rentalFee || 0) - (inv.platformFee || 0));
+      if (netEarnings > 0) {
+        const isDone = inv.rental?.status === "LENDER_COMPLETED";
+        vndTransactions.push({
+          id: `earn-${inv.id}`,
+          type: "INCOME",
+          amount: netEarnings,
+          desc: `Thu nhập cho thuê đơn #${orderShortId} ("${itemTitle}")`,
+          date: inv.createdAt?.toISOString ? inv.createdAt.toISOString() : new Date().toISOString(),
+          status: isDone ? "SUCCESS" : "PENDING"
+        });
+      }
+    }
+  });
+
+  // Nếu người dùng có số dư ví nhưng chưa có lịch sử hóa đơn chi tiết
   if (currentWalletBalance > 0 && vndTransactions.length === 0) {
     vndTransactions.push({
       id: "rental-income-synthetic",
       type: "INCOME",
       amount: currentWalletBalance,
-      desc: `Thu nhập cho thuê trang phục (Sau khấu trừ phí sàn)`,
+      desc: `Số dư thu nhập cho thuê trang phục khả dụng`,
       date: new Date().toISOString(),
       status: "SUCCESS"
     });
