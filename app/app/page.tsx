@@ -75,7 +75,8 @@ export default function MobileAppPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#FAF9F5] text-stone-800 antialiased pb-24 max-w-md mx-auto shadow-2xl border-x border-stone-200/60 relative overflow-x-hidden select-none">
+    <div className="min-h-screen bg-[#ECE7DE] flex justify-center selection:bg-emerald-100">
+      <div className="w-full max-w-md min-h-screen bg-[#FAF9F5] text-stone-800 antialiased pb-24 shadow-2xl border-x border-[#E2DDD3] relative overflow-x-hidden select-none">
       
       {/* ========================================================
           🌸 1. MÀN HÌNH CHÀO ĐỘC BẢN CHO APP ("Fashion in a loop")
@@ -246,26 +247,34 @@ export default function MobileAppPage() {
         </div>
 
         {/* ========================================================
-            🎀 4. VÒNG TRÒN DANH MỤC NỔI BẬT (STORY BUBBLES)
+            🎀 4. BỘ SƯU TẬP THEO DỊP (ẢNH THỜI TRANG THẬT THU NHỎ, KHÔNG DÙNG EMOJI)
             ======================================================== */}
-        <div className="flex items-center gap-3 overflow-x-auto no-scrollbar py-1 -mx-4 px-4">
+        <div className="flex items-center gap-3.5 overflow-x-auto no-scrollbar py-1 -mx-4 px-4">
           {[
-            { label: "Đầm Dạ Hội", icon: "💃", link: "/shop?occasion=Dạ hội" },
-            { label: "Áo Dài Di Sản", icon: "🪡", link: "/shop?occasion=Áo dài" },
-            { label: "Tiệc Cưới", icon: "👗", link: "/shop?occasion=Tiệc cưới" },
-            { label: "Túi & Phụ Kiện", icon: "👜", link: "/shop?occasion=Phụ kiện" },
-            { label: "Tủ Đồ Xanh", icon: "🌿", link: "/shop?occasion=Vintage" },
-            { label: "Giao 2H", icon: "⚡", link: "/shop?type=rent" },
+            { label: "Đầm Dạ Hội", img: "/1.1.jpg", link: "/shop?occasion=Dạ hội" },
+            { label: "Áo Dài Di Sản", img: "/anhbia.png", link: "/shop?occasion=Áo dài" },
+            { label: "Tiệc Cưới & Prom", img: "/evening_dress.jpg", link: "/shop?occasion=Tiệc cưới" },
+            { label: "Túi & Phụ Kiện", img: "/step2_bag.jpg", link: "/shop?occasion=Phụ kiện" },
+            { label: "Tủ Đồ Xanh", img: "/macro_fabric.jpg", link: "/shop?occasion=Vintage" },
+            { label: "Tối Giản Paris", img: "/vintage_coat.jpg", link: "/shop?type=rent" },
           ].map((cat, idx) => (
             <Link
               key={idx}
               href={cat.link}
-              className="flex flex-col items-center gap-1.5 shrink-0 group active:scale-95 transition-transform"
+              className="flex flex-col items-center gap-2 shrink-0 group active:scale-95 transition-transform"
             >
-              <div className="w-14 h-14 rounded-full bg-white border border-[#E5DFD5] shadow-3xs flex items-center justify-center text-2xl group-hover:border-[#183A2D] transition-colors">
-                <span>{cat.icon}</span>
+              <div className="w-[60px] h-[60px] rounded-full p-[2px] bg-white border border-[#DDD6CA] shadow-3xs group-hover:border-[#183A2D] transition-colors">
+                <div className="w-full h-full rounded-full overflow-hidden relative bg-stone-100">
+                  <Image
+                    src={cat.img}
+                    alt={cat.label}
+                    fill
+                    className="object-cover transition-transform duration-500 group-hover:scale-110"
+                    unoptimized
+                  />
+                </div>
               </div>
-              <span className="text-[10px] font-bold text-stone-700 tracking-tight whitespace-nowrap">
+              <span className="text-[10px] font-bold text-stone-700 tracking-tight whitespace-nowrap font-heading">
                 {cat.label}
               </span>
             </Link>
@@ -273,26 +282,37 @@ export default function MobileAppPage() {
         </div>
 
         {/* ========================================================
-            🌿 5. MINI-BANNER MATCHA LỤA (KHÔNG BỊ ĐƠ CỨNG)
+            🌿 5. BANNER LỤA MATCHA SANG TRỌNG (ẢNH MẪU THẬT, KHÔNG EMOJI)
             ======================================================== */}
-        <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-[#183A2D] via-[#245240] to-[#183A2D] p-4 text-white shadow-sm flex items-center justify-between">
-          <div className="space-y-1 max-w-[70%]">
-            <span className="inline-block text-[8.5px] uppercase tracking-widest font-extrabold text-[#A3E39F] bg-white/10 px-2 py-0.5 rounded-full">
-              Tuần Hoàn Tủ Đồ 2026
-            </span>
-            <h3 className="font-heading text-sm font-extrabold leading-tight text-white">
-              Thuê Đồ Sự Kiện Tiết Kiệm Đến 85%
+        <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-[#183A2D] via-[#23503E] to-[#142F24] p-4 text-white shadow-sm flex items-center justify-between border border-[#2D604B]/40">
+          <div className="space-y-1.5 max-w-[68%]">
+            <div className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#A3E39F] animate-pulse" />
+              <span className="text-[8.5px] uppercase tracking-[0.2em] font-semibold text-[#A3E39F] font-ui">
+                Tủ Đồ Tuần Hoàn 2026
+              </span>
+            </div>
+            <h3 className="font-heading text-sm font-extrabold leading-snug text-white tracking-wide">
+              Trang Phục Sự Kiện • Giảm 85% Chi Phí Mặc Đẹp
             </h3>
             <Link
               href="/shop?type=rent"
-              className="inline-flex items-center gap-1 text-[11px] font-bold text-[#A3E39F] hover:text-white pt-1"
+              className="inline-flex items-center gap-1 text-[11px] font-bold text-[#A3E39F] hover:text-white pt-1 group"
             >
-              <span>Khám phá ngay</span>
-              <ArrowRight size={12} />
+              <span>Khám phá bộ sưu tập</span>
+              <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
-          <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center text-3xl shrink-0">
-            👗
+
+          <div className="relative w-16 h-20 rounded-xl overflow-hidden border border-white/20 shadow-md shrink-0 bg-stone-800">
+            <Image 
+              src="/evening_dress.jpg" 
+              alt="CLOOP Evening Dress" 
+              fill 
+              className="object-cover" 
+              unoptimized 
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
           </div>
         </div>
 
@@ -493,6 +513,7 @@ export default function MobileAppPage() {
         onClose={() => setIsVisualSearchOpen(false)}
       />
 
+      </div>
     </div>
   );
 }
