@@ -6,6 +6,7 @@ import { X, Shield } from 'lucide-react';
 import { createClient } from '@/src/utils/supabase/client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { loginWithCredentials, registerWithCredentials } from '@/app/(storefront)/login/actions';
+import { translateAuthError } from '@/src/utils/authErrors';
 
 export default function AuthModal({ 
   isOpen, 
@@ -95,7 +96,7 @@ export default function AuthModal({
         setSuccessMsg('Đã gửi link khôi phục mật khẩu vào Email!');
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Có lỗi xảy ra.');
+      setErrorMsg(translateAuthError(err.message));
     } finally {
       setLoading(false);
     }

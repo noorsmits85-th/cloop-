@@ -2,6 +2,9 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/src/utils/supabase/server';
+import { translateAuthError } from '@/src/utils/authErrors';
+
+export { translateAuthError };
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -49,7 +52,7 @@ export async function login(formData: FormData): Promise<AuthActionResult> {
   });
 
   if (error) {
-    return { error: error.message };
+    return { error: translateAuthError(error.message) };
   }
 
   // Đảm bảo sync vào Prisma User
@@ -106,7 +109,7 @@ export async function loginWithOtp(formData: FormData) {
   });
 
   if (error) {
-    return { error: error.message };
+    return { error: translateAuthError(error.message) };
   }
 
   return { success: 'Đã gửi mã OTP (Magic Link) vào Email của bạn! Vui lòng kiểm tra hộp thư.' };
@@ -118,7 +121,7 @@ export async function verifyOtp(formData: FormData) {
   const token = String(formData.get('token') || '').trim();
 
   if (!email || !/^\d{6}$/.test(token)) {
-    return { error: 'Mã OTP không hợp lệ.' };
+    return { error: 'Mã OTP không hợp lệ (cần đủ 6 chữ số).' };
   }
 
   const { error } = await supabase.auth.verifyOtp({
@@ -128,7 +131,7 @@ export async function verifyOtp(formData: FormData) {
   });
 
   if (error) {
-    return { error: 'Mã OTP không hợp lệ hoặc đã hết hạn.' };
+    return { error: translateAuthError(error.message) || 'Mã OTP không hợp lệ hoặc đã hết hạn.' };
   }
 
   const nextUrl = (formData.get('nextUrl') as string) || '/';
@@ -152,7 +155,7 @@ export async function resetPasswordForEmail(formData: FormData) {
   });
 
   if (error) {
-    return { error: error.message };
+    return { error: translateAuthError(error.message) };
   }
 
   return { success: 'Đã gửi mã OTP khôi phục mật khẩu vào Email!' };
@@ -179,7 +182,7 @@ export async function verifyRecoveryOtp(formData: FormData) {
   });
 
   if (otpError) {
-    return { error: 'Mã OTP khôi phục không đúng hoặc đã hết hạn.' };
+    return { error: translateAuthError(otpError.message) || 'Mã OTP khôi phục không đúng hoặc đã hết hạn.' };
   }
 
   const { error: updateError } = await supabase.auth.updateUser({
@@ -187,7 +190,7 @@ export async function verifyRecoveryOtp(formData: FormData) {
   });
 
   if (updateError) {
-    return { error: updateError.message };
+    return { error: translateAuthError(updateError.message) };
   }
 
   return { success: 'Mật khẩu đã được cập nhật thành công! Bạn có thể đăng nhập ngay.', redirectUrl: '/login' };
@@ -225,7 +228,7 @@ export async function signup(formData: FormData): Promise<AuthActionResult> {
     if (signUpError.message?.includes("already registered") || signUpError.message?.includes("User already exists")) {
       return login(formData);
     }
-    return { error: signUpError.message };
+    return { error: translateAuthError(signUpError.message) };
   }
 
   const authUserId = signUpData.user?.id;

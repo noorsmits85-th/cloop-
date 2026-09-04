@@ -7,10 +7,11 @@ import Link from "next/link";
 import { usePathname, useSearchParams, useRouter } from "next/navigation"; 
 import { 
   Search, ShoppingBag, Sun, Moon, Shirt, Users, Leaf, Star, X, Shield, BookOpen,
-  Home, PlusCircle, User, Loader2
+  Home, PlusCircle, User, Loader2, AlertCircle, CheckCircle2
 } from "lucide-react";
 import { createClient } from "@/src/utils/supabase/client"; 
 import { loginWithCredentials, registerWithCredentials, fastLoginAction } from "@/app/(storefront)/login/actions";
+import { translateAuthError } from "@/src/utils/authErrors";
 import "../globals.css";
 import AiStylistChat from "./AiStylistChat"; 
 import PwaInstallPrompt from "./PwaInstallPrompt";
@@ -196,6 +197,15 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const { showAuthModal, setShowAuthModal, activeFeatureName, handleFeatureRequirement, currentUser, setCurrentUser } = useAuthModal();
   const [darkMode, setDarkMode] = useState<boolean>(false);
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot' | 'forgot_otp'>('login');
+  const [authModalError, setAuthModalError] = useState<string | null>(null);
+  const [authModalSuccess, setAuthModalSuccess] = useState<string | null>(null);
+
+  const switchAuthMode = (mode: 'login' | 'register' | 'forgot' | 'forgot_otp') => {
+    setAuthModalError(null);
+    setAuthModalSuccess(null);
+    setAuthMode(mode);
+  };
+
   const [resetEmail, setResetEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [otpValues, setOtpValues] = useState(['', '', '', '', '', '']);
@@ -288,6 +298,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     if (showAuthModal) {
+      setAuthModalError(null);
+      setAuthModalSuccess(null);
       if (activeFeatureName === "Đăng ký") setAuthMode('register');
       else setAuthMode('login');
     }
@@ -440,29 +452,49 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                 </p>
               </div>
 
+              {authModalError && (
+                <div className="p-3.5 rounded-2xl bg-rose-50/90 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-rose-700 dark:text-rose-300 text-xs font-medium flex items-start gap-2.5 text-left shadow-xs transition-all">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-500" />
+                  <div className="flex-1 leading-relaxed">{authModalError}</div>
+                </div>
+              )}
+
+              {authModalSuccess && (
+                <div className="p-3.5 rounded-2xl bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 text-xs font-medium flex items-start gap-2.5 text-left shadow-xs transition-all">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600" />
+                  <div className="flex-1 leading-relaxed">{authModalSuccess}</div>
+                </div>
+              )}
+
               <form 
                 onSubmit={async (e) => {
                   e.preventDefault();
                   setIsLoading(true);
+                  setAuthModalError(null);
+                  setAuthModalSuccess(null);
                   try {
                     const fData = new FormData(e.currentTarget);
                     const email = fData.get("email") as string;
                     
                     if (authMode === 'forgot') {
-                      if (!email.trim()) return;
+                      if (!email.trim()) {
+                        setAuthModalError("Vui lòng nhập địa chỉ email để nhận mã khôi phục.");
+                        return;
+                      }
                       if (otpCooldown > 0) {
-                        alert(`Vui lòng đợi ${otpCooldown} giây trước khi yêu cầu lại mã OTP.`);
+                        setAuthModalError(`Vui lòng đợi ${otpCooldown} giây trước khi yêu cầu lại mã OTP.`);
                         return;
                       }
                       
                       const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
                       if (error) {
-                        alert(`Lỗi gửi mã khôi phục: ${error.message}`);
+                        setAuthModalError(translateAuthError(error.message));
                         return;
                       }
                       setResetEmail(email.trim());
                       setOtpValues(['', '', '', '', '', '']); // Reset OTP fields
                       setOtpCooldown(60); // Set 60s cooldown
+                      setAuthModalSuccess("Mã OTP khôi phục mật khẩu đã được gửi tới email!");
                       setAuthMode('forgot_otp');
                       return;
                     }
@@ -472,13 +504,13 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                     if (authMode === 'forgot_otp') {
                       const otp = otpValues.join('');
                       if (otp.length < 6 || !password) {
-                        alert("Vui lòng nhập đủ 6 ký tự mã xác thực và mật khẩu mới.");
+                        setAuthModalError("Vui lòng nhập đủ 6 chữ số mã xác thực và mật khẩu mới.");
                         return;
                       }
                       
                       const cleanOtp = otp.trim();
                       if (!/^\d{6}$/.test(cleanOtp)) {
-                        alert("Ma OTP phai gom dung 6 chu so.");
+                        setAuthModalError("Mã xác thực OTP phải gồm đúng 6 chữ số.");
                         return;
                       }
 
@@ -489,31 +521,34 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                       });
                       
                       if (verifyError) {
-                        alert(`Mã xác thực không hợp lệ: ${verifyError.message}`);
+                        setAuthModalError(translateAuthError(verifyError.message));
                         return;
                       }
 
                       const { error: updateError } = await supabase.auth.updateUser({ password });
                       if (updateError) {
-                        alert(`Lỗi cập nhật mật khẩu: ${updateError.message}`);
+                        setAuthModalError(translateAuthError(updateError.message));
                         return;
                       }
                       
-                      alert("Cập nhật mật khẩu thành công! Vui lòng đăng nhập lại.");
-                      setAuthMode('login');
+                      setAuthModalSuccess("Cập nhật mật khẩu thành công! Vui lòng đăng nhập lại.");
+                      switchAuthMode('login');
                       return;
                     }
 
                     const name = (fData.get("username") as string || "").trim(); 
                     
-                    if (!email.trim() || !password.trim() || (authMode === 'register' && !name)) return;
+                    if (!email.trim() || !password.trim() || (authMode === 'register' && !name)) {
+                      setAuthModalError("Vui lòng điền đầy đủ các trường thông tin!");
+                      return;
+                    }
 
                     if (authMode === 'login') {
                       const redirectTo = searchParams.get('redirectTo') || undefined;
                       const res = await loginWithCredentials({ email: email.trim(), password, redirectTo });
 
                       if (res.error) {
-                        alert(`Đăng nhập thất bại: ${res.error}`);
+                        setAuthModalError(translateAuthError(res.error));
                         return;
                       }
 
@@ -543,7 +578,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                       });
                       
                       if (res.error) {
-                        alert(`Đăng ký thất bại: ${res.error}`);
+                        setAuthModalError(translateAuthError(res.error));
                         return;
                       }
 
@@ -564,7 +599,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                       }
                     }
                   } catch (err: any) {
-                    alert(`Hệ thống gặp sự cố: ${err.message || err}`);
+                    setAuthModalError(translateAuthError(err.message || String(err)));
                   } finally {
                     setIsLoading(false);
                   }
@@ -639,28 +674,30 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
               <div className="flex flex-col gap-2 mt-4 text-[11px] font-medium text-gray-500">
                 {authMode === 'login' && (
                   <>
-                    <button onClick={() => setAuthMode('forgot')} className="hover:text-[#183A2D] transition hover:underline">Quên mật khẩu?</button>
-                    <button onClick={() => setAuthMode('register')} className="hover:text-[#183A2D] transition hover:underline">Chưa có ID Xanh? Tạo ngay</button>
+                    <button onClick={() => switchAuthMode('forgot')} className="hover:text-[#183A2D] transition hover:underline">Quên mật khẩu?</button>
+                    <button onClick={() => switchAuthMode('register')} className="hover:text-[#183A2D] transition hover:underline">Chưa có ID Xanh? Tạo ngay</button>
                   </>
                 )}
                 {authMode === 'register' && (
-                  <button onClick={() => setAuthMode('login')} className="hover:text-[#183A2D] transition hover:underline">Đã có ID Xanh? Đăng nhập</button>
+                  <button onClick={() => switchAuthMode('login')} className="hover:text-[#183A2D] transition hover:underline">Đã có ID Xanh? Đăng nhập</button>
                 )}
                 {(authMode === 'forgot' || authMode === 'forgot_otp') && (
-                  <button onClick={() => setAuthMode('login')} className="hover:text-[#183A2D] transition hover:underline">Quay lại đăng nhập</button>
+                  <button onClick={() => switchAuthMode('login')} className="hover:text-[#183A2D] transition hover:underline">Quay lại đăng nhập</button>
                 )}
                 {authMode === 'forgot_otp' && (
                   <button 
                     disabled={otpCooldown > 0 || isLoading}
                     onClick={async () => {
                       setIsLoading(true);
+                      setAuthModalError(null);
+                      setAuthModalSuccess(null);
                       try {
                         const { error } = await supabase.auth.resetPasswordForEmail(resetEmail);
                         if (error) throw error;
                         setOtpCooldown(60);
-                        alert("Mã khôi phục mới đã được gửi!");
+                        setAuthModalSuccess("Mã khôi phục mới đã được gửi tới email của bạn!");
                       } catch (err: any) {
-                        alert(`Lỗi gửi mã: ${err.message}`);
+                        setAuthModalError(translateAuthError(err.message));
                       } finally {
                         setIsLoading(false);
                       }

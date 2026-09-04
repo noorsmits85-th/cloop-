@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { login, loginWithOtp, verifyOtp, signup, resetPasswordForEmail, verifyRecoveryOtp, fastLoginAction } from './actions';
+import { login, loginWithOtp, verifyOtp, signup, resetPasswordForEmail, verifyRecoveryOtp, fastLoginAction, translateAuthError } from './actions';
 import { Mail, Lock, KeyRound, ArrowRight, Loader2, User } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/src/utils/supabase/client';
@@ -19,6 +19,17 @@ export default function LoginPage() {
     : '';
 
   const supabase = createClient();
+
+  // Bắt lỗi từ query params nếu có (ví dụ ?error=InvalidToken hoặc ?error=...)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const errParam = urlParams.get('error') || urlParams.get('error_description');
+      if (errParam) {
+        setMessage({ type: 'error', text: translateAuthError(errParam) });
+      }
+    }
+  }, []);
 
   // ⚡ NẾU ĐÃ ĐĂNG NHẬP SẴN -> TỰ ĐỘNG CHUYỂN TIẾP NGAY LẬP TỨC
   useEffect(() => {
@@ -52,7 +63,7 @@ export default function LoginPage() {
       }
 
       if (res?.error) {
-        setMessage({ type: 'error', text: res.error });
+        setMessage({ type: 'error', text: translateAuthError(res.error) });
       } else if (res?.redirectUrl) {
         window.location.href = res.redirectUrl;
       } else if (res?.success) {
@@ -60,8 +71,8 @@ export default function LoginPage() {
         if (mode === 'OTP_REQUEST') setMode('OTP_VERIFY');
         if (mode === 'FORGOT_PASSWORD') setMode('FORGOT_PASSWORD_OTP');
       }
-    } catch (err) {
-      setMessage({ type: 'error', text: 'Có lỗi xảy ra, vui lòng thử lại.' });
+    } catch (err: any) {
+      setMessage({ type: 'error', text: translateAuthError(err?.message || 'Có lỗi xảy ra, vui lòng thử lại.') });
     } finally {
       setLoading(false);
     }
