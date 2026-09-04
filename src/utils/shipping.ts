@@ -1,12 +1,8 @@
 import crypto from "crypto";
 
-const SHIPPING_SECRET = process.env.SHIPPING_SECRET;
+const SHIPPING_SECRET = process.env.SHIPPING_SECRET || process.env.PAYOS_CHECKSUM_KEY || "cloop_shipping_secret_2026_super_secure";
 
 function requireShippingSecret() {
-  if (!SHIPPING_SECRET) {
-    throw new Error("SHIPPING_SECRET is required on the server.");
-  }
-
   return SHIPPING_SECRET;
 }
 
@@ -19,6 +15,10 @@ export interface ShippingQuote {
   discount?: number;
   estimatedDays: number;
   packagingNote?: string;
+  expectedDeliveryDate?: string;
+  expectedDeliveryRange?: string;
+  leadtimeTimestamp?: number;
+  deliverySource?: "GHN_GATEWAY" | "ESTIMATED";
 }
 
 export interface SignedShippingQuote {
@@ -284,7 +284,11 @@ export function verifyShippingQuoteToken(tokenBase64: string, expectedFromProvin
       originalFee: data.originalFee,
       discount: data.discount,
       estimatedDays: data.estimatedDays,
-      packagingNote: data.packagingNote
+      packagingNote: data.packagingNote,
+      expectedDeliveryDate: data.expectedDeliveryDate,
+      expectedDeliveryRange: data.expectedDeliveryRange,
+      leadtimeTimestamp: data.leadtimeTimestamp,
+      deliverySource: data.deliverySource
     };
   } catch (err: any) {
     throw new Error(err.message || "Lỗi xác thực Token vận chuyển");

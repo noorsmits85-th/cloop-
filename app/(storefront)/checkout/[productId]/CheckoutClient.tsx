@@ -383,6 +383,18 @@ export default function CheckoutClient({
     }
   }, [isInterProvincial, earliestStartDate]);
 
+  // Tự động khớp ngày bắt đầu mặc đồ theo ngày giao hàng do GHN trả về
+  useEffect(() => {
+    if (selectedQuote?.quote.expectedDeliveryDate && selectedQuote.quote.expectedDeliveryDate.includes("/")) {
+      const parts = selectedQuote.quote.expectedDeliveryDate.split("/");
+      if (parts.length === 3) {
+        const [day, month, year] = parts;
+        const ghnDeliveryISODate = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+        setStartDate(ghnDeliveryISODate);
+      }
+    }
+  }, [selectedQuote]);
+
   const rentalFee = isRental ? (selectedTier?.price || 0) : (product.listings?.[0]?.salePrice || product.listings?.[0]?.basePrice || 0);
   const actualDeposit = isRental ? depositPrice : 0;
   const rawShippingFee = selectedQuote?.quote.fee || 0;
@@ -659,19 +671,34 @@ export default function CheckoutClient({
                 2. Lịch Dự Kiến Nhận & Trả Trang Phục
               </label>
               <span className="text-[10px] text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60 font-ui">
-                {selectedQuote?.quote.serviceId === "direct_pickup" ? "Gặp nhận đồ trong ngày" : isInterProvincial ? "Dự kiến 2-3 ngày vận chuyển GHN" : "Giao nhanh 24h nội tỉnh"}
+                {selectedQuote?.quote.serviceId === "direct_pickup" 
+                  ? "Gặp nhận đồ trong ngày" 
+                  : selectedQuote?.quote.expectedDeliveryRange
+                    ? `GHN giao: ${selectedQuote.quote.expectedDeliveryRange}`
+                    : isInterProvincial 
+                      ? "Dự kiến 2-3 ngày vận chuyển GHN" 
+                      : "Giao nhanh 24h nội tỉnh"}
               </span>
             </div>
 
             {/* Hộp Thông Báo Tiến Trình Vận Chuyển & Thời Gian Giao Dự Kiến (Shopee Standard) */}
             <div className="p-3.5 rounded-xl bg-[#FAF9F5] border border-[#E9E2D8] space-y-2.5">
-              <div className="flex flex-col sm:flex-row justify-between sm:items-center text-xs gap-1">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center text-xs gap-1.5">
                 <div className="flex items-center gap-1.5 text-stone-700">
                   <Truck size={14} className="text-emerald-700 shrink-0" />
-                  <span>Lộ trình: <strong>{fromProvince || product.province || "Nghệ An"}</strong> → <strong>{selectedProvince?.name || "Địa chỉ nhận"}</strong></span>
+                  <span>Lộ trình: <strong>{fromProvince || product.province || "Hà Nội"}</strong> → <strong>{selectedProvince?.name || "Địa chỉ nhận"}</strong></span>
                 </div>
-                <div className="text-[11px] text-emerald-800 font-medium font-mono">
-                  Dự kiến giao: <strong>{formatDateVN(earliestDateObj)}</strong> {isInterProvincial && ` - ${formatDateVN(new Date(Date.now() + 3 * 86400000))}`}
+                <div className="text-[11px] text-emerald-800 font-medium font-mono flex items-center gap-1.5 flex-wrap">
+                  <span>Dự kiến giao: <strong>{selectedQuote?.quote.expectedDeliveryRange || selectedQuote?.quote.expectedDeliveryDate || (isInterProvincial ? `${formatDateVN(earliestDateObj)} - ${formatDateVN(new Date(Date.now() + 3 * 86400000))}` : formatDateVN(earliestDateObj))}</strong></span>
+                  {selectedQuote?.quote.deliverySource === "GHN_GATEWAY" ? (
+                    <span className="inline-flex items-center gap-0.5 text-[8.5px] font-extrabold text-emerald-800 bg-emerald-100/90 px-1.5 py-0.2 rounded border border-emerald-300 font-ui">
+                      ✓ GHN phản hồi
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-0.5 text-[8.5px] font-medium text-stone-500 bg-stone-100 px-1.5 py-0.2 rounded font-ui">
+                      Ước tính
+                    </span>
+                  )}
                 </div>
               </div>
 

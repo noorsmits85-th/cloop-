@@ -38,37 +38,96 @@ export async function POST(req: Request) {
     }
 
     const GHN_TOKEN = process.env.GHN_API_TOKEN;
+    const GHN_SHOP_ID = process.env.GHN_SHOP_ID || "6591755";
     const GHN_FEE_URL = "https://online-gateway.ghn.vn/shiip/public-api/v2/shipping-order/fee";
+    const GHN_LEADTIME_URL = "https://online-gateway.ghn.vn/shiip/public-api/v2/shipping-order/leadtime";
     
     let quotes: Awaited<ReturnType<typeof getShippingQuotes>> = [];
 
-    // 1. NẾU CÓ TOKEN GHN & CÓ MÃ QUẬN HUYỆN -> THỬ GỌI TRỰC TIẾP TỪ GHN GATEWAY
+    // 1. NẾU CÓ TOKEN GHN & CÓ MÃ QUẬN HUYỆN -> GỌI TRỰC TIẾP CẢ CƯỚC PHÍ & DỰ KIẾN GIAO TỪ GHN GATEWAY
     if (GHN_TOKEN && toDistrictId) {
       try {
-        const ghnBody: Record<string, string | number> = {
-          from_district_id: Number(fromDistrictId) || 1442,
-          service_type_id: 2,
-          to_district_id: Number(toDistrictId),
-          height: 10, 
-          length: 10, 
-          weight: weight, 
-          width: 10,
-          insurance_value: 0,
-        };
+        const fromDistrict = Number(fromDistrictId) || 1484; // 1484 = Ba Đình, Hà Nội (kho điều phối chính CLOOP)
+        const fromWard = fromWardCode ? String(fromWardCode) : "1A0101"; // 1A0101 = Phường Cống Vị, Ba Đình
+        const toDistrict = Number(toDistrictId);
+        const toWard = toWardCode ? String(toWardCode) : undefined;
 
-        if (fromWardCode) ghnBody.from_ward_code = String(fromWardCode);
-        if (toWardCode) ghnBody.to_ward_code = String(toWardCode);
+        // Gọi song song cả Tính Cước & Leadtime Thời Gian Giao Dự Kiến chính thức từ hãng GHN
+        const [feeRes, leadtimeRes] = await Promise.all([
+          fetch(GHN_FEE_URL, {
+            method: "POST",
+            headers: { 
+              "Token": GHN_TOKEN, 
+              "ShopId": String(GHN_SHOP_ID),
+              "Content-Type": "application/json" 
+            },
+            body: JSON.stringify({
+              from_district_id: fromDistrict,
+              from_ward_code: fromWard,
+              service_id: 53322, // Gói hàng nhẹ thời trang tiêu chuẩn GHN
+              to_district_id: toDistrict,
+              to_ward_code: toWard,
+              height: 10, 
+              length: 10, 
+              weight: weight, 
+              width: 10,
+              insurance_value: 0,
+            })
+          }),
+          toWard ? fetch(GHN_LEADTIME_URL, {
+            method: "POST",
+            headers: { 
+              "Token": GHN_TOKEN, 
+              "ShopId": String(GHN_SHOP_ID),
+              "Content-Type": "application/json" 
+            },
+            body: JSON.stringify({
+              from_district_id: fromDistrict,
+              from_ward_code: fromWard,
+              to_district_id: toDistrict,
+              to_ward_code: toWard,
+              service_id: 53322
+            })
+          }) : Promise.resolve(null)
+        ]);
 
-        const res = await fetch(GHN_FEE_URL, {
-          method: "POST",
-          headers: { 
-            "Token": GHN_TOKEN, 
-            ...(process.env.GHN_SHOP_ID ? { "ShopId": String(process.env.GHN_SHOP_ID) } : {}),
-            "Content-Type": "application/json" 
-          },
-          body: JSON.stringify(ghnBody)
-        });
-        const data = await res.json();
+        const data = await feeRes.json();
+        let leadtimeData: any = null;
+        if (leadtimeRes) {
+          try {
+            leadtimeData = await leadtimeRes.json();
+          } catch (_) {}
+        }
+
+        // Trích xuất ngày giao dự kiến chính thức từ kết quả GHN trả về
+        let expectedDeliveryDate: string | undefined;
+        let expectedDeliveryRange: string | undefined;
+        let leadtimeTimestamp: number | undefined;
+        let estimatedDays = 2;
+
+        if (leadtimeData?.code === 200 && leadtimeData.data) {
+          const lt = leadtimeData.data;
+          leadtimeTimestamp = lt.leadtime || undefined;
+
+          const formatDateStr = (d: Date) => {
+            const dd = String(d.getDate()).padStart(2, "0");
+            const mm = String(d.getMonth() + 1).padStart(2, "0");
+            const yyyy = d.getFullYear();
+            return `${dd}/${mm}/${yyyy}`;
+          };
+
+          if (lt.leadtime_order?.from_estimate_date && lt.leadtime_order?.to_estimate_date) {
+            const fromD = new Date(lt.leadtime_order.from_estimate_date);
+            const toD = new Date(lt.leadtime_order.to_estimate_date);
+            expectedDeliveryDate = formatDateStr(toD);
+            expectedDeliveryRange = `${formatDateStr(fromD)} - ${formatDateStr(toD)}`;
+            estimatedDays = Math.max(1, Math.round((toD.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+          } else if (lt.leadtime) {
+            const d = new Date(lt.leadtime * 1000);
+            expectedDeliveryDate = formatDateStr(d);
+            expectedDeliveryRange = formatDateStr(d);
+          }
+        }
         
         if (data.code === 200 && data.data?.total) {
           const rawOneWayFee = data.data.total;
@@ -84,7 +143,11 @@ export async function POST(req: Request) {
               fee: normalizedFee,
               originalFee: normalizedFee + 10000,
               discount: 10000,
-              estimatedDays: 2,
+              estimatedDays,
+              expectedDeliveryDate,
+              expectedDeliveryRange,
+              leadtimeTimestamp,
+              deliverySource: "GHN_GATEWAY",
               packagingNote: isRental 
                 ? `Khách trả cước chiều đi lúc đặt (${normalizedFee.toLocaleString('vi-VN')}đ - Block 5K). Chiều trả đồ về miễn phí 0đ (Chủ tủ chịu cước thu hồi tài sản)` 
                 : "Bưu tá GHN đến lấy và giao tận nơi"
@@ -97,6 +160,9 @@ export async function POST(req: Request) {
               originalFee: 0,
               discount: 0,
               estimatedDays: 0,
+              expectedDeliveryDate: "Trong ngày",
+              expectedDeliveryRange: "Trong ngày",
+              deliverySource: "GHN_GATEWAY",
               packagingNote: "Hai bên tự hẹn gặp trao đổi và gửi trả đồ trực tiếp (Miễn phí 0đ)"
             }
           ];
@@ -106,7 +172,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // 2. NẾU CHƯA CÓ QUOTES TỪ GHN GATEWAY (HOẶC SHOP INFO CHƯA SETUP) -> CHẠY ĐỘNG CƠ CƯỚC GHN ĐỘNG THEO APP & BLOCK 5K
+    // 2. NẾU CHƯA CÓ QUOTES TỪ GHN GATEWAY -> CHẠY ĐỘNG CƠ CƯỚC GHN ĐỘNG THEO APP & BLOCK 5K
     if (quotes.length === 0) {
       quotes = await getShippingQuotes(fromProvince, toProvince, weight, isRental);
     }
