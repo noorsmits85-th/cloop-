@@ -87,10 +87,10 @@ export default function MobileAppPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#E5DFD5] py-0 sm:py-6 flex justify-center selection:bg-emerald-200">
+    <div className="min-h-screen bg-gradient-to-br from-[#0D1210] via-[#141A17] to-[#0A0E0C] py-0 sm:py-8 flex justify-center selection:bg-emerald-800 selection:text-white">
       
-      {/* 📱 KHUNG MÁY DI ĐỘNG CAO CẤP (SMARTPHONE FRAMEWORK) */}
-      <div className="w-full max-w-md min-h-screen sm:min-h-[92vh] sm:max-h-[94vh] sm:rounded-[2.8rem] bg-[#FAF8F5] text-stone-900 antialiased shadow-[0_25px_70px_rgba(24,58,45,0.22)] border-x sm:border-[5px] border-[#D4CBBF] sm:border-[#1E3B2D]/90 relative overflow-y-auto overflow-x-hidden select-none pb-24 no-scrollbar">
+      {/* 📱 KHUNG MÁY IPHONE 17 PRO MAX TITANIUM (VIỀN SIÊU MỎNG 1.15MM) */}
+      <div className="w-full max-w-[400px] min-h-screen sm:min-h-[860px] sm:max-h-[880px] sm:rounded-[52px] bg-[#FAF8F5] text-stone-900 antialiased shadow-[0_25px_90px_-10px_rgba(0,0,0,0.85),0_0_0_2px_#383B3F] sm:border-[2px] border-stone-600 relative overflow-y-auto overflow-x-hidden select-none pb-24 no-scrollbar">
         
         {/* ========================================================
             🌸 1. MÀN HÌNH CHÀO ĐỘC BẢN CHO APP ("Fashion in a loop")
@@ -189,22 +189,22 @@ export default function MobileAppPage() {
             📱 2. APP HEADER BAR (SẮC NÉT, ĐẲNG CẤP, CÓ HỒN)
             ======================================================== */}
         <header className="sticky top-0 z-40 bg-[#FAF8F5]/95 backdrop-blur-md px-4 py-3 border-b border-[#E8E1D5] flex items-center justify-between shadow-3xs">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-full bg-white border border-[#E0D8CB] shadow-3xs flex items-center justify-center p-0.5">
+          <div className="flex items-center gap-3">
+            <div className="relative w-10 h-10 flex items-center justify-center shrink-0">
               <Image 
                 src="/loogo.png" 
-                alt="CLOOP" 
-                width={32} 
-                height={32} 
-                className="mix-blend-multiply" 
+                alt="CLOOP Brand Logo" 
+                width={42} 
+                height={42} 
+                className="mix-blend-multiply drop-shadow-xs" 
               />
             </div>
-            <div>
-              <span className="font-brand-title text-2xl font-extrabold tracking-[0.12em] text-[#183A2D] leading-none block font-heading drop-shadow-3xs">
+            <div className="flex flex-col">
+              <span className="font-brand-title text-[22px] font-extrabold tracking-[0.14em] text-[#183A2D] leading-none pl-0.5">
                 CLOOP
               </span>
-              <span className="font-handwriting text-[11px] text-[#346E4E] italic -mt-0.5 block font-serif font-bold">
-                Fashion in a loop
+              <span className="text-[7.5px] font-extrabold tracking-[0.32em] uppercase text-[#226343] mt-1 pl-0.5 font-sans">
+                FASHION IN A LOOP
               </span>
             </div>
           </div>
