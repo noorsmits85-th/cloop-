@@ -184,6 +184,6 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error("Lỗi tính phí ship:", error);
-    return NextResponse.json({ error: "Không thể tính phí vận chuyển lúc này" }, { status: 500 });
+    return NextResponse.json({ error: "Không thể tính phí vận chuyển lúc này", details: error?.message }, { status: 500 });
   }
 }

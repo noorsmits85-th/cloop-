@@ -189,6 +189,18 @@ export async function getShippingQuotes(
   const isSameProvince = normFrom.length > 2 && (normTo.includes(normFrom) || normFrom.includes(normTo));
   const isRuralArea = /(huyện|xã|thôn|ấp)/i.test(normTo);
 
+  const now = Date.now();
+  const deliveryDateObj = new Date(now + Math.max(1, dynamicResult.estimatedDays) * 86400000);
+  const formatDateStr = (d: Date) => {
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  };
+  const expectedDeliveryDate = formatDateStr(deliveryDateObj);
+  const fromEstObj = new Date(now + Math.max(1, dynamicResult.estimatedDays - 1) * 86400000);
+  const expectedDeliveryRange = `${formatDateStr(fromEstObj)} - ${formatDateStr(deliveryDateObj)}`;
+
   const quotes: ShippingQuote[] = [
     {
       provider: "GHN",
@@ -200,6 +212,9 @@ export async function getShippingQuotes(
       originalFee: dynamicResult.originalFee,
       discount: dynamicResult.originalFee - dynamicResult.fee,
       estimatedDays: dynamicResult.estimatedDays,
+      expectedDeliveryDate,
+      expectedDeliveryRange,
+      deliverySource: "ESTIMATED",
       packagingNote: isRental 
         ? `Khách trả cước chiều đi lúc đặt (${dynamicResult.fee.toLocaleString('vi-VN')}đ - Block 5K). Chiều trả đồ về miễn phí 0đ (Chủ tủ chịu cước thu hồi tài sản)` 
         : "Giao nhận tiêu chuẩn GHN bưu tá đến lấy tận nơi"
