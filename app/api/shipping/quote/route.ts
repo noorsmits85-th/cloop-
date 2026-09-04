@@ -3,13 +3,13 @@ import { getShippingQuotes, signShippingQuote } from "@/src/utils/shipping";
 import { z } from "zod";
 
 const QuoteSchema = z.object({
-  fromProvince: z.string().min(2),
-  toProvince: z.string().min(2),
-  fromDistrictId: z.union([z.string(), z.number()]).optional(),
-  fromWardCode: z.string().optional(),
-  toDistrictId: z.union([z.string(), z.number()]).optional(),
-  toWardCode: z.string().optional(),
-  weight: z.number().int().min(100).max(20000).default(500),
+  fromProvince: z.string().min(1).default("Hà Nội"),
+  toProvince: z.string().min(1),
+  fromDistrictId: z.union([z.string(), z.number()]).nullable().optional(),
+  fromWardCode: z.string().nullable().optional(),
+  toDistrictId: z.union([z.string(), z.number()]).nullable().optional(),
+  toWardCode: z.string().nullable().optional(),
+  weight: z.coerce.number().int().min(50).max(50000).default(500),
   isRental: z.boolean().default(true),
 });
 
@@ -19,7 +19,8 @@ export async function POST(req: Request) {
     const parsed = QuoteSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json({ error: "Du lieu tinh phi ship khong hop le" }, { status: 400 });
+      console.warn("⚠️ [Shipping Quote Validation Failed]:", parsed.error.issues);
+      return NextResponse.json({ error: "Dữ liệu tính phí vận chuyển chưa hợp lệ" }, { status: 400 });
     }
 
     const {
@@ -52,6 +53,30 @@ export async function POST(req: Request) {
         const toDistrict = Number(toDistrictId);
         const toWard = toWardCode ? String(toWardCode) : undefined;
 
+        // Tự động xác định service_id tối ưu từ GHN available-services cho tuyến đường này
+        let selectedServiceId: number = 53321;
+        try {
+          const availRes = await fetch("https://online-gateway.ghn.vn/shiip/public-api/v2/shipping-order/available-services", {
+            method: "POST",
+            headers: {
+              "Token": GHN_TOKEN,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              shop_id: Number(GHN_SHOP_ID) || 6591755,
+              from_district: fromDistrict,
+              to_district: toDistrict
+            })
+          });
+          if (availRes.ok) {
+            const availData = await availRes.json();
+            if (availData.data && availData.data.length > 0) {
+              const lightService = availData.data.find((s: any) => s.service_type_id === 2);
+              selectedServiceId = lightService ? lightService.service_id : availData.data[0].service_id;
+            }
+          }
+        } catch (_) {}
+
         // Gọi song song cả Tính Cước & Leadtime Thời Gian Giao Dự Kiến chính thức từ hãng GHN
         const [feeRes, leadtimeRes] = await Promise.all([
           fetch(GHN_FEE_URL, {
@@ -64,7 +89,7 @@ export async function POST(req: Request) {
             body: JSON.stringify({
               from_district_id: fromDistrict,
               from_ward_code: fromWard,
-              service_id: 53322, // Gói hàng nhẹ thời trang tiêu chuẩn GHN
+              service_id: selectedServiceId,
               to_district_id: toDistrict,
               to_ward_code: toWard,
               height: 10, 
@@ -86,7 +111,7 @@ export async function POST(req: Request) {
               from_ward_code: fromWard,
               to_district_id: toDistrict,
               to_ward_code: toWard,
-              service_id: 53322
+              service_id: selectedServiceId
             })
           }) : Promise.resolve(null)
         ]);
