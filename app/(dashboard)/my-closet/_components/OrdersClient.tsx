@@ -580,8 +580,9 @@ export function OrdersClient({
                             <div className="flex flex-col gap-1.5 justify-center">
                               <div className="flex items-center gap-2">
                                 <span className="font-mono text-[9px] tracking-widest text-[#183A2D]/50 uppercase">ORD-{String(order.id).substring(0,8)}</span>
-                                <span className="text-[9.5px] font-mono text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60 font-semibold">
-                                  🚚 GHN-{String(order.id).substring(0,8).toUpperCase()}
+                                <span className="text-[9.5px] font-mono text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60 font-semibold inline-flex items-center gap-1">
+                                  <Truck size={11} className="text-emerald-700" />
+                                  GHN-{String(order.id).substring(0,8).toUpperCase()}
                                 </span>
                               </div>
                               <span className="font-medium text-[#183A2D] text-sm sm:text-base tracking-wide line-clamp-1">{order.product?.title || 'CLOOP Item'}</span>
@@ -785,8 +786,9 @@ export function OrdersClient({
                             <div className="flex flex-col gap-1.5 justify-center">
                               <div className="flex items-center gap-2">
                                 <span className="font-mono text-[9px] tracking-widest text-slate-500 uppercase">ORD-{String(order.id).substring(0,8)}</span>
-                                <span className="text-[9.5px] font-mono text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60 font-semibold">
-                                  🚚 GHN-{String(order.id).substring(0,8).toUpperCase()}
+                                <span className="text-[9.5px] font-mono text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60 font-semibold inline-flex items-center gap-1">
+                                  <Truck size={11} className="text-emerald-700" />
+                                  GHN-{String(order.id).substring(0,8).toUpperCase()}
                                 </span>
                               </div>
                               <span className="font-medium text-slate-900 text-sm sm:text-base tracking-wide line-clamp-1">{order.product?.title || 'CLOOP Item'}</span>

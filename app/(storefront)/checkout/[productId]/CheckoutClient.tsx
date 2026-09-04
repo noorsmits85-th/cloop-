@@ -5,10 +5,10 @@ import { useAuthModal } from "@/app/AuthModalContext";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SignedShippingQuote } from "@/src/utils/shipping";
-import {
+import { 
   Loader2, ShieldCheck, MapPin, Calendar, Clock,
   Check, ArrowRight, User, Phone, Home, Shirt, Tag, AlertCircle, Navigation, Package, Truck,
-  Copy, CheckCircle2, ExternalLink, QrCode, X, Zap, Handshake
+  Copy, CheckCircle2, ExternalLink, QrCode, X, Zap, Handshake, Leaf
 } from "lucide-react";
 import Image from "next/image";
 
@@ -673,11 +673,13 @@ export default function CheckoutClient({
               <span className="text-[10px] text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60 font-ui">
                 {selectedQuote?.quote.serviceId === "direct_pickup" 
                   ? "Gặp nhận đồ trong ngày" 
-                  : selectedQuote?.quote.expectedDeliveryRange
-                    ? `GHN giao: ${selectedQuote.quote.expectedDeliveryRange}`
-                    : isInterProvincial 
-                      ? "Dự kiến 2-3 ngày vận chuyển GHN" 
-                      : "Giao nhanh 24h nội tỉnh"}
+                  : selectedQuote?.quote.serviceId === "economy"
+                    ? (selectedQuote?.quote.expectedDeliveryRange ? `Dự kiến: ${selectedQuote.quote.expectedDeliveryRange}` : "Giao tiết kiệm (3-4 ngày)")
+                    : selectedQuote?.quote.expectedDeliveryRange
+                      ? `GHN giao: ${selectedQuote.quote.expectedDeliveryRange}`
+                      : isInterProvincial 
+                        ? "Dự kiến 2-3 ngày vận chuyển GHN" 
+                        : "Giao nhanh 24h nội tỉnh"}
               </span>
             </div>
 
@@ -685,14 +687,20 @@ export default function CheckoutClient({
             <div className="p-3.5 rounded-xl bg-[#FAF9F5] border border-[#E9E2D8] space-y-2.5">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center text-xs gap-1.5">
                 <div className="flex items-center gap-1.5 text-stone-700">
-                  <Truck size={14} className="text-emerald-700 shrink-0" />
+                  {selectedQuote?.quote.serviceId === "economy" ? (
+                    <Leaf size={14} className="text-emerald-700 shrink-0" />
+                  ) : selectedQuote?.quote.serviceId === "direct_pickup" ? (
+                    <Handshake size={14} className="text-emerald-700 shrink-0" />
+                  ) : (
+                    <Truck size={14} className="text-emerald-700 shrink-0" />
+                  )}
                   <span>Lộ trình: <strong>{fromProvince || product.province || "Hà Nội"}</strong> → <strong>{selectedProvince?.name || "Địa chỉ nhận"}</strong></span>
                 </div>
                 <div className="text-[11px] text-emerald-800 font-medium font-mono flex items-center gap-1.5 flex-wrap">
                   <span>Dự kiến giao: <strong>{selectedQuote?.quote.expectedDeliveryRange || selectedQuote?.quote.expectedDeliveryDate || (isInterProvincial ? `${formatDateVN(earliestDateObj)} - ${formatDateVN(new Date(Date.now() + 3 * 86400000))}` : formatDateVN(earliestDateObj))}</strong></span>
                   {selectedQuote?.quote.deliverySource === "GHN_GATEWAY" ? (
                     <span className="inline-flex items-center gap-0.5 text-[8.5px] font-extrabold text-emerald-800 bg-emerald-100/90 px-1.5 py-0.2 rounded border border-emerald-300 font-ui">
-                      ✓ GHN phản hồi
+                      ✓ Phản hồi thực tế
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-0.5 text-[8.5px] font-medium text-stone-500 bg-stone-100 px-1.5 py-0.2 rounded font-ui">
@@ -822,6 +830,7 @@ export default function CheckoutClient({
                   const isSelected = selectedQuote?.quote.serviceId === sq.quote.serviceId;
                   const isGHN = sq.quote.provider === "GHN";
                   const isExpress = sq.quote.serviceId === "express";
+                  const isEconomy = sq.quote.serviceId === "economy";
                   const cleanName = sq.quote.name.replace(/^[^\p{L}\p{N}]+/u, '').trim();
 
                   return (
@@ -844,6 +853,8 @@ export default function CheckoutClient({
                             }`}>
                               {isExpress ? (
                                 <Zap size={15} strokeWidth={2} />
+                              ) : isEconomy ? (
+                                <Leaf size={15} strokeWidth={2} />
                               ) : isGHN ? (
                                 <Truck size={15} strokeWidth={1.8} />
                               ) : (
@@ -854,10 +865,19 @@ export default function CheckoutClient({
                               <span className="font-semibold text-xs leading-tight block truncate font-ui">
                                 {cleanName}
                               </span>
-                              {isGHN && (
+                              {isEconomy ? (
+                                <span className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded-md mt-0.5">
+                                  <Leaf size={10} className="text-emerald-600" />
+                                  Tiết kiệm ~45% cước
+                                </span>
+                              ) : isGHN ? (
                                 <span className="inline-flex items-center gap-1 text-[9.5px] font-medium text-emerald-700 font-mono mt-0.5">
                                   <CheckCircle2 size={10} className="text-emerald-600" />
                                   {sq.quote.deliverySource === "GHN_GATEWAY" ? "GHN Phản hồi trực tiếp" : "Tuyến chuẩn GHN"}
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-[9.5px] font-medium text-stone-500 font-mono mt-0.5">
+                                  Gặp mặt trực tiếp
                                 </span>
                               )}
                             </div>

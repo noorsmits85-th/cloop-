@@ -160,6 +160,19 @@ export async function POST(req: Request) {
           const safeOneWayFee = rawOneWayFee * 1.05;
           const normalizedFee = Math.max(5000, Math.ceil(safeOneWayFee / 5000) * 5000);
 
+          // Gói tiết kiệm đường bộ (Eco-Saver - Không vội, rẻ hơn ~45%)
+          const ecoFee = Math.max(15000, Math.round((normalizedFee * 0.55) / 5000) * 5000);
+          const ecoDays = Math.min(5, estimatedDays + 2);
+          const ecoDeliveryDateObj = new Date(Date.now() + ecoDays * 86400000);
+          const formatDateStr = (d: Date) => {
+            const dd = String(d.getDate()).padStart(2, "0");
+            const mm = String(d.getMonth() + 1).padStart(2, "0");
+            const yyyy = d.getFullYear();
+            return `${dd}/${mm}/${yyyy}`;
+          };
+          const ecoExpectedDeliveryDate = formatDateStr(ecoDeliveryDateObj);
+          const ecoExpectedDeliveryRange = `${formatDateStr(new Date(Date.now() + (ecoDays - 1) * 86400000))} - ${ecoExpectedDeliveryDate}`;
+
           quotes = [
             {
               provider: "GHN",
@@ -174,8 +187,23 @@ export async function POST(req: Request) {
               leadtimeTimestamp,
               deliverySource: "GHN_GATEWAY",
               packagingNote: isRental 
-                ? `Khách trả cước chiều đi lúc đặt (${normalizedFee.toLocaleString('vi-VN')}đ - Block 5K). Chiều trả đồ về miễn phí 0đ (Chủ tủ chịu cước thu hồi tài sản)` 
-                : "Bưu tá GHN đến lấy và giao tận nơi"
+                ? `Cần đồ nhanh (1-2 ngày). Cước chiều đi (${normalizedFee.toLocaleString('vi-VN')}đ). Chiều trả về miễn phí 0đ` 
+                : "Bưu tá GHN đến lấy và giao nhanh tận nơi"
+            },
+            {
+              provider: "VNPOST_ECO",
+              serviceId: "economy",
+              name: isRental ? "Giao Tiết Kiệm Xanh (San sẻ 50/50: Chiều đi)" : "Giao Tiết Kiệm Xanh",
+              fee: ecoFee,
+              originalFee: ecoFee + 10000,
+              discount: 10000,
+              estimatedDays: ecoDays,
+              expectedDeliveryDate: ecoExpectedDeliveryDate,
+              expectedDeliveryRange: ecoExpectedDeliveryRange,
+              deliverySource: "GHN_GATEWAY",
+              packagingNote: isRental
+                ? `Không vội (3-4 ngày, gom xe đường bộ). Tiết kiệm ~45% cước (${ecoFee.toLocaleString('vi-VN')}đ). Chiều trả về miễn phí 0đ`
+                : "Vận chuyển đường bộ gom đơn thân thiện môi trường, chi phí tối ưu nhất"
             },
             {
               provider: "DIRECT",
