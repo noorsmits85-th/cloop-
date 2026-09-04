@@ -201,12 +201,6 @@ export async function getShippingQuotes(
   const fromEstObj = new Date(now + Math.max(1, dynamicResult.estimatedDays - 1) * 86400000);
   const expectedDeliveryRange = `${formatDateStr(fromEstObj)} - ${formatDateStr(deliveryDateObj)}`;
 
-  const ecoFee = Math.max(15000, Math.round((dynamicResult.fee * 0.55) / 5000) * 5000);
-  const ecoDays = Math.min(5, dynamicResult.estimatedDays + 2);
-  const ecoDeliveryDateObj = new Date(now + ecoDays * 86400000);
-  const ecoExpectedDeliveryDate = formatDateStr(ecoDeliveryDateObj);
-  const ecoExpectedDeliveryRange = `${formatDateStr(new Date(now + (ecoDays - 1) * 86400000))} - ${ecoExpectedDeliveryDate}`;
-
   const quotes: ShippingQuote[] = [
     {
       provider: "GHN",
@@ -224,23 +218,6 @@ export async function getShippingQuotes(
       packagingNote: isRental 
         ? `Cần đồ nhanh (1-2 ngày). Cước chiều đi (${dynamicResult.fee.toLocaleString('vi-VN')}đ - Block 5K). Chiều trả đồ về miễn phí 0đ` 
         : "Giao nhận tiêu chuẩn GHN bưu tá đến lấy tận nơi"
-    },
-    {
-      provider: "VNPOST_ECO",
-      serviceId: "economy",
-      name: isRental
-        ? `Giao Tiết Kiệm Xanh (San sẻ 50/50: Chiều đi - ${dynamicResult.zoneLabel})`
-        : `Giao Tiết Kiệm Xanh (${dynamicResult.zoneLabel})`,
-      fee: ecoFee,
-      originalFee: ecoFee + 10000,
-      discount: 10000,
-      estimatedDays: ecoDays,
-      expectedDeliveryDate: ecoExpectedDeliveryDate,
-      expectedDeliveryRange: ecoExpectedDeliveryRange,
-      deliverySource: "ESTIMATED",
-      packagingNote: isRental
-        ? `Không vội (${ecoDays - 1}-${ecoDays} ngày, gom xe đường bộ). Tiết kiệm ~45% cước (${ecoFee.toLocaleString('vi-VN')}đ). Chiều trả đồ về miễn phí 0đ`
-        : "Vận chuyển đường bộ gom đơn thân thiện môi trường, chi phí tối ưu nhất"
     },
     {
       provider: "DIRECT",
