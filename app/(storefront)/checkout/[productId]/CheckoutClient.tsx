@@ -8,7 +8,7 @@ import { SignedShippingQuote } from "@/src/utils/shipping";
 import {
   Loader2, ShieldCheck, MapPin, Calendar, Clock,
   Check, ArrowRight, User, Phone, Home, Shirt, Tag, AlertCircle, Navigation, Package, Truck,
-  Copy, CheckCircle2, ExternalLink, QrCode, X
+  Copy, CheckCircle2, ExternalLink, QrCode, X, Zap, Handshake
 } from "lucide-react";
 import Image from "next/image";
 
@@ -817,26 +817,66 @@ export default function CheckoutClient({
               <label className="block text-[11px] font-bold text-stone-700 font-ui uppercase tracking-wider">
                 Phương Thức Giao Nhận
               </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {shippingQuotes.map((sq, idx) => {
                   const isSelected = selectedQuote?.quote.serviceId === sq.quote.serviceId;
+                  const isGHN = sq.quote.provider === "GHN";
+                  const isExpress = sq.quote.serviceId === "express";
+                  const cleanName = sq.quote.name.replace(/^[^\p{L}\p{N}]+/u, '').trim();
+
                   return (
                     <div
                       key={idx}
                       onClick={() => setSelectedQuote(sq)}
-                      className={`p-3 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
+                      className={`p-3.5 rounded-2xl border cursor-pointer transition-all duration-200 flex flex-col justify-between group relative ${
                         isSelected
-                          ? "bg-emerald-50/80 border-emerald-700 ring-1 ring-emerald-700 text-emerald-950 shadow-xs"
-                          : "bg-white border-stone-200 hover:border-stone-300 text-stone-700"
+                          ? "bg-emerald-50/90 border-[#183A2D] ring-1.5 ring-[#183A2D] shadow-xs text-stone-900"
+                          : "bg-white border-stone-200 hover:border-stone-400 text-stone-700"
                       }`}
                     >
-                      <div className="flex justify-between items-start">
-                        <span className="font-bold text-xs">{sq.quote.name}</span>
-                        <span className="font-mono font-bold text-xs text-emerald-800 shrink-0 ml-1">
-                          {sq.quote.fee === 0 ? "0đ (Miễn phí)" : `${sq.quote.fee.toLocaleString("vi-VN")}đ`}
-                        </span>
+                      <div>
+                        <div className="flex justify-between items-start gap-2">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border transition-colors ${
+                              isSelected
+                                ? "bg-[#183A2D] text-white border-[#183A2D]"
+                                : "bg-stone-100 text-stone-600 border-stone-200 group-hover:bg-stone-200"
+                            }`}>
+                              {isExpress ? (
+                                <Zap size={15} strokeWidth={2} />
+                              ) : isGHN ? (
+                                <Truck size={15} strokeWidth={1.8} />
+                              ) : (
+                                <Handshake size={15} strokeWidth={1.8} />
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <span className="font-semibold text-xs leading-tight block truncate font-ui">
+                                {cleanName}
+                              </span>
+                              {isGHN && (
+                                <span className="inline-flex items-center gap-1 text-[9.5px] font-medium text-emerald-700 font-mono mt-0.5">
+                                  <CheckCircle2 size={10} className="text-emerald-600" />
+                                  {sq.quote.deliverySource === "GHN_GATEWAY" ? "GHN Phản hồi trực tiếp" : "Tuyến chuẩn GHN"}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end shrink-0">
+                            <span className="font-mono font-bold text-xs text-[#183A2D]">
+                              {sq.quote.fee === 0 ? "0đ (Miễn phí)" : `${sq.quote.fee.toLocaleString("vi-VN")}đ`}
+                            </span>
+                            <div className={`w-3.5 h-3.5 rounded-full border mt-1 flex items-center justify-center transition-colors ${
+                              isSelected ? "border-[#183A2D] bg-[#183A2D]" : "border-stone-300 bg-white"
+                            }`}>
+                              {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-[10.5px] text-stone-500 mt-2 leading-relaxed font-ui">
+                          {sq.quote.packagingNote}
+                        </p>
                       </div>
-                      <p className="text-[10.5px] text-stone-500 mt-1">{sq.quote.packagingNote}</p>
                     </div>
                   );
                 })}

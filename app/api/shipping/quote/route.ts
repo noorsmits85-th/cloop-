@@ -164,7 +164,7 @@ export async function POST(req: Request) {
             {
               provider: "GHN",
               serviceId: "standard",
-              name: isRental ? "🚚 Giao Tiêu Chuẩn GHN (San sẻ 50/50: Chiều đi)" : "🚚 Giao Tiêu Chuẩn GHN (1 Chiều)",
+              name: isRental ? "Giao Tiêu Chuẩn GHN (San sẻ 50/50: Chiều đi)" : "Giao Tiêu Chuẩn GHN (1 Chiều)",
               fee: normalizedFee,
               originalFee: normalizedFee + 10000,
               discount: 10000,
@@ -180,7 +180,7 @@ export async function POST(req: Request) {
             {
               provider: "DIRECT",
               serviceId: "direct_pickup",
-              name: "🤝 Tự Giao Nhận Trực Tiếp (Gần nhau / Hẹn gặp)",
+              name: "Tự Giao Nhận Trực Tiếp (Hẹn gặp linh hoạt)",
               fee: 0,
               originalFee: 0,
               discount: 0,

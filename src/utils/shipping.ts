@@ -206,8 +206,8 @@ export async function getShippingQuotes(
       provider: "GHN",
       serviceId: "standard",
       name: isRental 
-        ? `🚚 Giao Tiêu Chuẩn GHN (San sẻ 50/50: Chiều đi - ${dynamicResult.zoneLabel})`
-        : `🚚 Giao Tiêu Chuẩn GHN (${dynamicResult.zoneLabel})`,
+        ? `Giao Tiêu Chuẩn GHN (San sẻ 50/50: Chiều đi - ${dynamicResult.zoneLabel})`
+        : `Giao Tiêu Chuẩn GHN (${dynamicResult.zoneLabel})`,
       fee: dynamicResult.fee,
       originalFee: dynamicResult.originalFee,
       discount: dynamicResult.originalFee - dynamicResult.fee,
@@ -222,7 +222,7 @@ export async function getShippingQuotes(
     {
       provider: "DIRECT",
       serviceId: "direct_pickup",
-      name: "🤝 Tự Giao Nhận Trực Tiếp (Gần nhau / Hẹn gặp)",
+      name: "Tự Giao Nhận Trực Tiếp (Hẹn gặp linh hoạt)",
       fee: 0,
       originalFee: 0,
       discount: 0,
@@ -235,7 +235,7 @@ export async function getShippingQuotes(
     quotes.push({
       provider: "GHN",
       serviceId: "express",
-      name: "⚡ Giao Hỏa Tốc GHN (Trong Ngày)",
+      name: "Giao Hỏa Tốc GHN (Trong ngày)",
       fee: 35000,
       originalFee: 45000,
       discount: 10000,
