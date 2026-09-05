@@ -118,7 +118,7 @@ export async function createPayOSPaymentLink(rentalId: string) {
   }
 }
 
-export async function checkAndSyncPaymentStatusAction(orderCode: number) {
+export async function checkAndSyncPaymentStatusAction(orderCode: number | string) {
   try {
     if (!orderCode) {
       return { success: false, error: "Mã đơn hàng không hợp lệ" };
@@ -128,8 +128,10 @@ export async function checkAndSyncPaymentStatusAction(orderCode: number) {
       return { success: false, error: "Cau hinh PayOS chua san sang tren server." };
     }
 
+    const numericOrderCode = typeof orderCode === "string" ? Number(orderCode) : orderCode;
+
     const invoice = await prisma.invoice.findUnique({
-      where: { orderCode: BigInt(orderCode) },
+      where: { orderCode: BigInt(numericOrderCode) },
       include: { rental: true }
     });
 
@@ -144,9 +146,16 @@ export async function checkAndSyncPaymentStatusAction(orderCode: number) {
 
     // 🛡️ Webhook Fallback: Gọi trực tiếp PayOS API để hỏi thăm trạng thái
     try {
-      const paymentInfo = await payos.paymentRequests.get(orderCode);
+      const paymentInfo = await payos.paymentRequests.get(numericOrderCode);
 
-      if (paymentInfo && (paymentInfo.status as string === "PAID" || paymentInfo.status as string === "SUCCESS")) {
+      const isActuallyPaid = Boolean(
+        paymentInfo && (
+          paymentInfo.status === "PAID" || 
+          (typeof paymentInfo.amountPaid === "number" && paymentInfo.amountPaid >= invoice.amount)
+        )
+      );
+
+      if (isActuallyPaid) {
         // Thực thi Atomic Settlement Inflow giống Webhook
         await prisma.$transaction(async (tx) => {
           const updateResult = await tx.invoice.updateMany({
@@ -161,7 +170,7 @@ export async function checkAndSyncPaymentStatusAction(orderCode: number) {
               invoiceId: invoice.id,
               type: "DEPOSIT_IN",
               amount: invoice.amount,
-              description: `Tiền nạp qua Webhook Fallback Sync - OrderCode ${orderCode}`,
+              description: `Tiền nạp qua Webhook Fallback Sync - OrderCode ${numericOrderCode}`,
               status: "COMPLETED"
             }
           });
@@ -175,7 +184,7 @@ export async function checkAndSyncPaymentStatusAction(orderCode: number) {
 
           await tx.transactionHistory.create({
             data: {
-              orderCode: BigInt(orderCode),
+              orderCode: BigInt(numericOrderCode),
               invoiceId: invoice.id,
               amount: invoice.amount,
               invoiceAmount: invoice.amount,
@@ -189,7 +198,13 @@ export async function checkAndSyncPaymentStatusAction(orderCode: number) {
         return { success: true, isPaid: true, status: "PAID" };
       }
 
-      return { success: true, isPaid: false, status: paymentInfo?.status || "PENDING" };
+      return { 
+        success: true, 
+        isPaid: false, 
+        status: paymentInfo?.status || "PENDING",
+        amountPaid: paymentInfo?.amountPaid || 0,
+        amountRemaining: paymentInfo?.amountRemaining ?? invoice.amount
+      };
     } catch (payosErr: any) {
       console.warn("PayOS status check query error:", payosErr.message);
       return { success: true, isPaid: false, status: invoice.status };

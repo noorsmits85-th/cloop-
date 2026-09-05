@@ -8,7 +8,7 @@ import { SignedShippingQuote } from "@/src/utils/shipping";
 import { 
   Loader2, ShieldCheck, MapPin, Calendar, Clock,
   Check, ArrowRight, User, Phone, Home, Shirt, Tag, AlertCircle, Navigation, Package, Truck,
-  Copy, CheckCircle2, ExternalLink, QrCode, X, Zap, Handshake, Leaf
+  Copy, CheckCircle2, ExternalLink, QrCode, X, Zap, Handshake, Leaf, RefreshCw
 } from "lucide-react";
 import Image from "next/image";
 
@@ -80,6 +80,33 @@ export default function CheckoutClient({
   } | null>(null);
   const [isPaidSuccess, setIsPaidSuccess] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [isManualChecking, setIsManualChecking] = useState(false);
+  const [manualCheckMsg, setManualCheckMsg] = useState<{ type: "info" | "error"; text: string } | null>(null);
+
+  const handleManualCheck = async () => {
+    if (!paymentData?.orderCode || isManualChecking) return;
+    setIsManualChecking(true);
+    setManualCheckMsg(null);
+    try {
+      const { checkAndSyncPaymentStatusAction } = await import("@/app/actions/payment");
+      const res = await checkAndSyncPaymentStatusAction(paymentData.orderCode);
+      if (res.success && res.isPaid) {
+        setIsPaidSuccess(true);
+        setTimeout(() => {
+          router.push("/my-closet/orders");
+        }, 1800);
+      } else {
+        setManualCheckMsg({
+          type: "info",
+          text: "Cổng PayOS chưa ghi nhận giao dịch thành công. Vui lòng đảm bảo bạn đã chuyển đúng số tiền và nội dung CK, hoặc đợi 30s - 1 phút nếu ngân hàng đang xử lý."
+        });
+      }
+    } catch (e: any) {
+      setManualCheckMsg({ type: "error", text: e.message || "Lỗi kiểm tra trạng thái." });
+    } finally {
+      setIsManualChecking(false);
+    }
+  };
 
   // ⚡ Tự động quét giao dịch PayOS theo thời gian thực (In-App Realtime Settlement)
   useEffect(() => {
@@ -1089,6 +1116,31 @@ export default function CheckoutClient({
 
                 {/* Các nút hành động */}
                 <div className="space-y-2 pt-1">
+                  <button
+                    type="button"
+                    disabled={isManualChecking}
+                    onClick={handleManualCheck}
+                    className="w-full py-3 bg-[#183A2D] hover:bg-[#0A2517] text-white rounded-xl font-ui text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                  >
+                    {isManualChecking ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" /> Đang kiểm tra giao dịch PayOS...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw size={14} /> Tôi đã chuyển khoản (Kiểm tra lại ngay)
+                      </>
+                    )}
+                  </button>
+
+                  {manualCheckMsg && (
+                    <div className={`p-2.5 rounded-xl text-xs font-ui text-center leading-relaxed ${
+                      manualCheckMsg.type === "error" ? "bg-red-50 text-red-700 border border-red-200" : "bg-amber-50 text-amber-900 border border-amber-200"
+                    }`}>
+                      {manualCheckMsg.text}
+                    </div>
+                  )}
+
                   {paymentData.checkoutUrl && (
                     <a
                       href={paymentData.checkoutUrl}
@@ -1096,7 +1148,7 @@ export default function CheckoutClient({
                       rel="noopener noreferrer"
                       className="w-full py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl font-ui text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
-                      <ExternalLink size={13} /> Mở trang thanh toán PayOS ngoài
+                      <ExternalLink size={13} /> Mở trang xác nhận trên PayOS
                     </a>
                   )}
 
