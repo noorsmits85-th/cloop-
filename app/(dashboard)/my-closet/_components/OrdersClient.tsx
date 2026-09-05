@@ -1139,7 +1139,16 @@ export function OrdersClient({
                 {disputeImages.map((img, i) => (
                   <img key={i} src={img} alt="Bằng chứng" className="w-14 h-14 object-cover rounded-md border border-stone-200 shadow-xs" />
                 ))}
-                <CldUploadWidget uploadPreset="cloop_uploads" onSuccess={(result: any) => { if (result.info?.secure_url) setDisputeImages(prev => [...prev, result.info.secure_url]); }}>
+                <CldUploadWidget 
+                  uploadPreset="cloop_uploads" 
+                  options={{ 
+                    maxFiles: 5, 
+                    maxFileSize: 25000000, 
+                    resourceType: "auto",
+                    clientAllowedFormats: ["png", "jpeg", "jpg", "mp4", "mov", "webm"]
+                  }}
+                  onSuccess={(result: any) => { if (result.info?.secure_url) setDisputeImages(prev => [...prev, result.info.secure_url]); }}
+                >
                   {({ open }) => (
                     <button type="button" onClick={() => open()} className="w-14 h-14 rounded-md border border-dashed border-stone-300 flex items-center justify-center text-stone-400 hover:border-amber-400 hover:text-amber-600 transition-colors text-lg font-light">+</button>
                   )}
@@ -1252,7 +1261,12 @@ export function OrdersClient({
 
                 <CldUploadWidget 
                   uploadPreset="cloop_uploads" 
-                  options={{ maxFiles: 3, resourceType: "auto" }}
+                  options={{ 
+                    maxFiles: 3, 
+                    maxFileSize: 25000000, 
+                    resourceType: "auto",
+                    clientAllowedFormats: ["png", "jpeg", "jpg", "mp4", "mov", "webm"]
+                  }}
                   onSuccess={(result: any) => { 
                     if (result.info?.secure_url) {
                       setPackagingProofs(prev => [...prev, result.info.secure_url]); 
