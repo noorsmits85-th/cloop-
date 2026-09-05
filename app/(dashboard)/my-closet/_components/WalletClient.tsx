@@ -122,6 +122,7 @@ export function WalletClient({
   const [password, setPassword] = useState("");
   const [isSubmittingWithdraw, setIsSubmittingWithdraw] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const numericWithdrawAmount = parseInt(withdrawAmount.replace(/\D/g, ''), 10) || 0;
 
   // Thông tin tài khoản ngân hàng thực tế
   const [bankName, setBankName] = useState(bankInfo?.bankName || "");
@@ -1005,19 +1006,89 @@ export function WalletClient({
                   </div>
                 )}
 
-                <div className="space-y-1 text-left">
-                  <label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider">Số tiền cần rút (VNĐ)</label>
-                  <input
-                    type="text"
-                    value={withdrawAmount}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, '');
-                      setWithdrawAmount(val ? parseInt(val).toLocaleString() : '');
-                    }}
-                    placeholder="Tối thiểu 50,000"
-                    className="w-full px-4 py-3 font-mono font-bold text-lg rounded-2xl border border-stone-200 focus:outline-none focus:border-emerald-600 bg-white"
-                  />
-                  <span className="text-[10px] text-stone-400 font-mono">Khả dụng: {balance.toLocaleString()}₫</span>
+                <div className="space-y-1.5 text-left">
+                  <div className="flex justify-between items-center">
+                    <label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider">Số tiền cần rút (VNĐ)</label>
+                    <button
+                      type="button"
+                      onClick={() => setWithdrawAmount(balance > 0 ? balance.toLocaleString('vi-VN') : '')}
+                      className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 hover:underline cursor-pointer"
+                    >
+                      Rút tất cả
+                    </button>
+                  </div>
+
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={withdrawAmount}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/\D/g, '');
+                        if (!raw) {
+                          setWithdrawAmount('');
+                          return;
+                        }
+                        const num = parseInt(raw, 10);
+                        if (!isNaN(num)) {
+                          setWithdrawAmount(num.toLocaleString('vi-VN'));
+                        }
+                      }}
+                      placeholder="Tối thiểu 50.000"
+                      className={`w-full pl-4 pr-10 py-3 font-mono font-bold text-lg rounded-2xl border ${
+                        numericWithdrawAmount > balance ? "border-rose-400 focus:border-rose-500 bg-rose-50/20" : "border-stone-200 focus:border-emerald-600 bg-white"
+                      } focus:outline-none transition-colors`}
+                    />
+                    {withdrawAmount && (
+                      <button
+                        type="button"
+                        onClick={() => setWithdrawAmount('')}
+                        className="absolute right-3 p-1 text-stone-400 hover:text-stone-700 rounded-full hover:bg-stone-100 transition-colors cursor-pointer"
+                        title="Xóa"
+                      >
+                        <X size={16} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Thông tin số dư & Cảnh báo tức thì */}
+                  <div className="flex flex-wrap items-center justify-between gap-1 text-[11px]">
+                    <span className="text-stone-500 font-mono">
+                      Khả dụng: <strong className="text-stone-800 font-bold">{balance.toLocaleString('vi-VN')}₫</strong>
+                    </span>
+                    {numericWithdrawAmount > balance ? (
+                      <span className="text-rose-600 font-semibold flex items-center gap-1">
+                        ⚠️ Vượt quá số dư ({balance.toLocaleString('vi-VN')}₫)
+                      </span>
+                    ) : numericWithdrawAmount > 0 && numericWithdrawAmount < 50000 ? (
+                      <span className="text-amber-600 font-medium">
+                        ⚠️ Tối thiểu 50.000₫
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {/* Quick-chips chọn nhanh */}
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {[50000, 100000, 200000].filter(amt => amt <= balance).map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => setWithdrawAmount(amt.toLocaleString('vi-VN'))}
+                        className="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-stone-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 border border-stone-200 transition-colors cursor-pointer"
+                      >
+                        {amt.toLocaleString('vi-VN')}₫
+                      </button>
+                    ))}
+                    {balance >= 50000 && (
+                      <button
+                        type="button"
+                        onClick={() => setWithdrawAmount(balance.toLocaleString('vi-VN'))}
+                        className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border border-emerald-300 transition-colors cursor-pointer"
+                      >
+                        Tất cả ({balance.toLocaleString('vi-VN')}₫)
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-1 relative">
@@ -1036,8 +1107,8 @@ export function WalletClient({
 
                 <button
                   type="submit"
-                  disabled={isSubmittingWithdraw}
-                  className="w-full mt-2 py-3.5 bg-[#183A2D] text-white text-xs font-bold uppercase tracking-widest rounded-2xl shadow hover:bg-[#23452F] transition-all flex items-center justify-center gap-2 active:scale-98 disabled:opacity-50"
+                  disabled={isSubmittingWithdraw || numericWithdrawAmount <= 0 || numericWithdrawAmount > balance || numericWithdrawAmount < 50000}
+                  className="w-full mt-2 py-3.5 bg-[#183A2D] text-white text-xs font-bold uppercase tracking-widest rounded-2xl shadow hover:bg-[#23452F] transition-all flex items-center justify-center gap-2 active:scale-98 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {isSubmittingWithdraw ? <Loader2 size={16} className="animate-spin" /> : "Xác nhận lệnh rút"}
                 </button>
