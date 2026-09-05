@@ -1095,9 +1095,9 @@ export function OrdersClient({
                 placeholder={!isOwnerMode ? `VD: ${selectedOrderForDispute.invoice?.rentalFee || 50000} (Hoàn 100% tiền thuê)` : "VD: 80000 (chi phí spa, phục hồi...)"} 
                 className="w-full px-4 py-2.5 rounded-md border border-stone-200/60 text-sm font-medium focus:outline-none focus:border-amber-500 bg-stone-50/30 transition-colors" 
               />
-              <p className="text-[10px] text-stone-400 italic">
+              <p className="text-[10px] text-stone-400 italic leading-relaxed">
                 {!isOwnerMode 
-                  ? `* Tiền cọc ${(selectedOrderForDispute.invoice?.depositAmount || 0).toLocaleString('vi-VN')}đ sẽ tự động được hoàn trả 100% về ví của bạn khi thỏa thuận thành công.`
+                  ? `* Khi hàng lỗi: CLOOP miễn 100% phí dịch vụ sàn (0đ). Phí vận chuyển 2 chiều (chiều đi & chiều về) được giữ lại đối soát với nhà vận chuyển. 100% tiền cọc (${(selectedOrderForDispute.invoice?.depositAmount || 0).toLocaleString('vi-VN')}đ) và tiền thuê còn lại sẽ được hoàn về ví của bạn khi chủ tủ nhận lại đồ.`
                   : "* Khoản tiền này sẽ được khấu trừ từ tiền cọc của khách thuê chuyển thẳng vào ví chủ đồ sau khi 2 bên đồng thuận."}
               </p>
             </div>

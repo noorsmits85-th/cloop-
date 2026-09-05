@@ -192,6 +192,8 @@ export async function completeOrderAction(orderId: string) {
       let disputeReturnRefund = 0;
       let disputeOwnerPayout = 0;
       let disputePlatformFee = 0;
+      let disputeShippingFee = 0;
+      let disputeReturnShipping = 0;
       let isDisputeReturn = false;
       const activeDispute = rental.disputes?.[0];
 
@@ -202,6 +204,8 @@ export async function completeOrderAction(orderId: string) {
             disputeReturnRefund = notes.pendingRefundToRenter;
             disputeOwnerPayout = notes.pendingOwnerPayout || 0;
             disputePlatformFee = notes.platformFeeCollected || 0;
+            disputeShippingFee = notes.shippingFeeCollected || 0;
+            disputeReturnShipping = notes.returnShippingRetained || 0;
             isDisputeReturn = true;
           }
         } catch {}
@@ -237,7 +241,7 @@ export async function completeOrderAction(orderId: string) {
               invoiceId,
               type: "PAYOUT_OUT",
               amount: disputeOwnerPayout,
-              description: `Giải ngân phần tiền thuê còn lại cho chủ đồ sau khi trừ hoàn tiền khiếu nại`,
+              description: `Giải ngân phần tiền thuê còn lại cho chủ đồ sau khi trừ hoàn tiền khiếu nại và cước hoàn`,
               status: "COMPLETED"
             }
           });
@@ -250,6 +254,31 @@ export async function completeOrderAction(orderId: string) {
               type: "FEE_RETAINED",
               amount: disputePlatformFee,
               description: `Phí nền tảng đơn khiếu nại #${orderId.slice(0, 8)}`,
+              status: "COMPLETED"
+            }
+          });
+        }
+
+        // 🚚 Phí ship 2 chiều (chiều đi & chiều về) giữ lại đối soát đối tác vận chuyển:
+        if (disputeShippingFee > 0) {
+          await tx.ledgerTransaction.create({
+            data: {
+              invoiceId,
+              type: "SHIPPING_RETAINED",
+              amount: disputeShippingFee,
+              description: `Phí vận chuyển chiều đi giữ lại đơn khiếu nại #${orderId.slice(0, 8)}`,
+              status: "COMPLETED"
+            }
+          });
+        }
+
+        if (disputeReturnShipping > 0) {
+          await tx.ledgerTransaction.create({
+            data: {
+              invoiceId,
+              type: "SHIPPING_RETAINED",
+              amount: disputeReturnShipping,
+              description: `Phí vận chuyển chiều về (hoàn trả hàng lỗi) giữ lại đơn #${orderId.slice(0, 8)}`,
               status: "COMPLETED"
             }
           });
@@ -615,6 +644,8 @@ export async function acceptDisputeProposalAction(disputeId: string) {
     const shippingFeeCollected = Number(invoice.shippingFeeCollected) || 0;
     const deduction = Math.floor(Math.max(0, Number(dispute.suggestedDeduction) || 0));
 
+    const returnShippingFee = 25000;
+    let returnShippingRetained = 0;
     let refundDepositToRenter = 0;
     let refundRentalToRenter = 0;
     let compensationToOwner = 0;
@@ -622,36 +653,44 @@ export async function acceptDisputeProposalAction(disputeId: string) {
     let platformFeeCollected = 0;
 
     if (initiatorRole === "RENTER") {
-      // 🛡️ Khiếu nại từ KHÁCH THUÊ (Chủ tủ giao sai mẫu mã / đồ hư hỏng):
-      // 1. Cọc được hoàn trả 100% về cho khách thuê:
+      // 🛡️ Khiếu nại từ KHÁCH THUÊ (Hàng lỗi, sai mẫu, hư hỏng):
+      // 1. Phí dịch vụ sàn: CLOOP miễn phí dịch vụ sàn 100% khi hàng lỗi (platformFee = 0)
+      platformFeeCollected = 0;
+
+      // 2. Phí vận chuyển 2 chiều: Giữ lại để đối soát trả nhà vận chuyển (GHN/GHTK)
+      // - Chiều đi: shippingFeeCollected (đã thu từ khách khi tạo đơn)
+      // - Chiều về: returnShippingFee (25.000đ) giữ lại từ tiền thuê của đơn
+      returnShippingRetained = Math.min(returnShippingFee, rentalFee);
+
+      // 3. Tiền cọc được hoàn trả 100% về cho khách thuê:
       refundDepositToRenter = depositAmount;
-      // 2. Mức hoàn tiền thuê yêu cầu từ khiếu nại (tối đa toàn bộ rentalFee):
-      refundRentalToRenter = deduction > 0 ? Math.min(deduction, rentalFee) : rentalFee;
-      // 3. Phần tiền thuê còn lại sau khi hoàn cho khách:
-      const remainingRentalFee = rentalFee - refundRentalToRenter;
-      if (remainingRentalFee > 0) {
-        platformFeeCollected = Math.min(rawPlatformFee, remainingRentalFee);
-        ownerRentalPayout = Math.max(0, remainingRentalFee - platformFeeCollected);
-      } else {
-        platformFeeCollected = 0;
-        ownerRentalPayout = 0;
-      }
+
+      // 4. Quỹ tiền thuê còn lại sau khi giữ lại phí ship chiều về:
+      const availableRentalPool = Math.max(0, rentalFee - returnShippingRetained);
+
+      // 5. Tiền thuê hoàn cho khách thuê:
+      refundRentalToRenter = deduction > 0 ? Math.min(deduction, availableRentalPool) : availableRentalPool;
+
+      // 6. Tiền thuê còn lại cho chủ đồ (nếu khách chỉ khiếu nại hoàn 1 phần):
+      ownerRentalPayout = Math.max(0, availableRentalPool - refundRentalToRenter);
       compensationToOwner = 0;
+
     } else {
       // 🛡️ Khiếu nại từ CHỦ TỦ (Khách thuê làm bẩn / rách đồ khi trả đồ):
       if (deduction > depositAmount) {
         return { success: false, error: "Lỗi bảo mật: Số tiền khấu trừ vượt quá số tiền cọc." };
       }
+      platformFeeCollected = rawPlatformFee;
+      returnShippingRetained = Math.min(returnShippingFee, Math.max(0, rentalFee - platformFeeCollected));
       refundDepositToRenter = depositAmount - deduction;
       compensationToOwner = deduction;
-      platformFeeCollected = rawPlatformFee;
-      ownerRentalPayout = Math.max(0, rentalFee - platformFeeCollected);
+      ownerRentalPayout = Math.max(0, rentalFee - platformFeeCollected - returnShippingRetained);
     }
 
     const totalRenterCredit = refundDepositToRenter + refundRentalToRenter;
     const totalOwnerCredit = ownerRentalPayout + compensationToOwner;
 
-    const totalCalculated = totalRenterCredit + compensationToOwner + ownerRentalPayout + platformFeeCollected + shippingFeeCollected;
+    const totalCalculated = totalRenterCredit + compensationToOwner + ownerRentalPayout + platformFeeCollected + shippingFeeCollected + returnShippingRetained;
 
     if (totalCalculated !== totalAmount) {
       console.error(`[CRITICAL MONEY INVARIANT ERROR] totalCalculated (${totalCalculated}) !== totalAmount (${totalAmount})`);
@@ -678,7 +717,8 @@ export async function acceptDisputeProposalAction(disputeId: string) {
               pendingRefundToRenter: totalRenterCredit,
               pendingOwnerPayout: ownerRentalPayout,
               platformFeeCollected,
-              shippingFeeCollected
+              shippingFeeCollected,
+              returnShippingRetained
             })
           }
         });
@@ -858,7 +898,18 @@ export async function acceptDisputeProposalAction(disputeId: string) {
             invoiceId: invoice.id,
             type: "SHIPPING_RETAINED",
             amount: shippingFeeCollected,
-            description: `Giữ phí vận chuyển để đối soát với nhà vận chuyển`,
+            description: `Giữ phí vận chuyển chiều đi để đối soát với nhà vận chuyển`,
+            adminId: userAuth.id,
+            status: "COMPLETED"
+          });
+        }
+
+        if (returnShippingRetained > 0) {
+          ledgerRows.push({
+            invoiceId: invoice.id,
+            type: "SHIPPING_RETAINED",
+            amount: returnShippingRetained,
+            description: `Giữ phí vận chuyển chiều về để đối soát với nhà vận chuyển`,
             adminId: userAuth.id,
             status: "COMPLETED"
           });
