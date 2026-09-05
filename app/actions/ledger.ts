@@ -60,12 +60,16 @@ export async function processReconciliation(
       return { success: false, error: "Không tìm thấy khoản thu tiền ban đầu của hóa đơn này." };
     }
 
+    const invoice = await prisma.invoice.findUnique({ where: { id: invoiceId } });
+    const shippingFee = invoice?.shippingFeeCollected || 0;
+    const platformFee = invoice?.platformFee && invoice.platformFee > 0 ? invoice.platformFee : FLAT_FEE;
+
     const totalIn = depositIn.amount;
-    const totalOut = refundAmount + payoutAmount + FLAT_FEE + compensationAmount;
+    const totalOut = refundAmount + payoutAmount + platformFee + compensationAmount + shippingFee;
 
     // Kiểm tra tính cân bằng của Sổ cái (Kế toán kép)
     if (totalIn !== totalOut) {
-      return { success: false, error: `Sổ cái mất cân bằng! Tổng thu (${totalIn}đ) khác Tổng chi (${totalOut}đ). Hãy kiểm tra lại số liệu hoàn trả và bồi thường.` };
+      return { success: false, error: `Sổ cái mất cân bằng! Tổng thu (${totalIn.toLocaleString()}đ) khác Tổng chi (${totalOut.toLocaleString()}đ). Hãy kiểm tra lại số liệu hoàn trả và bồi thường.` };
     }
 
     // 2. Thực hiện Giao dịch Đối soát (ACID)
@@ -131,12 +135,26 @@ export async function processReconciliation(
         data: {
           invoiceId,
           type: LedgerType.FEE_RETAINED,
-          amount: FLAT_FEE,
-          description: "Phí dịch vụ nền tảng (Cố định 10.000đ)",
+          amount: platformFee,
+          description: `Phí dịch vụ nền tảng (${platformFee.toLocaleString()}đ)`,
           adminId: admin.id,
           status: "COMPLETED",
         }
       });
+
+      // 2.5 Phí vận chuyển thu hộ bên bưu tá (nếu có)
+      if (shippingFee > 0) {
+        await tx.ledgerTransaction.create({
+          data: {
+            invoiceId,
+            type: LedgerType.SHIPPING_RETAINED,
+            amount: shippingFee,
+            description: "Phí vận chuyển giao nhận (GHN)",
+            adminId: admin.id,
+            status: "COMPLETED",
+          }
+        });
+      }
 
       // LƯU VẾT KIỂM TOÁN (AUDIT LOG)
       await tx.auditLog.create({

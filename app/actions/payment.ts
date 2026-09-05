@@ -61,6 +61,8 @@ export async function createPayOSPaymentLink(rentalId: string) {
         data: {
           rentalId: rentalId,
           amount: totalAmount,
+          rentalFee: rentalFee,
+          depositAmount: depositAmount,
           status: "PENDING",
           orderCode: orderCode,
         }
@@ -69,7 +71,12 @@ export async function createPayOSPaymentLink(rentalId: string) {
       // Cập nhật lại orderCode mới cho lần gọi payment link này
       invoice = await prisma.invoice.update({
         where: { id: invoice.id },
-        data: { orderCode: orderCode, amount: totalAmount }
+        data: { 
+          orderCode: orderCode, 
+          amount: totalAmount,
+          rentalFee: rentalFee,
+          depositAmount: depositAmount
+        }
       });
     }
 

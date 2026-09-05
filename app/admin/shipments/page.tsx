@@ -27,6 +27,7 @@ export default async function AdminShipmentsPage() {
       { status: "asc" },
       { createdAt: "desc" },
     ],
+    take: 40,
   });
 
   const rows = shipments.map((shipment) => ({

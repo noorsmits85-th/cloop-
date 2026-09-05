@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 
 import { prisma } from "@/src/lib/prisma";
 import { createClient } from "@/src/utils/supabase/server";
@@ -20,8 +20,9 @@ export interface NotificationItem {
 // ⚡ SWR IN-MEMORY CACHE (10s TTL - Cực nhanh, giảm 99% tải DB)
 const notifCache = new Map<string, { data: { notifications: NotificationItem[]; unreadCount: number }; expiry: number }>();
 
-// Hàm format ngày giờ tiếng Việt chuẩn xác
-function formatDateTimeVN(date: Date): { formatted: string; relative: string } {
+// Hàm format ngày giờ tiếng Việt chuẩn xác theo múi giờ Việt Nam (UTC+7 / Asia/Ho_Chi_Minh)
+function formatDateTimeVN(dateInput: Date | string | number): { formatted: string; relative: string } {
+  const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffSec = Math.max(0, Math.floor(diffMs / 1000));
@@ -29,13 +30,24 @@ function formatDateTimeVN(date: Date): { formatted: string; relative: string } {
   const diffHours = Math.floor(diffMin / 60);
   const diffDays = Math.floor(diffHours / 24);
 
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const year = date.getFullYear();
+  // Ép định dạng giờ theo múi giờ Việt Nam (Asia/Ho_Chi_Minh)
+  const timeFormatter = new Intl.DateTimeFormat("vi-VN", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
 
-  const formatted = `${hours}:${minutes} - ${day}/${month}/${year}`;
+  const dateFormatter = new Intl.DateTimeFormat("vi-VN", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+
+  const timeStr = timeFormatter.format(date);
+  const dateStr = dateFormatter.format(date);
+  const formatted = `${timeStr} - ${dateStr}`;
 
   let relative = "Vừa xong";
   if (diffSec < 60) {
@@ -45,11 +57,11 @@ function formatDateTimeVN(date: Date): { formatted: string; relative: string } {
   } else if (diffHours < 24) {
     relative = `${diffHours} giờ trước`;
   } else if (diffDays === 1) {
-    relative = `Hôm qua lúc ${hours}:${minutes}`;
+    relative = `Hôm qua lúc ${timeStr}`;
   } else if (diffDays < 7) {
     relative = `${diffDays} ngày trước`;
   } else {
-    relative = `${day}/${month}/${year}`;
+    relative = dateStr;
   }
 
   return { formatted, relative };
@@ -78,18 +90,16 @@ export async function getUserNotificationsAction(): Promise<{
     const notifList: NotificationItem[] = [];
 
     if (userId) {
-      // ⚡ TRUY VẤN SONG SONG TẤT CẢ HOẠT ĐỘNG THỰC TẾ CỦA USER
-      const [
-        escrowOrdersAsOwner,
-        rentedOrdersAsRenter,
-        coinLedgerEntries,
-        withdrawals,
-        shipments
-      ] = await Promise.all([
-        // 1. Đơn cho thuê (Tôi là Chủ tủ)
+      // ⚡ TỐI ƯU SIÊU TỐC: Chỉ gọi 3 truy vấn tinh gọn có chọn lọc trường (Không bốc thừa dữ liệu)
+      const [userRentals, coinLedgerEntries, withdrawals] = await Promise.all([
+        // 1. Toàn bộ đơn thuê liên quan đến User (cả vai trò Chủ tủ & Khách thuê)
         prisma.rentalHistory.findMany({
           where: {
-            OR: [{ ownerId: userId }, { product: { userId: userId } }]
+            OR: [
+              { renterId: userId },
+              { ownerId: userId },
+              { product: { userId } }
+            ]
           },
           select: {
             id: true,
@@ -97,11 +107,14 @@ export async function getUserNotificationsAction(): Promise<{
             createdAt: true,
             updatedAt: true,
             completedAt: true,
+            renterId: true,
+            ownerId: true,
             renter_name: true,
             product: {
               select: {
                 title: true,
-                province: true,
+                userId: true,
+                user: { select: { name: true } }
               }
             },
             invoice: {
@@ -114,206 +127,177 @@ export async function getUserNotificationsAction(): Promise<{
               }
             },
             renter: {
-              select: {
-                name: true
-              }
+              select: { name: true }
             }
-          },
-          orderBy: { createdAt: "desc" },
-          take: 10
-        }),
-
-        // 2. Đơn đi thuê (Tôi là Khách thuê)
-        prisma.rentalHistory.findMany({
-          where: { renterId: userId },
-          select: {
-            id: true,
-            status: true,
-            createdAt: true,
-            updatedAt: true,
-            completedAt: true,
-            product: {
-              select: {
-                title: true,
-                province: true,
-                user: { select: { name: true } }
-              }
-            },
-            invoice: {
-              select: {
-                depositAmount: true,
-                shippingFeeCollected: true,
-                amount: true
-              }
-            }
-          },
-          orderBy: { createdAt: "desc" },
-          take: 10
-        }),
-
-        // 3. Biến động Điểm Lá & Nhiệm vụ ESG
-        prisma.coinLedgerEntry.findMany({
-          where: { userId },
-          orderBy: { createdAt: "desc" },
-          take: 10
-        }),
-
-        // 4. Lệnh rút tiền về ngân hàng
-        prisma.withdrawalRequest.findMany({
-          where: { userId },
-          orderBy: { createdAt: "desc" },
-          take: 5
-        }),
-
-        // 5. Vận đơn GHN 2 chiều
-        prisma.shipment.findMany({
-          where: {
-            rental: {
-              OR: [{ renterId: userId }, { ownerId: userId }]
-            }
-          },
-          select: {
-            id: true,
-            status: true,
-            updatedAt: true,
-            createdAt: true,
-            direction: true,
-            rental: { select: { id: true, product: { select: { title: true } } } }
           },
           orderBy: { updatedAt: "desc" },
-          take: 5
+          take: 8
+        }),
+
+        // 2. Lịch sử điểm lá ESG (Chỉ lấy 4 dòng mới nhất)
+        prisma.coinLedgerEntry.findMany({
+          where: { userId },
+          select: {
+            id: true,
+            type: true,
+            amount: true,
+            description: true,
+            balanceAfter: true,
+            createdAt: true
+          },
+          orderBy: { createdAt: "desc" },
+          take: 4
+        }),
+
+        // 3. Lệnh rút tiền (Chỉ lấy 3 dòng mới nhất)
+        prisma.withdrawalRequest.findMany({
+          where: { userId },
+          select: {
+            id: true,
+            amount: true,
+            status: true,
+            bankName: true,
+            bankAccountNumber: true,
+            bankAccountHolder: true,
+            createdAt: true,
+            processedAt: true
+          },
+          orderBy: { createdAt: "desc" },
+          take: 3
         })
       ]);
 
-      // ===== A. XỬ LÝ THÔNG BÁO CHO CHỦ TỦ (OWNER) =====
-      for (const order of escrowOrdersAsOwner) {
+      // ===== A. XỬ LÝ THÔNG BÁO CHO ĐƠN HÀNG (CẢ CHỦ TỦ & KHÁCH THUÊ) =====
+      for (const order of userRentals) {
         const itemTitle = order.product?.title || "Trang phục";
-        const renterName = order.renter?.name || order.renter_name || "Khách thuê";
         const orderShortId = order.id.slice(0, 8).toUpperCase();
         const rentalFee = order.invoice?.rentalFee || 0;
-
-        if (order.status === "PENDING_APPROVAL" || order.status === "OWNER_PACKED") {
-          const { formatted, relative } = formatDateTimeVN(order.createdAt);
-          notifList.push({
-            id: `order-owner-new-${order.id}`,
-            type: "ORDER",
-            title: `Đơn thuê mới: "${itemTitle}"`,
-            message: `${renterName} vừa đặt cọc & thanh toán đơn #${orderShortId}. Vui lòng đóng gói và bàn giao cho GHN.`,
-            timestamp: order.createdAt.toISOString(),
-            timeFormatted: formatted,
-            timeRelative: relative,
-            link: "/my-closet/orders?mode=owner",
-            isRead: false,
-            iconType: "package",
-            metadata: { orderId: order.id, status: order.status }
-          });
-        } else if (order.status === "BORROWER_RETURNED") {
-          const dateObj = order.updatedAt || order.createdAt;
-          const { formatted, relative } = formatDateTimeVN(dateObj);
-          notifList.push({
-            id: `order-owner-returned-${order.id}`,
-            type: "ORDER",
-            title: `Khách đã gửi trả đồ: "${itemTitle}"`,
-            message: `Khách thuê đã gửi trả hàng về tủ đồ của bạn (Mã #${orderShortId}). Hãy kiểm tra đồ và bấm "Đã nhận lại đồ" để nhận tiền thuê.`,
-            timestamp: dateObj.toISOString(),
-            timeFormatted: formatted,
-            timeRelative: relative,
-            link: "/my-closet/orders?mode=owner",
-            isRead: false,
-            iconType: "truck",
-            metadata: { orderId: order.id, status: order.status }
-          });
-        } else if (order.status === "LENDER_COMPLETED") {
-          const dateObj = order.completedAt || order.updatedAt || order.createdAt;
-          const { formatted, relative } = formatDateTimeVN(dateObj);
-          const platformFee = order.invoice?.platformFee || Math.floor(rentalFee * 0.12);
-          const shippingFee = order.invoice?.shippingFeeCollected || 0;
-          const payoutEst = Math.max(0, rentalFee - platformFee - shippingFee);
-          notifList.push({
-            id: `order-owner-completed-${order.id}`,
-            type: "WALLET",
-            title: `Tiền thuê đã về ví: +${payoutEst.toLocaleString("vi-VN")}₫`,
-            message: `Đơn thuê #${orderShortId} ("${itemTitle}") hoàn tất thành công. Tiền thuê khả dụng đã cộng vào Ví CLOOP.`,
-            timestamp: dateObj.toISOString(),
-            timeFormatted: formatted,
-            timeRelative: relative,
-            link: "/my-closet/wallet",
-            isRead: true,
-            iconType: "wallet",
-            metadata: { orderId: order.id, amount: payoutEst }
-          });
-        } else if (order.status === "DISPUTE") {
-          const dateObj = order.updatedAt || order.createdAt;
-          const { formatted, relative } = formatDateTimeVN(dateObj);
-          notifList.push({
-            id: `order-owner-dispute-${order.id}`,
-            type: "ORDER",
-            title: `Khiếu nại đơn thuê #${orderShortId}`,
-            message: `Đơn hàng "${itemTitle}" đang có yêu cầu hòa giải/khiếu nại. Vui lòng kiểm tra phương án đề xuất.`,
-            timestamp: dateObj.toISOString(),
-            timeFormatted: formatted,
-            timeRelative: relative,
-            link: "/my-closet/orders?mode=owner",
-            isRead: false,
-            iconType: "alert",
-            metadata: { orderId: order.id }
-          });
-        }
-      }
-
-      // ===== B. XỬ LÝ THÔNG BÁO CHO KHÁCH THUÊ (RENTER) =====
-      for (const order of rentedOrdersAsRenter) {
-        const itemTitle = order.product?.title || "Trang phục";
-        const orderShortId = order.id.slice(0, 8).toUpperCase();
         const depositAmount = order.invoice?.depositAmount || 0;
+        const isOwner = order.ownerId === userId || order.product?.userId === userId;
+        const isRenter = order.renterId === userId;
 
-        if (order.status === "PENDING_APPROVAL") {
-          const { formatted, relative } = formatDateTimeVN(order.createdAt);
-          notifList.push({
-            id: `order-renter-paid-${order.id}`,
-            type: "ORDER",
-            title: `Đặt thuê thành công: "${itemTitle}"`,
-            message: `Thanh toán cọc & phí thuê đơn #${orderShortId} thành công qua PayOS VietQR. Chủ tủ đang chuẩn bị gửi đồ.`,
-            timestamp: order.createdAt.toISOString(),
-            timeFormatted: formatted,
-            timeRelative: relative,
-            link: "/my-closet/orders?mode=renter",
-            isRead: false,
-            iconType: "check",
-            metadata: { orderId: order.id }
-          });
-        } else if (order.status === "LENDER_SHIPPED") {
-          const dateObj = order.updatedAt || order.createdAt;
-          const { formatted, relative } = formatDateTimeVN(dateObj);
-          notifList.push({
-            id: `order-renter-shipped-${order.id}`,
-            type: "SHIPMENT",
-            title: `Đồ đang giao đến bạn: "${itemTitle}"`,
-            message: `Chủ tủ đã gửi hàng qua GHN cho đơn #${orderShortId}. Vui lòng chú ý điện thoại để nhận đồ diện tiệc nhé!`,
-            timestamp: dateObj.toISOString(),
-            timeFormatted: formatted,
-            timeRelative: relative,
-            link: "/my-closet/orders?mode=renter",
-            isRead: false,
-            iconType: "truck",
-            metadata: { orderId: order.id }
-          });
-        } else if (order.status === "LENDER_COMPLETED") {
-          const dateObj = order.completedAt || order.updatedAt || order.createdAt;
-          const { formatted, relative } = formatDateTimeVN(dateObj);
-          notifList.push({
-            id: `order-renter-refund-${order.id}`,
-            type: "WALLET",
-            title: `Hoàn cọc 100%: +${depositAmount.toLocaleString("vi-VN")}₫`,
-            message: `Đơn thuê #${orderShortId} hoàn tất. Toàn bộ tiền cọc bảo chứng đã được mở khóa về ví của bạn an toàn.`,
-            timestamp: dateObj.toISOString(),
-            timeFormatted: formatted,
-            timeRelative: relative,
-            link: "/my-closet/wallet",
-            isRead: true,
-            iconType: "wallet",
-            metadata: { orderId: order.id, amount: depositAmount }
-          });
+        // Nếu tôi là Chủ tủ
+        if (isOwner) {
+          const renterName = order.renter?.name || order.renter_name || "Khách thuê";
+          if (order.status === "PENDING_APPROVAL" || order.status === "OWNER_PACKED") {
+            const { formatted, relative } = formatDateTimeVN(order.createdAt);
+            notifList.push({
+              id: `order-owner-new-${order.id}`,
+              type: "ORDER",
+              title: `Đơn thuê mới: "${itemTitle}"`,
+              message: `${renterName} vừa đặt cọc & thanh toán đơn #${orderShortId}. Vui lòng đóng gói và bàn giao cho GHN.`,
+              timestamp: order.createdAt.toISOString(),
+              timeFormatted: formatted,
+              timeRelative: relative,
+              link: "/my-closet/orders?mode=owner",
+              isRead: false,
+              iconType: "package",
+              metadata: { orderId: order.id, status: order.status }
+            });
+          } else if (order.status === "BORROWER_RETURNED") {
+            const dateObj = order.updatedAt || order.createdAt;
+            const { formatted, relative } = formatDateTimeVN(dateObj);
+            notifList.push({
+              id: `order-owner-returned-${order.id}`,
+              type: "ORDER",
+              title: `Khách đã gửi trả đồ: "${itemTitle}"`,
+              message: `Khách thuê đã gửi trả hàng về tủ đồ của bạn (Mã #${orderShortId}). Hãy kiểm tra đồ và bấm "Đã nhận lại đồ" để nhận tiền thuê.`,
+              timestamp: dateObj.toISOString(),
+              timeFormatted: formatted,
+              timeRelative: relative,
+              link: "/my-closet/orders?mode=owner",
+              isRead: false,
+              iconType: "truck",
+              metadata: { orderId: order.id, status: order.status }
+            });
+          } else if (order.status === "LENDER_COMPLETED") {
+            const dateObj = order.completedAt || order.updatedAt || order.createdAt;
+            const { formatted, relative } = formatDateTimeVN(dateObj);
+            const platformFee = order.invoice?.platformFee || Math.floor(rentalFee * 0.12);
+            const shippingFee = order.invoice?.shippingFeeCollected || 0;
+            const payoutEst = Math.max(0, rentalFee - platformFee - shippingFee);
+            notifList.push({
+              id: `order-owner-completed-${order.id}`,
+              type: "WALLET",
+              title: `Tiền thuê đã về ví: +${payoutEst.toLocaleString("vi-VN")}₫`,
+              message: `Đơn thuê #${orderShortId} ("${itemTitle}") hoàn tất thành công. Tiền thuê khả dụng đã cộng vào Ví CLOOP.`,
+              timestamp: dateObj.toISOString(),
+              timeFormatted: formatted,
+              timeRelative: relative,
+              link: "/my-closet/wallet",
+              isRead: true,
+              iconType: "wallet",
+              metadata: { orderId: order.id, amount: payoutEst }
+            });
+          } else if (order.status === "DISPUTE") {
+            const dateObj = order.updatedAt || order.createdAt;
+            const { formatted, relative } = formatDateTimeVN(dateObj);
+            notifList.push({
+              id: `order-owner-dispute-${order.id}`,
+              type: "ORDER",
+              title: `Khiếu nại đơn thuê #${orderShortId}`,
+              message: `Đơn hàng "${itemTitle}" đang có yêu cầu hòa giải/khiếu nại. Vui lòng kiểm tra phương án đề xuất.`,
+              timestamp: dateObj.toISOString(),
+              timeFormatted: formatted,
+              timeRelative: relative,
+              link: "/my-closet/orders?mode=owner",
+              isRead: false,
+              iconType: "alert",
+              metadata: { orderId: order.id }
+            });
+          }
+        }
+
+        // Nếu tôi là Khách thuê
+        if (isRenter) {
+          if (order.status === "PENDING_APPROVAL") {
+            const { formatted, relative } = formatDateTimeVN(order.createdAt);
+            notifList.push({
+              id: `order-renter-paid-${order.id}`,
+              type: "ORDER",
+              title: `Đặt thuê thành công: "${itemTitle}"`,
+              message: `Thanh toán cọc & phí thuê đơn #${orderShortId} thành công qua PayOS VietQR. Chủ tủ đang chuẩn bị gửi đồ.`,
+              timestamp: order.createdAt.toISOString(),
+              timeFormatted: formatted,
+              timeRelative: relative,
+              link: "/my-closet/orders?mode=renter",
+              isRead: false,
+              iconType: "check",
+              metadata: { orderId: order.id }
+            });
+          } else if (order.status === "LENDER_SHIPPED") {
+            const dateObj = order.updatedAt || order.createdAt;
+            const { formatted, relative } = formatDateTimeVN(dateObj);
+            notifList.push({
+              id: `order-renter-shipped-${order.id}`,
+              type: "SHIPMENT",
+              title: `Đồ đang giao đến bạn: "${itemTitle}"`,
+              message: `Chủ tủ đã gửi hàng qua GHN cho đơn #${orderShortId}. Vui lòng chú ý điện thoại để nhận đồ diện tiệc nhé!`,
+              timestamp: dateObj.toISOString(),
+              timeFormatted: formatted,
+              timeRelative: relative,
+              link: "/my-closet/orders?mode=renter",
+              isRead: false,
+              iconType: "truck",
+              metadata: { orderId: order.id }
+            });
+          } else if (order.status === "LENDER_COMPLETED") {
+            const dateObj = order.completedAt || order.updatedAt || order.createdAt;
+            const { formatted, relative } = formatDateTimeVN(dateObj);
+            notifList.push({
+              id: `order-renter-refund-${order.id}`,
+              type: "WALLET",
+              title: `Hoàn cọc 100%: +${depositAmount.toLocaleString("vi-VN")}₫`,
+              message: `Đơn thuê #${orderShortId} hoàn tất. Toàn bộ tiền cọc bảo chứng đã được mở khóa về ví của bạn an toàn.`,
+              timestamp: dateObj.toISOString(),
+              timeFormatted: formatted,
+              timeRelative: relative,
+              link: "/my-closet/wallet",
+              isRead: true,
+              iconType: "wallet",
+              metadata: { orderId: order.id, amount: depositAmount }
+            });
+          }
         }
       }
 
@@ -400,56 +384,51 @@ export async function getUserNotificationsAction(): Promise<{
       }
     }
 
-    // ===== E. NẾU USER CHƯA CÓ ĐƠN HÀNG NÀO: NẠP CÁC HOẠT ĐỘNG TOÀN HỆ THỐNG THỰC TẾ KÈM MỐC THỜI GIAN THẬT =====
+    // ===== E. NẾU USER CHƯA CÓ HOẠT ĐỘNG: CHỈ HIỂN THỊ THÔNG BÁO CHÀO MỪNG & THIẾT LẬP THỰC SỰ =====
     if (notifList.length === 0) {
-      const recentGlobalOrders = await prisma.rentalHistory.findMany({
-        take: 3,
-        orderBy: { createdAt: "desc" },
-        select: { id: true, createdAt: true, product: { select: { title: true } } }
-      });
+      const accountCreatedDate = user?.created_at ? new Date(user.created_at) : new Date();
+      const { formatted, relative } = formatDateTimeVN(accountCreatedDate);
 
-      for (const gOrder of recentGlobalOrders) {
-        const { formatted, relative } = formatDateTimeVN(gOrder.createdAt);
-        notifList.push({
-          id: `global-order-${gOrder.id}`,
-          type: "ORDER",
-          title: `Hoạt động sàn: Thuê món "${gOrder.product?.title || 'Trang phục'}"`,
-          message: `Đơn thuê mới #${gOrder.id.slice(0, 8).toUpperCase()} vừa được kích hoạt thành công trên hệ thống.`,
-          timestamp: gOrder.createdAt.toISOString(),
-          timeFormatted: formatted,
-          timeRelative: relative,
-          link: "/shop",
-          isRead: false,
-          iconType: "package"
-        });
-      }
-
-      // Thông báo chào mừng cá nhân
-      const now = new Date();
-      const { formatted, relative } = formatDateTimeVN(now);
+      // Thông báo chào mừng thành viên mới
       notifList.push({
         id: "welcome-system-1",
         type: "SYSTEM",
         title: "Chào mừng bạn đến với CLOOP! 🌿",
         message: "Cảm ơn bạn đã tham gia cộng đồng thời trang tuần hoàn. Tủ đồ của bạn đã sẵn sàng chia sẻ và trải nghiệm hàng ngàn thiết kế.",
-        timestamp: now.toISOString(),
+        timestamp: accountCreatedDate.toISOString(),
         timeFormatted: formatted,
         timeRelative: relative,
         link: "/shop",
         isRead: false,
         iconType: "star"
       });
+
+      // Tặng 100 Xu Lá khởi nghiệp
       notifList.push({
         id: "welcome-system-2",
         type: "COIN",
         title: "Kích hoạt Ví Lá: Tặng 100 Xu Khởi Nghiệp 🎁",
         message: "Hệ thống đã tặng bạn 100 Xu Lá để trải nghiệm dịch vụ đẩy tin và thuê trang phục tuần hoàn.",
-        timestamp: now.toISOString(),
+        timestamp: accountCreatedDate.toISOString(),
         timeFormatted: formatted,
         timeRelative: relative,
         link: "/my-closet/wallet",
         isRead: true,
         iconType: "coin"
+      });
+
+      // Nhắc nhở thiết lập tài khoản
+      notifList.push({
+        id: "welcome-system-3",
+        type: "SYSTEM",
+        title: "Hoàn tất hồ sơ cá nhân ⚙️",
+        message: "Cập nhật địa chỉ nhận đồ và số tài khoản ngân hàng tại mục Cài đặt để sẵn sàng cho thuê hoặc nhận tiền hoàn cọc.",
+        timestamp: accountCreatedDate.toISOString(),
+        timeFormatted: formatted,
+        timeRelative: relative,
+        link: "/my-closet/settings",
+        isRead: true,
+        iconType: "check"
       });
     }
 

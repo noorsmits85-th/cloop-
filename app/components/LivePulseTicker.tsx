@@ -14,32 +14,32 @@ const PULSE_EVENTS: PulseItem[] = [
   {
     id: "eco-stat",
     icon: <Leaf className="w-3.5 h-3.5 text-emerald-400" />,
-    text: "1.450 kg CO₂ & 28.500 Lít nước đã được bảo tồn trong tuần này qua CLOOP",
+    text: "1.450 kg CO₂ & 28.500 Lít nước đã được bảo tồn qua mô hình thời trang tuần hoàn CLOOP",
     tag: "TÁC ĐỘNG XANH"
   },
   {
-    id: "rent-1",
-    icon: <ShoppingBag className="w-3.5 h-3.5 text-amber-300" />,
-    text: "@leena.vintage vừa hoàn tất cho thuê Đầm Dạ Hội Lụa Pháp tại Q.1, TP.HCM",
-    tag: "VỪA GIAO DỊCH"
+    id: "escrow-vault",
+    icon: <ShieldCheck className="w-3.5 h-3.5 text-teal-300" />,
+    text: "Bảo chứng an toàn 100% qua Két Escrow giữ cọc và thanh toán VietQR tự động",
+    tag: "KÉT BẢO CHỨNG"
   },
   {
     id: "circular-passport",
-    icon: <RotateCcw className="w-3.5 h-3.5 text-teal-300" />,
-    text: "Chiếc Blazer 1998 vừa bắt đầu vòng đời tuần hoàn thứ 5 cùng chủ nhân mới",
+    icon: <RotateCcw className="w-3.5 h-3.5 text-emerald-300" />,
+    text: "Hộ chiếu sản phẩm số (DPP): Minh bạch xuất xứ, số lần luân chuyển và định danh trang phục",
     tag: "HỘ CHIẾU SỐ"
   },
   {
-    id: "trust-closet",
-    icon: <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />,
-    text: "Tủ đồ @the.archive vừa đạt điểm tín nhiệm cao 99.4/100",
-    tag: "TỦ ĐỒ UY TÍN"
+    id: "smart-rent",
+    icon: <ShoppingBag className="w-3.5 h-3.5 text-amber-300" />,
+    text: "Tiết kiệm đến 85% chi phí trang phục sự kiện cao cấp cùng mạng lưới tủ đồ chia sẻ",
+    tag: "KINH TẾ TUẦN HOÀN"
   },
   {
     id: "community-active",
     icon: <Heart className="w-3.5 h-3.5 text-rose-400" />,
-    text: "Hơn 89 trang phục thiết kế đang luân chuyển và tỏa sáng tại các sự kiện hôm nay",
-    tag: "VÒNG ĐỜI THỰC"
+    text: "Cộng đồng thời trang bền vững: Tối ưu giá trị sử dụng, giảm thiểu rác thải dệt may",
+    tag: "CỘNG ĐỒNG BỀN VỮNG"
   }
 ];
 

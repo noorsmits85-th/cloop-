@@ -115,11 +115,15 @@ export async function createBooking({
         }
       });
 
-      // Tạo Invoice đính kèm
+      // Tạo Invoice đính kèm chuẩn quy chuẩn kế toán (Tách rõ Cọc, Thuê, Ship, Phí sàn)
       await tx.invoice.create({
         data: {
           rentalId: rental.id,
           amount: totalAmount,
+          rentalFee: subTotal,
+          depositAmount: deposit,
+          shippingFeeCollected: shippingFee,
+          platformFee: serviceFee,
           status: "PENDING"
         }
       });

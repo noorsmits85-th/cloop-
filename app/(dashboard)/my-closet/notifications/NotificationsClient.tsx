@@ -208,7 +208,15 @@ export function NotificationsClient({
                   </p>
 
                   <div className="pt-1 flex items-center gap-1.5 text-[11px] font-bold text-[#183A2D] uppercase tracking-wider font-ui group-hover:underline">
-                    <span>Xem chi tiết giao dịch</span>
+                    <span>
+                      {item.type === "ORDER" 
+                        ? "Xem đơn hàng" 
+                        : item.type === "WALLET" 
+                        ? "Xem ví tiền" 
+                        : item.type === "COIN" 
+                        ? "Xem ví lá" 
+                        : "Khám phá ngay"}
+                    </span>
                     <ExternalLink size={12} />
                   </div>
                 </div>
@@ -221,11 +229,33 @@ export function NotificationsClient({
               <Bell size={22} />
             </div>
             <h3 className="font-bold text-base text-[#0A2517] font-heading">
-              Không có thông báo nào
+              {activeTab === "ORDER" 
+                ? "Chưa có đơn hàng nào" 
+                : activeTab === "WALLET" 
+                ? "Chưa có biến động số dư ví" 
+                : activeTab === "COIN"
+                ? "Chưa có lịch sử điểm lá"
+                : "Hộp thư thông báo đang trống"}
             </h3>
-            <p className="text-xs text-stone-500 max-w-sm mx-auto">
-              Mọi hoạt động mới nhất về đơn thuê, dòng tiền và điểm thưởng của bạn sẽ được hiển thị đầy đủ tại đây.
+            <p className="text-xs text-stone-500 max-w-md mx-auto">
+              {activeTab === "ORDER"
+                ? "Bạn chưa có đơn thuê hoặc cho thuê nào. Khi có khách thuê trang phục của bạn hoặc bạn đặt thuê đồ, tiến trình vận chuyển sẽ hiển thị tại đây."
+                : activeTab === "WALLET"
+                ? "Lịch sử nhận tiền thuê, hoàn cọc ký quỹ Escrow và rút tiền về tài khoản ngân hàng sẽ được cập nhật tự động khi phát sinh giao dịch."
+                : activeTab === "COIN"
+                ? "Điểm Lá Xanh ESG nhận được từ các nhiệm vụ tuần hoàn hoặc nạp thêm sẽ được hiển thị chi tiết tại đây."
+                : "Mọi hoạt động mới nhất về đơn thuê, dòng tiền và điểm thưởng cá nhân của bạn sẽ được hiển thị đầy đủ tại đây."}
             </p>
+            {activeTab === "ORDER" && (
+              <div className="pt-2">
+                <Link
+                  href="/shop"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-[#183A2D] hover:bg-emerald-800 px-4 py-2 rounded-xl transition shadow-xs"
+                >
+                  Khám phá trang phục trên sàn →
+                </Link>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -9,18 +9,37 @@ export default async function AdminDisputesPage() {
   await requireAdminOrRedirect();
 
   const disputes = await prisma.dispute.findMany({
+    take: 40,
     orderBy: { createdAt: "desc" },
-    include: {
-      invoice: true,
+    select: {
+      id: true,
+      rentalId: true,
+      description: true,
+      images: true,
+      severity: true,
+      suggestedDeduction: true,
+      finalDeduction: true,
+      status: true,
+      adminNotes: true,
+      createdAt: true,
+      invoice: {
+        select: {
+          depositAmount: true,
+          rentalFee: true,
+        },
+      },
       rental: {
-        include: {
+        select: {
+          renterId: true,
+          ownerId: true,
+          renter: { select: { name: true } },
           product: {
-            include: {
-              images: true,
-              user: true,
+            select: {
+              title: true,
+              images: { take: 1, select: { url: true } },
+              user: { select: { name: true } },
             },
           },
-          renter: true,
         },
       },
     },

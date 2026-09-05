@@ -159,19 +159,26 @@ export default function AdminDashboardClient({
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "PENDING_APPROVAL":
+      case "WAITING_SHIP":
         return <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">Chờ duyệt</span>;
+      case "OWNER_PACKED":
       case "LENDER_APPROVED":
-        return <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200">Đã duyệt • Chờ lấy đồ</span>;
+        return <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200">Đã gói • Chờ bưu tá</span>;
       case "LENDER_SHIPPED":
+      case "SHIPPED":
         return <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-purple-50 text-purple-800 border border-purple-200">Đang giao GHN</span>;
       case "BORROWER_RECEIVED":
         return <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-teal-50 text-teal-800 border border-teal-200">Khách đang mặc</span>;
       case "BORROWER_RETURNED":
+      case "RETURNED":
         return <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-orange-50 text-orange-800 border border-orange-200">Đã trả • Chờ nhả cọc</span>;
       case "LENDER_COMPLETED":
         return <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">✓ Hoàn tất & Đã nhả cọc</span>;
+      case "DISPUTE":
       case "DISPUTED":
         return <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-800 border border-rose-200">Đang tranh chấp</span>;
+      case "CANCELLED":
+        return <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-stone-100 text-stone-500 border border-stone-200">Đã hủy đơn</span>;
       default:
         return <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-stone-100 text-stone-700">{status}</span>;
     }
@@ -179,18 +186,32 @@ export default function AdminDashboardClient({
 
   const navigationModules = [
     {
-      title: "Kỳ Kế Toán & Đối Soát Sàn",
-      description: "Chốt sổ kế toán hàng tháng, ghi nhận Lợi nhuận gộp và quản lý Payouts.",
-      href: "/admin/accounting",
-      icon: <FileText size={20} className="text-emerald-700" />,
-      badge: "Kế toán"
-    },
-    {
       title: "Két Bảo Chứng Escrow",
-      description: "Giám sát quỹ tiền cọc ký quỹ, quản trị thanh khoản ngắn hạn và hoàn cọc.",
+      description: "Giám sát quỹ tiền cọc ký quỹ (TK 3386), quản trị thanh khoản ngắn hạn và hoàn cọc.",
       href: "/admin/deposit-vault",
       icon: <ShieldCheck size={20} className="text-teal-700" />,
       badge: "Két cọc"
+    },
+    {
+      title: "Vận Chuyển 2 Chiều GHN & Block 5K",
+      description: "Theo dõi hành trình đơn hàng, cước khứ hồi và quỹ đệm bảo vệ dòng tiền.",
+      href: "/admin/shipments",
+      icon: <Truck size={20} className="text-amber-700" />,
+      badge: "Logistics"
+    },
+    {
+      title: "Trọng Tài Khiếu Nại & Bồi Thường",
+      description: "Xử lý tranh chấp đồ hỏng, bồi thường trích từ tiền cọc bảo chứng Escrow.",
+      href: "/admin/disputes",
+      icon: <Scale size={20} className="text-rose-700" />,
+      badge: "Tranh chấp"
+    },
+    {
+      title: "Sổ Cái Kép TT 99/2025/TT-BTC",
+      description: "Nhật ký ghi sổ kép bất biến ghi nhận mọi dòng tiền vào - ra và bóc tách thuế.",
+      href: "/admin/ledger",
+      icon: <Layers size={20} className="text-purple-700" />,
+      badge: "Sổ cái"
     },
     {
       title: "Chi Trả Payouts Cho Chủ Tủ",
@@ -200,25 +221,11 @@ export default function AdminDashboardClient({
       badge: "Chi trả 24h"
     },
     {
-      title: "Sổ Cái Tài Chính Toàn Hệ Thống",
-      description: "Nhật ký ghi sổ kép bất biến ghi nhận mọi dòng tiền vào - ra của nền tảng.",
-      href: "/admin/ledger",
-      icon: <Layers size={20} className="text-purple-700" />,
-      badge: "Sổ cái"
-    },
-    {
-      title: "Vận Chuyển 2 Chiều GHN & Block 5K",
-      description: "Theo dõi hành trình đơn hàng, cước khứ hồi và biên độ bảo vệ dòng tiền.",
-      href: "/admin/shipments",
-      icon: <Truck size={20} className="text-amber-700" />,
-      badge: "Logistics"
-    },
-    {
-      title: "Trọng Tài Khiếu Nại & Bồi Thường",
-      description: "Xử lý tranh chấp đồ hỏng, bồi thường từ tiền cọc bảo chứng Escrow.",
-      href: "/admin/disputes",
-      icon: <Scale size={20} className="text-rose-700" />,
-      badge: "Tranh chấp"
+      title: "Kỳ Kế Toán & Báo Cáo P&L",
+      description: "Chốt sổ kế toán hàng tháng theo Thông tư 99, ghi nhận Lợi nhuận gộp toàn diện.",
+      href: "/admin/accounting",
+      icon: <FileText size={20} className="text-emerald-700" />,
+      badge: "Kế toán"
     }
   ];
 

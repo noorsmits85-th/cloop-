@@ -22,14 +22,14 @@ export default async function AdminPage() {
     redirect('/');
   }
 
-  // Truy vấn số liệu tổng hợp toàn sàn từ Supabase/Prisma
+  // Truy vấn số liệu tổng hợp toàn sàn từ Supabase/Prisma bằng DB aggregation (Siêu nhanh, không bốc thừa RAM)
   const [
     totalUsers,
     totalProducts,
     totalRentals,
     allRentals,
-    invoices,
-    topUps,
+    invoiceAgg,
+    topUpAgg,
     recentTopUps
   ] = await Promise.all([
     prisma.user.count(),
@@ -38,54 +38,66 @@ export default async function AdminPage() {
     prisma.rentalHistory.findMany({
       where: { isDeleted: false },
       orderBy: { createdAt: 'desc' },
-      take: 20,
-      include: {
+      take: 15,
+      select: {
+        id: true,
+        status: true,
+        start_date: true,
+        end_date: true,
+        renter_name: true,
+        renter_phone: true,
+        owner_name: true,
+        owner_phone: true,
+        shippingCode: true,
+        createdAt: true,
         product: { 
           select: { 
-            id: true,
             title: true, 
-            images: true, 
-            listings: true 
+            images: { take: 1, select: { url: true } }, 
+            listings: { take: 1, select: { basePrice: true } }
           } 
         },
-        renter: { select: { id: true, name: true, email: true, avatar: true } },
-        invoice: { select: { id: true, amount: true, depositAmount: true, rentalFee: true, platformFee: true, status: true } },
-        disputes: { select: { id: true, status: true, severity: true } }
+        renter: { select: { name: true } },
+        invoice: { select: { amount: true, depositAmount: true, rentalFee: true, platformFee: true, status: true } },
+        disputes: { take: 1, select: { id: true } }
       }
     }),
-    prisma.invoice.findMany({
+    prisma.invoice.aggregate({
       where: { isDeleted: false },
-      select: { amount: true, depositAmount: true, rentalFee: true, platformFee: true, status: true }
+      _sum: {
+        amount: true,
+        depositAmount: true,
+        platformFee: true,
+        rentalFee: true
+      }
     }),
-    prisma.coinTopUp.findMany({
+    prisma.coinTopUp.aggregate({
       where: { status: 'PAID' },
-      select: { amountVnd: true, totalCoins: true }
+      _sum: {
+        amountVnd: true,
+        totalCoins: true
+      }
     }),
     prisma.coinTopUp.findMany({
       take: 5,
       orderBy: { createdAt: 'desc' },
       where: { status: 'PAID' },
-      include: {
+      select: {
+        id: true,
+        amountVnd: true,
+        totalCoins: true,
+        createdAt: true,
         user: { select: { name: true } }
       }
     })
   ]);
 
-  // Tính toán số liệu tài chính & vận hành thực tế
-  let calculatedGMV = 0;
-  let calculatedEscrow = 0;
-  let calculatedPlatformFee = 0;
+  // Tính toán số liệu tài chính & vận hành thực tế trực tiếp từ kết quả aggregate của DB
+  let calculatedGMV = invoiceAgg._sum.amount || 0;
+  let calculatedEscrow = invoiceAgg._sum.depositAmount || 0;
+  let calculatedPlatformFee = invoiceAgg._sum.platformFee || Math.floor((invoiceAgg._sum.rentalFee || 0) * 0.12);
 
-  if (invoices && invoices.length > 0) {
-    calculatedGMV = invoices.reduce((sum, inv) => sum + (Number(inv.amount) || 0), 0);
-    calculatedEscrow = invoices.reduce((sum, inv) => {
-      // Chỉ tính các đơn đang giữ cọc chưa giải ngân
-      return sum + (Number(inv.depositAmount) || 0);
-    }, 0);
-    calculatedPlatformFee = invoices.reduce((sum, inv) => sum + (Number(inv.platformFee) || (Number(inv.rentalFee) * 0.12) || 0), 0);
-  }
-
-  // Nếu chưa có invoice phát sinh từ checkout, tính toán trực tiếp từ các đơn thuê thực tế
+  // Nếu chưa có invoice trong DB, tính toán trực tiếp từ các đơn thuê thực tế
   if (calculatedGMV === 0 && allRentals.length > 0) {
     allRentals.forEach(rent => {
       const listingPrice = rent.product?.listings?.[0]?.basePrice;
@@ -101,8 +113,8 @@ export default async function AdminPage() {
     });
   }
 
-  const totalCoinRevenue = topUps.reduce((sum, top) => sum + (Number(top.amountVnd) || 0), 0);
-  const totalCoinsIssued = topUps.reduce((sum, top) => sum + (Number(top.totalCoins) || 0), 0);
+  const totalCoinRevenue = topUpAgg._sum.amountVnd || 0;
+  const totalCoinsIssued = topUpAgg._sum.totalCoins || 0;
 
   const metrics = {
     totalUsers,
@@ -115,7 +127,7 @@ export default async function AdminPage() {
     totalCoinsIssued
   };
 
-  // Format đơn hàng cho bảng vận hành chi tiết
+  // Format đơn hàng cho bảng vận hành chi tiết (Múi giờ Việt Nam UTC+7)
   const formattedOrders = allRentals.map(rent => {
     const listingPrice = rent.product?.listings?.[0]?.basePrice;
     const rentFee = rent.invoice?.rentalFee || listingPrice || 350000;
@@ -132,8 +144,8 @@ export default async function AdminPage() {
       renterPhone: rent.renter_phone || "0912345678",
       ownerName: rent.owner_name || "Chủ tủ CLOOP",
       ownerPhone: rent.owner_phone || "0987654321",
-      startDate: rent.start_date ? new Date(rent.start_date).toLocaleDateString('vi-VN') : "Hôm nay",
-      endDate: rent.end_date ? new Date(rent.end_date).toLocaleDateString('vi-VN') : "3 ngày tới",
+      startDate: rent.start_date ? new Date(rent.start_date).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : "Hôm nay",
+      endDate: rent.end_date ? new Date(rent.end_date).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : "3 ngày tới",
       rentalFee: rentFee,
       depositAmount: depositAmt,
       totalAmount: totalAmount,
@@ -141,7 +153,7 @@ export default async function AdminPage() {
       status: rent.status,
       shippingCode: rent.shippingCode || `GHN${rent.id.slice(0, 6).toUpperCase()}VN`,
       hasDispute: rent.disputes && rent.disputes.length > 0,
-      createdAt: new Date(rent.createdAt).toLocaleDateString('vi-VN')
+      createdAt: new Date(rent.createdAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
     };
   });
 

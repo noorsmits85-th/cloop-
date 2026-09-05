@@ -46,14 +46,23 @@ export default function DepositVaultAdmin() {
       <div className="max-w-6xl mx-auto space-y-6">
         
         {/* HEADER */}
-        <div className="flex justify-between items-center border-b border-slate-200 pb-5">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 pb-5">
           <div>
             <h1 className="text-xl font-bold tracking-tight text-slate-900 uppercase">Hệ thống Quản lý Quỹ Bảo chứng (Deposit Vault)</h1>
             <p className="text-slate-500 text-xs mt-1">Hệ thống giám sát tối ưu hóa thanh khoản và quản trị dòng tiền ngắn hạn của CLOOP Network.</p>
           </div>
-          <button onClick={calculateVaultMetrics} className="inline-flex items-center gap-1.5 bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl text-xs font-semibold hover:bg-slate-50 shadow-sm transition-all">
-            <RefreshCw size={14} /> Làm mới số liệu
-          </button>
+          <div className="flex items-center gap-2.5">
+            <Link
+              href="/admin/ledger"
+              className="inline-flex items-center gap-1.5 bg-white border border-emerald-300 text-emerald-800 hover:text-emerald-950 px-3.5 py-2 rounded-xl text-xs font-bold hover:bg-emerald-50 shadow-xs transition-all"
+            >
+              <span>Xem Sổ Cái TT 99</span>
+              <ArrowUpRight size={14} />
+            </Link>
+            <button onClick={calculateVaultMetrics} className="inline-flex items-center gap-1.5 bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl text-xs font-semibold hover:bg-slate-50 shadow-sm transition-all cursor-pointer">
+              <RefreshCw size={14} /> Làm mới số liệu
+            </button>
+          </div>
         </div>
 
         {/* METRICS GRID */}

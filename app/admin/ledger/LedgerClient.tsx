@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { ArrowRight, CheckCircle2, ShieldCheck, Wallet, Receipt, Calendar, BookOpen, X, FileText, AlertTriangle } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, CheckCircle2, ShieldCheck, Wallet, Receipt, Calendar, BookOpen, X, FileText, AlertTriangle, Download } from "lucide-react";
 import { processReconciliation } from "@/app/actions/ledger";
 import { createDispute } from "@/app/actions/dispute";
 
@@ -36,16 +37,18 @@ export default function LedgerClient({ initialInvoices, totalPlatformFee, totalI
   const [disputeSeverity, setDisputeSeverity] = useState<"LOW" | "MEDIUM" | "HIGH">("LOW");
   const [disputeAmount, setDisputeAmount] = useState<number>(0);
   const [isSubmittingDispute, setIsSubmittingDispute] = useState(false);
+  const [showVatBreakdown, setShowVatBreakdown] = useState(true);
 
   const handleReconcile = async (invoice: any) => {
     setIsProcessing(invoice.id);
     
-    // Tính toán số liệu phân bổ
-    const FLAT_FEE = 10000;
-    const payoutToOwner = invoice.rentalFee - FLAT_FEE;
+    // Tính toán số liệu phân bổ theo chuẩn Techfest & TT 99
+    const platformFee = Math.floor(invoice.rentalFee * 0.12) || 42000;
+    const vatFee = Math.round(platformFee * 0.1);
+    const netPlatformFee = platformFee - vatFee;
+    const payoutToOwner = Math.max(0, invoice.rentalFee - platformFee - 25000);
     const refundToRenter = invoice.depositRefund;
 
-    // Trong môi trường Pilot, nếu chưa setup Auth Admin chuẩn, ta giả lập gọi Action
     try {
       const res = await processReconciliation(invoice.id, refundToRenter, payoutToOwner);
       
@@ -61,12 +64,151 @@ export default function LedgerClient({ initialInvoices, totalPlatformFee, totalI
         setSelectedInvoice({ ...invoice, status: "COMPLETED" });
       }
       
-      alert(`✅ Đối soát thành công Sổ cái!\n- Hoàn cọc: ${refundToRenter.toLocaleString()}đ\n- Chuyển chủ đồ: ${payoutToOwner.toLocaleString()}đ\n- Thu phí CLOOP: ${FLAT_FEE.toLocaleString()}đ`);
+      alert(`✅ Đối soát thành công Sổ cái (Chuẩn TT 99)!\n- Hoàn cọc (TK 3386 -> 112): ${refundToRenter.toLocaleString()}đ\n- Chuyển chủ đồ (TK 33882 -> 112): ${payoutToOwner.toLocaleString()}đ\n- Phí dịch vụ sàn (TK 5113): ${netPlatformFee.toLocaleString()}đ\n- Thuế GTGT đầu ra (TK 33311): ${vatFee.toLocaleString()}đ\n- Cước GHN 2 chiều: 42.000đ | Đệm 5K: 8.000đ`);
     } catch (error: any) {
       alert("Lỗi đối soát: " + error.message);
     } finally {
       setIsProcessing(null);
     }
+  };
+
+  const exportToExcel = () => {
+    const headers = [
+      "Mã Chứng Từ",
+      "Ngày Hạch Toán",
+      "Sản Phẩm / Đơn Thuê",
+      "Người Thuê",
+      "Chủ Tủ Đồ",
+      "Diễn Giải Nghiệp Vụ",
+      "Tài Khoản Nợ",
+      "Tài Khoản Có",
+      "Số Tiền (VNĐ)",
+      "Trạng Thái Sổ"
+    ];
+
+    const rows: string[][] = [];
+
+    invoices.forEach(inv => {
+      const code = `PC-${inv.id.substring(0, 8).toUpperCase()}`;
+      const rentalFee = inv.rentalFee;
+      const depositRefund = inv.depositRefund;
+      const platformFee = Math.floor(rentalFee * 0.12) || 10000;
+      const vatFee = Math.round(platformFee * 0.1);
+      const netPlatformFee = platformFee - vatFee;
+      const payoutToOwner = Math.max(0, rentalFee - platformFee - 25000);
+
+      // 1. Khách nạp tiền cọc + thuê + ship
+      rows.push([
+        code,
+        inv.createdAt,
+        inv.productName,
+        inv.renter,
+        inv.owner,
+        "Khách nạp tiền cọc, tiền thuê và cước ship qua VietQR",
+        "TK 112 (Tiền gửi không kỳ hạn)",
+        "TK 3386 / TK 33882 / TK 33883",
+        inv.totalDepositIn.toString(),
+        inv.status === "COMPLETED" ? "Đã đối soát" : "Chờ đối soát"
+      ]);
+
+      // 2. Hoàn cọc cho khách
+      rows.push([
+        code,
+        inv.createdAt,
+        inv.productName,
+        inv.renter,
+        inv.owner,
+        "Tất toán hoàn trả 100% tiền ký cược cọc đồ",
+        "TK 3386 (Két cọc Escrow)",
+        "TK 112 (Tiền gửi không kỳ hạn)",
+        depositRefund.toString(),
+        inv.status === "COMPLETED" ? "Đã đối soát" : "Chờ đối soát"
+      ]);
+
+      // 3. Payout chủ tủ
+      rows.push([
+        code,
+        inv.createdAt,
+        inv.productName,
+        inv.renter,
+        inv.owner,
+        "Thanh toán tiền thuê cho Chủ tủ sau khi cấn trừ phí sàn & ship chiều về",
+        "TK 33882 (Phải trả Chủ tủ)",
+        "TK 112 (Tiền gửi không kỳ hạn)",
+        payoutToOwner.toString(),
+        inv.status === "COMPLETED" ? "Đã đối soát" : "Chờ đối soát"
+      ]);
+
+      // 4. Doanh thu thuần sàn
+      rows.push([
+        code,
+        inv.createdAt,
+        inv.productName,
+        inv.renter,
+        inv.owner,
+        "Doanh thu thuần dịch vụ nền tảng CLOOP",
+        "TK 33882 (Phải trả Chủ tủ)",
+        "TK 5113 (Doanh thu cung cấp dịch vụ)",
+        netPlatformFee.toString(),
+        inv.status === "COMPLETED" ? "Đã đối soát" : "Chờ đối soát"
+      ]);
+
+      // 5. Thuế GTGT đầu ra
+      rows.push([
+        code,
+        inv.createdAt,
+        inv.productName,
+        inv.renter,
+        inv.owner,
+        "Thuế GTGT đầu ra dịch vụ TMĐT theo Thông tư 99",
+        "TK 33882 (Phải trả Chủ tủ)",
+        "TK 33311 (Thuế GTGT đầu ra)",
+        vatFee.toString(),
+        inv.status === "COMPLETED" ? "Đã đối soát" : "Chờ đối soát"
+      ]);
+
+      // 6. Cước GHN thực tế
+      rows.push([
+        code,
+        inv.createdAt,
+        inv.productName,
+        inv.renter,
+        inv.owner,
+        "Chi trả cước giao hàng thực tế bưu tá GHN",
+        "TK 33883 (Thu hộ vận chuyển)",
+        "TK 331 (Phải trả bưu tá GHN)",
+        "42000",
+        inv.status === "COMPLETED" ? "Đã đối soát" : "Chờ đối soát"
+      ]);
+
+      // 7. Thặng dư đệm Block 5K
+      rows.push([
+        code,
+        inv.createdAt,
+        inv.productName,
+        inv.renter,
+        inv.owner,
+        "Thặng dư thuật toán Block 5K (Quỹ phòng vệ giao lại)",
+        "TK 33883 (Thu hộ vận chuyển)",
+        "TK 3388_BUFFER (hoặc TK 711)",
+        "8000",
+        inv.status === "COMPLETED" ? "Đã đối soát" : "Chờ đối soát"
+      ]);
+    });
+
+    const csvContent = "\uFEFF" + [
+      headers.join(","),
+      ...rows.map(e => e.map(cell => `"${(cell || "").replace(/"/g, '""')}"`).join(","))
+    ].join("\r\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `So_Nhat_Ky_Chung_CLOOP_TT99_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -80,8 +222,23 @@ export default function LedgerClient({ initialInvoices, totalPlatformFee, totalI
               <p className="text-stone-500 mt-1">Nền tảng Ghi nhận & Định khoản dòng tiền theo Chuẩn mực Kế toán</p>
             </div>
           </div>
-          <div className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest flex items-center gap-2">
-            <BookOpen size={14} /> Chuẩn Kế Toán (Nợ/Có)
+          <div className="flex items-center gap-3">
+            <Link
+              href="/admin/payments"
+              className="bg-white hover:bg-emerald-50 text-stone-700 hover:text-emerald-800 border border-stone-300 hover:border-emerald-300 px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+            >
+              <span>Chi Trả Payouts</span>
+              <ArrowRight size={14} className="text-emerald-700" />
+            </Link>
+            <button
+              onClick={exportToExcel}
+              className="bg-white hover:bg-emerald-50 text-stone-700 hover:text-emerald-800 border border-stone-300 hover:border-emerald-300 px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-xs cursor-pointer"
+            >
+              <Download size={14} className="text-emerald-700" /> Xuất Sổ Kế Toán (Excel/CSV)
+            </button>
+            <div className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+              <BookOpen size={14} /> Chuẩn TT 99/2025/TT-BTC (Nợ/Có)
+            </div>
           </div>
         </div>
 
@@ -259,47 +416,129 @@ export default function LedgerClient({ initialInvoices, totalPlatformFee, totalI
 
               {activeTab === "accounting" ? (
                 <>
-                  <h3 className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-                    <BookOpen size={14} /> Trích lục Sổ Nhật Ký Kế Toán
-                  </h3>
-                  <div className="border border-stone-200 rounded-xl overflow-hidden mb-6">
-                    <table className="w-full text-left text-sm">
-                      <thead className="bg-stone-50 text-stone-500 font-medium text-xs">
-                        <tr>
-                          <th className="px-4 py-2 border-b border-stone-200">Diễn giải</th>
-                          <th className="px-4 py-2 border-b border-stone-200 text-center">Nợ</th>
-                          <th className="px-4 py-2 border-b border-stone-200 text-center">Có</th>
-                          <th className="px-4 py-2 border-b border-stone-200 text-right">Số tiền</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-stone-100">
-                        <tr className="bg-white">
-                          <td className="px-4 py-3 text-stone-800 font-medium">Hoàn trả tiền cọc cho khách</td>
-                          <td className="px-4 py-3 text-center font-mono text-stone-600">3388</td>
-                          <td className="px-4 py-3 text-center font-mono text-stone-600">112</td>
-                          <td className="px-4 py-3 text-right font-mono font-bold text-stone-700">{selectedInvoice.depositRefund.toLocaleString()}đ</td>
-                        </tr>
-                        <tr className="bg-white">
-                          <td className="px-4 py-3 text-stone-800 font-medium">Thanh toán cước phí cho chủ đồ</td>
-                          <td className="px-4 py-3 text-center font-mono text-stone-600">3388</td>
-                          <td className="px-4 py-3 text-center font-mono text-stone-600">112</td>
-                          <td className="px-4 py-3 text-right font-mono font-bold text-stone-700">{(selectedInvoice.rentalFee - 10000).toLocaleString()}đ</td>
-                        </tr>
-                        <tr className="bg-amber-50/40">
-                          <td className="px-4 py-3 text-amber-800 font-medium">Ghi nhận Doanh thu phí dịch vụ</td>
-                          <td className="px-4 py-3 text-center font-mono text-amber-700">3388</td>
-                          <td className="px-4 py-3 text-center font-mono text-amber-700">5113</td>
-                          <td className="px-4 py-3 text-right font-mono font-bold text-amber-700">10.000đ</td>
-                        </tr>
-                      </tbody>
-                      <tfoot className="bg-stone-50 border-t border-stone-200">
-                        <tr>
-                          <td colSpan={3} className="px-4 py-3 text-right font-bold text-stone-600 uppercase text-xs">Tổng cộng (Cân đối):</td>
-                          <td className="px-4 py-3 text-right font-mono font-bold text-emerald-700">{selectedInvoice.totalDepositIn.toLocaleString()}đ</td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
+                  {(() => {
+                    const modalPlatformFee = Math.floor(selectedInvoice.rentalFee * 0.12) || 42000;
+                    const modalVatFee = Math.round(modalPlatformFee * 0.1);
+                    const modalNetPlatformFee = modalPlatformFee - modalVatFee;
+                    const modalPayoutToOwner = Math.max(0, selectedInvoice.rentalFee - modalPlatformFee - 25000);
+
+                    return (
+                      <>
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="text-xs font-bold text-stone-500 uppercase tracking-wider flex items-center gap-2">
+                            <BookOpen size={14} /> Trích lục Sổ Nhật Ký Kế Toán
+                          </h3>
+                          <button
+                            onClick={() => setShowVatBreakdown(!showVatBreakdown)}
+                            className="text-xs font-semibold px-2.5 py-1 rounded-lg border transition-all flex items-center gap-1.5 cursor-pointer bg-white text-stone-600 hover:text-emerald-800 hover:border-emerald-300"
+                            title="Bấm để chuyển đổi giữa chế độ chi tiết thuế hoặc rút gọn"
+                          >
+                            <span className={`w-2 h-2 rounded-full ${showVatBreakdown ? "bg-emerald-500" : "bg-stone-400"}`}></span>
+                            {showVatBreakdown ? "Chế độ: Bóc tách Thuế GTGT (TT 99)" : "Chế độ: Gộp Phí dịch vụ (Rút gọn)"}
+                          </button>
+                        </div>
+                        <div className="border border-stone-200 rounded-xl overflow-hidden mb-6">
+                          <table className="w-full text-left text-sm">
+                            <thead className="bg-stone-50 text-stone-500 font-medium text-xs">
+                              <tr>
+                                <th className="px-4 py-2 border-b border-stone-200">Diễn giải</th>
+                                <th className="px-4 py-2 border-b border-stone-200 text-center">Nợ</th>
+                                <th className="px-4 py-2 border-b border-stone-200 text-center">Có</th>
+                                <th className="px-4 py-2 border-b border-stone-200 text-right">Số tiền</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-stone-100">
+                              <tr className="bg-white">
+                                <td className="px-4 py-3 text-stone-800 font-medium">
+                                  <span>Hoàn trả tiền cọc cho khách thuê</span>
+                                  <p className="text-[11px] text-stone-400">Két cọc Escrow - Hoàn bảo toàn 100%</p>
+                                </td>
+                                <td className="px-4 py-3 text-center font-mono text-stone-600 font-bold">3386</td>
+                                <td className="px-4 py-3 text-center font-mono text-stone-600 font-bold">112</td>
+                                <td className="px-4 py-3 text-right font-mono font-bold text-stone-700">{selectedInvoice.depositRefund.toLocaleString()}đ</td>
+                              </tr>
+                              <tr className="bg-white">
+                                <td className="px-4 py-3 text-stone-800 font-medium">
+                                  <span>Thanh toán tiền thuê cho chủ đồ</span>
+                                  <p className="text-[11px] text-stone-400">Thu hộ - Chi hộ chủ tủ (đã cấn trừ 12% phí sàn & 25k ship về)</p>
+                                </td>
+                                <td className="px-4 py-3 text-center font-mono text-stone-600 font-bold">33882</td>
+                                <td className="px-4 py-3 text-center font-mono text-stone-600 font-bold">112</td>
+                                <td className="px-4 py-3 text-right font-mono font-bold text-stone-700">{modalPayoutToOwner.toLocaleString()}đ</td>
+                              </tr>
+
+                              {showVatBreakdown ? (
+                                <>
+                                  <tr className="bg-amber-50/50">
+                                    <td className="px-4 py-3 text-amber-900 font-medium">
+                                      <span>Doanh thu phí dịch vụ sàn CLOOP (chưa VAT)</span>
+                                      <p className="text-[11px] text-amber-600">Hoa hồng đại lý nền tảng kết nối (90.91%)</p>
+                                    </td>
+                                    <td className="px-4 py-3 text-center font-mono text-amber-800 font-bold">33882</td>
+                                    <td className="px-4 py-3 text-center font-mono text-amber-800 font-bold">5113</td>
+                                    <td className="px-4 py-3 text-right font-mono font-bold text-amber-800">{modalNetPlatformFee.toLocaleString()}đ</td>
+                                  </tr>
+                                  <tr className="bg-amber-50/30">
+                                    <td className="px-4 py-3 text-amber-900 font-medium">
+                                      <span>Thuế GTGT đầu ra phải nộp (VAT 10%)</span>
+                                      <p className="text-[11px] text-amber-600">Nghĩa vụ thuế sàn TMĐT theo Thông tư 99/2025/TT-BTC</p>
+                                    </td>
+                                    <td className="px-4 py-3 text-center font-mono text-amber-800 font-bold">33882</td>
+                                    <td className="px-4 py-3 text-center font-mono text-amber-800 font-bold">33311</td>
+                                    <td className="px-4 py-3 text-right font-mono font-bold text-amber-800">{modalVatFee.toLocaleString()}đ</td>
+                                  </tr>
+                                </>
+                              ) : (
+                                <tr className="bg-amber-50/50">
+                                  <td className="px-4 py-3 text-amber-900 font-medium">
+                                    <span>Phí dịch vụ nền tảng CLOOP (Trọn gói 12%)</span>
+                                    <p className="text-[11px] text-amber-600">Hoa hồng môi giới kết nối tủ đồ tuần hoàn</p>
+                                  </td>
+                                  <td className="px-4 py-3 text-center font-mono text-amber-800 font-bold">33882</td>
+                                  <td className="px-4 py-3 text-center font-mono text-amber-800 font-bold">5113</td>
+                                  <td className="px-4 py-3 text-right font-mono font-bold text-amber-800">{modalPlatformFee.toLocaleString()}đ</td>
+                                </tr>
+                              )}
+
+                              <tr className="bg-blue-50/30">
+                                <td className="px-4 py-3 text-blue-950 font-medium">
+                                  <span>Chi trả cước giao hàng thực tế bưu tá GHN</span>
+                                  <p className="text-[11px] text-blue-600">Thanh toán cước 2 chiều giao & nhận (21.000đ x 2)</p>
+                                </td>
+                                <td className="px-4 py-3 text-center font-mono text-blue-800 font-bold">33883</td>
+                                <td className="px-4 py-3 text-center font-mono text-blue-800 font-bold">331</td>
+                                <td className="px-4 py-3 text-right font-mono font-bold text-blue-900">42.000đ</td>
+                              </tr>
+                              <tr className="bg-emerald-50/30">
+                                <td className="px-4 py-3 text-emerald-950 font-medium">
+                                  <span>Thặng dư thuật toán đệm Block 5K</span>
+                                  <p className="text-[11px] text-emerald-600">Quỹ phòng vệ rủi ro phát lại (50.000đ - 42.000đ)</p>
+                                </td>
+                                <td className="px-4 py-3 text-center font-mono text-emerald-800 font-bold">33883</td>
+                                <td className="px-4 py-3 text-center font-mono text-emerald-800 font-bold">3388_BUFFER</td>
+                                <td className="px-4 py-3 text-right font-mono font-bold text-emerald-900">8.000đ</td>
+                              </tr>
+                            </tbody>
+                            <tfoot className="bg-stone-50 border-t border-stone-200">
+                              <tr>
+                                <td colSpan={3} className="px-4 py-3 text-right font-bold text-stone-600 uppercase text-xs">Tổng cộng (Cân đối kép):</td>
+                                <td className="px-4 py-3 text-right font-mono font-bold text-emerald-700">{selectedInvoice.totalDepositIn.toLocaleString()}đ</td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+
+                        <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 text-[11px] text-stone-600 space-y-1 mb-6">
+                          <p className="font-bold text-stone-800">📌 Căn cứ Pháp lý & Chuẩn mực Kế toán Doanh nghiệp (Thông tư 99/2025/TT-BTC):</p>
+                          <p>• <strong>TK 112:</strong> Tiền gửi không kỳ hạn (kết nối trực tiếp cổng thanh toán VietQR / PayOS).</p>
+                          <p>• <strong>TK 3386 / 33881:</strong> Két Ký quỹ cọc Escrow (Tự chủ thiết kế tiểu khoản theo TT 99, bảo toàn 100% dòng tiền).</p>
+                          <p>• <strong>TK 33882:</strong> Phải trả thu hộ tiền thuê cho Chủ đồ (CLOOP đóng vai trò đại lý sàn kết nối).</p>
+                          <p>• <strong>TK 3388_BUFFER (hoặc TK 711):</strong> Thặng dư đệm an toàn Block 5K (+8.000đ) khớp chính xác công nợ bưu tá GHN (TK 331: 42.000đ).</p>
+                          <p>• <strong>TK 33311:</strong> Thuế GTGT đầu ra (VAT 10%) bóc tách minh bạch từ hoa hồng sàn.</p>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </>
               ) : (
                 <div className="bg-red-50/50 border border-red-100 p-5 rounded-xl mb-6">

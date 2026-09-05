@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/src/utils/supabase/server';
 import { translateAuthError } from '@/src/utils/authErrors';
+import { checkRateLimit } from '@/src/utils/rate-limit';
 
 export { translateAuthError };
 
@@ -35,6 +36,12 @@ export async function login(formData: FormData): Promise<AuthActionResult> {
 
   if (!email || !password) {
     return { error: 'Email và mật khẩu là bắt buộc.' };
+  }
+
+  // 🛡️ CHỐNG TẤN CÔNG HYDRA / BRUTE-FORCE: Khóa ngay sau 5 lần thử/phút
+  const rl = checkRateLimit(`login_${email}`, 5, 60 * 1000);
+  if (!rl.success) {
+    return { error: `Phát hiện quá nhiều lần thử đăng nhập không hợp lệ. Vui lòng thử lại sau ${rl.resetInSec} giây.` };
   }
 
   // Tự động gỡ rào cản email_confirmed_at nếu tài khoản chưa confirm
@@ -207,8 +214,8 @@ export async function signup(formData: FormData): Promise<AuthActionResult> {
     return { error: 'Email và mật khẩu là bắt buộc.' };
   }
 
-  if (password.length < 6) {
-    return { error: `Mật khẩu phải có ít nhất 6 ký tự.` };
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return { error: `Mật khẩu phải có ít nhất ${MIN_PASSWORD_LENGTH} ký tự.` };
   }
 
   // 1. Tạo tài khoản trong Supabase Auth

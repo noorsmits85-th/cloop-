@@ -16,7 +16,6 @@ import { useAuthModal } from "@/app/AuthModalContext";
 
 export default function MobileAppPage() {
   const { currentUser, setShowAuthModal } = useAuthModal();
-  const [showSplash, setShowSplash] = useState(false);
   const [isVisualSearchOpen, setIsVisualSearchOpen] = useState(false);
   const [products, setProducts] = useState<any[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
@@ -24,20 +23,7 @@ export default function MobileAppPage() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [likedItems, setLikedItems] = useState<Record<string, boolean>>({});
 
-  // 🌿 1. QUẢN LÝ MÀN HÌNH CHÀO NGHỆ THUẬT (CHỈ CHẠY RIÊNG TRONG /app)
-  useEffect(() => {
-    const hasSeenAppSplash = sessionStorage.getItem("cloop_app_route_splash_seen");
-    if (!hasSeenAppSplash) {
-      setShowSplash(true);
-      sessionStorage.setItem("cloop_app_route_splash_seen", "true");
-      const timer = setTimeout(() => {
-        setShowSplash(false);
-      }, 1900);
-      return () => clearTimeout(timer);
-    }
-  }, []);
-
-  // 🌿 2. LẤY DỮ LIỆU SẢN PHẨM & THÔNG BÁO THỰC TẾ
+  // 🌿 1. LẤY DỮ LIỆU SẢN PHẨM & THÔNG BÁO THỰC TẾ
   useEffect(() => {
     async function loadData() {
       try {
@@ -93,97 +79,8 @@ export default function MobileAppPage() {
       <div className="w-full max-w-[400px] min-h-screen sm:min-h-[860px] sm:max-h-[880px] sm:rounded-[52px] bg-[#FAF8F5] text-stone-900 antialiased shadow-[0_25px_90px_-10px_rgba(0,0,0,0.85),0_0_0_2px_#383B3F] sm:border-[2px] border-stone-600 relative overflow-y-auto overflow-x-hidden select-none pb-24 no-scrollbar">
         
         {/* ========================================================
-            🌸 1. MÀN HÌNH CHÀO ĐỘC BẢN CHO APP ("Fashion in a loop")
+            📱 2. APP HEADER BAR (SẮC NÉT, ĐẲNG CẤP, CÓ HỒN)
             ======================================================== */}
-        <AnimatePresence>
-          {showSplash && (
-            <motion.div
-              key="app-dedicated-splash"
-              initial={{ opacity: 1 }}
-              exit={{ 
-                opacity: 0, 
-                scale: 1.04,
-                filter: "blur(10px)",
-                transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] } 
-              }}
-              onClick={() => setShowSplash(false)}
-              className="absolute inset-0 z-[9999] flex flex-col items-center justify-center select-none cursor-pointer overflow-hidden sm:rounded-[2.5rem]"
-              style={{
-                background: "radial-gradient(ellipse at 50% 40%, #FFFFFF 0%, #F4FAF5 45%, #E2EFE7 100%)",
-              }}
-            >
-              <motion.div
-                animate={{
-                  scale: [1, 1.25, 1],
-                  rotate: [0, 15, 0],
-                  x: [-15, 20, -15],
-                  y: [-10, 15, -10],
-                }}
-                transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute top-1/5 -left-12 w-[320px] h-[320px] rounded-full bg-gradient-to-tr from-[#C5DFD0]/50 via-[#E4F3EB]/40 to-transparent blur-3xl pointer-events-none"
-              />
-
-              <div className="relative z-10 flex flex-col items-center text-center px-6">
-                <motion.div
-                  initial={{ scale: 0.6, opacity: 0, y: 15 }}
-                  animate={{ scale: 1, opacity: 1, y: 0 }}
-                  transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-                  className="relative w-24 h-24 mb-2 flex items-center justify-center"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-tr from-[#98C8A8]/40 via-[#B4DCBF]/30 to-[#E8F4EC]/60 rounded-full blur-xl animate-pulse" />
-                  <Image
-                    src="/loogo.png"
-                    alt="CLOOP"
-                    width={88}
-                    height={88}
-                    priority
-                    className="object-contain mix-blend-multiply drop-shadow-sm"
-                  />
-                </motion.div>
-
-                <motion.h1
-                  initial={{ opacity: 0, y: 10, letterSpacing: "0.25em" }}
-                  animate={{ opacity: 1, y: 0, letterSpacing: "0.15em" }}
-                  transition={{ duration: 0.8, delay: 0.25 }}
-                  className="font-brand-title text-4xl font-extrabold tracking-[0.15em] pl-[0.15em] leading-none animate-brand-shimmer drop-shadow-xs font-heading text-[#183A2D]"
-                >
-                  CLOOP
-                </motion.h1>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 8, scale: 0.92 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ duration: 0.9, delay: 0.55 }}
-                  className="mt-2.5 flex items-center justify-center gap-2.5"
-                >
-                  <span className="w-5 h-[1px] bg-gradient-to-r from-transparent to-[#4A785D]" />
-                  <p 
-                    className="font-handwriting text-2xl text-[#1E4B35] italic"
-                    style={{ fontFamily: "var(--font-dancing-script), cursive" }}
-                  >
-                    Fashion in a loop
-                  </p>
-                  <span className="w-5 h-[1px] bg-gradient-to-l from-transparent to-[#4A785D]" />
-                </motion.div>
-
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 0.7 }}
-                  transition={{ duration: 0.7, delay: 0.8 }}
-                  className="text-[9px] uppercase tracking-[0.3em] text-[#36634A] font-ui mt-3 font-semibold"
-                >
-                  Tủ Đồ Tuần Hoàn • Thời Trang Bền Vững
-                </motion.p>
-              </div>
-
-              <div className="absolute bottom-10 flex items-center gap-1.5 opacity-60">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#4A785D] animate-bounce" />
-                <span className="w-1.5 h-1.5 rounded-full bg-[#6C9E80] animate-bounce [animation-delay:0.2s]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-[#9DC6AD] animate-bounce [animation-delay:0.4s]" />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* ========================================================
             📱 2. APP HEADER BAR (SẮC NÉT, ĐẲNG CẤP, CÓ HỒN)
