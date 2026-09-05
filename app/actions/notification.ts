@@ -103,6 +103,7 @@ export async function getUserNotificationsAction(): Promise<{
           },
           select: {
             id: true,
+            product_id: true,
             status: true,
             createdAt: true,
             updatedAt: true,
@@ -119,6 +120,7 @@ export async function getUserNotificationsAction(): Promise<{
             },
             invoice: {
               select: {
+                status: true,
                 rentalFee: true,
                 depositAmount: true,
                 shippingFeeCollected: true,
@@ -175,11 +177,12 @@ export async function getUserNotificationsAction(): Promise<{
         const depositAmount = order.invoice?.depositAmount || 0;
         const isOwner = order.ownerId === userId || order.product?.userId === userId;
         const isRenter = order.renterId === userId;
+        const isPaid = order.invoice?.status === "PAID";
 
-        // Nếu tôi là Chủ tủ
+        // Nếu tôi là Chủ tủ: CHỈ thông báo khi khách ĐÃ thanh toán cọc thành công vào Két Escrow
         if (isOwner) {
           const renterName = order.renter?.name || order.renter_name || "Khách thuê";
-          if (order.status === "PENDING_APPROVAL" || order.status === "OWNER_PACKED") {
+          if (isPaid && (order.status === "PENDING_APPROVAL" || order.status === "OWNER_PACKED")) {
             const { formatted, relative } = formatDateTimeVN(order.createdAt);
             notifList.push({
               id: `order-owner-new-${order.id}`,
@@ -250,7 +253,7 @@ export async function getUserNotificationsAction(): Promise<{
 
         // Nếu tôi là Khách thuê
         if (isRenter) {
-          if (order.status === "PENDING_APPROVAL") {
+          if (isPaid && order.status === "PENDING_APPROVAL") {
             const { formatted, relative } = formatDateTimeVN(order.createdAt);
             notifList.push({
               id: `order-renter-paid-${order.id}`,
@@ -263,6 +266,21 @@ export async function getUserNotificationsAction(): Promise<{
               link: "/my-closet/orders?mode=renter",
               isRead: false,
               iconType: "check",
+              metadata: { orderId: order.id }
+            });
+          } else if (!isPaid && order.status === "PENDING_APPROVAL") {
+            const { formatted, relative } = formatDateTimeVN(order.createdAt);
+            notifList.push({
+              id: `order-renter-pending-${order.id}`,
+              type: "ORDER",
+              title: `Đang chờ thanh toán: "${itemTitle}"`,
+              message: `Đơn thuê #${orderShortId} đang chờ bạn quét mã VietQR chuyển khoản để chuyển tiền cọc vào Két Escrow.`,
+              timestamp: order.createdAt.toISOString(),
+              timeFormatted: formatted,
+              timeRelative: relative,
+              link: `/checkout/${order.product_id}`,
+              isRead: false,
+              iconType: "package",
               metadata: { orderId: order.id }
             });
           } else if (order.status === "LENDER_SHIPPED") {
