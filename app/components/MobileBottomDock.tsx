@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -115,7 +115,7 @@ export default function MobileBottomDock() {
           <div className="relative">
             <Bell size={21} strokeWidth={isNotifActive ? 2.5 : 1.8} />
             {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1.5 min-w-[15px] h-[15px] bg-rose-500 text-white text-[8.5px] font-extrabold rounded-full flex items-center justify-center px-0.5 border border-white animate-pulse">
+              <span className="absolute -top-1 -right-1.5 min-w-[15px] h-[15px] bg-rose-500 text-white text-[8.5px] font-extrabold rounded-full flex items-center justify-center px-0.5 border border-white">
                 {unreadCount > 9 ? "9+" : unreadCount}
               </span>
             )}

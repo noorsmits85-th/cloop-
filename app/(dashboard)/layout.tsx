@@ -184,12 +184,12 @@ export default function DashboardLayout({
                     {item.icon}
                     <span className="flex-1">{item.name}</span>
                     {item.path === "/my-closet/orders" && disputeCount > 0 && (
-                      <span className="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse shadow-sm">
+                      <span className="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs">
                         {disputeCount}
                       </span>
                     )}
                     {item.path === "/my-closet/notifications" && unreadNotifCount > 0 && (
-                      <span className="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse shadow-sm">
+                      <span className="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs">
                         {unreadNotifCount > 9 ? "9+" : unreadNotifCount}
                       </span>
                     )}
