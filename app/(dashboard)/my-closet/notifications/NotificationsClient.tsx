@@ -64,22 +64,49 @@ export function NotificationsClient({
   };
 
   const getIcon = (type: string, iconType: string) => {
-    const baseClass = "w-9 h-9 rounded-xl bg-stone-100 border border-stone-200/80 text-stone-700 flex items-center justify-center shrink-0";
     switch (iconType) {
       case "package":
-        return <div className={baseClass}><Package size={17} strokeWidth={1.75} /></div>;
+        return (
+          <div className="w-10 h-10 rounded-2xl bg-blue-50 border border-blue-200/80 text-blue-600 flex items-center justify-center shrink-0 shadow-2xs">
+            <Package size={19} strokeWidth={2} />
+          </div>
+        );
       case "wallet":
-        return <div className={baseClass}><Wallet size={17} strokeWidth={1.75} /></div>;
+        return (
+          <div className="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-200/80 text-amber-600 flex items-center justify-center shrink-0 shadow-2xs">
+            <Wallet size={19} strokeWidth={2} />
+          </div>
+        );
       case "coin":
-        return <div className={baseClass}><Leaf size={17} strokeWidth={1.75} /></div>;
+        return (
+          <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200/80 text-emerald-600 flex items-center justify-center shrink-0 shadow-2xs">
+            <Leaf size={19} strokeWidth={2} />
+          </div>
+        );
       case "truck":
-        return <div className={baseClass}><Truck size={17} strokeWidth={1.75} /></div>;
+        return (
+          <div className="w-10 h-10 rounded-2xl bg-sky-50 border border-sky-200/80 text-sky-600 flex items-center justify-center shrink-0 shadow-2xs">
+            <Truck size={19} strokeWidth={2} />
+          </div>
+        );
       case "check":
-        return <div className={baseClass}><CheckCircle2 size={17} strokeWidth={1.75} /></div>;
+        return (
+          <div className="w-10 h-10 rounded-2xl bg-teal-50 border border-teal-200/80 text-teal-600 flex items-center justify-center shrink-0 shadow-2xs">
+            <CheckCircle2 size={19} strokeWidth={2} />
+          </div>
+        );
       case "alert":
-        return <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 flex items-center justify-center shrink-0"><AlertTriangle size={17} strokeWidth={1.75} /></div>;
+        return (
+          <div className="w-10 h-10 rounded-2xl bg-rose-50 border border-rose-200/80 text-rose-600 flex items-center justify-center shrink-0 shadow-2xs">
+            <AlertTriangle size={19} strokeWidth={2} />
+          </div>
+        );
       default:
-        return <div className={baseClass}><Bell size={17} strokeWidth={1.75} /></div>;
+        return (
+          <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-200/80 text-indigo-600 flex items-center justify-center shrink-0 shadow-2xs">
+            <Bell size={19} strokeWidth={2} />
+          </div>
+        );
     }
   };
 
@@ -90,7 +117,7 @@ export function NotificationsClient({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-[#E9E2D8] shadow-2xs">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] uppercase font-bold tracking-widest text-stone-600 bg-stone-100 px-2.5 py-1 rounded-md border border-stone-200 font-ui">
+            <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-800 bg-[#EAF2EC] px-2.5 py-1 rounded-md border border-emerald-200/60 font-ui">
               TRUNG TÂM HOẠT ĐỘNG
             </span>
             {unreadCount > 0 && (
@@ -137,7 +164,7 @@ export function NotificationsClient({
                 : "bg-transparent text-stone-600 hover:bg-stone-100"
             }`}
           >
-            <Package size={13} strokeWidth={1.75} />
+            <Package size={14} strokeWidth={2} className={activeTab === "ORDER" ? "text-white" : "text-blue-600"} />
             <span>Đơn hàng</span>
           </button>
           <button
@@ -148,7 +175,7 @@ export function NotificationsClient({
                 : "bg-transparent text-stone-600 hover:bg-stone-100"
             }`}
           >
-            <Wallet size={13} strokeWidth={1.75} />
+            <Wallet size={14} strokeWidth={2} className={activeTab === "WALLET" ? "text-white" : "text-amber-600"} />
             <span>Ví tiền</span>
           </button>
           <button
@@ -159,7 +186,7 @@ export function NotificationsClient({
                 : "bg-transparent text-stone-600 hover:bg-stone-100"
             }`}
           >
-            <Leaf size={13} strokeWidth={1.75} />
+            <Leaf size={14} strokeWidth={2} className={activeTab === "COIN" ? "text-white" : "text-emerald-600"} />
             <span>Xu Lá ESG</span>
           </button>
         </div>

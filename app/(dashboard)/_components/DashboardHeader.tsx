@@ -125,22 +125,21 @@ export function DashboardHeader({
   };
 
   const getNotifIcon = (iconType: string) => {
-    const baseClass = "w-8 h-8 rounded-lg bg-stone-100 border border-stone-200/70 text-stone-700 flex items-center justify-center shrink-0";
     switch (iconType) {
       case "package":
-        return <div className={baseClass}><Package size={14} strokeWidth={1.75} /></div>;
+        return <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200/80 text-blue-600 flex items-center justify-center shrink-0"><Package size={15} strokeWidth={2} /></div>;
       case "wallet":
-        return <div className={baseClass}><Wallet size={14} strokeWidth={1.75} /></div>;
+        return <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200/80 text-amber-600 flex items-center justify-center shrink-0"><Wallet size={15} strokeWidth={2} /></div>;
       case "coin":
-        return <div className={baseClass}><Leaf size={14} strokeWidth={1.75} /></div>;
+        return <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200/80 text-emerald-600 flex items-center justify-center shrink-0"><Leaf size={15} strokeWidth={2} /></div>;
       case "truck":
-        return <div className={baseClass}><Truck size={14} strokeWidth={1.75} /></div>;
+        return <div className="w-8 h-8 rounded-lg bg-sky-50 border border-sky-200/80 text-sky-600 flex items-center justify-center shrink-0"><Truck size={15} strokeWidth={2} /></div>;
       case "check":
-        return <div className={baseClass}><CheckCircle2 size={14} strokeWidth={1.75} /></div>;
+        return <div className="w-8 h-8 rounded-lg bg-teal-50 border border-teal-200/80 text-teal-600 flex items-center justify-center shrink-0"><CheckCircle2 size={15} strokeWidth={2} /></div>;
       case "alert":
-        return <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 flex items-center justify-center shrink-0"><AlertTriangle size={14} strokeWidth={1.75} /></div>;
+        return <div className="w-8 h-8 rounded-lg bg-rose-50 border border-rose-200/80 text-rose-600 flex items-center justify-center shrink-0"><AlertTriangle size={15} strokeWidth={2} /></div>;
       default:
-        return <div className={baseClass}><Bell size={14} strokeWidth={1.75} /></div>;
+        return <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-200/80 text-indigo-600 flex items-center justify-center shrink-0"><Bell size={15} strokeWidth={2} /></div>;
     }
   };
 
