@@ -199,10 +199,10 @@ export default function PaymentsClient({ initialItems }: { initialItems: PayoutI
           <div className="space-y-1">
             <p className="font-bold text-stone-800">Quy tắc Mạch Giải ngân Khép kín CLOOP:</p>
             <p>
-              1. Sau khi khách thuê trả đồ và chủ tủ xác nhận không tranh chấp, cọc của khách được Két Escrow hoàn trả $100\%$ qua VietQR.
+              1. Sau khi khách thuê trả đồ và chủ tủ xác nhận không tranh chấp, cọc của khách được Két Escrow hoàn trả 100% qua VietQR.
             </p>
             <p>
-              2. Tiền thuê của chủ tủ được cấn trừ $12\%$ phí sàn CLOOP và $25.000đ$ cước thu hồi tài sản. Số tiền còn lại được chuyển khoản trực tiếp vào tài khoản ngân hàng trong 24 giờ.
+              2. Tiền thuê của chủ tủ được cấn trừ phí sàn CLOOP (12% hoặc 0% nếu đơn lỗi) và cước chuyển hoàn (nếu có). Số tiền còn lại được chuyển khoản trực tiếp vào tài khoản ngân hàng trong vòng 24 giờ.
             </p>
           </div>
         </div>
