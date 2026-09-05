@@ -625,6 +625,16 @@ export function OrdersClient({
                                     <Truck size={14} strokeWidth={2} /> Chờ điều phối Shipper...
                                   </div>
                                 )}
+                                {order.status === "LENDER_SHIPPED" && (
+                                  <div className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-medium px-4 py-2.5 rounded-md flex items-center gap-2">
+                                    <Truck size={14} className="text-emerald-700" /> Đang vận chuyển • Chờ khách nhận đồ
+                                  </div>
+                                )}
+                                {order.status === "BORROWER_RECEIVED" && (
+                                  <div className="bg-sky-50 text-sky-800 border border-sky-200 text-xs font-medium px-4 py-2.5 rounded-md flex items-center gap-2">
+                                    <CheckCircle size={14} className="text-sky-700" /> Khách đang diện đồ • Chờ đến hạn trả
+                                  </div>
+                                )}
                                 {order.status === "BORROWER_RETURNED" && (
                                   <button 
                                     disabled={completingIds[order.id]}
