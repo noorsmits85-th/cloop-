@@ -3,6 +3,7 @@
 import { prisma } from "@/src/lib/prisma";
 import { requireUser } from "@/src/lib/auth";
 import { revalidatePath } from "next/cache";
+import { calculateDynamicGhnFee, extractProvince } from "@/src/utils/shipping";
 
 
 export async function renterReceivedAction(orderId: string) {
@@ -576,7 +577,8 @@ export async function acceptDisputeProposalAction(disputeId: string) {
         rental: {
           include: {
             product: true,
-            invoice: true
+            invoice: true,
+            shipments: true
           }
         }
       }
@@ -749,6 +751,14 @@ export async function acceptDisputeProposalAction(disputeId: string) {
           specificAddress: rental.product?.specificAddress,
         };
 
+        const deliveryShipment = rental.shipments?.find((s: any) => s.direction === "DELIVERY");
+        const renterDeliveryAddr = deliveryShipment?.deliveryAddress as any;
+        const renterProvince = renterDeliveryAddr?.province || extractProvince(renterDeliveryAddr?.specificAddress || "") || "Hà Nội";
+        const ownerProvince = rental.product?.province || "Hà Nội";
+
+        const dynamicGhn = calculateDynamicGhnFee(renterProvince, ownerProvince);
+        const dynamicReturnFee = dynamicGhn.fee || invoice.shippingFeeCollected || 25000;
+
         await tx.shipment.upsert({
           where: {
             rentalId_direction: {
@@ -763,7 +773,14 @@ export async function acceptDisputeProposalAction(disputeId: string) {
             deliveryAddress,
             bookedByUserId: userAuth.id,
             trackingCode: `GHN-RET-${rental.id.slice(0, 6).toUpperCase()}`,
-            providerRawPayload: { paymentSide: "RECEIVER_PAYS", estimatedFee: 25000 }
+            providerRawPayload: {
+              paymentSide: "RECEIVER_PAYS",
+              estimatedFee: dynamicReturnFee,
+              zoneLabel: dynamicGhn.zoneLabel,
+              estimatedDays: dynamicGhn.estimatedDays,
+              fromProvince: renterProvince,
+              toProvince: ownerProvince,
+            }
           },
           create: {
             rentalId: rental.id,
@@ -775,7 +792,14 @@ export async function acceptDisputeProposalAction(disputeId: string) {
             deliveryAddress,
             bookedByUserId: userAuth.id,
             trackingCode: `GHN-RET-${rental.id.slice(0, 6).toUpperCase()}`,
-            providerRawPayload: { paymentSide: "RECEIVER_PAYS", estimatedFee: 25000 }
+            providerRawPayload: {
+              paymentSide: "RECEIVER_PAYS",
+              estimatedFee: dynamicReturnFee,
+              zoneLabel: dynamicGhn.zoneLabel,
+              estimatedDays: dynamicGhn.estimatedDays,
+              fromProvince: renterProvince,
+              toProvince: ownerProvince,
+            }
           }
         });
 

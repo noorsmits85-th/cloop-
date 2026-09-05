@@ -57,6 +57,19 @@ export default async function MyClosetOrdersPage() {
             }
           },
           disputes: { orderBy: { createdAt: 'desc' } },
+          shipments: {
+            select: {
+              id: true,
+              direction: true,
+              status: true,
+              trackingCode: true,
+              shippingFeeCollected: true,
+              actualShippingFee: true,
+              pickupAddress: true,
+              deliveryAddress: true,
+              providerRawPayload: true,
+            }
+          },
           renter: {
             select: {
               id: true,
@@ -102,6 +115,19 @@ export default async function MyClosetOrdersPage() {
             }
           },
           disputes: { orderBy: { createdAt: 'desc' } },
+          shipments: {
+            select: {
+              id: true,
+              direction: true,
+              status: true,
+              trackingCode: true,
+              shippingFeeCollected: true,
+              actualShippingFee: true,
+              pickupAddress: true,
+              deliveryAddress: true,
+              providerRawPayload: true,
+            }
+          },
           product: {
             select: {
               id: true,

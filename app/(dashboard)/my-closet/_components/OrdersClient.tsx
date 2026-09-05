@@ -10,6 +10,7 @@ import { requestPickupAction } from "@/app/actions/shipment";
 import { CldUploadWidget } from "next-cloudinary";
 import Link from "next/link";
 import { toast } from "sonner";
+import { calculateDynamicGhnFee, extractProvince } from "@/src/utils/shipping";
 
 const PLACEHOLDER_IMG = "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=120";
 
@@ -652,16 +653,35 @@ export function OrdersClient({
                                 )}
                                 {order.status === "BORROWER_RETURNED" && (
                                   <div className="w-full space-y-2.5">
-                                    {order.disputes?.some((d: any) => d.status === "APPROVED_DEDUCTION" || d.adminNotes?.includes("pendingRefundToRenter")) && (
-                                      <div className="p-3 rounded-lg bg-amber-50/80 border border-amber-200/80 text-[11px] text-amber-950 space-y-1">
-                                        <div className="flex items-center gap-1.5 font-semibold text-amber-800">
-                                          <RotateCcw size={14} /> Kiện hàng đang hoàn về từ khách (Do khiếu nại sai mẫu / lỗi)
+                                    {order.disputes?.some((d: any) => d.status === "APPROVED_DEDUCTION" || d.adminNotes?.includes("pendingRefundToRenter")) && (() => {
+                                      const deliveryShipment = order.shipments?.find((s: any) => s.direction === "DELIVERY");
+                                      const renterAddr = deliveryShipment?.deliveryAddress as any;
+                                      const renterProvince = renterAddr?.province || (order.buyerAddress ? order.buyerAddress.split(',').slice(-1)[0]?.trim() : "") || "Khách thuê";
+                                      const ownerProvince = order.product?.province || "Hà Nội";
+                                      
+                                      const returnShipment = order.shipments?.find((s: any) => s.direction === "RETURN");
+                                      const returnPayload = returnShipment?.providerRawPayload as any;
+                                      
+                                      const dynamicGhn = calculateDynamicGhnFee(renterProvince, ownerProvince);
+                                      const estimatedFee = returnPayload?.estimatedFee || dynamicGhn.fee || order.invoice?.shippingFeeCollected || 25000;
+                                      const zoneLabel = returnPayload?.zoneLabel || dynamicGhn.zoneLabel;
+
+                                      return (
+                                        <div className="p-3 rounded-lg bg-amber-50/80 border border-amber-200/80 text-[11px] text-amber-950 space-y-1.5">
+                                          <div className="flex items-center gap-1.5 font-semibold text-amber-800">
+                                            <RotateCcw size={14} /> Kiện hàng đang chuyển hoàn GHN từ khách (Do khiếu nại sai mẫu / lỗi)
+                                          </div>
+                                          <div className="text-[10.5px] text-amber-900/90 font-mono flex flex-wrap items-center gap-2">
+                                            <span>Tuyến GHN: <strong>{renterProvince}</strong> → <strong>{ownerProvince}</strong> ({zoneLabel})</span>
+                                            <span>•</span>
+                                            <span>Cước thu trực tiếp: <strong className="text-amber-800 font-semibold">{estimatedFee.toLocaleString('vi-VN')}đ</strong></span>
+                                          </div>
+                                          <p className="text-[10px] text-amber-800/90 leading-relaxed font-light">
+                                            ⚠️ <strong>Lưu ý nhận hàng:</strong> Cước GHN được tính linh động theo cự ly địa chỉ 2 bên ({zoneLabel}). Chủ tủ tự thanh toán cước chuyển hoàn cho bưu tá khi nhận lại đồ. Sau khi kiểm tra kiện hàng hoàn tất, bấm nút bên dưới để giải ngân hoàn 100% tiền cọc & tiền thuê cho khách.
+                                          </p>
                                         </div>
-                                        <p className="text-[10px] text-amber-800/90 leading-relaxed font-light">
-                                          ⚠️ <strong>Lưu ý:</strong> Chủ tủ tự thanh toán cước giao về (~25.000đ) cho bưu tá khi nhận lại kiện hàng. Sau khi kiểm tra hàng hoàn tất, bấm nút bên dưới để giải ngân hoàn 100% tiền cọc & tiền thuê cho khách.
-                                        </p>
-                                      </div>
-                                    )}
+                                      );
+                                    })()}
                                     <div className="flex flex-wrap gap-3">
                                       <button 
                                         disabled={completingIds[order.id]}
@@ -1095,11 +1115,22 @@ export function OrdersClient({
                 placeholder={!isOwnerMode ? `VD: ${selectedOrderForDispute.invoice?.rentalFee || 50000} (Hoàn 100% tiền thuê)` : "VD: 80000 (chi phí spa, phục hồi...)"} 
                 className="w-full px-4 py-2.5 rounded-md border border-stone-200/60 text-sm font-medium focus:outline-none focus:border-amber-500 bg-stone-50/30 transition-colors" 
               />
-              <p className="text-[10px] text-stone-400 italic leading-relaxed">
-                {!isOwnerMode 
-                  ? `* Khi hàng lỗi: CLOOP miễn phí dịch vụ sàn 100%. Phí ship chiều đi do khách trả khi mới khui, phí ship chiều về do chủ tủ tự thanh toán cho bưu tá khi nhận lại hàng. Toàn bộ tiền cọc (${(selectedOrderForDispute.invoice?.depositAmount || 0).toLocaleString('vi-VN')}đ) và tiền thuê sẽ được hoàn về ví của bạn.`
-                  : "* Khoản tiền này sẽ được khấu trừ từ tiền cọc của khách thuê chuyển thẳng vào ví chủ đồ sau khi 2 bên đồng thuận."}
-              </p>
+              {(() => {
+                const deliveryShipment = selectedOrderForDispute.shipments?.find((s: any) => s.direction === "DELIVERY");
+                const renterAddr = deliveryShipment?.deliveryAddress as any;
+                const renterProvince = renterAddr?.province || (selectedOrderForDispute.buyerAddress ? selectedOrderForDispute.buyerAddress.split(',').slice(-1)[0]?.trim() : "") || "Khách thuê";
+                const ownerProvince = selectedOrderForDispute.product?.province || "Hà Nội";
+                const dynamicGhn = calculateDynamicGhnFee(renterProvince, ownerProvince);
+                const dynamicFeeText = dynamicGhn.fee ? `${dynamicGhn.fee.toLocaleString('vi-VN')}đ (${dynamicGhn.zoneLabel})` : `${(selectedOrderForDispute.invoice?.shippingFeeCollected || 25000).toLocaleString('vi-VN')}đ`;
+
+                return (
+                  <p className="text-[10px] text-stone-400 italic leading-relaxed">
+                    {!isOwnerMode 
+                      ? `* Khi hàng lỗi: CLOOP miễn phí dịch vụ sàn 100%. Phí ship chiều đi do khách trả khi mới khui, phí ship chiều về (${dynamicFeeText}) do chủ tủ tự thanh toán cho bưu tá GHN khi nhận lại đồ. Toàn bộ tiền cọc (${(selectedOrderForDispute.invoice?.depositAmount || 0).toLocaleString('vi-VN')}đ) và tiền thuê sẽ được hoàn về ví của bạn.`
+                      : "* Khoản tiền này sẽ được khấu trừ từ tiền cọc của khách thuê chuyển thẳng vào ví chủ đồ sau khi 2 bên đồng thuận."}
+                  </p>
+                );
+              })()}
             </div>
 
             <div className="space-y-1.5">
