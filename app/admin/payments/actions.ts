@@ -137,14 +137,48 @@ export async function markPayoutCompletedAction(payoutId: string) {
 
     // Nếu là WithdrawalRequest
     const wr = await prisma.withdrawalRequest.findUnique({ where: { id: payoutId } });
-    if (wr) {
-      await prisma.withdrawalRequest.update({
-        where: { id: payoutId },
-        data: {
-          status: "APPROVED",
-          processedBy: admin.id,
-          processedAt: new Date()
-        }
+    if (wr && wr.status === "PENDING") {
+      await prisma.$transaction(async (tx) => {
+        await tx.withdrawalRequest.update({
+          where: { id: payoutId },
+          data: {
+            status: "APPROVED",
+            processedBy: admin.id,
+            processedAt: new Date()
+          }
+        });
+
+        await tx.user.update({
+          where: { id: wr.userId },
+          data: {
+            pendingWithdrawalBalance: { decrement: wr.amount }
+          }
+        });
+
+        await tx.ledgerTransaction.create({
+          data: {
+            type: "WITHDRAWAL_PAYOUT",
+            amount: -wr.amount,
+            description: `Giải ngân chuyển khoản thành công ${wr.amount.toLocaleString('vi-VN')}₫ về ${wr.bankName} (${wr.bankAccountNumber}) cho ${wr.bankAccountHolder}`,
+            status: "COMPLETED"
+          }
+        });
+
+        await tx.auditLog.create({
+          data: {
+            adminId: admin.id,
+            action: "WITHDRAWAL_APPROVED",
+            targetType: "WITHDRAWAL_REQUEST",
+            targetId: wr.id,
+            metadata: JSON.stringify({
+              amount: wr.amount,
+              bankName: wr.bankName,
+              bankAccountNumber: wr.bankAccountNumber,
+              bankAccountHolder: wr.bankAccountHolder,
+              processedAt: new Date().toISOString()
+            })
+          }
+        });
       });
     }
 
