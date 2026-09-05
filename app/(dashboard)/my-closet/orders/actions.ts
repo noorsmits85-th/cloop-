@@ -657,22 +657,19 @@ export async function acceptDisputeProposalAction(disputeId: string) {
       // 1. Phí dịch vụ sàn: CLOOP miễn phí dịch vụ sàn 100% khi hàng lỗi (platformFee = 0)
       platformFeeCollected = 0;
 
-      // 2. Phí vận chuyển 2 chiều: Giữ lại để đối soát trả nhà vận chuyển (GHN/GHTK)
-      // - Chiều đi: shippingFeeCollected (đã thu từ khách khi tạo đơn)
-      // - Chiều về: returnShippingFee (25.000đ) giữ lại từ tiền thuê của đơn
-      returnShippingRetained = Math.min(returnShippingFee, rentalFee);
+      // 2. Chiều đi (khi mới khui): Khách đã trả tiền ship khi tạo đơn (shippingFeeCollected), sàn giữ lại đối soát trả bưu tá
+      // 3. Chiều về (chuyển về): Chủ tủ tự thanh toán cước giao về cho shipper khi nhận lại hàng (Người nhận trả cước)
+      //    -> returnShippingRetained trong Escrow = 0 (vì chủ tủ tự trả tiền cho shipper khi nhận lại đồ)
+      returnShippingRetained = 0;
 
-      // 3. Tiền cọc được hoàn trả 100% về cho khách thuê:
+      // 4. Tiền cọc được hoàn trả 100% về cho khách thuê:
       refundDepositToRenter = depositAmount;
 
-      // 4. Quỹ tiền thuê còn lại sau khi giữ lại phí ship chiều về:
-      const availableRentalPool = Math.max(0, rentalFee - returnShippingRetained);
+      // 5. Tiền thuê hoàn cho khách thuê (100% tiền thuê, khách không bị trừ bất kỳ chi phí nào):
+      refundRentalToRenter = deduction > 0 ? Math.min(deduction, rentalFee) : rentalFee;
 
-      // 5. Tiền thuê hoàn cho khách thuê:
-      refundRentalToRenter = deduction > 0 ? Math.min(deduction, availableRentalPool) : availableRentalPool;
-
-      // 6. Tiền thuê còn lại cho chủ đồ (nếu khách chỉ khiếu nại hoàn 1 phần):
-      ownerRentalPayout = Math.max(0, availableRentalPool - refundRentalToRenter);
+      // 6. Tiền thuê còn lại cho chủ đồ (bằng 0 nếu hoàn 100% cho khách):
+      ownerRentalPayout = Math.max(0, rentalFee - refundRentalToRenter);
       compensationToOwner = 0;
 
     } else {
@@ -766,6 +763,7 @@ export async function acceptDisputeProposalAction(disputeId: string) {
             deliveryAddress,
             bookedByUserId: userAuth.id,
             trackingCode: `GHN-RET-${rental.id.slice(0, 6).toUpperCase()}`,
+            providerRawPayload: { paymentSide: "RECEIVER_PAYS", estimatedFee: 25000 }
           },
           create: {
             rentalId: rental.id,
@@ -777,6 +775,7 @@ export async function acceptDisputeProposalAction(disputeId: string) {
             deliveryAddress,
             bookedByUserId: userAuth.id,
             trackingCode: `GHN-RET-${rental.id.slice(0, 6).toUpperCase()}`,
+            providerRawPayload: { paymentSide: "RECEIVER_PAYS", estimatedFee: 25000 }
           }
         });
 

@@ -658,7 +658,7 @@ export function OrdersClient({
                                           <RotateCcw size={14} /> Kiện hàng đang hoàn về từ khách (Do khiếu nại sai mẫu / lỗi)
                                         </div>
                                         <p className="text-[10px] text-amber-800/90 leading-relaxed font-light">
-                                          Vui lòng kiểm tra kiện hàng hoàn sau khi shipper giao tới. Khi xác nhận nhận lại đồ thành công, tiền thuê & cọc sẽ được giải ngân hoàn trả về ví của khách.
+                                          ⚠️ <strong>Lưu ý:</strong> Chủ tủ tự thanh toán cước giao về (~25.000đ) cho bưu tá khi nhận lại kiện hàng. Sau khi kiểm tra hàng hoàn tất, bấm nút bên dưới để giải ngân hoàn 100% tiền cọc & tiền thuê cho khách.
                                         </p>
                                       </div>
                                     )}
@@ -1097,7 +1097,7 @@ export function OrdersClient({
               />
               <p className="text-[10px] text-stone-400 italic leading-relaxed">
                 {!isOwnerMode 
-                  ? `* Khi hàng lỗi: CLOOP miễn 100% phí dịch vụ sàn (0đ). Phí vận chuyển 2 chiều (chiều đi & chiều về) được giữ lại đối soát với nhà vận chuyển. 100% tiền cọc (${(selectedOrderForDispute.invoice?.depositAmount || 0).toLocaleString('vi-VN')}đ) và tiền thuê còn lại sẽ được hoàn về ví của bạn khi chủ tủ nhận lại đồ.`
+                  ? `* Khi hàng lỗi: CLOOP miễn phí dịch vụ sàn 100%. Phí ship chiều đi do khách trả khi mới khui, phí ship chiều về do chủ tủ tự thanh toán cho bưu tá khi nhận lại hàng. Toàn bộ tiền cọc (${(selectedOrderForDispute.invoice?.depositAmount || 0).toLocaleString('vi-VN')}đ) và tiền thuê sẽ được hoàn về ví của bạn.`
                   : "* Khoản tiền này sẽ được khấu trừ từ tiền cọc của khách thuê chuyển thẳng vào ví chủ đồ sau khi 2 bên đồng thuận."}
               </p>
             </div>
