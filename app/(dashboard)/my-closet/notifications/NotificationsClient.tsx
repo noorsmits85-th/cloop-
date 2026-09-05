@@ -64,21 +64,22 @@ export function NotificationsClient({
   };
 
   const getIcon = (type: string, iconType: string) => {
+    const baseClass = "w-9 h-9 rounded-xl bg-stone-100 border border-stone-200/80 text-stone-700 flex items-center justify-center shrink-0";
     switch (iconType) {
       case "package":
-        return <div className="w-10 h-10 rounded-2xl bg-emerald-100/80 text-[#183A2D] flex items-center justify-center shrink-0 shadow-2xs"><Package size={20} /></div>;
+        return <div className={baseClass}><Package size={17} strokeWidth={1.75} /></div>;
       case "wallet":
-        return <div className="w-10 h-10 rounded-2xl bg-amber-100/80 text-amber-800 flex items-center justify-center shrink-0 shadow-2xs"><Wallet size={20} /></div>;
+        return <div className={baseClass}><Wallet size={17} strokeWidth={1.75} /></div>;
       case "coin":
-        return <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-200/60 flex items-center justify-center shrink-0 shadow-2xs"><Leaf size={20} /></div>;
+        return <div className={baseClass}><Leaf size={17} strokeWidth={1.75} /></div>;
       case "truck":
-        return <div className="w-10 h-10 rounded-2xl bg-blue-100/80 text-blue-800 flex items-center justify-center shrink-0 shadow-2xs"><Truck size={20} /></div>;
+        return <div className={baseClass}><Truck size={17} strokeWidth={1.75} /></div>;
       case "check":
-        return <div className="w-10 h-10 rounded-2xl bg-teal-100 text-teal-800 flex items-center justify-center shrink-0 shadow-2xs"><CheckCircle2 size={20} /></div>;
+        return <div className={baseClass}><CheckCircle2 size={17} strokeWidth={1.75} /></div>;
       case "alert":
-        return <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-800 flex items-center justify-center shrink-0 shadow-2xs"><AlertTriangle size={20} /></div>;
+        return <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 flex items-center justify-center shrink-0"><AlertTriangle size={17} strokeWidth={1.75} /></div>;
       default:
-        return <div className="w-10 h-10 rounded-2xl bg-stone-100 text-stone-700 flex items-center justify-center shrink-0 shadow-2xs"><Star size={20} /></div>;
+        return <div className={baseClass}><Bell size={17} strokeWidth={1.75} /></div>;
     }
   };
 
@@ -89,11 +90,11 @@ export function NotificationsClient({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-[#E9E2D8] shadow-2xs">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-800 bg-[#EAF2EC] px-2.5 py-1 rounded-md border border-emerald-200/60 font-ui">
+            <span className="text-[10px] uppercase font-bold tracking-widest text-stone-600 bg-stone-100 px-2.5 py-1 rounded-md border border-stone-200 font-ui">
               TRUNG TÂM HOẠT ĐỘNG
             </span>
             {unreadCount > 0 && (
-              <span className="text-[10px] font-bold bg-rose-500 text-white px-2 py-0.5 rounded-full font-ui animate-pulse">
+              <span className="text-[10px] font-bold bg-[#183A2D] text-white px-2 py-0.5 rounded-full font-ui">
                 {unreadCount} mới
               </span>
             )}
@@ -116,11 +117,11 @@ export function NotificationsClient({
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-[#E9E2D8] shadow-2xs font-ui">
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-2.5 rounded-2xl border border-[#E9E2D8] shadow-2xs font-ui">
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
           <button
             onClick={() => setActiveTab("ALL")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeTab === "ALL" 
                 ? "bg-[#183A2D] text-white shadow-xs" 
                 : "bg-transparent text-stone-600 hover:bg-stone-100"
@@ -130,33 +131,36 @@ export function NotificationsClient({
           </button>
           <button
             onClick={() => setActiveTab("ORDER")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeTab === "ORDER" 
                 ? "bg-[#183A2D] text-white shadow-xs" 
                 : "bg-transparent text-stone-600 hover:bg-stone-100"
             }`}
           >
-            📦 Đơn hàng
+            <Package size={13} strokeWidth={1.75} />
+            <span>Đơn hàng</span>
           </button>
           <button
             onClick={() => setActiveTab("WALLET")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeTab === "WALLET" 
                 ? "bg-[#183A2D] text-white shadow-xs" 
                 : "bg-transparent text-stone-600 hover:bg-stone-100"
             }`}
           >
-            💰 Ví tiền
+            <Wallet size={13} strokeWidth={1.75} />
+            <span>Ví tiền</span>
           </button>
           <button
             onClick={() => setActiveTab("COIN")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeTab === "COIN" 
                 ? "bg-[#183A2D] text-white shadow-xs" 
                 : "bg-transparent text-stone-600 hover:bg-stone-100"
             }`}
           >
-            🌿 Xu Lá ESG
+            <Leaf size={13} strokeWidth={1.75} />
+            <span>Xu Lá ESG</span>
           </button>
         </div>
 
@@ -180,8 +184,8 @@ export function NotificationsClient({
               href={item.link}
               prefetch={true}
               onClick={() => handleItemClick(item)}
-              className={`block bg-white p-4 sm:p-5 rounded-2xl border transition-all duration-200 hover:shadow-md hover:border-[#183A2D]/30 group ${
-                !item.isRead ? "border-emerald-300/80 bg-emerald-50/20" : "border-[#E9E2D8]"
+              className={`block bg-white p-4 sm:p-5 rounded-2xl border transition-all duration-200 hover:shadow-xs group ${
+                !item.isRead ? "border-stone-300 bg-stone-50/40" : "border-stone-200/80 hover:border-stone-300"
               }`}
             >
               <div className="flex gap-4 items-start">
@@ -189,7 +193,7 @@ export function NotificationsClient({
 
                 <div className="flex-1 min-w-0 space-y-1.5">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                    <h3 className="text-sm font-bold text-[#0A2517] font-heading group-hover:text-[#183A2D] transition-colors line-clamp-1">
+                    <h3 className="text-sm font-semibold text-[#0A2517] font-heading group-hover:text-[#183A2D] transition-colors line-clamp-1">
                       {item.title}
                     </h3>
                     <div className="flex items-center gap-2 text-[11px] text-stone-400 font-mono shrink-0">
@@ -197,7 +201,7 @@ export function NotificationsClient({
                         <Clock size={11} /> {item.timeRelative}
                       </span>
                       <span>•</span>
-                      <span className="font-semibold text-stone-500">
+                      <span className="font-medium text-stone-500">
                         {item.timeFormatted}
                       </span>
                     </div>
@@ -207,7 +211,7 @@ export function NotificationsClient({
                     {item.message}
                   </p>
 
-                  <div className="pt-1 flex items-center gap-1.5 text-[11px] font-bold text-[#183A2D] uppercase tracking-wider font-ui group-hover:underline">
+                  <div className="pt-1 flex items-center gap-1 text-xs font-medium text-stone-700 group-hover:text-[#183A2D] font-ui transition-colors">
                     <span>
                       {item.type === "ORDER" 
                         ? "Xem đơn hàng" 
@@ -217,7 +221,7 @@ export function NotificationsClient({
                         ? "Xem ví lá" 
                         : "Khám phá ngay"}
                     </span>
-                    <ExternalLink size={12} />
+                    <ExternalLink size={11} className="opacity-70" />
                   </div>
                 </div>
               </div>

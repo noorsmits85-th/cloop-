@@ -125,21 +125,22 @@ export function DashboardHeader({
   };
 
   const getNotifIcon = (iconType: string) => {
+    const baseClass = "w-8 h-8 rounded-lg bg-stone-100 border border-stone-200/70 text-stone-700 flex items-center justify-center shrink-0";
     switch (iconType) {
       case "package":
-        return <div className="w-8 h-8 rounded-full bg-emerald-100 text-[#183A2D] flex items-center justify-center shrink-0"><Package size={15} /></div>;
+        return <div className={baseClass}><Package size={14} strokeWidth={1.75} /></div>;
       case "wallet":
-        return <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center shrink-0"><Wallet size={15} /></div>;
+        return <div className={baseClass}><Wallet size={14} strokeWidth={1.75} /></div>;
       case "coin":
-        return <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center shrink-0"><Leaf size={15} /></div>;
+        return <div className={baseClass}><Leaf size={14} strokeWidth={1.75} /></div>;
       case "truck":
-        return <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center shrink-0"><Truck size={15} /></div>;
+        return <div className={baseClass}><Truck size={14} strokeWidth={1.75} /></div>;
       case "check":
-        return <div className="w-8 h-8 rounded-full bg-teal-100 text-teal-800 flex items-center justify-center shrink-0"><CheckCircle2 size={15} /></div>;
+        return <div className={baseClass}><CheckCircle2 size={14} strokeWidth={1.75} /></div>;
       case "alert":
-        return <div className="w-8 h-8 rounded-full bg-rose-100 text-rose-800 flex items-center justify-center shrink-0"><AlertTriangle size={15} /></div>;
+        return <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 flex items-center justify-center shrink-0"><AlertTriangle size={14} strokeWidth={1.75} /></div>;
       default:
-        return <div className="w-8 h-8 rounded-full bg-stone-100 text-stone-700 flex items-center justify-center shrink-0"><Star size={15} /></div>;
+        return <div className={baseClass}><Bell size={14} strokeWidth={1.75} /></div>;
     }
   };
 

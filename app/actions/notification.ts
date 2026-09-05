@@ -308,7 +308,7 @@ export async function getUserNotificationsAction(): Promise<{
           notifList.push({
             id: `coin-reward-${coin.id}`,
             type: "COIN",
-            title: `Thưởng +${coin.amount} Xu Lá ESG 🌿`,
+            title: `Thưởng +${coin.amount} Xu Lá ESG`,
             message: coin.description || `Bạn nhận được +${coin.amount} Xu Lá vì đã đóng góp vào vòng đời thời trang tuần hoàn.`,
             timestamp: coin.createdAt.toISOString(),
             timeFormatted: formatted,
@@ -322,7 +322,7 @@ export async function getUserNotificationsAction(): Promise<{
           notifList.push({
             id: `coin-topup-${coin.id}`,
             type: "COIN",
-            title: `Nạp thành công +${coin.amount.toLocaleString("vi-VN")} Xu Lá 🍃`,
+            title: `Nạp thành công +${coin.amount.toLocaleString("vi-VN")} Xu Lá`,
             message: coin.description || `Giao dịch mua gói Xu Lá thành công qua VietQR PayOS.`,
             timestamp: coin.createdAt.toISOString(),
             timeFormatted: formatted,
@@ -336,7 +336,7 @@ export async function getUserNotificationsAction(): Promise<{
           notifList.push({
             id: `coin-boost-${coin.id}`,
             type: "COIN",
-            title: `Đẩy sản phẩm lên Top (-${coin.amount} Xu Lá) 🚀`,
+            title: `Đẩy sản phẩm lên Top (-${coin.amount} Xu Lá)`,
             message: coin.description || `Món đồ của bạn đã được đẩy lên vị trí nổi bật trên Sàn CLOOP.`,
             timestamp: coin.createdAt.toISOString(),
             timeFormatted: formatted,
@@ -393,7 +393,7 @@ export async function getUserNotificationsAction(): Promise<{
       notifList.push({
         id: "welcome-system-1",
         type: "SYSTEM",
-        title: "Chào mừng bạn đến với CLOOP! 🌿",
+        title: "Chào mừng bạn đến với CLOOP",
         message: "Cảm ơn bạn đã tham gia cộng đồng thời trang tuần hoàn. Tủ đồ của bạn đã sẵn sàng chia sẻ và trải nghiệm hàng ngàn thiết kế.",
         timestamp: accountCreatedDate.toISOString(),
         timeFormatted: formatted,
@@ -407,7 +407,7 @@ export async function getUserNotificationsAction(): Promise<{
       notifList.push({
         id: "welcome-system-2",
         type: "COIN",
-        title: "Kích hoạt Ví Lá: Tặng 100 Xu Khởi Nghiệp 🎁",
+        title: "Kích hoạt Ví Lá: Tặng 100 Xu Khởi Nghiệp",
         message: "Hệ thống đã tặng bạn 100 Xu Lá để trải nghiệm dịch vụ đẩy tin và thuê trang phục tuần hoàn.",
         timestamp: accountCreatedDate.toISOString(),
         timeFormatted: formatted,
@@ -421,7 +421,7 @@ export async function getUserNotificationsAction(): Promise<{
       notifList.push({
         id: "welcome-system-3",
         type: "SYSTEM",
-        title: "Hoàn tất hồ sơ cá nhân ⚙️",
+        title: "Hoàn tất hồ sơ cá nhân",
         message: "Cập nhật địa chỉ nhận đồ và số tài khoản ngân hàng tại mục Cài đặt để sẵn sàng cho thuê hoặc nhận tiền hoàn cọc.",
         timestamp: accountCreatedDate.toISOString(),
         timeFormatted: formatted,
