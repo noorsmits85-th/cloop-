@@ -49,13 +49,15 @@ interface AdminDashboardClientProps {
   };
   recentRentals: any[];
   recentTopUps: any[];
+  pendingWithdrawals?: any[];
 }
 
 export default function AdminDashboardClient({
   currentAdmin,
   metrics,
   recentRentals = [],
-  recentTopUps = []
+  recentTopUps = [],
+  pendingWithdrawals = []
 }: AdminDashboardClientProps) {
   const [activeTab, setActiveTab] = useState<"OVERVIEW" | "ORDERS" | "TOOLS">("OVERVIEW");
 
@@ -281,6 +283,32 @@ export default function AdminDashboardClient({
           <button onClick={() => setActionResult(null)} className="text-xs font-bold underline opacity-70 hover:opacity-100">
             Đóng
           </button>
+        </div>
+      )}
+
+      {/* 🔔 BANNER NHẮC DUYỆT LỆNH RÚT TIỀN (PAYOUT ALERT) */}
+      {pendingWithdrawals && pendingWithdrawals.length > 0 && (
+        <div className="bg-amber-50 border-2 border-amber-300 p-4 sm:p-5 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 font-mono font-black text-lg shadow-sm">
+              {pendingWithdrawals.length}
+            </div>
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded-md bg-amber-200 text-amber-900 text-[10px] font-bold uppercase tracking-wider">Cần chi trả ngay</span>
+                <span className="text-xs font-bold text-amber-950">Lệnh rút tiền đang chờ duyệt ({pendingWithdrawals.length} yêu cầu)</span>
+              </div>
+              <p className="text-xs text-amber-800 font-light">
+                Gần nhất: <strong>{pendingWithdrawals[0].amount?.toLocaleString('vi-VN')}₫</strong> về {pendingWithdrawals[0].bankName} ({pendingWithdrawals[0].bankAccountNumber}) - Chủ TK: <strong>{pendingWithdrawals[0].bankAccountHolder}</strong>.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/admin/payments"
+            className="w-full sm:w-auto px-5 py-3 bg-amber-800 hover:bg-amber-900 text-white text-xs font-bold rounded-2xl transition flex items-center justify-center gap-2 shrink-0 shadow-md cursor-pointer hover:shadow-lg active:scale-98"
+          >
+            <CreditCard size={15} /> Vào Duyệt Chuyển Tiền Ngay →
+          </Link>
         </div>
       )}
 

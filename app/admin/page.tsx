@@ -30,7 +30,8 @@ export default async function AdminPage() {
     allRentals,
     invoiceAgg,
     topUpAgg,
-    recentTopUps
+    recentTopUps,
+    pendingWithdrawals
   ] = await Promise.all([
     prisma.user.count(),
     prisma.product.count({ where: { isDeleted: false } }),
@@ -88,6 +89,19 @@ export default async function AdminPage() {
         totalCoins: true,
         createdAt: true,
         user: { select: { name: true } }
+      }
+    }),
+    prisma.withdrawalRequest.findMany({
+      where: { status: 'PENDING' },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+      select: {
+        id: true,
+        amount: true,
+        bankName: true,
+        bankAccountNumber: true,
+        bankAccountHolder: true,
+        createdAt: true
       }
     })
   ]);
@@ -164,6 +178,7 @@ export default async function AdminPage() {
         metrics={metrics}
         recentRentals={formattedOrders}
         recentTopUps={recentTopUps}
+        pendingWithdrawals={pendingWithdrawals}
       />
     </div>
   );
