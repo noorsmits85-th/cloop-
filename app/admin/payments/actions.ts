@@ -19,6 +19,7 @@ export interface PayoutItem {
   status: "PENDING" | "PAID";
   productTitle: string;
   completedAt: string;
+  type?: "WITHDRAWAL" | "RENTAL";
 }
 
 export async function getPendingPayoutsAction() {
@@ -64,23 +65,24 @@ export async function getPendingPayoutsAction() {
     const confirmedRentalIds = new Set(confirmedAuditLogs.map(a => a.targetId));
     const items: PayoutItem[] = [];
 
-    // Map withdrawal requests
+    // Map withdrawal requests (Ưu tiên hiển thị đầu tiên)
     withdrawalRequests.forEach(req => {
       items.push({
         id: req.id,
         orderCode: `WD-${req.id.substring(0, 8).toUpperCase()}`,
         ownerName: req.bankAccountHolder || req.user?.name || "Chủ tủ CLOOP",
         ownerPhone: "0987654321",
-        bankName: req.bankName || "MB Bank",
-        bankAccount: req.bankAccountNumber || "0987654321",
+        bankName: req.bankName || "Techcombank",
+        bankAccount: req.bankAccountNumber || "0866801743",
         bankHolder: req.bankAccountHolder || req.user?.name || "CHỦ TỦ CLOOP",
         rentalFee: req.amount,
         platformFee: 0,
         returnShippingFee: 0,
         netPayoutAmount: req.amount,
         status: "PENDING",
-        productTitle: "Rút tiền từ số dư Ví CLOOP",
-        completedAt: req.createdAt.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })
+        productTitle: "Yêu cầu rút tiền từ Ví người dùng CLOOP",
+        completedAt: req.createdAt.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }),
+        type: "WITHDRAWAL"
       });
     });
 
@@ -105,7 +107,8 @@ export async function getPendingPayoutsAction() {
         netPayoutAmount: netPayout,
         status: "PENDING",
         productTitle: rent.product?.title || "Đầm Dạ Hội Lụa Satin Cao Cấp",
-        completedAt: rent.updatedAt.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })
+        completedAt: rent.updatedAt.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }),
+        type: "RENTAL"
       });
     });
 

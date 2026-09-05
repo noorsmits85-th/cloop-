@@ -7,44 +7,59 @@ import { PayoutItem, markPayoutCompletedAction } from "./actions";
 
 function getVietQRBankId(bankName: string): string {
   const b = (bankName || "").toLowerCase();
-  if (b.includes("techcom")) return "TCB";
-  if (b.includes("mb") || b.includes("quân đội")) return "MB";
-  if (b.includes("vietcom")) return "VCB";
-  if (b.includes("vietin")) return "CTG";
-  if (b.includes("vp")) return "VPB";
-  if (b.includes("acb") || b.includes("á châu")) return "ACB";
-  if (b.includes("tp")) return "TPB";
-  if (b.includes("bidv") || b.includes("đầu tư")) return "BIDV";
-  if (b.includes("sacom")) return "STB";
-  if (b.includes("hd")) return "HDB";
-  if (b.includes("agri") || b.includes("nông nghiệp")) return "VBA";
-  if (b.includes("vib")) return "VIB";
-  if (b.includes("shb")) return "SHB";
-  if (b.includes("ocb")) return "OCB";
-  if (b.includes("sea")) return "SEAB";
-  return "TCB";
+  if (b.includes("techcom") || b.includes("tcb")) return "970407"; // Techcombank
+  if (b.includes("vietcom") || b.includes("vcb")) return "970436"; // Vietcombank
+  if (b.includes("mb") || b.includes("quân đội")) return "970422"; // MBBank
+  if (b.includes("vietin") || b.includes("ctg")) return "970415"; // VietinBank
+  if (b.includes("vp") || b.includes("vpb")) return "970432"; // VPBank
+  if (b.includes("acb") || b.includes("á châu")) return "970416"; // ACB
+  if (b.includes("tp") || b.includes("tpb") || b.includes("tiên phong")) return "970423"; // TPBank
+  if (b.includes("bidv") || b.includes("đầu tư")) return "970418"; // BIDV
+  if (b.includes("sacom") || b.includes("stb")) return "970403"; // Sacombank
+  if (b.includes("hd") || b.includes("hdb")) return "970437"; // HDBank
+  if (b.includes("agri") || b.includes("nông nghiệp") || b.includes("vba")) return "970405"; // Agribank
+  if (b.includes("vib")) return "970441"; // VIB
+  if (b.includes("shb")) return "970443"; // SHB
+  if (b.includes("ocb")) return "970448"; // OCB
+  if (b.includes("sea") || b.includes("seab")) return "970440"; // SeABank
+  return "970407"; // Mặc định Techcombank
 }
 
-function getVietQrUrl(bankName: string, accountNo: string, amount: number, accountName: string, orderCode: string): string {
-  const bankId = getVietQRBankId(bankName);
-  const cleanAccount = (accountNo || "").replace(/\s+/g, "");
+function getVietQrUrl(
+  bankName: string,
+  accountNo: string,
+  amount: number,
+  accountName: string,
+  orderCode: string,
+  template: "compact" | "compact2" | "qr_only" = "compact"
+): string {
+  const bankBin = getVietQRBankId(bankName);
+  const cleanAccount = (accountNo || "").replace(/\D/g, "");
   const cleanAmount = Math.max(0, Math.floor(amount));
-  const desc = encodeURIComponent(`CLOOP ${orderCode}`);
-  const name = encodeURIComponent(accountName || "");
-  return `https://img.vietqr.io/image/${bankId}-${cleanAccount}-compact2.png?amount=${cleanAmount}&addInfo=${desc}&accountName=${name}`;
+  // Chuẩn Napas: Nội dung không dấu, không ký tự đặc biệt, tối đa 19 ký tự
+  const cleanCode = (orderCode || "").replace(/[^A-Za-z0-9]/g, "");
+  const desc = encodeURIComponent(`CLOOP ${cleanCode}`.substring(0, 19));
+  const cleanName = encodeURIComponent(
+    (accountName || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toUpperCase()
+  );
+  return `https://img.vietqr.io/image/${bankBin}-${cleanAccount}-${template}.png?amount=${cleanAmount}&addInfo=${desc}&accountName=${cleanName}`;
 }
 
 export default function PaymentsClient({ initialItems }: { initialItems: PayoutItem[] }) {
   const [selectedQrItem, setSelectedQrItem] = useState<PayoutItem | null>(null);
+  const [qrTemplate, setQrTemplate] = useState<"compact" | "qr_only">("compact");
   const [items, setItems] = useState<PayoutItem[]>(initialItems);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [completedIds, setCompletedIds] = useState<string[]>([]);
-  const [copiedAccount, setCopiedAccount] = useState<string | null>(null);
+  const [copiedType, setCopiedType] = useState<string | null>(null);
 
-  const handleCopy = (text: string) => {
+  const handleCopy = (text: string, typeKey: string = "account") => {
     navigator.clipboard.writeText(text);
-    setCopiedAccount(text);
-    setTimeout(() => setCopiedAccount(null), 2000);
+    setCopiedType(typeKey);
+    setTimeout(() => setCopiedType(null), 2500);
   };
 
   const handleMarkAsPaid = async (item: PayoutItem) => {
@@ -149,9 +164,15 @@ export default function PaymentsClient({ initialItems }: { initialItems: PayoutI
                     <span className="text-[10px] font-mono font-bold bg-stone-100 text-stone-700 px-2 py-0.5 rounded-md">
                       {order.orderCode}
                     </span>
-                    <span className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                      <Clock size={10} /> Chờ chuyển khoản (24h)
-                    </span>
+                    {order.type === "WITHDRAWAL" ? (
+                      <span className="text-[10px] font-bold text-emerald-900 bg-emerald-100 border border-emerald-300 px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
+                        <ShieldCheck size={11} className="text-emerald-700" /> Rút tiền Ví CLOOP (Thực tế)
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                        <Clock size={10} /> Chờ chuyển khoản (24h)
+                      </span>
+                    )}
                     <span className="text-xs text-stone-400 font-mono">
                       {order.completedAt}
                     </span>
@@ -182,13 +203,16 @@ export default function PaymentsClient({ initialItems }: { initialItems: PayoutI
                       </p>
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => handleCopy(order.bankAccount)}
-                          className="text-[11px] font-bold text-stone-700 hover:text-emerald-800 bg-white hover:bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-stone-200 transition cursor-pointer"
+                          onClick={() => handleCopy(order.bankAccount, `${order.id}-stk`)}
+                          className="text-[11px] font-bold text-stone-700 hover:text-emerald-800 bg-white hover:bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-stone-200 transition cursor-pointer shadow-2xs"
                         >
-                          {copiedAccount === order.bankAccount ? "✓ Đã copy STK" : "Sao chép STK"}
+                          {copiedType === `${order.id}-stk` ? "✓ Đã copy STK" : "Sao chép STK"}
                         </button>
                         <button
-                          onClick={() => setSelectedQrItem(order)}
+                          onClick={() => {
+                            setSelectedQrItem(order);
+                            setQrTemplate("compact");
+                          }}
                           className="text-[11px] font-bold text-emerald-800 hover:text-white bg-emerald-100 hover:bg-emerald-800 px-3 py-1.5 rounded-lg border border-emerald-300 transition flex items-center gap-1.5 cursor-pointer shadow-xs"
                         >
                           <QrCode size={13} /> Quét VietQR (2s)
@@ -201,10 +225,12 @@ export default function PaymentsClient({ initialItems }: { initialItems: PayoutI
                 {/* SỐ TIỀN CHI TIẾT & NÚT XÁC NHẬN */}
                 <div className="text-right space-y-2 w-full md:w-auto border-t md:border-t-0 pt-4 md:pt-0 shrink-0">
                   <div className="space-y-0.5">
-                    <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Tiền thuê gốc: {order.rentalFee.toLocaleString()}đ</p>
-                    <p className="text-[11px] text-stone-500 font-mono">
-                      - Phí sàn (12%): <span className="text-amber-700">-{order.platformFee.toLocaleString()}đ</span>
-                    </p>
+                    <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Tiền gốc: {order.rentalFee.toLocaleString()}đ</p>
+                    {order.platformFee > 0 && (
+                      <p className="text-[11px] text-stone-500 font-mono">
+                        - Phí sàn (12%): <span className="text-amber-700">-{order.platformFee.toLocaleString()}đ</span>
+                      </p>
+                    )}
                     {order.returnShippingFee > 0 && (
                       <p className="text-[11px] text-stone-500 font-mono">
                         - Ship chiều về: <span className="text-blue-700">-{order.returnShippingFee.toLocaleString()}đ</span>
@@ -219,7 +245,10 @@ export default function PaymentsClient({ initialItems }: { initialItems: PayoutI
 
                   <div className="flex flex-col sm:flex-row md:flex-col gap-2 pt-1">
                     <button
-                      onClick={() => setSelectedQrItem(order)}
+                      onClick={() => {
+                        setSelectedQrItem(order);
+                        setQrTemplate("compact");
+                      }}
                       className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
                     >
                       <QrCode size={14} /> Mở VietQR Chuyển Tiền (2s)
@@ -255,8 +284,8 @@ export default function PaymentsClient({ initialItems }: { initialItems: PayoutI
 
         {/* MODAL QUÉT VIETQR CHUYỂN KHOẢN TỰ ĐỘNG (0đ PHÍ) */}
         {selectedQrItem && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="bg-white rounded-3xl border border-stone-100 max-w-[420px] w-full p-6 sm:p-7 text-center shadow-2xl space-y-5 relative">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200 overflow-y-auto">
+            <div className="bg-white rounded-3xl border border-stone-100 max-w-[440px] w-full p-6 sm:p-7 text-center shadow-2xl space-y-4 relative my-8">
               <button
                 type="button"
                 onClick={() => setSelectedQrItem(null)}
@@ -273,57 +302,109 @@ export default function PaymentsClient({ initialItems }: { initialItems: PayoutI
                   Quét Mã Chuyển Tiền Tức Thì
                 </h3>
                 <p className="text-xs text-stone-500 font-light">
-                  Mở App ngân hàng bất kỳ (Techcombank, VCB, MB, Momo...) để quét. Toàn bộ STK, người nhận & số tiền được điền tự động 100%.
+                  Mở App ngân hàng bất kỳ (ACB ONE, Techcombank, VCB, MB...) để quét. Toàn bộ STK, người nhận & số tiền được điền tự động 100%.
                 </p>
               </div>
 
+              {/* Chuyển đổi định dạng hiển thị QR để tăng khả năng nhận diện khi quét qua màn hình */}
+              <div className="flex bg-stone-100 p-1 rounded-xl gap-1 text-[11px] font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setQrTemplate("compact")}
+                  className={`flex-1 py-1.5 px-2 rounded-lg transition cursor-pointer ${qrTemplate === "compact" ? "bg-white text-emerald-900 shadow-xs font-bold" : "text-stone-500 hover:text-stone-800"}`}
+                >
+                  Khung VietQR Tiêu Chuẩn
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQrTemplate("qr_only")}
+                  className={`flex-1 py-1.5 px-2 rounded-lg transition cursor-pointer ${qrTemplate === "qr_only" ? "bg-emerald-800 text-white shadow-xs font-bold" : "text-stone-500 hover:text-stone-800"}`}
+                >
+                  ⚡ QR Nét Siêu Nhạy (Không che tâm)
+                </button>
+              </div>
+
               {/* QR Image */}
-              <div className="bg-stone-50 p-4 rounded-2xl border border-stone-200 inline-block shadow-inner">
+              <div className="bg-stone-50 p-3 rounded-2xl border border-stone-200 inline-block shadow-inner">
                 <img
                   src={getVietQrUrl(
                     selectedQrItem.bankName,
                     selectedQrItem.bankAccount,
                     selectedQrItem.netPayoutAmount,
                     selectedQrItem.bankHolder,
-                    selectedQrItem.orderCode
+                    selectedQrItem.orderCode,
+                    qrTemplate
                   )}
                   alt="VietQR Payout"
-                  className="w-56 h-56 mx-auto rounded-xl border border-stone-200 shadow-sm object-contain bg-white p-2"
+                  className="w-64 h-64 mx-auto rounded-xl border border-stone-200 shadow-sm object-contain bg-white p-2"
                 />
               </div>
 
-              {/* Chi tiết người nhận */}
-              <div className="bg-stone-50 p-3.5 rounded-2xl border border-stone-200 text-left space-y-1.5 text-xs font-mono">
-                <div className="flex justify-between">
+              {/* Chi tiết người nhận & Copy nhanh */}
+              <div className="bg-stone-50 p-3.5 rounded-2xl border border-stone-200 text-left space-y-2 text-xs font-mono">
+                <div className="flex justify-between items-center">
                   <span className="text-stone-500 font-sans">Người nhận:</span>
-                  <strong className="font-bold text-stone-900">{selectedQrItem.bankHolder}</strong>
+                  <strong className="font-bold text-stone-900 font-sans">{selectedQrItem.bankHolder}</strong>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-stone-500 font-sans">Ngân hàng:</span>
-                  <span className="font-semibold text-stone-800">{selectedQrItem.bankName}</span>
+                  <span className="font-semibold text-stone-800 font-sans">{selectedQrItem.bankName}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-stone-500 font-sans">Số tài khoản:</span>
-                  <strong className="font-bold text-stone-900 bg-white px-2 py-0.5 rounded border border-stone-200">
-                    {selectedQrItem.bankAccount}
-                  </strong>
+                  <div className="flex items-center gap-1.5">
+                    <strong className="font-bold text-stone-900 bg-white px-2 py-0.5 rounded border border-stone-200 tracking-wider">
+                      {selectedQrItem.bankAccount}
+                    </strong>
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(selectedQrItem.bankAccount, "modal-stk")}
+                      className="px-1.5 py-0.5 rounded text-[10px] bg-white border border-stone-200 text-emerald-800 font-bold hover:bg-emerald-50 transition cursor-pointer"
+                    >
+                      {copiedType === "modal-stk" ? "✓" : "Copy"}
+                    </button>
+                  </div>
                 </div>
-                <div className="flex justify-between pt-1 border-t border-stone-200">
-                  <span className="text-stone-600 font-bold font-sans">Số tiền thực chuyển:</span>
-                  <strong className="text-base font-black text-emerald-700">
-                    {selectedQrItem.netPayoutAmount.toLocaleString('vi-VN')}₫
-                  </strong>
+                <div className="flex justify-between items-center pt-1 border-t border-stone-200">
+                  <span className="text-stone-600 font-bold font-sans">Số tiền:</span>
+                  <div className="flex items-center gap-1.5">
+                    <strong className="text-base font-black text-emerald-700 font-sans">
+                      {selectedQrItem.netPayoutAmount.toLocaleString('vi-VN')}₫
+                    </strong>
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(selectedQrItem.netPayoutAmount.toString(), "modal-amount")}
+                      className="px-1.5 py-0.5 rounded text-[10px] bg-white border border-stone-200 text-emerald-800 font-bold hover:bg-emerald-50 transition cursor-pointer"
+                    >
+                      {copiedType === "modal-amount" ? "✓" : "Copy"}
+                    </button>
+                  </div>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-stone-500 font-sans">Nội dung CK:</span>
-                  <span className="text-stone-700 bg-white px-1.5 py-0.5 rounded border border-stone-200 text-[11px]">
-                    CLOOP {selectedQrItem.orderCode}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-stone-700 bg-white px-1.5 py-0.5 rounded border border-stone-200 text-[11px]">
+                      CLOOP {selectedQrItem.orderCode.replace(/[^A-Za-z0-9]/g, "")}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(`CLOOP ${selectedQrItem.orderCode.replace(/[^A-Za-z0-9]/g, "")}`, "modal-memo")}
+                      className="px-1.5 py-0.5 rounded text-[10px] bg-white border border-stone-200 text-emerald-800 font-bold hover:bg-emerald-50 transition cursor-pointer"
+                    >
+                      {copiedType === "modal-memo" ? "✓" : "Copy"}
+                    </button>
+                  </div>
                 </div>
               </div>
 
+              {/* Mẹo quét màn hình */}
+              <div className="text-[11px] text-stone-500 bg-amber-50/70 border border-amber-200/80 rounded-xl p-2.5 text-left space-y-0.5">
+                <span className="font-bold text-amber-900 block">💡 Mẹo quét QR trên màn hình:</span>
+                Nếu ứng dụng ngân hàng báo lỗi hoặc khó quét do lóa sáng màn hình, bạn hãy bấm chọn tab <strong>&ldquo;⚡ QR Nét Siêu Nhạy&rdquo;</strong> ở trên hoặc bấm nút <strong>Copy STK</strong> để chuyển khoản 24/7 tức thì!
+              </div>
+
               {/* Action buttons */}
-              <div className="pt-2 space-y-2">
+              <div className="pt-1 space-y-2">
                 <button
                   disabled={processingId === selectedQrItem.id}
                   onClick={async () => {
