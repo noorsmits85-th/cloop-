@@ -211,7 +211,7 @@ export async function POST(req: Request) {
         accountName: paymentLinkRes.accountName,
         bin: paymentLinkRes.bin,
         amount: totalAmount,
-        description: `CLOOP GD ${checkoutResult.orderCode}`
+        description: paymentLinkRes.description || `CLOOP GD ${checkoutResult.orderCode}`
       });
 
     } catch (payosErr: any) {
