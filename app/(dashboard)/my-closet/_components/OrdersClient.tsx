@@ -685,9 +685,19 @@ export function OrdersClient({
                                           <span className="font-medium text-stone-900">Lý do:</span> {order.disputes[0].description}
                                         </p>
                                         <p className="text-xs text-stone-700">
-                                          <span className="font-medium text-stone-900">Đề xuất bồi thường:</span>{" "}
-                                          <span className="font-bold text-amber-900">{order.disputes[0].suggestedDeduction?.toLocaleString('vi-VN')}đ</span>{" "}
-                                          <span className="text-[10px] text-stone-500">(khấu trừ từ tiền cọc của khách)</span>
+                                          {order.disputes[0].adminNotes?.includes('"initiatorRole":"RENTER"') ? (
+                                            <>
+                                              <span className="font-medium text-stone-900">Khách yêu cầu hoàn tiền thuê:</span>{" "}
+                                              <span className="font-bold text-amber-900">{order.disputes[0].suggestedDeduction?.toLocaleString('vi-VN')}đ</span>{" "}
+                                              <span className="text-[10px] text-stone-500">(và hoàn trả 100% tiền cọc cho khách)</span>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <span className="font-medium text-stone-900">Đề xuất bồi thường:</span>{" "}
+                                              <span className="font-bold text-amber-900">{order.disputes[0].suggestedDeduction?.toLocaleString('vi-VN')}đ</span>{" "}
+                                              <span className="text-[10px] text-stone-500">(khấu trừ từ tiền cọc của khách)</span>
+                                            </>
+                                          )}
                                         </p>
                                         {order.disputes[0].images?.length > 0 && (
                                           <div className="flex gap-2 pt-1">
@@ -710,7 +720,7 @@ export function OrdersClient({
                                                   className="bg-[#183A2D] hover:bg-[#122b22] text-white text-xs font-medium px-4 py-2 rounded-md transition-colors flex items-center gap-1.5 disabled:opacity-50"
                                                 >
                                                   {acceptingDisputeIds[order.disputes[0].id] ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-                                                  Đồng ý đề xuất & Hoàn tất
+                                                  Đồng ý hoàn tiền & Đóng đơn
                                                 </button>
                                                 <button
                                                   disabled={rejectingDisputeIds[order.disputes[0].id]}
@@ -879,9 +889,19 @@ export function OrdersClient({
                                           <span className="font-medium text-stone-900">Lý do sự cố:</span> {order.disputes[0].description}
                                         </p>
                                         <p className="text-xs text-stone-700">
-                                          <span className="font-medium text-stone-900">Mức bồi thường đề xuất:</span>{" "}
-                                          <span className="font-bold text-amber-900">{order.disputes[0].suggestedDeduction?.toLocaleString('vi-VN')}đ</span>{" "}
-                                          <span className="text-[10px] text-stone-500">(khấu trừ từ tiền cọc của bạn)</span>
+                                          {order.disputes[0].adminNotes?.includes('"initiatorRole":"RENTER"') ? (
+                                            <>
+                                              <span className="font-medium text-stone-900">Bạn đã yêu cầu hoàn tiền thuê:</span>{" "}
+                                              <span className="font-bold text-amber-900">{order.disputes[0].suggestedDeduction?.toLocaleString('vi-VN')}đ</span>{" "}
+                                              <span className="text-[10px] text-stone-500">(kèm hoàn trả 100% tiền cọc)</span>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <span className="font-medium text-stone-900">Chủ tủ đề xuất khấu trừ cọc:</span>{" "}
+                                              <span className="font-bold text-amber-900">{order.disputes[0].suggestedDeduction?.toLocaleString('vi-VN')}đ</span>{" "}
+                                              <span className="text-[10px] text-stone-500">(để bồi thường hư hỏng)</span>
+                                            </>
+                                          )}
                                         </p>
                                         {order.disputes[0].images?.length > 0 && (
                                           <div className="flex gap-2 pt-1">
@@ -894,7 +914,7 @@ export function OrdersClient({
                                           <div className="pt-2">
                                             {order.disputes[0].adminNotes?.includes('"initiatorRole":"RENTER"') ? (
                                               <p className="text-[11px] text-amber-700 italic bg-amber-100/50 p-2 rounded border border-amber-200/50">
-                                                ⏳ Đang chờ chủ đồ phản hồi đề xuất của bạn...
+                                                ⏳ Đang chờ chủ tủ phản hồi yêu cầu hoàn tiền của bạn...
                                               </p>
                                             ) : (
                                               <div className="flex flex-wrap gap-2">
@@ -904,7 +924,7 @@ export function OrdersClient({
                                                   className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium px-4 py-2 rounded-md transition-colors flex items-center gap-1.5 disabled:opacity-50"
                                                 >
                                                   {acceptingDisputeIds[order.disputes[0].id] ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-                                                  Đồng ý khấu trừ & Hoàn cọc còn lại
+                                                  Đồng ý khấu trừ & Nhận phần cọc còn lại
                                                 </button>
                                                 <button
                                                   disabled={rejectingDisputeIds[order.disputes[0].id]}
@@ -984,13 +1004,16 @@ export function OrdersClient({
           <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="bg-white border border-stone-100 rounded-xl max-w-[460px] w-full shadow-2xl p-8 text-left space-y-5">
             <div className="flex justify-between items-center border-b border-stone-100 pb-4">
               <h3 className="text-xs font-semibold text-amber-800 tracking-wide uppercase flex items-center gap-2">
-                <AlertTriangle size={16} strokeWidth={2} /> Báo cáo sự cố & Đề xuất hòa giải
+                <AlertTriangle size={16} strokeWidth={2} /> 
+                {!isOwnerMode ? "Báo lỗi đồ & Yêu cầu hoàn tiền" : "Báo cáo sự cố & Đề xuất bồi thường"}
               </h3>
               <button onClick={() => setShowDisputeModal(false)} className="text-stone-400 hover:text-stone-900 transition-colors p-1"><X size={18} strokeWidth={1.5} /></button>
             </div>
             
             <p className="text-xs font-light text-stone-600 leading-relaxed">
-              Hệ thống sẽ gửi đề xuất bồi thường đến đối tác để 2 bên tự giải quyết trước. Nếu không đạt được thỏa thuận, vụ việc sẽ được đẩy lên Ban Quản Trị CLOOP phân xử.
+              {!isOwnerMode 
+                ? "Trang phục nhận được bị sai mẫu mã, rách hoặc bẩn trước khi mặc? Hãy gửi hình ảnh thực tế và số tiền thuê bạn yêu cầu hoàn lại. Khi Chủ tủ đồng ý, toàn bộ tiền cọc và tiền thuê sẽ được hoàn trả về ví của bạn."
+                : "Hệ thống sẽ gửi đề xuất bồi thường đến khách thuê để khấu trừ từ tiền cọc. Nếu 2 bên không đạt thỏa thuận, vụ việc sẽ được chuyển lên Ban Quản Trị CLOOP phân xử."}
             </p>
 
             <div className="space-y-1.5">
@@ -999,30 +1022,36 @@ export function OrdersClient({
                 rows={3} 
                 value={disputeDescription} 
                 onChange={(e) => setDisputeDescription(e.target.value)} 
-                placeholder="Mô tả cụ thể vết ố, rách, sai mẫu hoặc hư hỏng..." 
+                placeholder={!isOwnerMode ? "Mô tả chi tiết việc sai mẫu mã, kích thước hoặc lỗi rách từ lúc nhận..." : "Mô tả cụ thể vết ố, rách, mất phụ kiện sau khi khách trả đồ..."} 
                 className="w-full px-4 py-2.5 rounded-md border border-stone-200/60 text-sm font-light focus:outline-none focus:border-amber-500 bg-stone-50/30 resize-none transition-colors" 
               />
             </div>
 
             <div className="space-y-1.5">
               <div className="flex justify-between items-center">
-                <label className="block text-[10px] font-medium text-stone-500 uppercase tracking-wide">Mức bồi thường đề xuất (VNĐ)</label>
+                <label className="block text-[10px] font-medium text-stone-500 uppercase tracking-wide">
+                  {!isOwnerMode ? "Tiền thuê yêu cầu hoàn trả (VNĐ)" : "Mức khấu trừ từ tiền cọc (VNĐ)"}
+                </label>
                 <span className="text-[10px] text-amber-800 font-medium">
-                  Cọc tối đa: {(selectedOrderForDispute.invoice?.depositAmount || 300000).toLocaleString('vi-VN')}đ
+                  {!isOwnerMode 
+                    ? `Tối đa tiền thuê: ${(selectedOrderForDispute.invoice?.rentalFee || 0).toLocaleString('vi-VN')}đ`
+                    : `Cọc tối đa: ${(selectedOrderForDispute.invoice?.depositAmount || 0).toLocaleString('vi-VN')}đ`}
                 </span>
               </div>
               <input 
                 type="number" 
                 min={0}
-                max={selectedOrderForDispute.invoice?.depositAmount || 10000000}
+                max={!isOwnerMode ? (selectedOrderForDispute.invoice?.rentalFee || 10000000) : (selectedOrderForDispute.invoice?.depositAmount || 10000000)}
                 step={10000}
                 value={suggestedDeduction || ""} 
                 onChange={(e) => setSuggestedDeduction(Number(e.target.value) || 0)} 
-                placeholder="VD: 80000 (chi phí giặt hấp, đính lại khuy...)" 
+                placeholder={!isOwnerMode ? `VD: ${selectedOrderForDispute.invoice?.rentalFee || 50000} (Hoàn 100% tiền thuê)` : "VD: 80000 (chi phí spa, phục hồi...)"} 
                 className="w-full px-4 py-2.5 rounded-md border border-stone-200/60 text-sm font-medium focus:outline-none focus:border-amber-500 bg-stone-50/30 transition-colors" 
               />
               <p className="text-[10px] text-stone-400 italic">
-                * Khoản tiền này sẽ được khấu trừ từ tiền cọc của khách thuê chuyển thẳng vào ví chủ đồ sau khi 2 bên đồng thuận.
+                {!isOwnerMode 
+                  ? `* Tiền cọc ${(selectedOrderForDispute.invoice?.depositAmount || 0).toLocaleString('vi-VN')}đ sẽ tự động được hoàn trả 100% về ví của bạn khi thỏa thuận thành công.`
+                  : "* Khoản tiền này sẽ được khấu trừ từ tiền cọc của khách thuê chuyển thẳng vào ví chủ đồ sau khi 2 bên đồng thuận."}
               </p>
             </div>
 
@@ -1046,7 +1075,7 @@ export function OrdersClient({
               disabled={isDisputeSubmitting} 
               className="w-full py-3.5 bg-amber-800 hover:bg-amber-900 text-white text-xs font-semibold tracking-wide rounded-md transition-colors flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm cursor-pointer"
             >
-              {isDisputeSubmitting ? <><Loader2 size={14} className="animate-spin" /> Đang gửi đề xuất...</> : "Gửi đề xuất hòa giải P2P"}
+              {isDisputeSubmitting ? <><Loader2 size={14} className="animate-spin" /> Đang gửi đề xuất...</> : (!isOwnerMode ? "Gửi yêu cầu hoàn tiền cho Chủ tủ" : "Gửi đề xuất khấu trừ cọc")}
             </button>
           </motion.div>
         </div>

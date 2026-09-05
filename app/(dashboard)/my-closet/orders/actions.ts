@@ -377,8 +377,15 @@ export async function raiseDisputeWithProposalAction(
     }
 
     const depositAmount = rental.invoice?.depositAmount || 0;
-    if (cleanDeduction > depositAmount) {
-      return { success: false, error: `Số tiền bồi thường đề xuất (${cleanDeduction.toLocaleString('vi-VN')}đ) không được vượt quá số tiền cọc (${depositAmount.toLocaleString('vi-VN')}đ).` };
+    const rentalFee = rental.invoice?.rentalFee || 0;
+    if (isOwner) {
+      if (cleanDeduction > depositAmount) {
+        return { success: false, error: `Số tiền bồi thường đề xuất (${cleanDeduction.toLocaleString('vi-VN')}đ) không được vượt quá số tiền cọc (${depositAmount.toLocaleString('vi-VN')}đ).` };
+      }
+    } else {
+      if (cleanDeduction > rentalFee) {
+        return { success: false, error: `Số tiền yêu cầu hoàn lại (${cleanDeduction.toLocaleString('vi-VN')}đ) không được vượt quá tiền thuê (${rentalFee.toLocaleString('vi-VN')}đ).` };
+      }
     }
 
     // 🛡️ 3. Atomic State Update & Optimistic Lock
@@ -482,10 +489,12 @@ export async function acceptDisputeProposalAction(disputeId: string) {
 
     // 🛡️ 3. Parse initiator to enforce counterparty authorization
     let initiatorId = "";
+    let initiatorRole = "OWNER";
     try {
       if (dispute.adminNotes) {
         const parsed = JSON.parse(dispute.adminNotes);
         initiatorId = parsed.initiatorId || "";
+        initiatorRole = parsed.initiatorRole || "OWNER";
       }
     } catch (e) {}
 
@@ -518,21 +527,47 @@ export async function acceptDisputeProposalAction(disputeId: string) {
     const totalAmount = Number(invoice.amount) || 0;
     const rentalFee = Number(invoice.rentalFee) || 0;
     const depositAmount = Number(invoice.depositAmount) || 0;
-    const platformFee = Number(invoice.platformFee) || 0;
-    const shippingFee = Number(invoice.shippingFeeCollected) || 0;
+    const rawPlatformFee = Number(invoice.platformFee) || 0;
+    const shippingFeeCollected = Number(invoice.shippingFeeCollected) || 0;
     const deduction = Math.floor(Math.max(0, Number(dispute.suggestedDeduction) || 0));
 
-    if (deduction > depositAmount) {
-      return { success: false, error: "Lỗi bảo mật: Số tiền khấu trừ vượt quá số tiền cọc." };
+    let refundDepositToRenter = 0;
+    let refundRentalToRenter = 0;
+    let compensationToOwner = 0;
+    let ownerRentalPayout = 0;
+    let platformFeeCollected = 0;
+
+    if (initiatorRole === "RENTER") {
+      // 🛡️ Khiếu nại từ KHÁCH THUÊ (Chủ tủ giao sai mẫu mã / đồ hư hỏng):
+      // 1. Cọc được hoàn trả 100% về cho khách thuê:
+      refundDepositToRenter = depositAmount;
+      // 2. Mức hoàn tiền thuê yêu cầu từ khiếu nại (tối đa toàn bộ rentalFee):
+      refundRentalToRenter = deduction > 0 ? Math.min(deduction, rentalFee) : rentalFee;
+      // 3. Phần tiền thuê còn lại sau khi hoàn cho khách:
+      const remainingRentalFee = rentalFee - refundRentalToRenter;
+      if (remainingRentalFee > 0) {
+        platformFeeCollected = Math.min(rawPlatformFee, remainingRentalFee);
+        ownerRentalPayout = Math.max(0, remainingRentalFee - platformFeeCollected);
+      } else {
+        platformFeeCollected = 0;
+        ownerRentalPayout = 0;
+      }
+      compensationToOwner = 0;
+    } else {
+      // 🛡️ Khiếu nại từ CHỦ TỦ (Khách thuê làm bẩn / rách đồ khi trả đồ):
+      if (deduction > depositAmount) {
+        return { success: false, error: "Lỗi bảo mật: Số tiền khấu trừ vượt quá số tiền cọc." };
+      }
+      refundDepositToRenter = depositAmount - deduction;
+      compensationToOwner = deduction;
+      platformFeeCollected = rawPlatformFee;
+      ownerRentalPayout = Math.max(0, rentalFee - platformFeeCollected);
     }
 
-    const refundDepositToRenter = depositAmount - deduction;
-    const compensationToOwner = deduction;
-    const ownerRentalPayout = Math.max(0, rentalFee - platformFee);
-    const platformFeeCollected = platformFee;
-    const shippingFeeCollected = shippingFee;
+    const totalRenterCredit = refundDepositToRenter + refundRentalToRenter;
+    const totalOwnerCredit = ownerRentalPayout + compensationToOwner;
 
-    const totalCalculated = refundDepositToRenter + compensationToOwner + ownerRentalPayout + platformFeeCollected + shippingFeeCollected;
+    const totalCalculated = totalRenterCredit + compensationToOwner + ownerRentalPayout + platformFeeCollected + shippingFeeCollected;
 
     if (totalCalculated !== totalAmount) {
       console.error(`[CRITICAL MONEY INVARIANT ERROR] totalCalculated (${totalCalculated}) !== totalAmount (${totalAmount})`);
@@ -551,7 +586,8 @@ export async function acceptDisputeProposalAction(disputeId: string) {
             resolvedVia: "P2P_SELF_MEDIATION",
             acceptedByUserId: userAuth.id,
             resolvedAt: new Date().toISOString(),
-            deduction
+            deduction,
+            initiatorRole
           })
         }
       });
@@ -577,15 +613,14 @@ export async function acceptDisputeProposalAction(disputeId: string) {
       });
 
       // 7d. Update User Wallets
-      if (refundDepositToRenter > 0) {
+      if (totalRenterCredit > 0) {
         await tx.user.update({
           where: { id: rental.renterId },
-          data: { walletBalance: { increment: refundDepositToRenter } }
+          data: { walletBalance: { increment: totalRenterCredit } }
         });
       }
 
       const ownerId = rental.ownerId || rental.product?.userId;
-      const totalOwnerCredit = ownerRentalPayout + compensationToOwner;
       if (totalOwnerCredit > 0 && ownerId) {
         await tx.user.update({
           where: { id: ownerId },
@@ -607,12 +642,14 @@ export async function acceptDisputeProposalAction(disputeId: string) {
         });
       }
 
-      if (refundDepositToRenter > 0) {
+      if (totalRenterCredit > 0) {
         ledgerRows.push({
           invoiceId: invoice.id,
           type: "REFUND_OUT",
-          amount: refundDepositToRenter,
-          description: `Hoàn phần tiền cọc còn lại về ví khách thuê sau khấu trừ bồi thường`,
+          amount: totalRenterCredit,
+          description: initiatorRole === "RENTER"
+            ? `Hoàn 100% cọc và tiền thuê (${totalRenterCredit.toLocaleString('vi-VN')}đ) cho khách do chủ đồ gửi sai mẫu/hư hỏng`
+            : `Hoàn phần tiền cọc còn lại về ví khách thuê sau khấu trừ bồi thường`,
           adminId: userAuth.id,
           status: "COMPLETED"
         });
