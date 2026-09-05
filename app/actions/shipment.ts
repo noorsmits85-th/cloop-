@@ -21,9 +21,12 @@ function revalidateShipmentViews(rentalId?: string | null) {
   }
 }
 
-export async function requestPickupAction(rentalId: string) {
+export async function requestPickupAction(rentalId: string, packagingProofUrls: string[] = []) {
   try {
     const user = await requireUser();
+    if (!user) {
+      return { success: false, error: "Chưa đăng nhập." };
+    }
 
     if (!rentalId || rentalId.length < 8) {
       return { success: false, error: "Mã đơn hàng không hợp lệ." };
@@ -79,6 +82,7 @@ export async function requestPickupAction(rentalId: string) {
           deliveryAddress,
           bookedByUserId: user.id,
           trackingCode: `GHN-${rental.id.slice(0, 8).toUpperCase()}`,
+          providerRawPayload: packagingProofUrls.length > 0 ? { packagingProofUrls } : undefined,
         },
         create: {
           rentalId: rental.id,
@@ -90,6 +94,7 @@ export async function requestPickupAction(rentalId: string) {
           deliveryAddress,
           bookedByUserId: user.id,
           trackingCode: `GHN-${rental.id.slice(0, 8).toUpperCase()}`,
+          providerRawPayload: packagingProofUrls.length > 0 ? { packagingProofUrls } : undefined,
         },
       });
 
@@ -104,6 +109,7 @@ export async function requestPickupAction(rentalId: string) {
           metadata: JSON.stringify({
             rentalId: rental.id,
             clientOrderCode,
+            packagingProofUrls,
           }),
         },
       });

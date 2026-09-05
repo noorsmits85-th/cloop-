@@ -138,7 +138,11 @@ export async function completeOrderAction(orderId: string) {
       // Fetch renterId and invoice to calculate dynamic refund amount
       const rental = await tx.rentalHistory.findUnique({
         where: { id: orderId },
-        include: { invoice: true, product: true }
+        include: { 
+          invoice: true, 
+          product: true,
+          disputes: { where: { status: { in: ["APPROVED_DEDUCTION", "PENDING_REVIEW"] } }, orderBy: { createdAt: "desc" }, take: 1 }
+        }
       });
 
       if (!rental) {
@@ -172,7 +176,7 @@ export async function completeOrderAction(orderId: string) {
       const updateResult = await tx.rentalHistory.updateMany({
         where: {
           id: orderId,
-          status: { in: ["BORROWER_RETURNED", "BORROWER_RECEIVED", "LENDER_SHIPPED", "OWNER_PACKED", "PENDING_APPROVAL"] }
+          status: { in: ["BORROWER_RETURNED", "BORROWER_RECEIVED", "LENDER_SHIPPED", "OWNER_PACKED", "PENDING_APPROVAL", "DISPUTE"] }
         },
         data: {
           status: "LENDER_COMPLETED",
@@ -184,102 +188,182 @@ export async function completeOrderAction(orderId: string) {
         throw new Error("Giao dịch đã được hoàn tất trước đó hoặc không thể cập nhật.");
       }
 
-      const depositAmount = rental.invoice?.depositAmount || 0;
-      const rentalFee = rental.invoice?.rentalFee || 0;
-      const rawPlatformFee = rental.invoice?.platformFee || Math.floor(rentalFee * 0.1);
-      const platformFee = Math.min(rawPlatformFee, rentalFee);
-      const shippingFee = rental.invoice?.shippingFeeCollected || 0;
+      // 🛡️ Kiểm tra xem đơn này có thỏa thuận giải quyết khiếu nại hoàn đồ trước đó không:
+      let disputeReturnRefund = 0;
+      let disputeOwnerPayout = 0;
+      let disputePlatformFee = 0;
+      let isDisputeReturn = false;
+      const activeDispute = rental.disputes?.[0];
 
-      // 💸 1. Hoàn Tiền Cọc (Refund Escrow) & Tặng 15 Xu Lá (CloopCoins) cho Khách Thuê:
-      const updatedRenter = await tx.user.update({
-        where: { id: rental.renterId },
-        data: {
-          walletBalance: depositAmount > 0 ? { increment: depositAmount } : undefined,
-          cloopCoins: { increment: 15 } // 🎁 Thưởng 15 Xu Lá tuần hoàn
-        },
-        select: { cloopCoins: true }
-      });
+      if (activeDispute?.adminNotes) {
+        try {
+          const notes = JSON.parse(activeDispute.adminNotes);
+          if (typeof notes.pendingRefundToRenter === "number") {
+            disputeReturnRefund = notes.pendingRefundToRenter;
+            disputeOwnerPayout = notes.pendingOwnerPayout || 0;
+            disputePlatformFee = notes.platformFeeCollected || 0;
+            isDisputeReturn = true;
+          }
+        } catch {}
+      }
 
-      try {
-        await tx.coinLedgerEntry.create({
+      if (isDisputeReturn && activeDispute) {
+        // 🌟 Luồng giải ngân sau khi Chủ tủ đã nhận lại đồ hoàn từ khiếu nại sai mẫu / đồ lỗi
+        if (disputeReturnRefund > 0) {
+          await tx.user.update({
+            where: { id: rental.renterId },
+            data: { walletBalance: { increment: disputeReturnRefund } }
+          });
+
+          await tx.ledgerTransaction.create({
+            data: {
+              invoiceId,
+              type: "REFUND_OUT",
+              amount: disputeReturnRefund,
+              description: `Hoàn tiền thuê & cọc (${disputeReturnRefund.toLocaleString('vi-VN')}đ) cho khách sau khi chủ tủ nhận lại đồ hoàn`,
+              status: "COMPLETED"
+            }
+          });
+        }
+
+        if (disputeOwnerPayout > 0) {
+          await tx.user.update({
+            where: { id: ownerId },
+            data: { walletBalance: { increment: disputeOwnerPayout } }
+          });
+
+          await tx.ledgerTransaction.create({
+            data: {
+              invoiceId,
+              type: "PAYOUT_OUT",
+              amount: disputeOwnerPayout,
+              description: `Giải ngân phần tiền thuê còn lại cho chủ đồ sau khi trừ hoàn tiền khiếu nại`,
+              status: "COMPLETED"
+            }
+          });
+        }
+
+        if (disputePlatformFee > 0) {
+          await tx.ledgerTransaction.create({
+            data: {
+              invoiceId,
+              type: "FEE_RETAINED",
+              amount: disputePlatformFee,
+              description: `Phí nền tảng đơn khiếu nại #${orderId.slice(0, 8)}`,
+              status: "COMPLETED"
+            }
+          });
+        }
+
+        await tx.dispute.update({
+          where: { id: activeDispute.id },
           data: {
-            userId: rental.renterId,
-            type: "QUEST_REWARD",
-            amount: 15,
-            balanceAfter: updatedRenter.cloopCoins,
-            description: `🎁 Thưởng 15 Xu Lá tuần hoàn hoàn tất đơn thuê #${orderId.slice(0, 8).toUpperCase()}`,
-            metadata: { orderId, type: "RENTAL_COMPLETION" }
+            status: "RESOLVED",
+            adminNotes: JSON.stringify({
+              ...JSON.parse(activeDispute.adminNotes || "{}"),
+              resolvedAt: new Date().toISOString(),
+              returnItemReceivedByOwner: true,
+              finalSettledAt: new Date().toISOString()
+            })
           }
         });
-      } catch (coinErr) {
-        console.warn("Coin ledger entry creation warning:", coinErr);
-      }
 
-      if (depositAmount > 0 && invoiceId) {
-        await tx.ledgerTransaction.create({
-          data: { invoiceId, type: 'REFUND_OUT', amount: depositAmount, description: `Hoàn cọc đơn ${orderId} & Thưởng 15 Xu Lá` }
-        });
-      }
+      } else {
+        // 🌟 Luồng chuẩn hoàn tất đơn thuê thông thường (Không có khiếu nại)
+        const depositAmount = rental.invoice?.depositAmount || 0;
+        const rentalFee = rental.invoice?.rentalFee || 0;
+        const rawPlatformFee = rental.invoice?.platformFee || Math.floor(rentalFee * 0.1);
+        const platformFee = Math.min(rawPlatformFee, rentalFee);
+        const shippingFee = rental.invoice?.shippingFeeCollected || 0;
 
-      // 💸 2. Thanh Toán Tiền Thuê (Rental Fee) & Thưởng +25 Xu Lá cho Chủ Tủ:
-      // Tự động cấn trừ 25.000đ cước GHN chiều về (Chủ tủ chịu chi phí thu hồi tài sản)
-      const returnShippingFee = 25000;
-      const ownerBonusCoins = 25; // 🎁 Thưởng 25 Xu Lá cho Chủ Tủ
-      const returnShippingRetained = Math.min(returnShippingFee, Math.max(0, rentalFee - platformFee));
-      const lenderEarnings = Math.max(0, rentalFee - platformFee - returnShippingRetained);
-      const allocatedAmount = depositAmount + lenderEarnings + platformFee + returnShippingRetained + shippingFee;
-
-      if (allocatedAmount !== rental.invoice.amount) {
-        throw new Error("Loi can so: tong tien phan bo khong khop hoa don da thu.");
-      }
-
-      const updatedOwner = await tx.user.update({
-        where: { id: ownerId },
-        data: {
-          walletBalance: lenderEarnings > 0 ? { increment: lenderEarnings } : undefined,
-          cloopCoins: { increment: ownerBonusCoins }
-        },
-        select: { cloopCoins: true }
-      });
-
-      try {
-        await tx.coinLedgerEntry.create({
+        // 💸 1. Hoàn Tiền Cọc (Refund Escrow) & Tặng 15 Xu Lá cho Khách Thuê:
+        const updatedRenter = await tx.user.update({
+          where: { id: rental.renterId },
           data: {
-            userId: ownerId,
-            type: "QUEST_REWARD",
-            amount: ownerBonusCoins,
-            balanceAfter: updatedOwner.cloopCoins,
-            description: `🎁 Thưởng +${ownerBonusCoins} Xu Lá cho Chủ tủ khi hoàn tất đơn cho thuê #${orderId.slice(0, 8).toUpperCase()}`,
-            metadata: { orderId, type: "OWNER_RENTAL_COMPLETION" }
+            walletBalance: depositAmount > 0 ? { increment: depositAmount } : undefined,
+            cloopCoins: { increment: 15 }
+          },
+          select: { cloopCoins: true }
+        });
+
+        try {
+          await tx.coinLedgerEntry.create({
+            data: {
+              userId: rental.renterId,
+              type: "QUEST_REWARD",
+              amount: 15,
+              balanceAfter: updatedRenter.cloopCoins,
+              description: `🎁 Thưởng 15 Xu Lá tuần hoàn hoàn tất đơn thuê #${orderId.slice(0, 8).toUpperCase()}`,
+              metadata: { orderId, type: "RENTAL_COMPLETION" }
+            }
+          });
+        } catch (coinErr) {
+          console.warn("Coin ledger entry creation warning:", coinErr);
+        }
+
+        if (depositAmount > 0 && invoiceId) {
+          await tx.ledgerTransaction.create({
+            data: { invoiceId, type: 'REFUND_OUT', amount: depositAmount, description: `Hoàn cọc đơn ${orderId} & Thưởng 15 Xu Lá` }
+          });
+        }
+
+        // 💸 2. Thanh Toán Tiền Thuê cho Chủ Tủ (sau trừ cước hoàn về):
+        const returnShippingFee = 25000;
+        const ownerBonusCoins = 25;
+        const returnShippingRetained = Math.min(returnShippingFee, Math.max(0, rentalFee - platformFee));
+        const lenderEarnings = Math.max(0, rentalFee - platformFee - returnShippingRetained);
+        const allocatedAmount = depositAmount + lenderEarnings + platformFee + returnShippingRetained + shippingFee;
+
+        if (allocatedAmount !== rental.invoice.amount) {
+          throw new Error("Loi can so: tong tien phan bo khong khop hoa don da thu.");
+        }
+
+        const updatedOwner = await tx.user.update({
+          where: { id: ownerId },
+          data: {
+            walletBalance: lenderEarnings > 0 ? { increment: lenderEarnings } : undefined,
+            cloopCoins: { increment: ownerBonusCoins }
+          },
+          select: { cloopCoins: true }
+        });
+
+        try {
+          await tx.coinLedgerEntry.create({
+            data: {
+              userId: ownerId,
+              type: "QUEST_REWARD",
+              amount: ownerBonusCoins,
+              balanceAfter: updatedOwner.cloopCoins,
+              description: `🎁 Thưởng +${ownerBonusCoins} Xu Lá cho Chủ tủ khi hoàn tất đơn cho thuê #${orderId.slice(0, 8).toUpperCase()}`,
+              metadata: { orderId, type: "OWNER_RENTAL_COMPLETION" }
+            }
+          });
+        } catch (coinErr) {
+          console.warn("Owner coin ledger creation warning:", coinErr);
+        }
+
+        if (invoiceId) {
+          if (lenderEarnings > 0) {
+            await tx.ledgerTransaction.create({
+              data: { invoiceId, type: 'PAYOUT_OUT', amount: lenderEarnings, description: `Thanh toan tien thue don ${orderId} sau tru phi san va ship chieu ve` }
+            });
           }
-        });
-      } catch (coinErr) {
-        console.warn("Owner coin ledger creation warning:", coinErr);
-      }
-
-      if (invoiceId) {
-        if (lenderEarnings > 0) {
-          await tx.ledgerTransaction.create({
-            data: { invoiceId, type: 'PAYOUT_OUT', amount: lenderEarnings, description: `Thanh toan tien thue don ${orderId} sau tru phi san va ship chieu ve` }
-          });
+          if (platformFee > 0) {
+            await tx.ledgerTransaction.create({
+              data: { invoiceId, type: 'FEE_RETAINED', amount: platformFee, description: `Phi nen tang don ${orderId}` }
+            });
+          }
+          if (returnShippingRetained > 0) {
+            await tx.ledgerTransaction.create({
+              data: { invoiceId, type: 'SHIPPING_RETAINED', amount: returnShippingRetained, description: `Phi van chuyen chieu ve giu lai don ${orderId}` }
+            });
+          }
+          if (shippingFee > 0) {
+            await tx.ledgerTransaction.create({
+              data: { invoiceId, type: 'SHIPPING_RETAINED', amount: shippingFee, description: `Phí vận chuyển chiều đi giữ lại đơn ${orderId}` }
+            });
+          }
         }
-        if (platformFee > 0) {
-          await tx.ledgerTransaction.create({
-            data: { invoiceId, type: 'FEE_RETAINED', amount: platformFee, description: `Phi nen tang don ${orderId}` }
-          });
-        }
-        if (returnShippingRetained > 0) {
-          await tx.ledgerTransaction.create({
-            data: { invoiceId, type: 'SHIPPING_RETAINED', amount: returnShippingRetained, description: `Phi van chuyen chieu ve giu lai don ${orderId}` }
-          });
-        }
-      }
-
-      // MONEY: Thu phi ship chieu di cho Platform.
-      if (shippingFee > 0 && invoiceId) {
-        await tx.ledgerTransaction.create({
-          data: { invoiceId, type: 'SHIPPING_RETAINED', amount: shippingFee, description: `Phí vận chuyển chiều đi giữ lại đơn ${orderId}` }
-        });
       }
 
       // 🔄 KHI HOÀN TẤT ĐỒ VỀ TAY CHỦ TỦ: Tự động kích hoạt lại trạng thái Sẵn Sàng Cho Thuê trên Sàn & Tủ đồ
@@ -301,7 +385,7 @@ export async function completeOrderAction(orderId: string) {
           action: "SETTLEMENT_COMPLETED",
           targetType: "RENTAL",
           targetId: orderId,
-          metadata: JSON.stringify({ depositAmount, rentalFee, platformFee, shippingFee })
+          metadata: JSON.stringify({ isDisputeReturn, orderId })
         }
       });
     }, { timeout: 20000, maxWait: 10000 });
@@ -576,152 +660,244 @@ export async function acceptDisputeProposalAction(disputeId: string) {
 
     // 🛡️ 7. Atomic Execution (ACID Transaction with Row-Level Optimistic Locks)
     await prisma.$transaction(async (tx) => {
-      // 7a. Atomic Row Lock on Dispute (Double-submit prevention)
-      const disputeLock = await tx.dispute.updateMany({
-        where: { id: disputeId, status: "PENDING_REVIEW" },
-        data: {
-          status: "RESOLVED",
-          finalDeduction: deduction,
-          adminNotes: JSON.stringify({
-            resolvedVia: "P2P_SELF_MEDIATION",
-            acceptedByUserId: userAuth.id,
-            resolvedAt: new Date().toISOString(),
-            deduction,
-            initiatorRole
-          })
+      if (initiatorRole === "RENTER") {
+        // 🛡️ CHỦ TỦ ĐỒNG Ý KHIẾU NẠI CỦA KHÁCH:
+        // Đồ đang ở chỗ khách thuê, shipper cần đến lấy trả lại chủ tủ.
+        // Tiền tiếp tục giữ an toàn trong Escrow, CHƯA giải ngân.
+        const disputeLock = await tx.dispute.updateMany({
+          where: { id: disputeId, status: "PENDING_REVIEW" },
+          data: {
+            status: "APPROVED_DEDUCTION",
+            finalDeduction: deduction,
+            adminNotes: JSON.stringify({
+              resolvedVia: "P2P_SELF_MEDIATION",
+              acceptedByUserId: userAuth.id,
+              acceptedAt: new Date().toISOString(),
+              deduction,
+              initiatorRole: "RENTER",
+              pendingRefundToRenter: totalRenterCredit,
+              pendingOwnerPayout: ownerRentalPayout,
+              platformFeeCollected,
+              shippingFeeCollected
+            })
+          }
+        });
+
+        if (disputeLock.count === 0) {
+          throw new Error("Xung đột dữ liệu: Đề xuất khiếu nại đã được giải quyết hoặc không còn ở trạng thái chờ phản hồi.");
         }
-      });
 
-      if (disputeLock.count === 0) {
-        throw new Error("Xung đột dữ liệu: Đề xuất khiếu nại đã được giải quyết hoặc không còn ở trạng thái chờ phản hồi.");
-      }
-
-      // 7b. Atomic Row Lock on Order
-      const lockCount = await tx.rentalHistory.updateMany({
-        where: { id: rental.id, status: "DISPUTE" },
-        data: { status: "LENDER_COMPLETED" }
-      });
-
-      if (lockCount.count === 0) {
-        throw new Error("Xung đột dữ liệu: Đơn hàng đã được xử lý bởi tiến trình khác.");
-      }
-
-      // 7c. Update Invoice
-      await tx.invoice.update({
-        where: { id: invoice.id },
-        data: { status: "PAID" }
-      });
-
-      // 7d. Update User Wallets
-      if (totalRenterCredit > 0) {
-        await tx.user.update({
-          where: { id: rental.renterId },
-          data: { walletBalance: { increment: totalRenterCredit } }
+        // Đổi trạng thái đơn hàng sang BORROWER_RETURNED để chủ tủ và khách theo dõi chiều trả hàng
+        const lockCount = await tx.rentalHistory.updateMany({
+          where: { id: rental.id, status: "DISPUTE" },
+          data: { status: "BORROWER_RETURNED" }
         });
-      }
 
-      const ownerId = rental.ownerId || rental.product?.userId;
-      if (totalOwnerCredit > 0 && ownerId) {
-        await tx.user.update({
-          where: { id: ownerId },
-          data: { walletBalance: { increment: totalOwnerCredit } }
-        });
-      }
-
-      // 7e. Record Immutable Double-Entry Ledger Transactions
-      const ledgerRows: any[] = [];
-
-      if (compensationToOwner > 0) {
-        ledgerRows.push({
-          invoiceId: invoice.id,
-          type: "COMPENSATION_OUT",
-          amount: compensationToOwner,
-          description: `Bồi thường tổn thất từ cọc khách thuê cho chủ đồ (P2P Thỏa thuận)`,
-          adminId: userAuth.id,
-          status: "COMPLETED"
-        });
-      }
-
-      if (totalRenterCredit > 0) {
-        ledgerRows.push({
-          invoiceId: invoice.id,
-          type: "REFUND_OUT",
-          amount: totalRenterCredit,
-          description: initiatorRole === "RENTER"
-            ? `Hoàn 100% cọc và tiền thuê (${totalRenterCredit.toLocaleString('vi-VN')}đ) cho khách do chủ đồ gửi sai mẫu/hư hỏng`
-            : `Hoàn phần tiền cọc còn lại về ví khách thuê sau khấu trừ bồi thường`,
-          adminId: userAuth.id,
-          status: "COMPLETED"
-        });
-      }
-
-      if (ownerRentalPayout > 0) {
-        ledgerRows.push({
-          invoiceId: invoice.id,
-          type: "PAYOUT_OUT",
-          amount: ownerRentalPayout,
-          description: `Giải ngân tiền cho thuê trang phục vào ví chủ đồ (sau trừ phí sàn)`,
-          adminId: userAuth.id,
-          status: "COMPLETED"
-        });
-      }
-
-      if (platformFeeCollected > 0) {
-        ledgerRows.push({
-          invoiceId: invoice.id,
-          type: "FEE_RETAINED",
-          amount: platformFeeCollected,
-          description: `Thu phí dịch vụ nền tảng CLOOP`,
-          adminId: userAuth.id,
-          status: "COMPLETED"
-        });
-      }
-
-      if (shippingFeeCollected > 0) {
-        ledgerRows.push({
-          invoiceId: invoice.id,
-          type: "SHIPPING_RETAINED",
-          amount: shippingFeeCollected,
-          description: `Giữ phí vận chuyển để đối soát với nhà vận chuyển`,
-          adminId: userAuth.id,
-          status: "COMPLETED"
-        });
-      }
-
-      if (ledgerRows.length > 0) {
-        await tx.ledgerTransaction.createMany({ data: ledgerRows });
-      }
-
-      // 🔄 KHI GIẢI QUYẾT XONG KHIẾU NẠI & ĐỒ VỀ TAY CHỦ TỦ: Kích hoạt lại trạng thái Sẵn Sàng Cho Thuê
-      if (rental.product_id) {
-        await tx.listing.updateMany({
-          where: { productId: rental.product_id, isDeleted: false },
-          data: { status: "AVAILABLE" }
-        });
-        await tx.product.update({
-          where: { id: rental.product_id },
-          data: { status: "ON_MARKET" }
-        });
-      }
-
-      // 7f. Audit Log
-      await tx.auditLog.create({
-        data: {
-          adminId: userAuth.id,
-          action: "DISPUTE_P2P_ACCEPTED_AND_SETTLED",
-          targetType: "DISPUTE",
-          targetId: disputeId,
-          beforeStatus: "PENDING_REVIEW",
-          afterStatus: "RESOLVED",
-          metadata: JSON.stringify({
-            compensationToOwner,
-            refundDepositToRenter,
-            ownerRentalPayout,
-            platformFeeCollected,
-            shippingFeeCollected
-          })
+        if (lockCount.count === 0) {
+          throw new Error("Xung đột dữ liệu: Đơn hàng đã được xử lý bởi tiến trình khác.");
         }
-      });
+
+        // Tự động tạo / cập nhật vận đơn GHN chiều trả hàng RETURN
+        const pickupAddress = {
+          name: rental.renter_name || "Khách thuê",
+          phone: rental.renter_phone || "",
+        };
+
+        const deliveryAddress = {
+          name: rental.owner_name || "Chủ tủ",
+          phone: rental.owner_phone || "",
+          province: rental.product?.province || "Hà Nội",
+          districtId: rental.product?.districtId,
+          wardCode: rental.product?.wardCode,
+          specificAddress: rental.product?.specificAddress,
+        };
+
+        await tx.shipment.upsert({
+          where: {
+            rentalId_direction: {
+              rentalId: rental.id,
+              direction: "RETURN",
+            },
+          },
+          update: {
+            status: "IN_TRANSIT",
+            shippingFeeCollected: 0,
+            pickupAddress,
+            deliveryAddress,
+            bookedByUserId: userAuth.id,
+            trackingCode: `GHN-RET-${rental.id.slice(0, 6).toUpperCase()}`,
+          },
+          create: {
+            rentalId: rental.id,
+            direction: "RETURN",
+            status: "IN_TRANSIT",
+            clientOrderCode: `${rental.id}-RETURN`,
+            shippingFeeCollected: 0,
+            pickupAddress,
+            deliveryAddress,
+            bookedByUserId: userAuth.id,
+            trackingCode: `GHN-RET-${rental.id.slice(0, 6).toUpperCase()}`,
+          }
+        });
+
+        await tx.auditLog.create({
+          data: {
+            adminId: userAuth.id,
+            action: "DISPUTE_RETURN_IN_PROGRESS",
+            targetType: "DISPUTE",
+            targetId: disputeId,
+            beforeStatus: "PENDING_REVIEW",
+            afterStatus: "APPROVED_DEDUCTION",
+            metadata: JSON.stringify({
+              pendingRefundToRenter: totalRenterCredit,
+              pendingOwnerPayout: ownerRentalPayout,
+              trackingCode: `GHN-RET-${rental.id.slice(0, 6).toUpperCase()}`
+            })
+          }
+        });
+
+      } else {
+        // 🛡️ KHÁCH THUÊ ĐỒNG Ý ĐỀ XUẤT BỒI THƯỜNG TỪ CHỦ TỦ:
+        // Đồ đã về tay chủ tủ từ trước đó. Quyết toán Escrow ngay lập tức!
+        const disputeLock = await tx.dispute.updateMany({
+          where: { id: disputeId, status: "PENDING_REVIEW" },
+          data: {
+            status: "RESOLVED",
+            finalDeduction: deduction,
+            adminNotes: JSON.stringify({
+              resolvedVia: "P2P_SELF_MEDIATION",
+              acceptedByUserId: userAuth.id,
+              acceptedAt: new Date().toISOString(),
+              deduction,
+              initiatorRole: "OWNER"
+            })
+          }
+        });
+
+        if (disputeLock.count === 0) {
+          throw new Error("Xung đột dữ liệu: Đề xuất khiếu nại đã được giải quyết hoặc không còn ở trạng thái chờ phản hồi.");
+        }
+
+        const lockCount = await tx.rentalHistory.updateMany({
+          where: { id: rental.id, status: "DISPUTE" },
+          data: { status: "LENDER_COMPLETED" }
+        });
+
+        if (lockCount.count === 0) {
+          throw new Error("Xung đột dữ liệu: Đơn hàng đã được xử lý bởi tiến trình khác.");
+        }
+
+        await tx.invoice.update({
+          where: { id: invoice.id },
+          data: { status: "PAID" }
+        });
+
+        if (totalRenterCredit > 0) {
+          await tx.user.update({
+            where: { id: rental.renterId },
+            data: { walletBalance: { increment: totalRenterCredit } }
+          });
+        }
+
+        const ownerId = rental.ownerId || rental.product?.userId;
+        if (totalOwnerCredit > 0 && ownerId) {
+          await tx.user.update({
+            where: { id: ownerId },
+            data: { walletBalance: { increment: totalOwnerCredit } }
+          });
+        }
+
+        const ledgerRows: any[] = [];
+
+        if (compensationToOwner > 0) {
+          ledgerRows.push({
+            invoiceId: invoice.id,
+            type: "COMPENSATION_OUT",
+            amount: compensationToOwner,
+            description: `Bồi thường tổn thất từ cọc khách thuê cho chủ đồ (P2P Thỏa thuận)`,
+            adminId: userAuth.id,
+            status: "COMPLETED"
+          });
+        }
+
+        if (totalRenterCredit > 0) {
+          ledgerRows.push({
+            invoiceId: invoice.id,
+            type: "REFUND_OUT",
+            amount: totalRenterCredit,
+            description: `Hoàn phần tiền cọc còn lại về ví khách thuê sau khấu trừ bồi thường`,
+            adminId: userAuth.id,
+            status: "COMPLETED"
+          });
+        }
+
+        if (ownerRentalPayout > 0) {
+          ledgerRows.push({
+            invoiceId: invoice.id,
+            type: "PAYOUT_OUT",
+            amount: ownerRentalPayout,
+            description: `Giải ngân tiền cho thuê trang phục vào ví chủ đồ (sau trừ phí sàn)`,
+            adminId: userAuth.id,
+            status: "COMPLETED"
+          });
+        }
+
+        if (platformFeeCollected > 0) {
+          ledgerRows.push({
+            invoiceId: invoice.id,
+            type: "FEE_RETAINED",
+            amount: platformFeeCollected,
+            description: `Thu phí dịch vụ nền tảng CLOOP`,
+            adminId: userAuth.id,
+            status: "COMPLETED"
+          });
+        }
+
+        if (shippingFeeCollected > 0) {
+          ledgerRows.push({
+            invoiceId: invoice.id,
+            type: "SHIPPING_RETAINED",
+            amount: shippingFeeCollected,
+            description: `Giữ phí vận chuyển để đối soát với nhà vận chuyển`,
+            adminId: userAuth.id,
+            status: "COMPLETED"
+          });
+        }
+
+        if (ledgerRows.length > 0) {
+          await tx.ledgerTransaction.createMany({ data: ledgerRows });
+        }
+
+        // Kích hoạt lại sản phẩm
+        if (rental.product_id) {
+          await tx.listing.updateMany({
+            where: { productId: rental.product_id, isDeleted: false },
+            data: { status: "AVAILABLE" }
+          });
+          await tx.product.update({
+            where: { id: rental.product_id },
+            data: { status: "ON_MARKET" }
+          });
+        }
+
+        await tx.auditLog.create({
+          data: {
+            adminId: userAuth.id,
+            action: "DISPUTE_P2P_ACCEPTED_AND_SETTLED",
+            targetType: "DISPUTE",
+            targetId: disputeId,
+            beforeStatus: "PENDING_REVIEW",
+            afterStatus: "RESOLVED",
+            metadata: JSON.stringify({
+              compensationToOwner,
+              refundDepositToRenter,
+              ownerRentalPayout,
+              platformFeeCollected,
+              shippingFeeCollected
+            })
+          }
+        });
+      }
     });
 
     try {

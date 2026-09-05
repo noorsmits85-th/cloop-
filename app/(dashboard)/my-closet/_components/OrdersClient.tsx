@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { History, ShoppingBag, Star, X, Check, Truck, Package, RotateCcw, AlertTriangle, CheckCircle, ShieldAlert, Store, PartyPopper, Loader2 } from "lucide-react";
+import { History, ShoppingBag, Star, X, Check, Truck, Package, RotateCcw, AlertTriangle, CheckCircle, ShieldAlert, Store, PartyPopper, Loader2, Video, Camera, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -134,6 +134,15 @@ export function OrdersClient({
   
   const [isReviewSubmitting, setIsReviewSubmitting] = useState(false);
   const [isDisputeSubmitting, setIsDisputeSubmitting] = useState(false);
+
+  // 📦 Packaging Video & Sealed Proof State (Kiểm tra niêm phong & Video trước khi gửi)
+  const [packagingOrder, setPackagingOrder] = useState<any | null>(null);
+  const [packagingProofs, setPackagingProofs] = useState<string[]>([]);
+  const [packagingChecklist, setPackagingChecklist] = useState({
+    cleanAndIntact: true,
+    fullAccessories: true,
+    sealedProperly: true
+  });
 
   // ⚡ Supabase Realtime Channels (Live State & Toast Synchronization)
   useEffect(() => {
@@ -307,16 +316,18 @@ export function OrdersClient({
     }
   };
 
-  const handleRequestPickup = async (orderId: string) => {
+  const handleRequestPickup = async (orderId: string, packagingProofUrls: string[] = []) => {
     if (requestingPickupIds[orderId]) return;
     
     setRequestingPickupIds(prev => ({ ...prev, [orderId]: true }));
     setEscrowOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "LENDER_SHIPPED" } : o));
     setRentedOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "LENDER_SHIPPED" } : o));
     try {
-      const res = await requestPickupAction(orderId);
+      const res = await requestPickupAction(orderId, packagingProofUrls);
       if (res.success) {
         toast.success("🚚 Đã bàn giao cho Shipper!", { description: "Đơn hàng đã chuyển sang trạng thái Đang Vận Chuyển." });
+        setPackagingOrder(null);
+        setPackagingProofs([]);
         router.refresh();
       } else {
         toast.error("Lỗi xác nhận", { description: res.error });
@@ -608,8 +619,12 @@ export function OrdersClient({
                                 {order.status === "PENDING_APPROVAL" && (
                                   <button 
                                     disabled={requestingPickupIds[order.id]}
-                                    onClick={() => handleRequestPickup(order.id)}
-                                    className="border border-[#183A2D] bg-[#183A2D] hover:bg-transparent text-white hover:text-[#183A2D] text-xs font-medium px-5 py-2.5 rounded-md transition-all duration-500 flex items-center gap-2 disabled:opacity-50"
+                                    onClick={() => {
+                                      setPackagingOrder(order);
+                                      setPackagingProofs([]);
+                                      setPackagingChecklist({ cleanAndIntact: true, fullAccessories: true, sealedProperly: true });
+                                    }}
+                                    className="border border-[#183A2D] bg-[#183A2D] hover:bg-transparent text-white hover:text-[#183A2D] text-xs font-medium px-5 py-2.5 rounded-md transition-all duration-500 flex items-center gap-2 disabled:opacity-50 cursor-pointer shadow-xs"
                                   >
                                     {requestingPickupIds[order.id] ? (
                                       <>
@@ -636,32 +651,49 @@ export function OrdersClient({
                                   </div>
                                 )}
                                 {order.status === "BORROWER_RETURNED" && (
-                                  <button 
-                                    disabled={completingIds[order.id]}
-                                    onClick={() => handleCompleteOrder(order.id)}
-                                    className="border border-[#183A2D] bg-[#183A2D] hover:bg-transparent text-white hover:text-[#183A2D] text-xs font-medium px-5 py-2.5 rounded-md transition-all duration-500 flex items-center gap-2 disabled:opacity-50"
-                                  >
-                                    {completingIds[order.id] ? (
-                                      <>
-                                        <Loader2 size={14} className="animate-spin" /> Đang hoàn tất...
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Check size={14} strokeWidth={2} /> Đã nhận lại đồ
-                                      </>
+                                  <div className="w-full space-y-2.5">
+                                    {order.disputes?.some((d: any) => d.status === "APPROVED_DEDUCTION" || d.adminNotes?.includes("pendingRefundToRenter")) && (
+                                      <div className="p-3 rounded-lg bg-amber-50/80 border border-amber-200/80 text-[11px] text-amber-950 space-y-1">
+                                        <div className="flex items-center gap-1.5 font-semibold text-amber-800">
+                                          <RotateCcw size={14} /> Kiện hàng đang hoàn về từ khách (Do khiếu nại sai mẫu / lỗi)
+                                        </div>
+                                        <p className="text-[10px] text-amber-800/90 leading-relaxed font-light">
+                                          Vui lòng kiểm tra kiện hàng hoàn sau khi shipper giao tới. Khi xác nhận nhận lại đồ thành công, tiền thuê & cọc sẽ được giải ngân hoàn trả về ví của khách.
+                                        </p>
+                                      </div>
                                     )}
-                                  </button>
-                                )}
-                                {order.status === "BORROWER_RETURNED" && (
-                                  <button 
-                                    onClick={() => {
-                                      setSelectedOrderForDispute(order);
-                                      setShowDisputeModal(true);
-                                    }}
-                                    className="bg-transparent hover:bg-red-50 text-stone-500 hover:text-red-600 border border-stone-200 hover:border-red-200 text-xs font-medium px-4 py-2.5 rounded-md flex items-center gap-2 transition-all duration-500"
-                                  >
-                                    <ShieldAlert size={14} strokeWidth={1.5} /> Báo cáo sự cố
-                                  </button>
+                                    <div className="flex flex-wrap gap-3">
+                                      <button 
+                                        disabled={completingIds[order.id]}
+                                        onClick={() => handleCompleteOrder(order.id)}
+                                        className="border border-[#183A2D] bg-[#183A2D] hover:bg-transparent text-white hover:text-[#183A2D] text-xs font-medium px-5 py-2.5 rounded-md transition-all duration-500 flex items-center gap-2 disabled:opacity-50 cursor-pointer shadow-xs"
+                                      >
+                                        {completingIds[order.id] ? (
+                                          <>
+                                            <Loader2 size={14} className="animate-spin" /> Đang hoàn tất...
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Check size={14} strokeWidth={2} />
+                                            {order.disputes?.some((d: any) => d.status === "APPROVED_DEDUCTION" || d.adminNotes?.includes("pendingRefundToRenter"))
+                                              ? "Đã nhận lại đồ hoàn (Giải ngân cho khách)"
+                                              : "Đã nhận lại đồ"}
+                                          </>
+                                        )}
+                                      </button>
+                                      {!order.disputes?.some((d: any) => d.status === "APPROVED_DEDUCTION") && (
+                                        <button 
+                                          onClick={() => {
+                                            setSelectedOrderForDispute(order);
+                                            setShowDisputeModal(true);
+                                          }}
+                                          className="bg-transparent hover:bg-red-50 text-stone-500 hover:text-red-600 border border-stone-200 hover:border-red-200 text-xs font-medium px-4 py-2.5 rounded-md flex items-center gap-2 transition-all duration-500 cursor-pointer"
+                                        >
+                                          <ShieldAlert size={14} strokeWidth={1.5} /> Khiếu nại hỏng đồ
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
                                 )}
                                 {order.status === "LENDER_COMPLETED" && (
                                    <button 
@@ -829,9 +861,24 @@ export function OrdersClient({
                                   <span>Hạn trả: <strong>{order.endDate ? new Date(order.endDate).toLocaleDateString('vi-VN') : 'Dự kiến'}</strong></span>
                                 </div>
                                 {order.status === "LENDER_SHIPPED" && (
-                                  <p className="text-[9.5px] text-emerald-700 italic pt-0.5">
-                                    💡 Gói thuê chỉ bắt đầu tính giờ khi bạn bấm nút &quot;Đã nhận được đồ&quot; bên dưới.
-                                  </p>
+                                  <>
+                                    <p className="text-[9.5px] text-emerald-700 italic pt-0.5">
+                                      💡 Gói thuê chỉ bắt đầu tính giờ khi bạn bấm nút &quot;Đã nhận được đồ&quot; bên dưới.
+                                    </p>
+                                    <div className="mt-2 p-3 rounded-lg bg-amber-50/80 border border-amber-200/80 text-[11px] text-amber-950 flex items-start gap-2.5">
+                                      <div className="p-1.5 bg-amber-100/80 rounded-md text-amber-800 shrink-0 mt-0.5">
+                                        <Video size={16} />
+                                      </div>
+                                      <div className="space-y-0.5">
+                                        <p className="font-semibold text-amber-900">
+                                          Khuyến nghị: Quay video mở hộp (Unboxing Proof)
+                                        </p>
+                                        <p className="text-[10px] text-amber-800/90 leading-relaxed font-light">
+                                          Vui lòng quay video liền mạch từ lúc còn nguyên vẹn tem niêm phong và mã vận đơn để bảo vệ quyền lợi <strong>hoàn tiền 100%</strong> nếu trang phục bị giao sai mẫu mã hoặc hư hỏng.
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </>
                                 )}
                               </div>
                               
@@ -1077,6 +1124,145 @@ export function OrdersClient({
             >
               {isDisputeSubmitting ? <><Loader2 size={14} className="animate-spin" /> Đang gửi đề xuất...</> : (!isOwnerMode ? "Gửi yêu cầu hoàn tiền cho Chủ tủ" : "Gửi đề xuất khấu trừ cọc")}
             </button>
+          </motion.div>
+        </div>
+      )}
+
+      {packagingOrder && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 backdrop-blur-md p-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="bg-white border border-stone-100 rounded-xl max-w-[480px] w-full shadow-2xl p-6 md:p-8 text-left space-y-5">
+            <div className="flex justify-between items-center border-b border-stone-100 pb-3">
+              <div className="flex items-center gap-2 text-[#183A2D]">
+                <Package size={18} strokeWidth={2} />
+                <h3 className="text-xs font-semibold uppercase tracking-wide">Kiểm tra niêm phong & Đóng gói</h3>
+              </div>
+              <button onClick={() => setPackagingOrder(null)} className="text-stone-400 hover:text-stone-900 transition-colors p-1">
+                <X size={18} strokeWidth={1.5} />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-3 p-2.5 rounded-lg bg-stone-50 border border-stone-200/60">
+              <img 
+                src={packagingOrder.product?.images?.[0]?.url || packagingOrder.product?.images?.[0] || PLACEHOLDER_IMG} 
+                alt="" 
+                className="w-12 h-12 rounded object-cover border border-stone-200" 
+              />
+              <div className="text-xs">
+                <p className="font-medium text-stone-900 line-clamp-1">{packagingOrder.product?.title}</p>
+                <p className="text-[11px] text-stone-500 font-mono">ORD-{packagingOrder.id.slice(0, 8).toUpperCase()}</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-[10px] font-semibold text-stone-600 uppercase tracking-wide">
+                1. Danh sách kiểm tra chất lượng trước khi gửi
+              </label>
+              <div className="space-y-2 text-xs text-stone-700 bg-emerald-50/40 p-3 rounded-lg border border-emerald-100">
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={packagingChecklist.cleanAndIntact}
+                    onChange={(e) => setPackagingChecklist(prev => ({ ...prev, cleanAndIntact: e.target.checked }))}
+                    className="mt-0.5 rounded border-stone-300 text-[#183A2D] focus:ring-[#183A2D]" 
+                  />
+                  <span>Trang phục sạch sẽ, thơm tho, khóa cúc hoạt động tốt.</span>
+                </label>
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={packagingChecklist.fullAccessories}
+                    onChange={(e) => setPackagingChecklist(prev => ({ ...prev, fullAccessories: e.target.checked }))}
+                    className="mt-0.5 rounded border-stone-300 text-[#183A2D] focus:ring-[#183A2D]" 
+                  />
+                  <span>Kèm đầy đủ phụ kiện & dây tag bảo hiểm niêm phong.</span>
+                </label>
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={packagingChecklist.sealedProperly}
+                    onChange={(e) => setPackagingChecklist(prev => ({ ...prev, sealedProperly: e.target.checked }))}
+                    className="mt-0.5 rounded border-stone-300 text-[#183A2D] focus:ring-[#183A2D]" 
+                  />
+                  <span>Đã dán kín miệng túi / hộp hàng và dán tem niêm phong CLOOP.</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <label className="block text-[10px] font-semibold text-stone-600 uppercase tracking-wide">
+                  2. Video / Ảnh gói hàng & niêm phong
+                </label>
+                <span className="text-[10px] text-emerald-800 font-medium">Bảo vệ quyền lợi 100%</span>
+              </div>
+              <p className="text-[11px] font-light text-stone-500 leading-relaxed">
+                Tải lên video hoặc ảnh cận cảnh quá trình đóng hàng và dán tem. Đây là căn cứ bảo vệ bạn 100% khi có khiếu nại phát sinh từ khách thuê.
+              </p>
+              
+              <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                {packagingProofs.map((url, i) => (
+                  <div key={i} className="relative w-16 h-16 rounded-md overflow-hidden border border-stone-200 shadow-xs group">
+                    {url.endsWith(".mp4") || url.includes("/video/") ? (
+                      <div className="w-full h-full bg-slate-800 flex items-center justify-center text-white text-[10px]">
+                        <Video size={20} />
+                      </div>
+                    ) : (
+                      <img src={url} alt="Proof" className="w-full h-full object-cover" />
+                    )}
+                    <button 
+                      type="button" 
+                      onClick={() => setPackagingProofs(prev => prev.filter((_, idx) => idx !== i))}
+                      className="absolute top-0.5 right-0.5 bg-black/60 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+
+                <CldUploadWidget 
+                  uploadPreset="cloop_uploads" 
+                  options={{ maxFiles: 3, resourceType: "auto" }}
+                  onSuccess={(result: any) => { 
+                    if (result.info?.secure_url) {
+                      setPackagingProofs(prev => [...prev, result.info.secure_url]); 
+                    }
+                  }}
+                >
+                  {({ open }) => (
+                    <button 
+                      type="button" 
+                      onClick={() => open()} 
+                      className="h-16 px-3 rounded-md border border-dashed border-emerald-600/40 hover:border-emerald-600 bg-emerald-50/30 text-emerald-800 flex items-center gap-2 text-xs font-medium transition-colors cursor-pointer"
+                    >
+                      <Camera size={16} /> + Thêm video/ảnh
+                    </button>
+                  )}
+                </CldUploadWidget>
+              </div>
+            </div>
+
+            <div className="pt-2 flex items-center gap-3">
+              <button 
+                type="button"
+                disabled={requestingPickupIds[packagingOrder.id]}
+                onClick={() => handleRequestPickup(packagingOrder.id, [])}
+                className="w-1/3 py-3 border border-stone-200 hover:bg-stone-50 text-stone-600 text-xs font-medium rounded-md transition-colors text-center cursor-pointer"
+              >
+                Bỏ qua video
+              </button>
+              <button 
+                type="button"
+                disabled={requestingPickupIds[packagingOrder.id]}
+                onClick={() => handleRequestPickup(packagingOrder.id, packagingProofs)}
+                className="w-2/3 py-3 bg-[#183A2D] hover:bg-[#122c22] text-white text-xs font-semibold tracking-wide rounded-md transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
+              >
+                {requestingPickupIds[packagingOrder.id] ? (
+                  <><Loader2 size={14} className="animate-spin" /> Đang điều phối...</>
+                ) : (
+                  <><Check size={14} /> Xác nhận & Gọi Shipper</>
+                )}
+              </button>
+            </div>
           </motion.div>
         </div>
       )}
