@@ -2,10 +2,40 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { CheckCircle, Clock, User, CreditCard, ArrowRight, ShieldCheck, RefreshCw, FileText, CheckCircle2, Phone, AlertCircle } from "lucide-react";
+import { CheckCircle, Clock, User, CreditCard, ArrowRight, ShieldCheck, RefreshCw, FileText, CheckCircle2, Phone, AlertCircle, QrCode, X } from "lucide-react";
 import { PayoutItem, markPayoutCompletedAction } from "./actions";
 
+function getVietQRBankId(bankName: string): string {
+  const b = (bankName || "").toLowerCase();
+  if (b.includes("techcom")) return "TCB";
+  if (b.includes("mb") || b.includes("quân đội")) return "MB";
+  if (b.includes("vietcom")) return "VCB";
+  if (b.includes("vietin")) return "CTG";
+  if (b.includes("vp")) return "VPB";
+  if (b.includes("acb") || b.includes("á châu")) return "ACB";
+  if (b.includes("tp")) return "TPB";
+  if (b.includes("bidv") || b.includes("đầu tư")) return "BIDV";
+  if (b.includes("sacom")) return "STB";
+  if (b.includes("hd")) return "HDB";
+  if (b.includes("agri") || b.includes("nông nghiệp")) return "VBA";
+  if (b.includes("vib")) return "VIB";
+  if (b.includes("shb")) return "SHB";
+  if (b.includes("ocb")) return "OCB";
+  if (b.includes("sea")) return "SEAB";
+  return "TCB";
+}
+
+function getVietQrUrl(bankName: string, accountNo: string, amount: number, accountName: string, orderCode: string): string {
+  const bankId = getVietQRBankId(bankName);
+  const cleanAccount = (accountNo || "").replace(/\s+/g, "");
+  const cleanAmount = Math.max(0, Math.floor(amount));
+  const desc = encodeURIComponent(`CLOOP ${orderCode}`);
+  const name = encodeURIComponent(accountName || "");
+  return `https://img.vietqr.io/image/${bankId}-${cleanAccount}-compact2.png?amount=${cleanAmount}&addInfo=${desc}&accountName=${name}`;
+}
+
 export default function PaymentsClient({ initialItems }: { initialItems: PayoutItem[] }) {
+  const [selectedQrItem, setSelectedQrItem] = useState<PayoutItem | null>(null);
   const [items, setItems] = useState<PayoutItem[]>(initialItems);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [completedIds, setCompletedIds] = useState<string[]>([]);
@@ -146,16 +176,24 @@ export default function PaymentsClient({ initialItems }: { initialItems: PayoutI
                       <span className="flex items-center gap-1.5"><CreditCard size={14} className="text-emerald-700" /> Ngân hàng: <b>{order.bankName}</b></span>
                       <span className="text-[11px] font-bold text-stone-700">Chủ TK: {order.bankHolder}</span>
                     </p>
-                    <div className="flex items-center justify-between pt-1">
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-stone-200/60 mt-1">
                       <p className="text-stone-700">
-                        Số tài khoản: <strong className="font-mono text-sm font-bold text-stone-900 tracking-wider bg-white px-2 py-0.5 rounded border border-stone-200">{order.bankAccount}</strong>
+                        Số tài khoản: <strong className="font-mono text-sm font-bold text-stone-900 tracking-wider bg-white px-2.5 py-1 rounded-md border border-stone-200">{order.bankAccount}</strong>
                       </p>
-                      <button
-                        onClick={() => handleCopy(order.bankAccount)}
-                        className="text-[11px] font-bold text-emerald-800 hover:text-emerald-950 bg-white hover:bg-emerald-50 px-2.5 py-1 rounded-lg border border-stone-200 transition cursor-pointer"
-                      >
-                        {copiedAccount === order.bankAccount ? "✓ Đã copy STK" : "Sao chép STK"}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleCopy(order.bankAccount)}
+                          className="text-[11px] font-bold text-stone-700 hover:text-emerald-800 bg-white hover:bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-stone-200 transition cursor-pointer"
+                        >
+                          {copiedAccount === order.bankAccount ? "✓ Đã copy STK" : "Sao chép STK"}
+                        </button>
+                        <button
+                          onClick={() => setSelectedQrItem(order)}
+                          className="text-[11px] font-bold text-emerald-800 hover:text-white bg-emerald-100 hover:bg-emerald-800 px-3 py-1.5 rounded-lg border border-emerald-300 transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                        >
+                          <QrCode size={13} /> Quét VietQR (2s)
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -179,14 +217,22 @@ export default function PaymentsClient({ initialItems }: { initialItems: PayoutI
                     <p className="text-2xl font-black font-mono text-emerald-700">{order.netPayoutAmount.toLocaleString()}₫</p>
                   </div>
 
-                  <button
-                    onClick={() => handleMarkAsPaid(order)}
-                    disabled={processingId === order.id}
-                    className="bg-[#183A2D] hover:bg-emerald-800 text-white font-bold text-xs px-5 py-3 rounded-xl transition-all flex items-center gap-1.5 w-full justify-center md:w-auto shadow-sm cursor-pointer disabled:opacity-50"
-                  >
-                    <CheckCircle size={14} />
-                    {processingId === order.id ? "Đang ghi vết..." : "Tôi đã chuyển khoản xong"}
-                  </button>
+                  <div className="flex flex-col sm:flex-row md:flex-col gap-2 pt-1">
+                    <button
+                      onClick={() => setSelectedQrItem(order)}
+                      className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                    >
+                      <QrCode size={14} /> Mở VietQR Chuyển Tiền (2s)
+                    </button>
+                    <button
+                      onClick={() => handleMarkAsPaid(order)}
+                      disabled={processingId === order.id}
+                      className="bg-[#183A2D] hover:bg-emerald-800 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all flex items-center gap-1.5 justify-center shadow-sm cursor-pointer disabled:opacity-50"
+                    >
+                      <CheckCircle size={14} />
+                      {processingId === order.id ? "Đang ghi vết..." : "Tôi đã chuyển khoản xong"}
+                    </button>
+                  </div>
                 </div>
               </div>
             ))
@@ -206,6 +252,103 @@ export default function PaymentsClient({ initialItems }: { initialItems: PayoutI
             </p>
           </div>
         </div>
+
+        {/* MODAL QUÉT VIETQR CHUYỂN KHOẢN TỰ ĐỘNG (0đ PHÍ) */}
+        {selectedQrItem && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="bg-white rounded-3xl border border-stone-100 max-w-[420px] w-full p-6 sm:p-7 text-center shadow-2xl space-y-5 relative">
+              <button
+                type="button"
+                onClick={() => setSelectedQrItem(null)}
+                className="absolute right-4 top-4 text-stone-400 hover:text-stone-700 p-1.5 rounded-full hover:bg-stone-100 transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                  VietQR Chuẩn Napas 247 (0đ Phí)
+                </span>
+                <h3 className="text-lg font-black text-stone-900 pt-1">
+                  Quét Mã Chuyển Tiền Tức Thì
+                </h3>
+                <p className="text-xs text-stone-500 font-light">
+                  Mở App ngân hàng bất kỳ (Techcombank, VCB, MB, Momo...) để quét. Toàn bộ STK, người nhận & số tiền được điền tự động 100%.
+                </p>
+              </div>
+
+              {/* QR Image */}
+              <div className="bg-stone-50 p-4 rounded-2xl border border-stone-200 inline-block shadow-inner">
+                <img
+                  src={getVietQrUrl(
+                    selectedQrItem.bankName,
+                    selectedQrItem.bankAccount,
+                    selectedQrItem.netPayoutAmount,
+                    selectedQrItem.bankHolder,
+                    selectedQrItem.orderCode
+                  )}
+                  alt="VietQR Payout"
+                  className="w-56 h-56 mx-auto rounded-xl border border-stone-200 shadow-sm object-contain bg-white p-2"
+                />
+              </div>
+
+              {/* Chi tiết người nhận */}
+              <div className="bg-stone-50 p-3.5 rounded-2xl border border-stone-200 text-left space-y-1.5 text-xs font-mono">
+                <div className="flex justify-between">
+                  <span className="text-stone-500 font-sans">Người nhận:</span>
+                  <strong className="font-bold text-stone-900">{selectedQrItem.bankHolder}</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-stone-500 font-sans">Ngân hàng:</span>
+                  <span className="font-semibold text-stone-800">{selectedQrItem.bankName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-stone-500 font-sans">Số tài khoản:</span>
+                  <strong className="font-bold text-stone-900 bg-white px-2 py-0.5 rounded border border-stone-200">
+                    {selectedQrItem.bankAccount}
+                  </strong>
+                </div>
+                <div className="flex justify-between pt-1 border-t border-stone-200">
+                  <span className="text-stone-600 font-bold font-sans">Số tiền thực chuyển:</span>
+                  <strong className="text-base font-black text-emerald-700">
+                    {selectedQrItem.netPayoutAmount.toLocaleString('vi-VN')}₫
+                  </strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-stone-500 font-sans">Nội dung CK:</span>
+                  <span className="text-stone-700 bg-white px-1.5 py-0.5 rounded border border-stone-200 text-[11px]">
+                    CLOOP {selectedQrItem.orderCode}
+                  </span>
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="pt-2 space-y-2">
+                <button
+                  disabled={processingId === selectedQrItem.id}
+                  onClick={async () => {
+                    await handleMarkAsPaid(selectedQrItem);
+                    setSelectedQrItem(null);
+                  }}
+                  className="w-full py-3.5 bg-[#183A2D] hover:bg-[#23452F] text-white text-xs font-bold uppercase tracking-wider rounded-2xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer active:scale-98 disabled:opacity-50"
+                >
+                  {processingId === selectedQrItem.id ? (
+                    <><RefreshCw size={15} className="animate-spin" /> Đang chốt sổ cái...</>
+                  ) : (
+                    <><CheckCircle2 size={16} /> Tôi đã chuyển khoản xong (Chốt sổ)</>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedQrItem(null)}
+                  className="w-full py-2 text-stone-400 hover:text-stone-700 text-xs font-medium transition cursor-pointer"
+                >
+                  Đóng lại
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

@@ -25,8 +25,8 @@ export async function getPendingPayoutsAction() {
   try {
     await requireAdmin();
 
-    // 1 & 2. Lấy đồng thời yêu cầu rút tiền và đơn thuê hoàn tất chờ giải ngân (Parallel Query)
-    const [withdrawalRequests, completedRentals] = await Promise.all([
+    // 1, 2 & 3. Lấy đồng thời yêu cầu rút tiền, đơn hoàn tất và các đơn đã xác nhận chi trả
+    const [withdrawalRequests, completedRentals, confirmedAuditLogs] = await Promise.all([
       prisma.withdrawalRequest.findMany({
         where: { status: "PENDING" },
         take: 20,
@@ -54,9 +54,14 @@ export async function getPendingPayoutsAction() {
           },
         },
         orderBy: { updatedAt: "desc" },
+      }),
+      prisma.auditLog.findMany({
+        where: { action: "PAYOUT_TRANSFER_CONFIRMED" },
+        select: { targetId: true }
       })
     ]);
 
+    const confirmedRentalIds = new Set(confirmedAuditLogs.map(a => a.targetId));
     const items: PayoutItem[] = [];
 
     // Map withdrawal requests
@@ -79,8 +84,8 @@ export async function getPendingPayoutsAction() {
       });
     });
 
-    // Map completed rentals
-    completedRentals.forEach(rent => {
+    // Map completed rentals (chưa xác nhận chi trả)
+    completedRentals.filter(rent => !confirmedRentalIds.has(rent.id)).forEach(rent => {
       const rentalFee = rent.invoice?.rentalFee || 350000;
       const platformFee = rent.invoice?.platformFee || Math.floor(rentalFee * 0.12);
       const returnShipping = 25000;
