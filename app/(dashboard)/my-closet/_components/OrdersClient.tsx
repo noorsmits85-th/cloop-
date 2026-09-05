@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { History, ShoppingBag, Star, X, Check, Truck, Package, RotateCcw, AlertTriangle, CheckCircle, ShieldAlert, Store, PartyPopper, Loader2, Video, Camera, CheckCircle2 } from "lucide-react";
+import { History, ShoppingBag, Star, X, Check, Truck, Package, RotateCcw, AlertTriangle, CheckCircle, ShieldAlert, Store, PartyPopper, Loader2, Video, Camera, CheckCircle2, Clock } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -728,8 +728,11 @@ export function OrdersClient({
                                  )}
                                 {order.status === "DISPUTE" && (
                                   <div className="mt-4 p-4 rounded-lg bg-amber-50/70 border border-amber-200/80 text-left space-y-3 w-full">
-                                    <div className="flex items-center gap-2 text-amber-800 font-semibold text-xs uppercase tracking-wide">
-                                      <AlertTriangle size={15} /> Thỏa thuận hòa giải P2P
+                                    <div className="flex items-center justify-between text-amber-800 font-semibold text-xs uppercase tracking-wide">
+                                      <div className="flex items-center gap-1.5"><AlertTriangle size={15} /> Thỏa thuận hòa giải P2P</div>
+                                      <span className="text-[10px] font-medium text-amber-800 bg-amber-200/60 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                        <Clock size={11} /> Đối soát trong 48h
+                                      </span>
                                     </div>
                                     {order.disputes?.[0] ? (
                                       <div className="space-y-2">
@@ -894,7 +897,7 @@ export function OrdersClient({
                                           Khuyến nghị: Quay video mở hộp (Unboxing Proof)
                                         </p>
                                         <p className="text-[10px] text-amber-800/90 leading-relaxed font-light">
-                                          Vui lòng quay video liền mạch từ lúc còn nguyên vẹn tem niêm phong và mã vận đơn để bảo vệ quyền lợi <strong>hoàn tiền 100%</strong> nếu trang phục bị giao sai mẫu mã hoặc hư hỏng.
+                                          Vui lòng quay video liền mạch từ lúc còn nguyên vẹn tem niêm phong và mã vận đơn để bảo vệ quyền lợi <strong>hoàn tiền 100%</strong> nếu trang phục bị giao sai mẫu mã hoặc hư hỏng (Thời hạn khiếu nại & đối soát trong vòng <strong>48h</strong> kể từ khi nhận hàng).
                                         </p>
                                       </div>
                                     </div>
@@ -947,8 +950,11 @@ export function OrdersClient({
                                 )}
                                 {order.status === "DISPUTE" && (
                                   <div className="mt-4 p-4 rounded-lg bg-amber-50/70 border border-amber-200/80 text-left space-y-3 w-full">
-                                    <div className="flex items-center gap-2 text-amber-800 font-semibold text-xs uppercase tracking-wide">
-                                      <AlertTriangle size={15} /> Thỏa thuận hòa giải P2P
+                                    <div className="flex items-center justify-between text-amber-800 font-semibold text-xs uppercase tracking-wide">
+                                      <div className="flex items-center gap-1.5"><AlertTriangle size={15} /> Thỏa thuận hòa giải P2P</div>
+                                      <span className="text-[10px] font-medium text-amber-800 bg-amber-200/60 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                        <Clock size={11} /> Đối soát trong 48h
+                                      </span>
                                     </div>
                                     {order.disputes?.[0] ? (
                                       <div className="space-y-2">
@@ -1082,6 +1088,13 @@ export function OrdersClient({
                 ? "Trang phục nhận được bị sai mẫu mã, rách hoặc bẩn trước khi mặc? Hãy gửi hình ảnh thực tế và số tiền thuê bạn yêu cầu hoàn lại. Khi Chủ tủ đồng ý, toàn bộ tiền cọc và tiền thuê sẽ được hoàn trả về ví của bạn."
                 : "Hệ thống sẽ gửi đề xuất bồi thường đến khách thuê để khấu trừ từ tiền cọc. Nếu 2 bên không đạt thỏa thuận, vụ việc sẽ được chuyển lên Ban Quản Trị CLOOP phân xử."}
             </p>
+
+            <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-amber-50/80 border border-amber-200/70 text-[11px] text-amber-900 leading-snug">
+              <Clock size={15} className="shrink-0 text-amber-700" />
+              <span>
+                <strong>Quy định SLA 48h:</strong> Mở khiếu nại trong vòng <strong>48h</strong> kể từ khi nhận đồ. Quá trình đối soát & hòa giải giữa 2 bên hoặc BQT phân xử trong vòng <strong>48h</strong>.
+              </span>
+            </div>
 
             <div className="space-y-1.5">
               <label className="block text-[10px] font-medium text-stone-500 uppercase tracking-wide">Mô tả chi tiết sự cố</label>

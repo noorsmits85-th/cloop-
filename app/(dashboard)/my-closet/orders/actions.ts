@@ -531,6 +531,7 @@ export async function raiseDisputeWithProposalAction(
             initiatorId: userAuth.id,
             initiatorRole: initiatorRole,
             proposedAt: new Date().toISOString(),
+            slaDeadline: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
           })
         }
       });
