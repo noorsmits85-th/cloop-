@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import VisualSearchModal from "@/app/components/VisualSearchModal";
-import VelunoEditorialHero from "@/app/components/VelunoEditorialHero";
+import GoogleFlowFashionHero from "@/app/components/GoogleFlowFashionHero";
 import LivePulseTicker from "@/app/components/LivePulseTicker";
 import HowItWorksTabs from "@/app/components/HowItWorksTabs";
 import { getTrendingProductsAction } from "@/app/actions/favorite";
@@ -233,8 +233,8 @@ export default function Home() {
   return (
     <main className="min-h-screen overflow-x-hidden antialiased bg-[#FAF9F5] text-[#0A2517] pb-28 md:pb-0 font-body">
 
-      {/* 🌟 01 — HERO EDITORIAL VELUNO QUIET LUXURY */}
-      <VelunoEditorialHero />
+      {/* 🌟 01 — HERO EDITORIAL */}
+      <GoogleFlowFashionHero />
 
       {/* ⚡ 02 — NHỊP ĐẬP TUẦN HOÀN (CHÂN HERO HEADER) */}
       <LivePulseTicker />
