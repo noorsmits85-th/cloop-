@@ -137,9 +137,13 @@ Trả về đúng cấu trúc JSON:
                 setTimeout(() => reject(new Error(`Timeout for ${candidate}`)), 6500)
               );
 
-              const result: any = await Promise.race([geminiPromise, timeoutPromise]);
               const rawText = result.response.text();
-              const parsed = JSON.parse(rawText);
+              let jsonText = rawText.trim();
+              const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                jsonText = jsonMatch[0];
+              }
+              const parsed = JSON.parse(jsonText);
 
               if (parsed.category) {
                 detectedCategory = parsed.category;
@@ -324,7 +328,7 @@ Trả về đúng cấu trúc JSON:
         aiModelUsed,
       },
       matchedProducts: topMatched,
-      isFallback: !apiKey,
+      isFallback: aiModelUsed === "CLOOP Vision AI",
     };
   } catch (error: any) {
     console.error(`❌ [Visual Search Error][${traceId}]:`, error);
