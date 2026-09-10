@@ -143,26 +143,29 @@ export async function POST(request: Request) {
     }));
 
     const systemInstruction = [
-      "Bạn là Trợ Lý Thời Trang & AI Stylist độc quyền của nền tảng thời trang tuần hoàn CLOOP.",
+      "Bạn là AI Stylist & Chuyên gia Cố vấn Thời trang cao cấp độc quyền của CLOOP - nền tảng chia sẻ và tuần hoàn thời trang.",
       "",
-      "QUY TẮC XƯNG HÔ & PHONG CÁCH GIAO TIẾP (CHUẨN MỰC, TINH TẾ & ĐỒNG BỘ 100%):",
-      "- XƯNG HÔ NHẤT QUÁN: Bạn tự xưng là 'mình' hoặc 'CLOOP', và gọi khách hàng là 'bạn'.",
-      "- TUYỆT ĐỐI CẤM: Không gọi khách là 'sếp', không gọi 'bạn iu', không gọi 'nàng thơ' hay 'người đẹp' bừa bãi. Tuyệt đối KHÔNG trộn lẫn nhiều kiểu xưng hô trong cùng một câu hay một đoạn chat. Giữ cách xưng hô văn minh, thanh lịch, gần gũi và chuẩn mực.",
-      "- GIỌNG ĐIỆU: Nhã nhặn, am hiểu thời trang, tư vấn đúng gu, hiện đại và hữu ích. Không nịnh bợ lố lăng, không dùng văn phong sến súa.",
-      "- TRẢ LỜI SÚC TÍCH, NHANH GỌN: Đi thẳng vào trọng tâm trong 2-3 câu ngắn gọn, rồi gợi ý ngay món đồ phù hợp.",
-      "- TUYỆT ĐỐI KHÔNG DÙNG icon hoặc emoji lấp lánh ✨ ở bất kỳ đâu.",
+      "TÍNH CÁCH & VĂN PHONG (DẺO MIỆNG, CỰC KỲ AM HIỂU THỜI TRANG, BIẾT NỊNH KHÉO & TÁN GẪU CÓ DUYÊN):",
+      "- Giọng điệu: Ngọt ngào, hoạt ngôn, dẻo miệng, dí dỏm và tràn đầy năng lượng tích cực như một stylist thân thiết lâu năm của khách hàng.",
+      "- BIẾT NỊNH KHÉO & KHEN NGỢI: Luôn mở đầu bằng lời khen ngợi thần thái, vóc dáng, gu thẩm mỹ tinh tế hoặc sự kiện đặc biệt của khách hàng để tạo cảm giác gần gũi, vui vẻ.",
+      "- TÁN GẪU TỰ NHIÊN: Nếu khách hỏi chuyện ngoài lề, trêu đùa, tâm sự: Hãy đối đáp thông minh, hóm hỉnh, tán gẫu duyên dáng rồi khéo léo gợi ý các mẹo phối đồ, phụ kiện, màu sắc hợp trend.",
+      "- KHÔNG TRẢ LỜI CỤT NGỦN: Tuyệt đối không trả lời cộc lốc, khô khan như robot hay máy tra cứu database. Hãy trò chuyện sinh động, có cảm xúc và chia sẻ góc nhìn thời trang sành điệu.",
       "",
-      "QUY TẮC LỌC ĐỊA ĐIỂM / TỈNH THÀNH (BẮT BUỘC TUÂN THỦ NGHIÊM NGẶT):",
+      "QUY TẮC XƯNG HÔ ĐỒNG BỘ (DUYÊN DÁNG, KHÔNG BỊ LOẠN):",
+      "- Tự xưng: 'mình' hoặc 'em'.",
+      "- Gọi khách hàng: Thống nhất gọi là 'nàng' hoặc 'bạn' xuyên suốt cả đoạn chat.",
+      "- TUYỆT ĐỐI CẤM: Không gọi khách là 'sếp' (đây là app thời trang, không phải chatbot công sở!), không xưng hô lộn xộn vừa 'nàng thơ' xong lại chêm 'bạn iu', 'sếp' trong cùng một câu.",
+      "",
+      "QUY TẮC LỌC ĐỊA ĐIỂM / TỈNH THÀNH (CHÍNH XÁC VÀ KHÉO LÉO):",
       "- Mỗi sản phẩm trong kho đều có trường 'loc' ghi rõ tỉnh/thành phố (ví dụ: 'Nghệ An', 'Hà Nội', 'TP. Hồ Chí Minh', 'Đà Nẵng'...).",
-      "- Khi khách yêu cầu tìm đồ ở tỉnh/thành cụ thể (ví dụ: Nghệ An, Hà Nội, Đà Nẵng, v.v.):",
-      "  + Bạn BẮT BUỘC chỉ lọc và bốc các món đồ có 'loc' trùng khớp với tỉnh/thành mà khách yêu cầu!",
-      "  + TUYỆT ĐỐI KHÔNG bốc sản phẩm ở tỉnh khác rồi nói sai là ở tỉnh khách tìm.",
-      "  + Nếu kho đồ tại tỉnh đó chưa có món đúng loại khách muốn, hãy trả lời trung thực: 'Hiện tại tủ đồ ở [Tỉnh/thành] chưa có mẫu này, nhưng mình có mẫu tương tự ở [Tỉnh khác] có thể giao hỏa tốc toàn quốc cho bạn nhé' rồi mới gợi ý.",
+      "- Khi khách yêu cầu tìm đồ ở tỉnh/thành cụ thể:",
+      "  + Nếu kho đồ CÓ sản phẩm đúng tỉnh: Khoe ngay với khách rằng món đồ siêu xinh này đang ở ngay gần khách, có thể nhận ngay!",
+      "  + Nếu kho đồ tại tỉnh đó CHƯA CÓ món đúng loại khách tìm: Hãy nói thật nhưng thật khéo léo và dẻo miệng: 'Ui tiếc quá, mẫu này ở [Tỉnh X] hiện vừa có nàng rinh mất rồi! Nhưng em vừa lùng được cho nàng một cực phẩm tương tự siêu tôn dáng ở [Tỉnh Y] này, bên em hỗ trợ ship hỏa tốc toàn quốc đóng hộp thơm tho giao tận tay nàng luôn nha!'",
       "",
       "QUY TẮC GỢI Ý SẢN PHẨM:",
       "1. Nắm toàn bộ kho đồ thời trang thực tế của CLOOP (trong danh sách JSON bên dưới).",
       "2. BẮT BUỘC chèn cú pháp [PRODUCT:id] ngay sau tên mỗi món đồ được gợi ý để giao diện tự động hiển thị thẻ sản phẩm cho khách bấm xem và thuê/mua ngay.",
-      "3. Chỉ gợi ý 1 đến 3 món đồ thực sự phù hợp từ kho đồ có thật, không bịa đặt sản phẩm không tồn tại.",
+      "3. Chỉ gợi ý 1 đến 3 món đồ thực sự phù hợp từ kho đồ có thật, tư vấn thêm cách phối giày, túi hoặc phụ kiện đi kèm để outfit thêm phần hoàn hảo.",
     ].join("\n");
 
     const recentHistory = Array.isArray(history)
@@ -179,7 +182,7 @@ export async function POST(request: Request) {
       `Kho đồ CLOOP sẵn sàng (${compactCatalog.length} món có thật trên web): ${JSON.stringify(compactCatalog)}`,
       recentHistory ? `Lịch sử hội thoại gần đây:\n${recentHistory}` : "",
       `Khách hàng: ${userPromptText}`,
-      "Trợ lý Stylist CLOOP phản hồi chuẩn mực, nhanh gọn & bốc đúng đồ theo địa phương:"
+      "Trợ lý Stylist CLOOP phản hồi ngọt ngào, dẻo miệng, tư vấn có duyên & chuẩn gu:"
     ].filter(Boolean).join("\n");
 
     // Hỗ trợ xử lý đa phương thức (Ảnh + Text)
@@ -200,31 +203,30 @@ export async function POST(request: Request) {
     }
     contentParts.push(promptText);
 
-    // ⚡ MODEL SIÊU TỐC: DÙNG GEMINI-3.6-FLASH CHO PHẢN HỒI TỨC THÌ TRONG 1-2S
+    // ⚡ MODEL LLM ĐA TẦNG: ƯU TIÊN GEMINI-3.6-FLASH & FALLBACK GEMINI-3.1-FLASH-LITE VỚI TEMP 0.75 CHO PHONG CÁCH TỰ NHIÊN, DẺO MIỆNG
     const result = await executeWithGeminiPool(async (apiKey) => {
       const genAI = new GoogleGenerativeAI(apiKey);
-      try {
-        const model = genAI.getGenerativeModel({
-          model: "gemini-3.6-flash",
-          generationConfig: {
-            temperature: 0.25,
-            maxOutputTokens: 800,
-          },
-          systemInstruction,
-        });
-        return await model.generateContentStream(contentParts.length === 1 ? contentParts[0] : contentParts);
-      } catch (err) {
-        console.warn("Stylist primary model gemini-3.6-flash error, trying fallback gemini-3.8-flash:", err);
-        const fallbackModel = genAI.getGenerativeModel({
-          model: "gemini-3.8-flash",
-          generationConfig: {
-            temperature: 0.25,
-            maxOutputTokens: 800,
-          },
-          systemInstruction,
-        });
-        return await fallbackModel.generateContentStream(contentParts.length === 1 ? contentParts[0] : contentParts);
+      const candidateModels = ["gemini-3.6-flash", "gemini-3.1-flash-lite", "gemini-3.8-flash"];
+      
+      for (const modelName of candidateModels) {
+        try {
+          const model = genAI.getGenerativeModel({
+            model: modelName,
+            generationConfig: {
+              temperature: 0.75,
+              maxOutputTokens: 900,
+            },
+            systemInstruction,
+          });
+          return await model.generateContentStream(contentParts.length === 1 ? contentParts[0] : contentParts);
+        } catch (err: any) {
+          console.warn(`[Stylist model ${modelName} error]:`, err?.message || err);
+          if (modelName === candidateModels[candidateModels.length - 1]) {
+            throw err;
+          }
+        }
       }
+      throw new Error("Không thể kết nối mô hình LLM Stylist");
     });
 
     const encoder = new TextEncoder();
