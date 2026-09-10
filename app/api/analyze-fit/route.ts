@@ -49,12 +49,12 @@ Chỉ trả về tối đa 3-4 câu ngắn gọn, súc tích, văn phong lịch 
     const text = await executeWithGeminiPool(async (apiKey) => {
       const genAI = new GoogleGenerativeAI(apiKey);
       try {
-        const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash-lite" });
+        const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
         const result = await model.generateContent([prompt, ...imageParts]);
         const response = await result.response;
         return response.text();
       } catch (err) {
-        const fallbackModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const fallbackModel = genAI.getGenerativeModel({ model: "gemini-3.8-flash" });
         const result = await fallbackModel.generateContent([prompt, ...imageParts]);
         const response = await result.response;
         return response.text();

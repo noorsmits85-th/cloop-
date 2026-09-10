@@ -24,7 +24,7 @@ Không dùng emoji lấp lánh ✨.
       const genAI = new GoogleGenerativeAI(apiKey);
       try {
         const model = genAI.getGenerativeModel({
-          model: "gemini-3.5-flash-lite",
+          model: "gemini-3.6-flash",
           generationConfig: {
             temperature: 0.7,
             maxOutputTokens: 600,
@@ -34,7 +34,7 @@ Không dùng emoji lấp lánh ✨.
         return res.response.text();
       } catch (err) {
         const fallbackModel = genAI.getGenerativeModel({
-          model: "gemini-1.5-flash",
+          model: "gemini-3.8-flash",
           generationConfig: {
             temperature: 0.7,
             maxOutputTokens: 600,

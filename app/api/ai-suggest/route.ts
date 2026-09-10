@@ -21,11 +21,11 @@ export async function POST(req: Request) {
     const responseText = await executeWithGeminiPool(async (apiKey) => {
       const genAI = new GoogleGenerativeAI(apiKey);
       try {
-        const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash-lite" });
+        const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
         const result = await model.generateContent([prompt, imagePart]);
         return result.response.text();
       } catch (err) {
-        const fallbackModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const fallbackModel = genAI.getGenerativeModel({ model: "gemini-3.8-flash" });
         const result = await fallbackModel.generateContent([prompt, imagePart]);
         return result.response.text();
       }

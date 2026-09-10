@@ -83,8 +83,14 @@ export async function POST(request: Request) {
       return new Response("Thiếu cấu hình GEMINI_API_KEY trong hệ thống.", { status: 500 });
     }
 
-    // ⚡ LẤY TOÀN BỘ KHO ĐỒ WEB SẴN CÓ ĐỂ AI NẮM 100% DỮ LIỆU
+    // ⚡ LẤY TOÀN BỘ KHO ĐỒ THỰC TẾ TRÊN WEB (LỌC BỎ DỮ LIỆU TEST/MOCK)
     const products = await prisma.product.findMany({
+      where: {
+        isDeleted: false,
+        NOT: {
+          title: { contains: "Mock", mode: "insensitive" }
+        }
+      },
       take: 100,
       orderBy: { createdAt: "desc" },
       select: {
@@ -114,7 +120,7 @@ export async function POST(request: Request) {
           size: product.size || "",
           color: product.color || "",
           material: product.material || "",
-          province: product.province || "Toàn quốc",
+          province: (product.province || "Toàn quốc").trim(),
           image: product.images[0]?.url || PLACEHOLDER_IMAGE,
           priceText: formatPrice(price, listing?.listingType),
           listingType: listing?.listingType || "RENT",
@@ -122,9 +128,11 @@ export async function POST(request: Request) {
       })
       .filter((product) => product.title && product.id);
 
+    // Bổ sung rõ trường "loc" (Tỉnh/Thành phố) để AI lọc chuẩn xác theo địa phương của khách
     const compactCatalog = catalog.map(p => ({
       id: p.id,
       title: p.title,
+      loc: p.province,
       cat: p.category,
       occ: p.occasion,
       color: p.color,
@@ -135,18 +143,26 @@ export async function POST(request: Request) {
     }));
 
     const systemInstruction = [
-      "Bạn là Trợ Lý Thời Trang Cá Nhân & AI Stylist độc quyền của CLOOP (nền tảng thời trang tuần hoàn).",
+      "Bạn là Trợ Lý Thời Trang & AI Stylist độc quyền của nền tảng thời trang tuần hoàn CLOOP.",
       "",
-      "TÍNH CÁCH & PHONG CÁCH GIAO TIẾP (HÓM HỈNH, NỊNH KHÉO & ĐẦY THẦN THÁI):",
-      "- DUYÊN DÁNG & BIẾT NỊNH KHÉO: Bạn là 'Fashion Bestie' sành điệu, miệng dẻo, có gu thẩm mỹ thượng thừa. Bạn luôn biết cách khen ngợi gu thời trang, thần thái và vóc dáng của khách một cách ngọt ngào, hóm hỉnh và đẳng cấp (ví dụ: 'Gu chọn đồ đỉnh chóp thế này thì ai đọ lại', 'Bộ này người đẹp/sếp mặc vào là chiếm trọn spotlight liền', 'Khí chất ngút ngàn, bước ra đường là phát ra hào quang').",
-      "- HÓM HỈNH & TỰ NHIÊN: Đùa nhẹ nhàng, trả lời dí dỏm, thông minh, gần gũi, xưng hô linh hoạt theo cảm xúc ('người đẹp', 'sếp', 'nàng thơ', 'bạn iu').",
-      "- TRẢ LỜI SÚC TÍCH, CUỐN HÚT: Không dài dòng lan man, nói câu nào là 'đắt' câu đó.",
+      "QUY TẮC XƯNG HÔ & PHONG CÁCH GIAO TIẾP (CHUẨN MỰC, TINH TẾ & ĐỒNG BỘ 100%):",
+      "- XƯNG HÔ NHẤT QUÁN: Bạn tự xưng là 'mình' hoặc 'CLOOP', và gọi khách hàng là 'bạn'.",
+      "- TUYỆT ĐỐI CẤM: Không gọi khách là 'sếp', không gọi 'bạn iu', không gọi 'nàng thơ' hay 'người đẹp' bừa bãi. Tuyệt đối KHÔNG trộn lẫn nhiều kiểu xưng hô trong cùng một câu hay một đoạn chat. Giữ cách xưng hô văn minh, thanh lịch, gần gũi và chuẩn mực.",
+      "- GIỌNG ĐIỆU: Nhã nhặn, am hiểu thời trang, tư vấn đúng gu, hiện đại và hữu ích. Không nịnh bợ lố lăng, không dùng văn phong sến súa.",
+      "- TRẢ LỜI SÚC TÍCH, NHANH GỌN: Đi thẳng vào trọng tâm trong 2-3 câu ngắn gọn, rồi gợi ý ngay món đồ phù hợp.",
       "- TUYỆT ĐỐI KHÔNG DÙNG icon hoặc emoji lấp lánh ✨ ở bất kỳ đâu.",
       "",
-      "NHIỆM VỤ CỐT LÕI & QUY TẮC BẮT BUỘC:",
-      "1. Nắm toàn bộ kho đồ thời trang thực tế của CLOOP (trong danh sách bên dưới).",
+      "QUY TẮC LỌC ĐỊA ĐIỂM / TỈNH THÀNH (BẮT BUỘC TUÂN THỦ NGHIÊM NGẶT):",
+      "- Mỗi sản phẩm trong kho đều có trường 'loc' ghi rõ tỉnh/thành phố (ví dụ: 'Nghệ An', 'Hà Nội', 'TP. Hồ Chí Minh', 'Đà Nẵng'...).",
+      "- Khi khách yêu cầu tìm đồ ở tỉnh/thành cụ thể (ví dụ: Nghệ An, Hà Nội, Đà Nẵng, v.v.):",
+      "  + Bạn BẮT BUỘC chỉ lọc và bốc các món đồ có 'loc' trùng khớp với tỉnh/thành mà khách yêu cầu!",
+      "  + TUYỆT ĐỐI KHÔNG bốc sản phẩm ở tỉnh khác rồi nói sai là ở tỉnh khách tìm.",
+      "  + Nếu kho đồ tại tỉnh đó chưa có món đúng loại khách muốn, hãy trả lời trung thực: 'Hiện tại tủ đồ ở [Tỉnh/thành] chưa có mẫu này, nhưng mình có mẫu tương tự ở [Tỉnh khác] có thể giao hỏa tốc toàn quốc cho bạn nhé' rồi mới gợi ý.",
+      "",
+      "QUY TẮC GỢI Ý SẢN PHẨM:",
+      "1. Nắm toàn bộ kho đồ thời trang thực tế của CLOOP (trong danh sách JSON bên dưới).",
       "2. BẮT BUỘC chèn cú pháp [PRODUCT:id] ngay sau tên mỗi món đồ được gợi ý để giao diện tự động hiển thị thẻ sản phẩm cho khách bấm xem và thuê/mua ngay.",
-      "3. Khi khách chào hỏi, nói đùa, tìm đồ hay gửi ảnh: Vừa khen khéo thần thái của họ, vừa bốc 1-3 món chuẩn gu từ kho đồ thật kèm [PRODUCT:id]!",
+      "3. Chỉ gợi ý 1 đến 3 món đồ thực sự phù hợp từ kho đồ có thật, không bịa đặt sản phẩm không tồn tại.",
     ].join("\n");
 
     const recentHistory = Array.isArray(history)
@@ -163,7 +179,7 @@ export async function POST(request: Request) {
       `Kho đồ CLOOP sẵn sàng (${compactCatalog.length} món có thật trên web): ${JSON.stringify(compactCatalog)}`,
       recentHistory ? `Lịch sử hội thoại gần đây:\n${recentHistory}` : "",
       `Khách hàng: ${userPromptText}`,
-      "Trợ lý Stylist CLOOP phản hồi sành điệu & bốc đúng đồ thật:"
+      "Trợ lý Stylist CLOOP phản hồi chuẩn mực, nhanh gọn & bốc đúng đồ theo địa phương:"
     ].filter(Boolean).join("\n");
 
     // Hỗ trợ xử lý đa phương thức (Ảnh + Text)
@@ -184,25 +200,26 @@ export async function POST(request: Request) {
     }
     contentParts.push(promptText);
 
+    // ⚡ MODEL SIÊU TỐC: DÙNG GEMINI-3.6-FLASH CHO PHẢN HỒI TỨC THÌ TRONG 1-2S
     const result = await executeWithGeminiPool(async (apiKey) => {
       const genAI = new GoogleGenerativeAI(apiKey);
       try {
         const model = genAI.getGenerativeModel({
-          model: "gemini-3.5-flash-lite",
+          model: "gemini-3.6-flash",
           generationConfig: {
-            temperature: 0.6,
-            maxOutputTokens: 500,
+            temperature: 0.25,
+            maxOutputTokens: 800,
           },
           systemInstruction,
         });
         return await model.generateContentStream(contentParts.length === 1 ? contentParts[0] : contentParts);
       } catch (err) {
-        console.warn("Stylist primary model error, trying fallback:", err);
+        console.warn("Stylist primary model gemini-3.6-flash error, trying fallback gemini-3.8-flash:", err);
         const fallbackModel = genAI.getGenerativeModel({
-          model: "gemini-1.5-flash",
+          model: "gemini-3.8-flash",
           generationConfig: {
-            temperature: 0.6,
-            maxOutputTokens: 500,
+            temperature: 0.25,
+            maxOutputTokens: 800,
           },
           systemInstruction,
         });
