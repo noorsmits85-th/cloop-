@@ -206,10 +206,10 @@ export async function POST(request: Request) {
     }
     contentParts.push(promptText);
 
-    // ⚡ MODEL LLM ĐA TẦNG: ƯU TIÊN GEMINI-3.6-FLASH & FALLBACK GEMINI-3.1-FLASH-LITE VỚI TEMP 0.7 CHO PHONG CÁCH DÍ DỎM, TRỌN VẸN
+    // ⚡ MODEL LLM ĐA TẦNG: ƯU TIÊN GEMINI-3.5-FLASH-LITE (TIẾT KIỆM TOKEN, PHẢN HỒI SIÊU TỐC, QUOTA 1,500 RPD) & FALLBACK FLASH
     const result = await executeWithGeminiPool(async (apiKey) => {
       const genAI = new GoogleGenerativeAI(apiKey);
-      const candidateModels = ["gemini-3.6-flash", "gemini-3.1-flash-lite", "gemini-3.8-flash"];
+      const candidateModels = ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.6-flash"];
       
       for (const modelName of candidateModels) {
         try {
