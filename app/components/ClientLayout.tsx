@@ -26,11 +26,21 @@ function HeaderNavbar({ darkMode, setDarkMode, handleFeatureRequirement, current
   const searchParams = useSearchParams();
   const type = searchParams.get("type");
   const mode = searchParams.get("mode");
+  const isHome = pathname === "/";
+  const [isScrolled, setIsScrolled] = useState(false);
 
   const placeholders = ["Search outfits...", "AI Stylist...", "AI Discovery...", "Near me..."];
   const [placeholderIndex, setPlaceholderIndex] = useState<number>(0);
 
   const userIdStr = currentUser?.id || null;
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 40);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => { 
@@ -41,33 +51,58 @@ function HeaderNavbar({ darkMode, setDarkMode, handleFeatureRequirement, current
 
   const getNavbarClass = (targetPath: string, targetType: string | null = null, targetMode: string | null = null) => {
     const isCurrentActive = pathname === targetPath && type === targetType && mode === targetMode;
+    if (isHome) {
+      return isCurrentActive
+        ? "text-white transition-colors shrink-0 font-extrabold border-b-2 border-emerald-400 pb-0.5"
+        : "text-stone-300 hover:text-white transition-colors shrink-0 font-semibold";
+    }
     return isCurrentActive
-      ? "text-[#183A2D] dark:textemerald-400 transition-colors shrink-0 font-bold"
+      ? "text-[#183A2D] dark:text-emerald-400 transition-colors shrink-0 font-bold"
       : "text-gray-400 hover:text-[#183A2D] transition-colors shrink-0 font-bold";
   };
 
+  const headerBgClass = isHome
+    ? isScrolled
+      ? "fixed top-0 left-0 right-0 z-50 bg-[#0B120F]/90 border-b border-white/10 text-white backdrop-blur-md shadow-2xl transition-all duration-300"
+      : "absolute top-0 left-0 right-0 z-50 bg-transparent border-b border-white/10 text-white transition-all duration-300"
+    : `sticky top-0 z-50 border-b px-4 lg:px-6 transition-all duration-500 backdrop-blur-md ${darkMode ? "bg-[#141E28]/90 border-[#2B3946]" : "bg-white border-[#ece7dc]"}`;
+
   return (
-    <header className={`sticky top-0 z-50 border-b px-4 lg:px-6 transition-all duration-500 backdrop-blur-md ${darkMode ? "bg-[#141E28]/90 border-[#2B3946]" : "bg-white border-[#ece7dc]"}`}>
-      <div className="max-w-[1280px] mx-auto h-[88px] grid grid-cols-[auto_1fr_auto] items-center gap-4">
+    <header className={`${headerBgClass} px-4 lg:px-6`}>
+      <div className="max-w-[1400px] mx-auto h-[88px] grid grid-cols-[auto_1fr_auto] items-center gap-4">
         
         <Link href="/" className="flex items-center gap-3 shrink-0 cursor-pointer group select-none">
           <div className="relative">
-            <Image src="/loogo.png" alt="CLOOP Brand Logo" width={46} height={46} className="mix-blend-multiply transition-transform duration-500 group-hover:scale-105 animate-logo-glow" />
+            <Image 
+              src="/loogo.png" 
+              alt="CLOOP Brand Logo" 
+              width={46} 
+              height={46} 
+              className={`transition-transform duration-500 group-hover:scale-105 animate-logo-glow ${isHome ? "brightness-0 invert opacity-95" : "mix-blend-multiply"}`} 
+            />
           </div>
           <div className="flex flex-col items-center justify-center text-center">
-            <div className="font-brand-title text-[28px] sm:text-[30px] font-extrabold tracking-[0.12em] leading-none animate-brand-shimmer drop-shadow-xs transition-all duration-300 pl-[0.12em]">
+            <div className={`font-brand-title text-[28px] sm:text-[30px] font-extrabold tracking-[0.12em] leading-none drop-shadow-xs transition-all duration-300 pl-[0.12em] ${isHome ? "text-white" : "text-[#183A2D] animate-brand-shimmer"}`}>
               CLOOP
             </div>
-            <p className="font-brand-sub text-[8px] sm:text-[8.5px] font-semibold tracking-[0.34em] uppercase text-[#1B5E20] dark:text-[#86EFAC] mt-1.5 w-full text-center pl-[0.34em] transition-colors">
+            <p className={`font-brand-sub text-[8px] sm:text-[8.5px] font-semibold tracking-[0.34em] uppercase mt-1.5 w-full text-center pl-[0.34em] transition-colors ${isHome ? "text-emerald-300" : "text-[#1B5E20] dark:text-[#86EFAC]"}`}>
               FASHION IN A LOOP
             </p>
           </div>
         </Link>
 
         <div className="flex items-center gap-4 xl:gap-5 min-w-0">
-          <Link href="/shop" className={`hidden md:flex items-center w-[120px] xl:w-[150px] h-[40px] rounded-full px-4 shrink-0 transition-all ${darkMode ? "bg-[#1C2834] border border-[#2B3946]" : "bg-stone-100 border border-stone-200 focus-within:bg-white focus-within:border-[#183A2D]"}`}>
-            <Search size={13} className="text-gray-500 shrink-0" />
-            <input className="ml-2 flex-1 bg-transparent text-[11px] font-search outline-none placeholder:text-gray-500 text-[#183A2D] cursor-pointer" placeholder={placeholders[placeholderIndex]} readOnly />
+          <Link href="/shop" className={`hidden md:flex items-center w-[120px] xl:w-[150px] h-[40px] rounded-full px-4 shrink-0 transition-all ${
+            isHome 
+              ? "bg-white/10 border border-white/20 text-white focus-within:bg-black/50 focus-within:border-white/50 backdrop-blur-md"
+              : darkMode 
+                ? "bg-[#1C2834] border border-[#2B3946]" 
+                : "bg-stone-100 border border-stone-200 focus-within:bg-white focus-within:border-[#183A2D]"
+          }`}>
+            <Search size={13} className={isHome ? "text-stone-300 shrink-0" : "text-gray-500 shrink-0"} />
+            <input className={`ml-2 flex-1 bg-transparent text-[11px] font-search outline-none cursor-pointer ${
+              isHome ? "placeholder:text-stone-300 text-white" : "placeholder:text-gray-500 text-[#183A2D]"
+            }`} placeholder={placeholders[placeholderIndex]} readOnly />
           </Link>
 
           <nav className="hidden lg:flex items-center gap-3.5 xl:gap-5 font-ui text-[11px] xl:text-[12px] uppercase tracking-wide whitespace-nowrap font-bold min-w-0 overflow-x-auto no-scrollbar">
@@ -76,7 +111,9 @@ function HeaderNavbar({ darkMode, setDarkMode, handleFeatureRequirement, current
             <Link href="/my-closet/create?mode=rent" className={getNavbarClass("/my-closet/create", null, "rent")}>Cho thuê đồ</Link>
             <Link href="/shop?type=sell" className={getNavbarClass("/shop", "sell", null)}>Sở hữu</Link>
             <Link href="/my-closet/create?mode=consign" className={getNavbarClass("/my-closet/create", null, "consign")}>Thanh lý</Link>
-            <button onClick={() => handleFeatureRequirement("Tái chế")} className="text-gray-400 hover:text-[#183A2D] transition-colors uppercase shrink-0 whitespace-nowrap bg-transparent border-none cursor-pointer font-bold">Tái chế</button>
+            <button onClick={() => handleFeatureRequirement("Tái chế")} className={`uppercase shrink-0 whitespace-nowrap bg-transparent border-none cursor-pointer font-bold transition-colors ${
+              isHome ? "text-stone-300 hover:text-white" : "text-gray-400 hover:text-[#183A2D]"
+            }`}>Tái chế</button>
             <Link href="/blog" className={getNavbarClass("/blog", null, null)}>Blog</Link>
           </nav>
         </div>
@@ -85,19 +122,27 @@ function HeaderNavbar({ darkMode, setDarkMode, handleFeatureRequirement, current
 
           {currentUser ? (
             <div className="flex items-center gap-2 xl:gap-3">
-              <span className="hidden xl:inline text-xs font-bold text-[#6BA37A] max-w-[140px] truncate capitalize">
+              <span className={`hidden xl:inline text-xs font-bold max-w-[140px] truncate capitalize ${isHome ? "text-emerald-300" : "text-[#6BA37A]"}`}>
                 Chào {currentUser.name}! 🌿
               </span>
               
               {userIdStr && (
                 <div className="flex items-center gap-1.5 ml-1">
-                  <Link href={`/closet/${userIdStr}`} title="Xem Tủ Đồ Công Khai" className="w-[30px] h-[30px] rounded-full border border-[#E9E2D8] bg-white text-stone-400 hover:text-[#183A2D] hover:bg-[#FAF8F3] hover:border-[#183A2D]/30 transition-all flex items-center justify-center shadow-sm">
+                  <Link href={`/closet/${userIdStr}`} title="Xem Tủ Đồ Công Khai" className={`w-[30px] h-[30px] rounded-full border transition-all flex items-center justify-center shadow-sm ${
+                    isHome 
+                      ? "border-white/20 bg-white/10 text-stone-200 hover:text-white hover:bg-white/20"
+                      : "border-[#E9E2D8] bg-white text-stone-400 hover:text-[#183A2D] hover:bg-[#FAF8F3] hover:border-[#183A2D]/30"
+                  }`}>
                     <Shirt size={13} />
                   </Link>
                 </div>
               )}
 
-              <Link href="/my-closet" className="text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full border whitespace-nowrap bg-white text-[#183A2D] border-[#E9E2D8] hover:bg-[#FAF8F3]">
+              <Link href="/my-closet" className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full border whitespace-nowrap transition-all ${
+                isHome
+                  ? "bg-white text-stone-900 border-white hover:bg-emerald-400 font-extrabold shadow-sm"
+                  : "bg-white text-[#183A2D] border-[#E9E2D8] hover:bg-[#FAF8F3]"
+              }`}>
                 Tủ đồ của tôi
               </Link>
               <button 
@@ -106,20 +151,26 @@ function HeaderNavbar({ darkMode, setDarkMode, handleFeatureRequirement, current
                   setCurrentUser(null);
                   router.refresh(); 
                 }} 
-                className="text-[10px] font-bold text-red-500 hover:underline cursor-pointer"
+                className={`text-[10px] font-bold cursor-pointer transition-colors ${isHome ? "text-rose-400 hover:text-rose-300" : "text-red-500 hover:underline"}`}
               >
                 Thoát
               </button>
             </div>
           ) : (
             <>
-              <button onClick={() => handleFeatureRequirement("Đăng nhập")} className="text-gray-500 hover:text-[#183A2D] transition-colors cursor-pointer">LOG IN</button>
-              <button onClick={() => handleFeatureRequirement("Đăng ký")} className={`px-4 py-2 rounded-full border transition-all cursor-pointer ${darkMode ? "bg-white text-black border-white" : "bg-black text-white border-black"}`}>JOIN US</button>
+              <button onClick={() => handleFeatureRequirement("Đăng nhập")} className={`transition-colors cursor-pointer ${isHome ? "text-stone-200 hover:text-white" : "text-gray-500 hover:text-[#183A2D]"}`}>LOG IN</button>
+              <button onClick={() => handleFeatureRequirement("Đăng ký")} className={`px-4 py-2 rounded-full border transition-all cursor-pointer ${
+                isHome 
+                  ? "bg-white text-stone-950 border-white hover:bg-emerald-400 font-bold"
+                  : darkMode 
+                    ? "bg-white text-black border-white" 
+                    : "bg-black text-white border-black"
+              }`}>JOIN US</button>
             </>
           )}
-          <div className="w-[1px] h-5 bg-gray-200 mx-1 hidden sm:block" />
+          <div className={`w-[1px] h-5 mx-1 hidden sm:block ${isHome ? "bg-white/20" : "bg-gray-200"}`} />
           <Link href="/shop" className="cursor-pointer hidden sm:block">
-            <ShoppingBag size={20} className="text-[#183A2D] dark:text-white" />
+            <ShoppingBag size={20} className={isHome ? "text-white" : "text-[#183A2D] dark:text-white"} />
           </Link>
         </div>
 
