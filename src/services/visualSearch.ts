@@ -32,9 +32,9 @@ export interface VisualSearchResult {
 }
 
 const CANDIDATE_GEMINI_MODELS = [
-  "gemini-3.5-flash-lite",
   "gemini-3.6-flash",
-  "gemini-3.1-pro"
+  "gemini-3.8-flash",
+  "gemini-3.5-flash"
 ];
 
 function normalizeText(text: string = ""): string {
@@ -86,8 +86,9 @@ export async function searchByValidatedOutfitImage(image: SafeImagePayload): Pro
     let searchKeywords = ["set", "áo khoác", "denim", "yếm", "dạo phố"];
     let aiModelUsed = "CLOOP Vision AI";
 
-    // 1. Phân tích thị giác bằng Gemini Vision
-    if (apiKey) {
+    // 1. Phân tích thị giác bằng Gemini Vision với timeout 8s để phản hồi siêu tốc
+    const analyzeGemini = async () => {
+      if (!apiKey) return;
       const genAI = new GoogleGenerativeAI(apiKey);
       const prompt = `
 Bạn là AI Visual Stylist & Chuyên gia Giám định Trang phục của nền tảng thời trang tuần hoàn CLOOP.
@@ -122,7 +123,7 @@ Trả về đúng cấu trúc JSON:
             },
           });
 
-          const result = await model.generateContent([
+          const geminiPromise = model.generateContent([
             prompt,
             {
               inlineData: {
@@ -132,6 +133,11 @@ Trả về đúng cấu trúc JSON:
             },
           ]);
 
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error(`Timeout for ${candidate}`)), 8000)
+          );
+
+          const result: any = await Promise.race([geminiPromise, timeoutPromise]);
           const rawText = result.response.text();
           const parsed = JSON.parse(rawText);
 
@@ -146,13 +152,13 @@ Trả về đúng cấu trúc JSON:
             break;
           }
         } catch (modelErr: any) {
-          console.warn(`[Gemini candidate ${candidate} failed]:`, modelErr?.message || modelErr);
+          console.warn(`[Gemini candidate ${candidate} failed/timed out]:`, modelErr?.message || modelErr);
         }
       }
-    }
+    };
 
-    // 2. TRUY VẤN SÂU TOÀN BỘ KHO ĐỒ THẬT TRONG DATABASE PRISMA
-    const dbProducts = await prisma.product.findMany({
+    // 2. Chạy song song Gemini Vision và truy vấn Database để tối ưu thời gian phản hồi (~1-2s)
+    const fetchDbProducts = prisma.product.findMany({
       where: {
         isDeleted: false,
       },
@@ -171,6 +177,8 @@ Trả về đúng cấu trúc JSON:
       take: 100,
       orderBy: { createdAt: "desc" },
     });
+
+    const [, dbProducts] = await Promise.all([analyzeGemini(), fetchDbProducts]);
 
     // Lọc bỏ các sản phẩm rác test có tên "Mock", "test"
     const validProducts = dbProducts.filter((p) => {

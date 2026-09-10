@@ -117,16 +117,24 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
     setDetectedInfo(null);
     setMatchedProducts([]);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+
     try {
-      // ⚡ Nén ảnh siêu tốc client-side xuống ~35KB để gửi tức thì trong 20ms
-      const compressedBase64 = await compressImageForVisualSearch(imageSrc);
-      setSelectedImage(compressedBase64 || imageSrc);
+      let finalBase64 = imageSrc;
+      if (!imageSrc.startsWith("data:image/")) {
+        finalBase64 = await compressImageForVisualSearch(imageSrc);
+      }
+      setSelectedImage(finalBase64);
 
       const res = await fetch("/api/visual-search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ base64Image: compressedBase64 || imageSrc }),
+        body: JSON.stringify({ base64Image: finalBase64 }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       const data = await res.json();
 
@@ -137,7 +145,12 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
       setDetectedInfo(data.detectedInfo);
       setMatchedProducts(data.products || []);
     } catch (err: any) {
-      setErrorMessage(err.message || "Đã xảy ra lỗi khi tìm kiếm bằng AI");
+      clearTimeout(timeoutId);
+      if (err.name === "AbortError") {
+        setErrorMessage("Thời gian xử lý AI vượt quá 12 giây. Vui lòng thử lại với ảnh rõ nét hơn.");
+      } else {
+        setErrorMessage(err.message || "Đã xảy ra lỗi khi tìm kiếm bằng AI");
+      }
     } finally {
       setIsAnalyzing(false);
     }
