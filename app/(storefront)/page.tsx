@@ -17,14 +17,12 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import VisualSearchModal from "@/app/components/VisualSearchModal";
-import GoogleFlowFashionHero from "@/app/components/GoogleFlowFashionHero";
 import VelunoEditorialHero from "@/app/components/VelunoEditorialHero";
 import LivePulseTicker from "@/app/components/LivePulseTicker";
 import HowItWorksTabs from "@/app/components/HowItWorksTabs";
 import { getTrendingProductsAction } from "@/app/actions/favorite";
 
 export default function Home() {
-  const [heroVibe, setHeroVibe] = useState<"veluno" | "mosaic">("veluno");
   const [activeCategory, setActiveCategory] = useState("Tất cả");
   const [isVisualSearchOpen, setIsVisualSearchOpen] = useState(false);
   const [activeClosetIndex, setActiveClosetIndex] = useState(0);
@@ -235,39 +233,8 @@ export default function Home() {
   return (
     <main className="min-h-screen overflow-x-hidden antialiased bg-[#FAF9F5] text-[#0A2517] pb-28 md:pb-0 font-body">
 
-      {/* 🎛️ BỘ CHUYỂN ĐỔI PHONG CÁCH HERO (VIBE SWITCHER) */}
-      <div className="w-full bg-[#FAF9F5] pt-3 px-4 flex justify-center items-center">
-        <div className="inline-flex items-center gap-1 p-1 bg-stone-200/80 rounded-full text-[10.5px] font-ui border border-stone-300 shadow-2xs">
-          <button
-            onClick={() => setHeroVibe("veluno")}
-            className={`px-3.5 py-1.5 rounded-full font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-              heroVibe === "veluno"
-                ? "bg-[#183A2D] text-white shadow-xs"
-                : "text-stone-600 hover:text-stone-900"
-            }`}
-          >
-            <Sparkles size={12} className={heroVibe === "veluno" ? "text-emerald-300" : "text-stone-400"} />
-            <span>Vibe Veluno (Quiet Luxury)</span>
-          </button>
-          <button
-            onClick={() => setHeroVibe("mosaic")}
-            className={`px-3.5 py-1.5 rounded-full font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-              heroVibe === "mosaic"
-                ? "bg-[#183A2D] text-white shadow-xs"
-                : "text-stone-600 hover:text-stone-900"
-            }`}
-          >
-            <span>Vibe Mosaic (Google Flow)</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 🌟 01 — HERO EDITORIAL (THEO PHONG CÁCH ĐƯỢC CHỌN) */}
-      {heroVibe === "veluno" ? (
-        <VelunoEditorialHero />
-      ) : (
-        <GoogleFlowFashionHero />
-      )}
+      {/* 🌟 01 — HERO EDITORIAL VELUNO QUIET LUXURY */}
+      <VelunoEditorialHero />
 
       {/* ⚡ 02 — NHỊP ĐẬP TUẦN HOÀN (CHÂN HERO HEADER) */}
       <LivePulseTicker />
