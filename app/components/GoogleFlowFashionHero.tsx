@@ -319,8 +319,7 @@ export default function GoogleFlowFashionHero() {
 
       {/* 💻 2. DESKTOP HERO EDITORIAL (DÀNH RIÊNG MÀN HÌNH MÁY TÍNH) */}
       <section 
-        className="hidden md:flex relative w-full min-h-[740px] lg:min-h-[800px] bg-[#071C12] overflow-hidden items-center justify-center select-none border-b border-[#0F3120] transform-gpu"
-        style={{ contain: "content" }}
+        className="hidden md:flex relative z-0 isolate w-full min-h-[740px] lg:min-h-[800px] bg-[#071C12] overflow-hidden items-center justify-center select-none border-b border-[#0F3120]"
       >
       {/* 🖼️ WALL-TO-WALL LIVING PHOTO CANVAS: 6 Cột Ảnh Kín Toàn Bộ Màn Hình (Không Trống Trải) */}
       <div className="absolute inset-0 w-full h-full overflow-hidden grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2.5 md:gap-3 p-2 sm:p-3 pointer-events-auto transform-gpu opacity-90 hover:opacity-100 transition-opacity duration-500">
@@ -452,7 +451,7 @@ export default function GoogleFlowFashionHero() {
       {/* 👗 INSTANT FIT-CHECK & DIGITAL PASSPORT MODAL */}
       <AnimatePresence>
         {selectedItem && (
-          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 animate-fade-in">
+          <div className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 animate-fade-in">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}

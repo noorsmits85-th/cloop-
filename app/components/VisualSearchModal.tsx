@@ -65,7 +65,7 @@ async function compressImageForVisualSearch(fileOrDataUrl: File | string): Promi
     img.onload = () => {
       try {
         const canvas = document.createElement("canvas");
-        const maxDim = 640;
+        const maxDim = 480;
         let { width, height } = img;
         if (width > height) {
           if (width > maxDim) {
@@ -83,7 +83,7 @@ async function compressImageForVisualSearch(fileOrDataUrl: File | string): Promi
         const ctx = canvas.getContext("2d");
         if (!ctx) return resolve(typeof fileOrDataUrl === "string" ? fileOrDataUrl : "");
         ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/jpeg", 0.8));
+        resolve(canvas.toDataURL("image/jpeg", 0.65));
       } catch {
         resolve(typeof fileOrDataUrl === "string" ? fileOrDataUrl : "");
       }
@@ -118,7 +118,7 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
     setMatchedProducts([]);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
 
     try {
       let finalBase64 = imageSrc;
@@ -147,7 +147,7 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
     } catch (err: any) {
       clearTimeout(timeoutId);
       if (err.name === "AbortError") {
-        setErrorMessage("Thời gian xử lý AI vượt quá 12 giây. Vui lòng thử lại với ảnh rõ nét hơn.");
+        setErrorMessage("Thời gian xử lý AI vượt quá giới hạn (30s). Vui lòng thử lại với ảnh rõ góc đồ hơn nhé.");
       } else {
         setErrorMessage(err.message || "Đã xảy ra lỗi khi tìm kiếm bằng AI");
       }
@@ -177,7 +177,7 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-black/75 backdrop-blur-md">
+      <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-black/80 backdrop-blur-md">
         {/* Backdrop click to close */}
         <div className="fixed inset-0" onClick={onClose}></div>
 

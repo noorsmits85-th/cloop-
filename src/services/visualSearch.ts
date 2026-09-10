@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { prisma } from "@/src/lib/prisma";
 import type { SafeImagePayload } from "@/src/lib/server-image-guard";
+import { executeWithGeminiPool } from "@/src/utils/gemini-pool";
 import crypto from "node:crypto";
 
 export interface VisualSearchResult {
@@ -33,8 +34,7 @@ export interface VisualSearchResult {
 
 const CANDIDATE_GEMINI_MODELS = [
   "gemini-3.6-flash",
-  "gemini-3.8-flash",
-  "gemini-3.5-flash"
+  "gemini-3.1-flash-lite",
 ];
 
 function normalizeText(text: string = ""): string {
@@ -75,7 +75,6 @@ export async function searchByOutfitImage(imageBase64: string): Promise<VisualSe
 
 export async function searchByValidatedOutfitImage(image: SafeImagePayload): Promise<VisualSearchResult> {
   const traceId = `vsearch_${crypto.randomUUID()}`;
-  const apiKey = process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_DEV || process.env.GOOGLE_GEMINI_API_KEY;
 
   try {
     let detectedCategory = "Set đồ & Dạo phố";
@@ -86,11 +85,12 @@ export async function searchByValidatedOutfitImage(image: SafeImagePayload): Pro
     let searchKeywords = ["set", "áo khoác", "denim", "yếm", "dạo phố"];
     let aiModelUsed = "CLOOP Vision AI";
 
-    // 1. Phân tích thị giác bằng Gemini Vision với timeout 8s để phản hồi siêu tốc
+    // 1. Phân tích thị giác bằng Gemini Vision với Gemini Pool tự động failover
     const analyzeGemini = async () => {
-      if (!apiKey) return;
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const prompt = `
+      try {
+        await executeWithGeminiPool(async (apiKey) => {
+          const genAI = new GoogleGenerativeAI(apiKey);
+          const prompt = `
 Bạn là AI Visual Stylist & Chuyên gia Giám định Trang phục của nền tảng thời trang tuần hoàn CLOOP.
 Hãy nhìn bức ảnh lookbook/outfit này và bóc tách chuẩn xác các đặc tính thời trang cốt lõi để truy vấn kho đồ:
 
@@ -112,69 +112,86 @@ Trả về đúng cấu trúc JSON:
 }
 `;
 
-      for (const candidate of CANDIDATE_GEMINI_MODELS) {
-        try {
-          const model = genAI.getGenerativeModel({
-            model: candidate,
-            generationConfig: {
-              responseMimeType: "application/json",
-              temperature: 0.1,
-              maxOutputTokens: 250,
-            },
-          });
+          for (const candidate of CANDIDATE_GEMINI_MODELS) {
+            try {
+              const model = genAI.getGenerativeModel({
+                model: candidate,
+                generationConfig: {
+                  responseMimeType: "application/json",
+                  temperature: 0.1,
+                  maxOutputTokens: 250,
+                },
+              });
 
-          const geminiPromise = model.generateContent([
-            prompt,
-            {
-              inlineData: {
-                data: image.base64,
-                mimeType: image.mimeType,
-              },
-            },
-          ]);
+              const geminiPromise = model.generateContent([
+                prompt,
+                {
+                  inlineData: {
+                    data: image.base64,
+                    mimeType: image.mimeType,
+                  },
+                },
+              ]);
 
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error(`Timeout for ${candidate}`)), 8000)
-          );
+              const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error(`Timeout for ${candidate}`)), 6500)
+              );
 
-          const result: any = await Promise.race([geminiPromise, timeoutPromise]);
-          const rawText = result.response.text();
-          const parsed = JSON.parse(rawText);
+              const result: any = await Promise.race([geminiPromise, timeoutPromise]);
+              const rawText = result.response.text();
+              const parsed = JSON.parse(rawText);
 
-          if (parsed.category) {
-            detectedCategory = parsed.category;
-            dominantColor = parsed.dominantColor || dominantColor;
-            style = parsed.style || style;
-            material = parsed.material || material;
-            itemDescription = parsed.itemDescription || itemDescription;
-            searchKeywords = Array.isArray(parsed.searchKeywords) ? parsed.searchKeywords : searchKeywords;
-            aiModelUsed = candidate;
-            break;
+              if (parsed.category) {
+                detectedCategory = parsed.category;
+                dominantColor = parsed.dominantColor || dominantColor;
+                style = parsed.style || style;
+                material = parsed.material || material;
+                itemDescription = parsed.itemDescription || itemDescription;
+                searchKeywords = Array.isArray(parsed.searchKeywords) ? parsed.searchKeywords : searchKeywords;
+                aiModelUsed = candidate;
+                return;
+              }
+            } catch (modelErr: any) {
+              const msg = modelErr?.message || "";
+              console.warn(`[Gemini candidate ${candidate} error]:`, msg);
+              if (msg.includes("quota") || msg.includes("429") || msg.includes("503")) {
+                throw modelErr;
+              }
+            }
           }
-        } catch (modelErr: any) {
-          console.warn(`[Gemini candidate ${candidate} failed/timed out]:`, modelErr?.message || modelErr);
-        }
+        }, 3);
+      } catch (poolErr: any) {
+        console.warn("[Gemini Pool Fallback]:", poolErr?.message || poolErr);
       }
     };
 
-    // 2. Chạy song song Gemini Vision và truy vấn Database để tối ưu thời gian phản hồi (~1-2s)
+    // 2. Chạy song song Gemini Vision và truy vấn Database với lean select tối ưu tốc độ (~100ms)
     const fetchDbProducts = prisma.product.findMany({
       where: {
         isDeleted: false,
       },
-      include: {
+      select: {
+        id: true,
+        title: true,
+        category: true,
+        occasion: true,
+        color: true,
+        material: true,
+        description: true,
         images: {
           orderBy: { isPrimary: "desc" },
           take: 1,
+          select: { url: true },
         },
         listings: {
           where: { isDeleted: false },
+          select: { listingType: true, basePrice: true, salePrice: true, status: true },
         },
         user: {
           select: { name: true },
         },
       },
-      take: 100,
+      take: 60,
       orderBy: { createdAt: "desc" },
     });
 

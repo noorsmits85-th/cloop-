@@ -430,7 +430,7 @@ export default function AiStylistChat({ darkMode }: { darkMode?: boolean } = {})
   };
 
   return (
-    <div className="fixed bottom-14 right-3 z-50 flex flex-col items-end gap-1.5 font-body md:bottom-6 md:right-6">
+    <div className="fixed bottom-14 right-3 z-[9999] isolate flex flex-col items-end gap-1.5 font-body md:bottom-6 md:right-6 pointer-events-auto">
       <AnimatePresence>
         {showChat && (
           <motion.div
@@ -438,7 +438,7 @@ export default function AiStylistChat({ darkMode }: { darkMode?: boolean } = {})
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.97 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="flex h-[445px] max-h-[72vh] w-[315px] sm:w-[335px] flex-col overflow-hidden rounded-2xl border border-stone-300 bg-[#FAF8F3] text-[#142A1E] shadow-[0_12px_36px_rgba(0,0,0,0.18)]"
+            className="flex h-[460px] max-h-[75vh] w-[320px] sm:w-[350px] flex-col overflow-hidden rounded-2xl border border-stone-300/90 bg-[#FAF8F3] text-[#142A1E] shadow-[0_16px_48px_rgba(0,0,0,0.35)] relative z-[9999]"
           >
             {/* 👑 REFINED FOREST GREEN HEADER */}
             <div className="bg-[#122D20] p-2.5 px-3 text-white border-b border-[#1C4431] shadow-2xs">

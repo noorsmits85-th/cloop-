@@ -332,7 +332,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         </Suspense>
       )}
 
-      <div className="relative z-10">
+      <div className="relative z-10 isolate">
         {children}
       </div>
 
