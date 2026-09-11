@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { 
@@ -15,44 +15,16 @@ import {
   CheckCircle2,
   Calendar
 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
 import VisualSearchModal from "@/app/components/VisualSearchModal";
 import GoogleFlowFashionHero from "@/app/components/GoogleFlowFashionHero";
 import LivePulseTicker from "@/app/components/LivePulseTicker";
 import HowItWorksTabs from "@/app/components/HowItWorksTabs";
-import { getTrendingProductsAction } from "@/app/actions/favorite";
 
 export default function Home() {
   const [activeCategory, setActiveCategory] = useState("Tất cả");
   const [isVisualSearchOpen, setIsVisualSearchOpen] = useState(false);
   const [activeClosetIndex, setActiveClosetIndex] = useState(0);
-  const [boostedProducts, setBoostedProducts] = useState<any[]>([]);
 
-  // Lấy dữ liệu sản phẩm thịnh hành từ Database
-  useEffect(() => {
-    async function fetchTrending() {
-      try {
-        const res = await getTrendingProductsAction(12);
-        if (res.success && res.products && res.products.length > 0) {
-          setBoostedProducts(res.products);
-          return;
-        }
-      } catch (e) {}
-
-      const { data, error } = await supabase
-        .from("products")
-        .select(`
-          id, title, name, province, condition, size, brand, owner_name, ownerName, userId, user_id, original_price, originalPrice, rental_price, occasion, image_url, imageUrl, boostExpiresAt, isHighlighted, likeCount, saveCount
-        `)
-        .order("likeCount", { ascending: false })
-        .limit(12);
-        
-      if (!error && data) {
-        setBoostedProducts(data);
-      }
-    }
-    fetchTrending();
-  }, []);
 
   // 03 — OCCASION CURATIONS (5 Bộ Sưu Tập Ảnh Lớn Chuẩn By Rotation)
   const occasionCollections = [

@@ -326,28 +326,22 @@ export default function GoogleFlowFashionHero() {
         {FULL_MOSAIC_COLUMNS.map((column, colIdx) => {
           const isOdd = colIdx % 2 !== 0;
           return (
-            <motion.div
+            <div
               key={colIdx}
-              animate={{
-                y: isOdd ? [-20, 20, -20] : [20, -20, 20],
+              style={{
+                animationDuration: `${22 + colIdx * 3}s`,
               }}
-              transition={{
-                duration: 20 + colIdx * 2,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-              style={{ willChange: "transform", backfaceVisibility: "hidden" }}
-              className={`flex flex-col gap-2.5 md:gap-3 transform-gpu ${colIdx === 5 ? 'hidden lg:flex' : ''} ${colIdx === 4 ? 'hidden md:flex' : ''}`}
+              className={`flex flex-col gap-2.5 md:gap-3 ${isOdd ? 'hero-col-odd' : 'hero-col-even'} ${colIdx === 5 ? 'hidden lg:flex' : ''} ${colIdx === 4 ? 'hidden md:flex' : ''}`}
             >
               {column.map((card) => (
-                <div key={card.id} className="relative group transform-gpu">
+                <div key={card.id} className="relative group">
                   
-                  {/* ✨ PULSING NEON MATCHA GLOW HALO */}
-                  <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-[#A3E39F] via-white to-[#A3E39F] opacity-0 group-hover:opacity-100 blur-md transition-opacity duration-300 pointer-events-none z-0" />
+                  {/* ✨ PULSING NEON MATCHA GLOW HALO (Clean zero-blur GPU layer) */}
+                  <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-[#A3E39F] via-white to-[#A3E39F] opacity-0 group-hover:opacity-60 transition-opacity duration-300 pointer-events-none z-0" />
 
                   <div
                     onClick={() => setSelectedItem(card)}
-                    className={`relative w-full ${card.aspect} rounded-2xl overflow-hidden bg-[#0A2215] border border-white/20 hover:border-[#A3E39F] shadow-lg hover:shadow-[0_0_45px_rgba(163,227,159,0.9),_0_0_18px_rgba(255,255,255,0.75)] hover:ring-2 hover:ring-white transition-all duration-300 hover:scale-108 hover:z-50 cursor-pointer block z-10`}
+                    className={`relative w-full ${card.aspect} rounded-2xl overflow-hidden bg-[#0A2215] border border-white/20 hover:border-[#A3E39F] shadow-lg hover:shadow-[0_0_30px_rgba(163,227,159,0.7)] hover:ring-2 hover:ring-white transition-all duration-300 hover:scale-105 hover:z-50 cursor-pointer block z-10`}
                   >
                     {/* Glowing & Brightening Image */}
                     <Image
@@ -355,12 +349,11 @@ export default function GoogleFlowFashionHero() {
                       alt={card.title}
                       fill
                       sizes="(max-width: 640px) 33vw, (max-width: 1024px) 25vw, 18vw"
-                      className="object-cover transition-all duration-500 group-hover:scale-112 brightness-105 group-hover:brightness-135 group-hover:contrast-105 opacity-90 group-hover:opacity-100"
-                      unoptimized
+                      className="object-cover transition-all duration-500 group-hover:scale-108 brightness-105 group-hover:brightness-125 opacity-90 group-hover:opacity-100"
                     />
 
                     {/* ✨ LUMINOUS GLASS SHIMMER OVERLAY */}
-                    <div className="absolute inset-0 bg-gradient-to-tr from-[#A3E39F]/35 via-white/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none mix-blend-overlay" />
+                    <div className="absolute inset-0 bg-gradient-to-tr from-[#A3E39F]/30 via-white/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none mix-blend-overlay" />
 
                     {/* Gradient Overlay */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent pointer-events-none group-hover:opacity-50 transition-opacity" />
@@ -397,7 +390,7 @@ export default function GoogleFlowFashionHero() {
 
                 </div>
               ))}
-            </motion.div>
+            </div>
           );
         })}
       </div>
@@ -408,8 +401,8 @@ export default function GoogleFlowFashionHero() {
       {/* 🌟 CENTERPIECE CONTENT: Chữ Trắng Bật Sắc Nét, Không Bị Chìm, Đầy Đủ Tính Năng */}
       <div className="relative z-30 max-w-3xl mx-auto px-4 text-center flex flex-col items-center justify-center pointer-events-auto my-auto py-8">
         
-        {/* Top Matcha Badge */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/15 backdrop-blur-md border border-[#A3E39F]/50 text-[#A3E39F] text-[10.5px] font-bold uppercase tracking-widest mb-4 shadow-lg font-ui">
+        {/* Top Matcha Badge (Crisp zero-lag GPU pill) */}
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#071F13]/85 border border-[#A3E39F]/50 text-[#A3E39F] text-[10.5px] font-bold uppercase tracking-widest mb-4 shadow-lg font-ui">
           <span className="w-2 h-2 rounded-full bg-[#A3E39F] animate-pulse"></span>
           Tủ Đồ Chia Sẻ & Tuần Hoàn 2026
         </div>
@@ -439,7 +432,7 @@ export default function GoogleFlowFashionHero() {
           <button
             type="button"
             onClick={() => setIsVisualSearchOpen(true)}
-            className="w-full sm:w-auto px-6 py-3.5 rounded-full bg-white/20 hover:bg-white/30 text-white border border-white/35 backdrop-blur-md font-heading font-bold text-xs sm:text-sm tracking-wider uppercase transition-all duration-300 shadow-md hover:scale-105 active:scale-95 flex items-center justify-center gap-2 group font-ui cursor-pointer"
+            className="w-full sm:w-auto px-6 py-3.5 rounded-full bg-white/20 hover:bg-white/30 text-white border border-white/35 font-heading font-bold text-xs sm:text-sm tracking-wider uppercase transition-all duration-300 shadow-md hover:scale-105 active:scale-95 flex items-center justify-center gap-2 group font-ui cursor-pointer"
           >
             <Camera size={15} className="text-[#A3E39F] group-hover:scale-110 transition-transform" />
             <span>Tìm Bằng Ảnh AI</span>

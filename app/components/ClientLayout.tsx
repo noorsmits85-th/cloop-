@@ -47,7 +47,7 @@ function HeaderNavbar({ darkMode, setDarkMode, handleFeatureRequirement, current
   };
 
   return (
-    <header className={`sticky top-0 z-50 border-b px-4 lg:px-6 transition-all duration-500 backdrop-blur-md ${darkMode ? "bg-[#141E28]/90 border-[#2B3946]" : "bg-white border-[#ece7dc]"}`}>
+    <header className={`sticky top-0 z-50 border-b px-4 lg:px-6 transition-colors duration-200 ${darkMode ? "bg-[#141E28]/95 backdrop-blur-xs border-[#2B3946]" : "bg-white/95 backdrop-blur-xs border-[#ece7dc]"}`}>
       <div className="max-w-[1280px] mx-auto h-[88px] grid grid-cols-[auto_1fr_auto] items-center gap-4">
         
         <Link href="/" className="flex items-center gap-3 shrink-0 cursor-pointer group select-none">
