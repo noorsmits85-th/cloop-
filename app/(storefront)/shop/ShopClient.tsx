@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef, useTransition } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -118,6 +118,13 @@ export function ShopClient({
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
+  // Sync initialProducts from Server Navigation immediately
+  useEffect(() => {
+    setProducts(initialProducts);
+    setHasMore(initialHasMore);
+    setLoading(false);
+  }, [initialProducts, initialHasMore]);
+
   // Sync URL changes to occasion chip state
   useEffect(() => {
     if (urlOccasion) {
@@ -129,7 +136,7 @@ export function ShopClient({
     }
   }, [urlOccasion, urlCategory]);
 
-  // Fetch data when filters change (skip initial mount since server already provided it)
+  // Fetch data when local filters change (skip initial mount since server already provided it)
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false;
@@ -137,7 +144,7 @@ export function ShopClient({
     }
 
     loadShopData(false);
-  }, [urlType, selectedOccasion, selectedSize, selectedMaterial, debouncedSearch]);
+  }, [selectedOccasion, selectedSize, selectedMaterial, debouncedSearch]);
 
   const loadShopData = async (isLoadMore: boolean = false) => {
     if (isFetchingRef.current) return;

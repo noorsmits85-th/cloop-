@@ -1,10 +1,10 @@
-﻿"use server";
+"use server";
 
 import { createClient } from "@/src/utils/supabase/server";
 import { ItemCondition, GenderCategory, ListingType } from "@prisma/client";
 import { prisma } from "@/src/lib/prisma";
 import { uploadProductSchema } from "@/lib/validations/product";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 
 // ⚡ HIGH-SPEED SWR IN-MEMORY CACHE (1ms Response Time, 100% Crash-Proof)
 const memoryCache = new Map<string, { data: any; expiry: number }>();
@@ -24,6 +24,9 @@ function setCachedData(key: string, data: any) {
 
 export async function clearShopMemoryCache() {
   memoryCache.clear();
+  try {
+    revalidateTag("shop-products");
+  } catch (e) {}
 }
 
 export async function createProductAction({
@@ -205,32 +208,18 @@ export async function bumpProductAction(productId: string) {
   }
 }
 
-export async function getShopProductsAction({
-  type = "all",
-  category = null,
-  occasion = null,
-  search = "",
-  size = "all",
-  material = "all",
-  page = 1,
-  limit = 24
-}: {
-  type?: string;
-  category?: string | null;
-  occasion?: string | null;
-  search?: string;
-  size?: string;
-  material?: string;
-  page?: number;
-  limit?: number;
-}) {
-  try {
-    const cacheKey = `shop:${type}:${category || ''}:${occasion || ''}:${search || ''}:${size || ''}:${material || ''}:${page}:${limit}`;
-    const cachedResult = getCachedData(cacheKey);
-    if (cachedResult) {
-      return cachedResult;
-    }
-
+// ⚡ VERCEL GLOBAL DATA CACHE (unstable_cache): Shared across all serverless lambdas with SWR
+const fetchShopProductsCached = unstable_cache(
+  async (
+    type: string,
+    category: string | null,
+    occasion: string | null,
+    search: string,
+    size: string,
+    material: string,
+    page: number,
+    limit: number
+  ) => {
     const where: any = {
       isDeleted: false,
       status: { in: ["ON_MARKET", "IN_CLOSET"] },
@@ -277,34 +266,35 @@ export async function getShopProductsAction({
 
     const skip = (page - 1) * limit;
 
-    const [rawProducts, totalCount] = await Promise.all([
-      prisma.product.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-        include: {
-          images: {
-            orderBy: { sortOrder: "asc" }
-          },
-          listings: {
-            where: { isDeleted: false, status: "AVAILABLE" }
-          },
-          user: {
-            select: {
-              id: true,
-              name: true,
-              avatar: true,
-              rating: true,
-              isVerified: true
-            }
+    // ⚡ SINGLE DB HIT: Take limit + 1 to detect hasMore without running slow count()
+    const rawProducts = await prisma.product.findMany({
+      where,
+      skip,
+      take: limit + 1,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      include: {
+        images: {
+          orderBy: { sortOrder: "asc" }
+        },
+        listings: {
+          where: { isDeleted: false, status: "AVAILABLE" }
+        },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            avatar: true,
+            rating: true,
+            isVerified: true
           }
         }
-      }),
-      prisma.product.count({ where })
-    ]);
+      }
+    });
 
-    const products = rawProducts.map((p) => {
+    const hasMore = rawProducts.length > limit;
+    const items = hasMore ? rawProducts.slice(0, limit) : rawProducts;
+
+    const products = items.map((p) => {
       const rentListing = p.listings.find((l) => l.listingType === "RENT");
       const sellListing = p.listings.find((l) => l.listingType === "SELL" || (l.listingType as any) === "SALE");
 
@@ -352,11 +342,61 @@ export async function getShopProductsAction({
       };
     });
 
+    return {
+      products,
+      totalCount: hasMore ? 99 : skip + products.length,
+      hasMore
+    };
+  },
+  ["shop-products-v1"],
+  {
+    revalidate: 60, // SWR cache 60s
+    tags: ["shop-products"]
+  }
+);
+
+export async function getShopProductsAction({
+  type = "all",
+  category = null,
+  occasion = null,
+  search = "",
+  size = "all",
+  material = "all",
+  page = 1,
+  limit = 24
+}: {
+  type?: string;
+  category?: string | null;
+  occasion?: string | null;
+  search?: string;
+  size?: string;
+  material?: string;
+  page?: number;
+  limit?: number;
+}) {
+  try {
+    const cacheKey = `shop:${type}:${category || ''}:${occasion || ''}:${search || ''}:${size || ''}:${material || ''}:${page}:${limit}`;
+    const cachedResult = getCachedData(cacheKey);
+    if (cachedResult) {
+      return cachedResult;
+    }
+
+    const res = await fetchShopProductsCached(
+      type,
+      category,
+      occasion,
+      search,
+      size,
+      material,
+      page,
+      limit
+    );
+
     const response = {
       success: true,
-      products,
-      totalCount,
-      hasMore: skip + products.length < totalCount
+      products: res.products,
+      totalCount: res.totalCount,
+      hasMore: res.hasMore
     };
 
     setCachedData(cacheKey, response);

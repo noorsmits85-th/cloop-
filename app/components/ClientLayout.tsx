@@ -65,19 +65,19 @@ function HeaderNavbar({ darkMode, setDarkMode, handleFeatureRequirement, current
         </Link>
 
         <div className="flex items-center gap-4 xl:gap-5 min-w-0">
-          <Link href="/shop" className={`hidden md:flex items-center w-[120px] xl:w-[150px] h-[40px] rounded-full px-4 shrink-0 transition-all ${darkMode ? "bg-[#1C2834] border border-[#2B3946]" : "bg-stone-100 border border-stone-200 focus-within:bg-white focus-within:border-[#183A2D]"}`}>
+          <Link href="/shop" prefetch={true} className={`hidden md:flex items-center w-[120px] xl:w-[150px] h-[40px] rounded-full px-4 shrink-0 transition-all ${darkMode ? "bg-[#1C2834] border border-[#2B3946]" : "bg-stone-100 border border-stone-200 focus-within:bg-white focus-within:border-[#183A2D]"}`}>
             <Search size={13} className="text-gray-500 shrink-0" />
             <input className="ml-2 flex-1 bg-transparent text-[11px] font-search outline-none placeholder:text-gray-500 text-[#183A2D] cursor-pointer" placeholder={placeholders[placeholderIndex]} readOnly />
           </Link>
 
           <nav className="hidden lg:flex items-center gap-3.5 xl:gap-5 font-ui text-[11px] xl:text-[12px] uppercase tracking-wide whitespace-nowrap font-bold min-w-0 overflow-x-auto no-scrollbar">
-            <Link href="/" className={getNavbarClass("/", null, null)}>Trang chủ</Link>
-            <Link href="/shop?type=rent" className={getNavbarClass("/shop", "rent", null)}>Thuê đồ</Link>
-            <Link href="/my-closet/create?mode=rent" className={getNavbarClass("/my-closet/create", null, "rent")}>Cho thuê đồ</Link>
-            <Link href="/shop?type=sell" className={getNavbarClass("/shop", "sell", null)}>Sở hữu</Link>
-            <Link href="/my-closet/create?mode=consign" className={getNavbarClass("/my-closet/create", null, "consign")}>Thanh lý</Link>
+            <Link href="/" prefetch={true} className={getNavbarClass("/", null, null)}>Trang chủ</Link>
+            <Link href="/shop?type=rent" prefetch={true} className={getNavbarClass("/shop", "rent", null)}>Thuê đồ</Link>
+            <Link href="/my-closet/create?mode=rent" prefetch={true} className={getNavbarClass("/my-closet/create", null, "rent")}>Cho thuê đồ</Link>
+            <Link href="/shop?type=sell" prefetch={true} className={getNavbarClass("/shop", "sell", null)}>Sở hữu</Link>
+            <Link href="/my-closet/create?mode=consign" prefetch={true} className={getNavbarClass("/my-closet/create", null, "consign")}>Thanh lý</Link>
             <button onClick={() => handleFeatureRequirement("Tái chế")} className="text-gray-400 hover:text-[#183A2D] transition-colors uppercase shrink-0 whitespace-nowrap bg-transparent border-none cursor-pointer font-bold">Tái chế</button>
-            <Link href="/blog" className={getNavbarClass("/blog", null, null)}>Blog</Link>
+            <Link href="/blog" prefetch={true} className={getNavbarClass("/blog", null, null)}>Blog</Link>
           </nav>
         </div>
 
