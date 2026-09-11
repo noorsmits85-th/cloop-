@@ -70,7 +70,8 @@ export default async function EcoPage() {
     waterSaved += metrics.water;
   });
 
-  const itemsRecycled = products.length + completedRentalsCount;
+  const productsCount = products.length;
+  const itemsRecycled = productsCount + completedRentalsCount;
 
   return (
     <div className="min-h-screen bg-[#FAF9F5] py-8 px-4 sm:px-8 text-stone-800 antialiased">
@@ -92,7 +93,9 @@ export default async function EcoPage() {
         <EcoClient 
           carbonSaved={carbonSaved} 
           waterSaved={waterSaved} 
-          itemsRecycled={itemsRecycled} 
+          itemsRecycled={itemsRecycled}
+          productsCount={productsCount}
+          completedRentalsCount={completedRentalsCount}
         />
       </div>
     </div>

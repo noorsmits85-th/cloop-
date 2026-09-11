@@ -3,12 +3,26 @@
 import React, { useRef } from "react";
 import { Leaf, Droplet, Box, Share2, Award, Trophy, Medal } from "lucide-react";
 
-export function EcoClient({ carbonSaved, waterSaved, itemsRecycled }: { carbonSaved: number, waterSaved: number, itemsRecycled: number }) {
+export function EcoClient({ 
+  carbonSaved, 
+  waterSaved, 
+  itemsRecycled,
+  productsCount,
+  completedRentalsCount = 0
+}: { 
+  carbonSaved: number; 
+  waterSaved: number; 
+  itemsRecycled: number;
+  productsCount?: number;
+  completedRentalsCount?: number;
+}) {
   const cardRef = useRef<HTMLDivElement>(null);
 
   const handleShare = () => {
     alert("Tính năng Share to Instagram/TikTok đang tải... (Mô phỏng: Render HTML to Canvas & Web Share API)");
   };
+
+  const actualProductsCount = productsCount ?? itemsRecycled;
 
   return (
     <div className="flex flex-col gap-6">
@@ -45,12 +59,24 @@ export function EcoClient({ carbonSaved, waterSaved, itemsRecycled }: { carbonSa
             <span className="text-xs text-stone-300 uppercase font-bold tracking-wider">Nước Tiết Kiệm</span>
           </div>
 
-          <div className="flex flex-col items-center sm:items-start gap-2 p-4 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm">
-            <div className="w-10 h-10 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center">
-              <Box size={20} />
+          <div className="flex flex-col items-center sm:items-start gap-1 p-4 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm">
+            <div className="flex items-center justify-between w-full">
+              <div className="w-10 h-10 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                <Box size={20} />
+              </div>
+              {completedRentalsCount > 0 && (
+                <span className="text-[10px] font-bold text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-400/30 font-ui">
+                  +{completedRentalsCount} lượt thuê
+                </span>
+              )}
             </div>
-            <span className="text-2xl font-mono font-bold">{itemsRecycled.toLocaleString()}</span>
-            <span className="text-xs text-stone-300 uppercase font-bold tracking-wider">Món Đồ Tuần Hoàn</span>
+            <span className="text-2xl font-mono font-bold mt-1">{actualProductsCount.toLocaleString()}</span>
+            <span className="text-xs text-stone-300 uppercase font-bold tracking-wider">Món Đồ Trong Tủ</span>
+            {completedRentalsCount > 0 && (
+              <span className="text-[11px] text-emerald-300/80 font-medium">
+                (Tổng {itemsRecycled.toLocaleString()} lượt tuần hoàn)
+              </span>
+            )}
           </div>
         </div>
 

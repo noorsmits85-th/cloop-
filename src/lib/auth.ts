@@ -1,11 +1,13 @@
+import { cache } from "react";
 import { createClient } from "@/src/utils/supabase/server";
 import { prisma } from "@/src/lib/prisma";
 import { redirect } from "next/navigation";
 
 /**
  * Lấy User Session hiện tại từ Supabase HTTP-only Cookies và đồng bộ với bảng Prisma User
+ * ⚡ TỐI ƯU HÓA: Dùng React cache() để deduplicate giữa Layout & Page, và dùng findUnique (chỉ đọc) thay vì upsert liên tục
  */
-export async function requireUser() {
+export const requireUser = cache(async () => {
   const supabase = await createClient();
   const { data: { user }, error } = await supabase.auth.getUser();
   
@@ -16,29 +18,36 @@ export async function requireUser() {
   const name = user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Thành viên CLOOP";
   const email = user.email || `${user.id}@cloop.vn`;
 
-  // Đảm bảo bản ghi User luôn tồn tại trong PostgreSQL qua lệnh Upsert nguyên tử 2ms
+  // ⚡ Tối ưu siêu tốc: Đọc trước bằng findUnique (2ms, không lock database)
   try {
-    const profile = await prisma.user.upsert({
+    let profile = await prisma.user.findUnique({
       where: { id: user.id },
-      update: {
-        email: email,
-        name: name,
-      },
-      create: {
-        id: user.id,
-        email: email,
-        password: "supabase_auth_managed",
-        name: name,
-        walletBalance: 0,
-        cloopCoins: 100,
-        role: "USER"
-      },
       select: {
         role: true,
         walletBalance: true,
         cloopCoins: true,
       }
     });
+
+    // Chỉ khi user chưa có trong database mới thực hiện ghi mới (create)
+    if (!profile) {
+      profile = await prisma.user.create({
+        data: {
+          id: user.id,
+          email: email,
+          password: "supabase_auth_managed",
+          name: name,
+          walletBalance: 0,
+          cloopCoins: 100,
+          role: "USER"
+        },
+        select: {
+          role: true,
+          walletBalance: true,
+          cloopCoins: true,
+        }
+      });
+    }
 
     return {
       id: user.id,
