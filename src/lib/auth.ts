@@ -93,7 +93,7 @@ export const requireUser = cache(async () => {
     walletBalance: 0,
     cloopCoins: 100,
   };
-}
+});
 
 /**
  * Dành cho API / Server Actions: Kiểm tra role ADMIN

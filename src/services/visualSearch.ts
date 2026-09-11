@@ -137,6 +137,7 @@ Trả về đúng cấu trúc JSON:
                 setTimeout(() => reject(new Error(`Timeout for ${candidate}`)), 6500)
               );
 
+              const result: any = await Promise.race([geminiPromise, timeoutPromise]);
               const rawText = result.response.text();
               let jsonText = rawText.trim();
               const jsonMatch = jsonText.match(/\{[\s\S]*\}/);

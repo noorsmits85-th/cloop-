@@ -25,7 +25,7 @@ function setCachedData(key: string, data: any) {
 export async function clearShopMemoryCache() {
   memoryCache.clear();
   try {
-    revalidateTag("shop-products");
+    (revalidateTag as any)("shop-products");
   } catch (e) {}
 }
 

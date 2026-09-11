@@ -143,8 +143,8 @@ export default function CheckoutClient({
   useEffect(() => {
     async function fetchUserExtra(userId: string) {
       try {
-        const { data: profile } = await supabase
-          .from("User")
+        const { data: profile } = await (supabase
+          .from("User" as any) as any)
           .select("rating, reviewCount")
           .eq("id", userId)
           .single();
