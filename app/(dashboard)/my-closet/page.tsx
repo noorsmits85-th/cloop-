@@ -1,11 +1,12 @@
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Plus, Leaf, Droplet, Sprout } from "lucide-react";
 import { requireUser } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { supabase } from "@/lib/supabase";
-import { DashboardCharts } from "./DashboardCharts";
 import { SmartSellerOnboardingCard } from "./_components/SmartSellerOnboardingCard";
+import { DashboardChartsClient } from "./_components/DashboardChartsClient";
 import { redirect } from "next/navigation";
 import { unstable_cache } from "next/cache";
 
@@ -48,12 +49,11 @@ export default async function MyClosetOverviewPage() {
   });
   const sevenDaysAgo = past7Days[0].dateObj;
 
-  // ⚡ TỐI ƯU SIÊU TỐC: Gom toàn bộ 7 truy vấn Dashboard chạy song song cùng lúc (Parallel Fetching)
+  // ⚡ TỐI ƯU SIÊU TỐC: Gom toàn bộ truy vấn song song (Parallel Fetching) & tính phân bổ danh mục in-memory
   const [
     user,
     products,
     dbMetrics,
-    categoryGroups,
     profileRes,
     completedRentals,
     soldItems
@@ -67,11 +67,6 @@ export default async function MyClosetOverviewPage() {
       select: { category: true, material: true }
     }),
     getCachedEcoMetrics(),
-    prisma.product.groupBy({
-      by: ['category'],
-      where: { userId },
-      _count: { id: true }
-    }),
     supabase
       .from("profiles")
       .select("id, pickup_address, phone, bank_name, bank_account, bank_owner")
@@ -133,9 +128,15 @@ export default async function MyClosetOverviewPage() {
   let waterSaved = 0;
   let greenPoints = 0;
 
+  const categoryCountMap = new Map<string, number>();
+
   products.forEach((product: any) => {
     const cat = (product.category || "").toLowerCase().trim();
     const mat = (product.material || "").toLowerCase().trim();
+
+    // In-memory category tally
+    const rawCat = product.category || "Khác";
+    categoryCountMap.set(rawCat, (categoryCountMap.get(rawCat) || 0) + 1);
     
     let match = null;
     for (const key of Object.keys(ECO_MATRIX)) {
@@ -154,12 +155,9 @@ export default async function MyClosetOverviewPage() {
   const ecoStats = { co2Saved, waterSaved, greenPoints };
   const totalProducts = products.length;
 
-  const categoryData = categoryGroups.length > 0 ? categoryGroups.map((g: any) => ({
-    name: g.category,
-    value: g._count.id
-  })) : [
-    { name: 'Chưa có dữ liệu', value: 1 }
-  ];
+  const categoryData = categoryCountMap.size > 0 
+    ? Array.from(categoryCountMap.entries()).map(([name, value]) => ({ name, value }))
+    : [{ name: 'Chưa có dữ liệu', value: 1 }];
 
   // Gom nhóm dữ liệu doanh thu
   completedRentals.forEach((rental: any) => {
@@ -264,10 +262,10 @@ export default async function MyClosetOverviewPage() {
           {/* Card: Lá CLOOP */}
           <div className="bg-white border border-stone-200/50 p-5 rounded-2xl shadow-sm flex items-center gap-4 text-left relative overflow-hidden group cursor-pointer hover:border-[#183A2D]/30 transition-colors">
             <div className="absolute -right-6 -bottom-6 w-24 h-24 opacity-[0.03] group-hover:opacity-[0.08] group-hover:scale-110 transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
-              <img src="/images/cloop-coin-tilt.png" alt="Coin bg" className="w-full h-full object-contain mix-blend-multiply" />
+              <Image src="/images/cloop-coin-tilt.png" alt="Coin bg" width={96} height={96} className="w-full h-full object-contain mix-blend-multiply" />
             </div>
             <div className="w-10 h-10 rounded-full bg-stone-50 flex items-center justify-center border border-stone-100 shrink-0 p-1.5 relative z-10 group-hover:scale-110 transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
-              <img src="/images/cloop-coin-front.png" alt="Lá CLOOP" className="w-full h-full object-contain drop-shadow-sm mix-blend-multiply" />
+              <Image src="/images/cloop-coin-front.png" alt="Lá CLOOP" width={40} height={40} className="w-full h-full object-contain drop-shadow-sm mix-blend-multiply" />
             </div>
             <div className="space-y-0.5 relative z-10">
               <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Tài khoản Lá CLOOP</div>
@@ -277,7 +275,7 @@ export default async function MyClosetOverviewPage() {
           </div>
         </div>
 
-        <DashboardCharts revenueData={revenueData} categoryData={categoryData} totalProducts={totalProducts} />
+        <DashboardChartsClient revenueData={revenueData} categoryData={categoryData} totalProducts={totalProducts} />
       </div>
     </div>
   );

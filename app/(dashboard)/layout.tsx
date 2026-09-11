@@ -26,7 +26,6 @@ import {
 import { useAuthModal } from "@/app/AuthModalContext";
 import { DashboardHeader } from "./_components/DashboardHeader";
 import { getUserDisputeStats } from "@/app/actions/getDisputeStats";
-import { getUserNotificationsAction } from "@/app/actions/notification";
 
 export default function DashboardLayout({
   children,
@@ -41,47 +40,43 @@ export default function DashboardLayout({
 
   useEffect(() => {
     let isMounted = true;
-    async function loadStats() {
+    async function loadDisputeStats() {
       try {
-        const [disputeRes, notifRes] = await Promise.all([
-          getUserDisputeStats(),
-          getUserNotificationsAction()
-        ]);
+        const disputeRes = await getUserDisputeStats();
         if (!isMounted) return;
 
         if (disputeRes.success && typeof disputeRes.count === "number") {
           setDisputeCount(disputeRes.count);
         }
-
-        if (notifRes.success && Array.isArray(notifRes.notifications)) {
-          let readIds: string[] = [];
-          try {
-            readIds = JSON.parse(localStorage.getItem("cloop_read_notif_ids") || "[]");
-          } catch {}
-          const unread = notifRes.notifications.filter(n => !n.isRead && !readIds.includes(n.id)).length;
-          setUnreadNotifCount(unread);
-        }
       } catch (err: any) {
-        console.error("⚠️ [Dashboard Stats Fetch Error]:", err?.message || err);
+        console.error("⚠️ [Dashboard Dispute Stats Fetch Error]:", err?.message || err);
       }
     }
 
-    loadStats();
+    loadDisputeStats();
 
-    // 🔔 Đồng bộ badge khiếu nại & thông báo tức thì
-    const handleSync = () => {
-      loadStats();
+    // 🔔 Đồng bộ badge khiếu nại (có throttle để tránh spam server khi focus liên tục)
+    let lastFetch = Date.now();
+    const handleThrottledSync = () => {
+      const now = Date.now();
+      if (now - lastFetch > 30000) {
+        lastFetch = now;
+        loadDisputeStats();
+      }
     };
 
-    window.addEventListener("dispute-updated", handleSync);
-    window.addEventListener("notifications-updated", handleSync);
-    window.addEventListener("focus", handleSync);
+    const handleImmediateSync = () => {
+      lastFetch = Date.now();
+      loadDisputeStats();
+    };
+
+    window.addEventListener("dispute-updated", handleImmediateSync);
+    window.addEventListener("focus", handleThrottledSync);
 
     return () => {
       isMounted = false;
-      window.removeEventListener("dispute-updated", handleSync);
-      window.removeEventListener("notifications-updated", handleSync);
-      window.removeEventListener("focus", handleSync);
+      window.removeEventListener("dispute-updated", handleImmediateSync);
+      window.removeEventListener("focus", handleThrottledSync);
     };
   }, []);
 
@@ -215,6 +210,7 @@ export default function DashboardLayout({
           currentUser={currentUser} 
           setCurrentUser={setCurrentUser} 
           setIsSidebarOpen={setIsSidebarOpen} 
+          onUnreadCountChange={setUnreadNotifCount}
         />
 
         {/* Dashboard Content - Cứ để cuộn tự nhiên theo window */}

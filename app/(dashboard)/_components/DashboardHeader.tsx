@@ -3,27 +3,25 @@
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Search, Bell, Plus, Award, LogOut, Menu, Package, Wallet, Leaf, Truck, CheckCircle2, AlertTriangle, Star, Clock, Check, Loader2 } from "lucide-react";
-import { createBrowserClient } from "@supabase/ssr";
+import { supabase } from "@/lib/supabase";
 import { getUserNotificationsAction, NotificationItem } from "@/app/actions/notification";
 
 export function DashboardHeader({
   currentUser,
   setCurrentUser,
-  setIsSidebarOpen
+  setIsSidebarOpen,
+  onUnreadCountChange,
 }: {
   currentUser: any;
   setCurrentUser: any;
   setIsSidebarOpen: (v: boolean) => void;
+  onUnreadCountChange?: (count: number) => void;
 }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoadingNotifs, setIsLoadingNotifs] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
-
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://notxrjsuukrrxdlboavo.supabase.co";
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "temporary-placeholder-key";
-  const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
 
   // ⚡ TẢI THÔNG BÁO THỰC TẾ TỪ SERVER VÀ ĐỒNG BỘ TRẠNG THÁI ĐÃ ĐỌC PERSISTENT
   const loadNotifications = async () => {
@@ -44,6 +42,7 @@ export function DashboardHeader({
         setNotifications(updated);
         const unread = updated.filter(n => !n.isRead).length;
         setUnreadCount(unread);
+        onUnreadCountChange?.(unread);
       }
     } catch (e) {
       console.error("Lỗi tải thông báo header:", e);
@@ -75,13 +74,27 @@ export function DashboardHeader({
       )
       .subscribe();
 
-    window.addEventListener("notifications-updated", loadNotifications);
-    window.addEventListener("focus", loadNotifications);
+    let lastFetch = Date.now();
+    const handleThrottledFocus = () => {
+      const now = Date.now();
+      if (now - lastFetch > 30000) {
+        lastFetch = now;
+        loadNotifications();
+      }
+    };
+
+    const handleSync = () => {
+      lastFetch = Date.now();
+      loadNotifications();
+    };
+
+    window.addEventListener("notifications-updated", handleSync);
+    window.addEventListener("focus", handleThrottledFocus);
 
     return () => {
       supabase.removeChannel(channel);
-      window.removeEventListener("notifications-updated", loadNotifications);
-      window.removeEventListener("focus", loadNotifications);
+      window.removeEventListener("notifications-updated", handleSync);
+      window.removeEventListener("focus", handleThrottledFocus);
     };
   }, []);
 
@@ -107,6 +120,7 @@ export function DashboardHeader({
 
     setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
     setUnreadCount(0);
+    onUnreadCountChange?.(0);
     window.dispatchEvent(new CustomEvent("notifications-updated"));
   };
 
@@ -117,7 +131,11 @@ export function DashboardHeader({
         const combined = [...existingRead, item.id];
         localStorage.setItem("cloop_read_notif_ids", JSON.stringify(combined));
         setNotifications(prev => prev.map(n => n.id === item.id ? { ...n, isRead: true } : n));
-        setUnreadCount(prev => Math.max(0, prev - 1));
+        setUnreadCount(prev => {
+          const next = Math.max(0, prev - 1);
+          onUnreadCountChange?.(next);
+          return next;
+        });
         window.dispatchEvent(new CustomEvent("notifications-updated"));
       }
     } catch {}

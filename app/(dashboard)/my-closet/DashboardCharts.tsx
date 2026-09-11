@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, BarChart, Bar, Legend, PieChart, Pie, Cell } from "recharts";
 import { motion } from "framer-motion";
 import { Coins } from "lucide-react";
@@ -58,49 +59,20 @@ export function DashboardCharts({
               className="absolute inset-0 flex flex-col items-center justify-center bg-white rounded-2xl"
             >
               <div className="flex flex-col items-center text-center space-y-4">
-                <motion.div 
-                  animate={{ 
-                    y: [-6, 2, -6],
-                    rotate: [-5, 5, -5],
-                    boxShadow: ["0px 0px 0px rgba(245,158,11,0)", "0px 4px 20px rgba(245,158,11,0.3)", "0px 0px 0px rgba(245,158,11,0)"]
-                  }}
-                  transition={{ 
-                    duration: 3, 
-                    repeat: Infinity, 
-                    ease: "easeInOut" 
-                  }}
-                  className="w-16 h-16 bg-gradient-to-tr from-amber-50 to-yellow-100 text-amber-600 rounded-full flex items-center justify-center border border-amber-200 shadow-sm relative"
-                >
+                <div className="w-16 h-16 bg-gradient-to-tr from-amber-50 to-yellow-100 text-amber-600 rounded-full flex items-center justify-center border border-amber-200 shadow-sm relative animate-bounce" style={{ animationDuration: '3s' }}>
                   <Coins size={28} strokeWidth={1.5} />
-                </motion.div>
+                </div>
                 <div>
                   <h4 className="text-[15px] font-bold text-[#183A2D]">Mở bát tủ đồ, "nhả vía" chốt đơn!</h4>
                   <p className="text-xs text-stone-500 mt-1.5 max-w-[260px] mx-auto">Giao diện này đang thiếu vài chiếc ảnh xinh xỉu để kích hoạt dòng tiền. Đăng đồ ngay để rinh lộc rủng rỉnh nào bồ ơi!</p>
                 </div>
-                <motion.a 
+                <Link 
                   href="/my-closet/create" 
-                  animate={{
-                    boxShadow: ["0px 4px 6px -1px rgba(24,58,45,0.1)", "0px 0px 15px rgba(24,58,45,0.5)", "0px 4px 6px -1px rgba(24,58,45,0.1)"]
-                  }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="relative overflow-hidden px-6 py-3 bg-[#183A2D] text-white text-[13px] font-bold rounded-full shadow-md transition-all group"
+                  className="relative overflow-hidden px-6 py-3 bg-[#183A2D] hover:bg-[#122e23] text-white text-[13px] font-bold rounded-full shadow-md transition-all active:scale-95 group inline-flex items-center justify-center"
                 >
                   <span className="relative z-10">+ Kích hoạt tủ đồ</span>
-                  {/* Shimmer effect */}
-                  <motion.div 
-                    initial={{ x: "-100%" }}
-                    animate={{ x: "200%" }}
-                    transition={{
-                      repeat: Infinity,
-                      duration: 2.5,
-                      ease: "linear",
-                      repeatDelay: 1
-                    }}
-                    className="absolute inset-0 z-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-[-20deg]"
-                  />
-                </motion.a>
+                  <div className="absolute inset-0 z-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[-20deg] animate-[shimmer_2s_infinite]" />
+                </Link>
               </div>
             </motion.div>
           ) : (
