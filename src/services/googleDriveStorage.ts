@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 const CLIENT_EMAIL = process.env.GOOGLE_CLIENT_EMAIL;
 const PRIVATE_KEY = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n");
 const DEFAULT_FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID;
+const WEBHOOK_URL = process.env.GOOGLE_DRIVE_WEBHOOK_URL;
 
 /**
  * Tạo Google Drive OAuth2 Access Token bằng Service Account JWT (RS256)
@@ -88,6 +89,37 @@ export interface DriveUploadResult {
 export async function uploadToGoogleDrive(
   options: DriveUploadOptions
 ): Promise<DriveUploadResult | null> {
+  // 🌟 Ưu tiên 1: Tải trực tiếp qua Google Apps Script Webhook (Hút trọn 5TB Google One chính chủ)
+  if (WEBHOOK_URL) {
+    try {
+      const base64 = options.buffer.toString("base64");
+      const res = await fetch(WEBHOOK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileName: options.fileName,
+          mimeType: options.mimeType,
+          base64: base64,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.fileId) {
+          return {
+            fileId: data.fileId,
+            name: options.fileName,
+            viewUrl: data.url || `https://drive.google.com/file/d/${data.fileId}/view`,
+            downloadUrl: `https://drive.google.com/uc?id=${data.fileId}&export=download`,
+          };
+        }
+      }
+    } catch (whErr) {
+      console.warn("⚠️ [GoogleDrive] Lỗi tải qua Webhook 5TB, chuyển sang REST API:", whErr);
+    }
+  }
+
+  // 🌟 Ưu tiên 2: Fallback qua Service Account REST API
   const token = await getDriveAccessToken();
   if (!token) return null;
 
