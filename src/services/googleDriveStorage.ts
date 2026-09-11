@@ -149,7 +149,7 @@ export async function uploadToGoogleDrive(
   const token = await getDriveAccessToken();
   if (!token) return null;
 
-  const targetFolder = options.folderId || DEFAULT_FOLDER_ID;
+  const targetFolder = options.folderId || config.defaultFolderId;
   const metadata: Record<string, any> = {
     name: options.fileName,
     mimeType: options.mimeType,
