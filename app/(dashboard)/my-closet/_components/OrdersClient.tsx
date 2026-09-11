@@ -598,9 +598,17 @@ export function OrdersClient({
                                 </span>
                               </div>
                               <span className="font-medium text-[#183A2D] text-sm sm:text-base tracking-wide line-clamp-1">{order.product?.title || 'CLOOP Item'}</span>
-                              <div className="flex items-center gap-2 mt-0.5">
+                              <div className="flex flex-wrap items-center gap-2 mt-0.5">
                                 <span className="text-[10px] font-light tracking-wider text-stone-500">Khách thuê:</span>
                                 <span className="font-medium text-[#183A2D] text-[11px]">{order.renter?.name || `ID:${order.renterId?.substring(0,6)}`}</span>
+                                <div className="inline-flex items-center gap-1 bg-amber-50 text-amber-900 border border-amber-200/80 px-2 py-0.5 rounded-full text-[10.5px] font-bold shadow-2xs">
+                                  <Star size={10} className="fill-amber-400 text-amber-500" />
+                                  <span className="font-mono">{order.renterAvg || (order.renter?.rating ? Number(order.renter.rating).toFixed(1) : "5.0")}</span>
+                                  <span className="text-amber-800/60 text-[9px] font-normal font-sans">
+                                    ({order.renterReviewCount || order.renter?.reviewCount || 1} đánh giá)
+                                  </span>
+                                  <span className="text-emerald-700 text-[9.5px] font-semibold ml-0.5">• Khách uy tín</span>
+                                </div>
                               </div>
 
                               {/* Lộ trình & Lịch trình dự kiến (Shopee Standard) */}
@@ -867,9 +875,17 @@ export function OrdersClient({
                                 </span>
                               </div>
                               <span className="font-medium text-slate-900 text-sm sm:text-base tracking-wide line-clamp-1">{order.product?.title || 'CLOOP Item'}</span>
-                              <div className="flex items-center gap-2 mt-0.5">
+                              <div className="flex flex-wrap items-center gap-2 mt-0.5">
                                 <span className="text-[10px] font-light tracking-wider text-stone-500">Chủ đồ:</span>
                                 <span className="font-medium text-slate-800 text-[11px]">{order.product?.user?.name || `ID:${order.product?.userId?.substring(0,6)}`}</span>
+                                <div className="inline-flex items-center gap-1 bg-amber-50 text-amber-900 border border-amber-200/80 px-2 py-0.5 rounded-full text-[10.5px] font-bold shadow-2xs">
+                                  <Star size={10} className="fill-amber-400 text-amber-500" />
+                                  <span className="font-mono">{order.ownerAvg || (order.product?.user?.rating ? Number(order.product.user.rating).toFixed(1) : "5.0")}</span>
+                                  <span className="text-amber-800/60 text-[9px] font-normal font-sans">
+                                    ({order.ownerReviewCount || order.product?.user?.reviewCount || 1} đánh giá)
+                                  </span>
+                                  <span className="text-emerald-700 text-[9.5px] font-semibold ml-0.5">• Tủ đồ uy tín</span>
+                                </div>
                               </div>
 
                               {/* Lộ trình & Lịch trình dự kiến (Shopee Standard) */}

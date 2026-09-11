@@ -8,7 +8,7 @@ import { SignedShippingQuote } from "@/src/utils/shipping";
 import { 
   Loader2, ShieldCheck, MapPin, Calendar, Clock,
   Check, ArrowRight, User, Phone, Home, Shirt, Tag, AlertCircle, Navigation, Package, Truck,
-  Copy, CheckCircle2, ExternalLink, QrCode, X, Zap, Handshake, Leaf, RefreshCw
+  Copy, CheckCircle2, ExternalLink, QrCode, X, Zap, Handshake, Leaf, RefreshCw, Star
 } from "lucide-react";
 import Image from "next/image";
 
@@ -43,6 +43,8 @@ export default function CheckoutClient({
   const [recipientName, setRecipientName] = useState("");
   const [phone, setPhone] = useState("");
   const [addressDetail, setAddressDetail] = useState("");
+  const [customerRating, setCustomerRating] = useState<number>(5.0);
+  const [customerReviewCount, setCustomerReviewCount] = useState<number>(0);
 
   // GHN Address States
   const [provinces, setProvinces] = useState<any[]>([]);
@@ -137,14 +139,29 @@ export default function CheckoutClient({
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  // Nạp thông tin người dùng đang đăng nhập để tự động điền sẵn
+  // Nạp thông tin người dùng đang đăng nhập để tự động điền sẵn & lấy điểm tín nhiệm sao
   useEffect(() => {
+    async function fetchUserExtra(userId: string) {
+      try {
+        const { data: profile } = await supabase
+          .from("User")
+          .select("rating, reviewCount")
+          .eq("id", userId)
+          .single();
+        if (profile) {
+          if (profile.rating) setCustomerRating(Number(profile.rating));
+          if (profile.reviewCount) setCustomerReviewCount(profile.reviewCount);
+        }
+      } catch (e) {}
+    }
+
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
         if (user.user_metadata?.name || user.user_metadata?.full_name) {
           setRecipientName(user.user_metadata?.name || user.user_metadata?.full_name || "");
         }
         if (user.phone) setPhone(user.phone);
+        fetchUserExtra(user.id);
       }
     });
 
@@ -154,6 +171,7 @@ export default function CheckoutClient({
           setRecipientName(session.user.user_metadata?.name || session.user.user_metadata?.full_name || "");
         }
         if (session.user.phone) setPhone(session.user.phone);
+        fetchUserExtra(session.user.id);
         setError("");
       }
     });
@@ -500,9 +518,16 @@ export default function CheckoutClient({
                 )}
               </div>
 
-              <p className="text-[11px] text-stone-500 mt-2 font-body">
-                Chủ tủ: <strong className="text-stone-800 font-semibold">{product.user?.name || "Thành viên CLOOP"}</strong>
-              </p>
+              <div className="flex flex-wrap items-center gap-2 mt-2 font-body">
+                <p className="text-[11px] text-stone-500">
+                  Chủ tủ: <strong className="text-stone-800 font-semibold">{product.user?.name || "Thành viên CLOOP"}</strong>
+                </p>
+                <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200/70 font-mono">
+                  <Star size={10} className="fill-amber-400 text-amber-500" />
+                  <span>{product.user?.rating ? Number(product.user.rating).toFixed(1) : "5.0"}</span>
+                  {product.user?.reviewCount > 0 && <span className="text-stone-400 font-normal text-[9px]">({product.user.reviewCount})</span>}
+                </span>
+              </div>
               <p className="text-[11px] text-stone-500 font-body flex items-center gap-1 mt-0.5">
                 <MapPin size={11} className="text-emerald-700 shrink-0" /> Giao từ: {product.province || fromProvince || "Toàn quốc"}
               </p>
@@ -612,13 +637,22 @@ export default function CheckoutClient({
       ======================================================== */}
       <div className="lg:col-span-7 bg-white p-6 sm:p-7 rounded-2xl shadow-xs border border-[#E9E2D8] flex flex-col space-y-5 text-[#183A2D] font-body">
 
-        <div>
-          <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-800 bg-[#EAF2EC] px-2.5 py-1 rounded-md border border-emerald-200/60 font-ui">
-            THÔNG TIN GIAO NHẬN
-          </span>
-          <h2 className="font-heading text-xl font-bold text-[#0A2517] mt-2">
-            Lịch Thuê & Địa Chỉ Nhận Hàng
-          </h2>
+        <div className="flex flex-wrap items-center justify-between gap-2.5">
+          <div>
+            <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-800 bg-[#EAF2EC] px-2.5 py-1 rounded-md border border-emerald-200/60 font-ui">
+              THÔNG TIN GIAO NHẬN
+            </span>
+            <h2 className="font-heading text-xl font-bold text-[#0A2517] mt-1.5">
+              Lịch Thuê & Địa Chỉ Nhận Hàng
+            </h2>
+          </div>
+
+          <div className="inline-flex items-center gap-1.5 bg-amber-50/90 text-amber-900 border border-amber-200/80 px-3 py-1 rounded-full text-[11px] font-medium shadow-2xs">
+            <Star size={12} className="fill-amber-400 text-amber-500" />
+            <span>Tín nhiệm khách thuê: <strong className="font-mono font-bold text-amber-950">{customerRating.toFixed(1)}</strong></span>
+            <span className="text-stone-300">•</span>
+            <span className="text-emerald-700 font-semibold text-[10.5px]">Khách uy tín</span>
+          </div>
         </div>
 
         {/* 1. CHỌN GÓI THUÊ THÔNG MINH */}
@@ -915,6 +949,20 @@ export default function CheckoutClient({
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          {recipientName && (
+            <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl bg-amber-50/70 border border-amber-200/70 text-xs font-ui">
+              <span className="text-stone-700 font-medium">
+                Khách đặt đồ: <strong className="text-[#183A2D] font-bold">{recipientName}</strong>
+              </span>
+              <div className="inline-flex items-center gap-1.5 text-amber-900 font-bold text-[11px] bg-white px-2.5 py-0.5 rounded-full border border-amber-200 shadow-2xs">
+                <Star size={11} className="fill-amber-400 text-amber-500" />
+                <span className="font-mono">{customerRating.toFixed(1)} / 5.0</span>
+                <span className="text-stone-400 font-normal text-[10px]">({customerReviewCount} đánh giá)</span>
+                <span className="text-emerald-700 font-semibold text-[10px] ml-0.5">• Uy tín</span>
               </div>
             </div>
           )}

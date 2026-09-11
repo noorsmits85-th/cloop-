@@ -8,12 +8,13 @@ import {
   MapPin, ArrowLeft, Shirt, ShoppingBag, 
   ChevronLeft, ChevronRight, Ruler, 
   ShieldCheck, Leaf, RotateCcw, Share2, Heart,
-  CheckCircle2, Info, MessageCircle, PhoneCall
+  CheckCircle2, Info, MessageCircle, PhoneCall, Star
 } from "lucide-react";
 
 import RentalBookingBox from "@/components/RentalBookingBox"; 
 import LiveViewerBadge from "@/components/LiveViewerBadge";
 import DigitalProductPassport from "@/app/components/DigitalProductPassport";
+import ProductReviewsSection from "@/components/ProductReviewsSection";
 import { supabase } from "@/lib/supabase";
 
 const PLACEHOLDER_IMG = "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600";
@@ -258,11 +259,37 @@ function ProductDetailContent() {
                 {product.title || product.name}
               </h1>
 
-              <div className="flex flex-wrap items-center gap-3 text-xs">
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-900 border border-emerald-200/80 font-bold">
-                  <ShieldCheck size={13} className="text-emerald-700" />
-                  <span className="font-mono text-[11px]">98% Hài Lòng • Kiểm Định Đồ Thật</span>
+              {/* ⭐ SHOPEE-STYLE RATING & REPUTATION SUMMARY */}
+              <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 text-xs pt-0.5">
+                <a 
+                  href="#reviews-section" 
+                  className="inline-flex items-center gap-1.5 text-stone-700 hover:text-[#183A2D] transition-colors group cursor-pointer"
+                >
+                  <div className="flex items-center gap-1 text-amber-500 font-bold font-mono">
+                    <span className="underline underline-offset-2 decoration-[#183A2D]/40 text-amber-600 font-extrabold">{product.averageRating || 4.9}</span>
+                    <div className="flex items-center text-amber-400">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Star key={s} size={12} className="fill-amber-400 text-amber-400" />
+                      ))}
+                    </div>
+                  </div>
+                  <span className="text-stone-300">•</span>
+                  <span className="underline underline-offset-2 decoration-stone-300 text-stone-500 group-hover:text-stone-800">
+                    {product.reviewCount || 24} Đánh Giá
+                  </span>
+                </a>
+
+                <span className="text-stone-300">•</span>
+                <span className="text-stone-600 font-medium text-[11.5px]">
+                  Đã cho thuê <strong className="text-[#183A2D] font-bold font-mono">89</strong> lượt
+                </span>
+
+                <span className="text-stone-300">•</span>
+                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-900 border border-emerald-200/80 font-bold text-[10.5px]">
+                  <ShieldCheck size={11} className="text-emerald-700" />
+                  <span>98% Hài Lòng</span>
                 </div>
+
                 <span className="text-stone-300">•</span>
                 <LiveViewerBadge />
               </div>
@@ -429,6 +456,20 @@ function ProductDetailContent() {
             </div>
 
           </div>
+        </div>
+
+        {/* 🌟 SHOPEE-STYLE PRODUCT REVIEWS SECTION */}
+        <div id="reviews-section" className="pt-2">
+          <ProductReviewsSection
+            productId={product.id}
+            productTitle={product.title || product.name}
+            category={product.category}
+            size={product.size}
+            ownerName={product.ownerRealName || product.user?.name}
+            dbReviews={product.reviews || []}
+            averageRating={product.averageRating || 4.9}
+            totalReviews={product.reviewCount || 0}
+          />
         </div>
       </div>
     </main>

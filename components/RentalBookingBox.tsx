@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { ShieldCheck, Calendar, Clock, ArrowRight, Check, Info } from "lucide-react";
+import { ShieldCheck, Calendar, Clock, ArrowRight, Check, Info, Star } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
@@ -95,9 +95,16 @@ export default function RentalBookingBox({
             {ownerName ? ownerName.charAt(0).toUpperCase() : "C"}
           </div>
           <div>
-            <p className="text-xs font-bold text-[#0A2517] leading-none">
-              {ownerName || "Thành viên CLOOP"}
-            </p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-xs font-bold text-[#0A2517] leading-none">
+                {ownerName || "Thành viên CLOOP"}
+              </p>
+              <div className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/70 font-mono">
+                <Star size={10} className="fill-amber-400 text-amber-500" />
+                <span>{ownerRating ? ownerRating.toFixed(1) : "5.0"}</span>
+                {reviewCount > 0 && <span className="text-stone-400 font-normal text-[9px]">({reviewCount})</span>}
+              </div>
+            </div>
             <p className="text-[10px] text-stone-400 mt-0.5">
               Chủ tủ đồ đã xác minh danh tính
             </p>

@@ -16,7 +16,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ produ
         take: 1
       },
       user: {
-        select: { id: true, name: true }
+        select: { id: true, name: true, rating: true, reviewCount: true }
       },
       listings: {
         where: { status: "AVAILABLE" },
