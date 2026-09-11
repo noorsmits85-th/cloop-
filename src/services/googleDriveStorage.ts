@@ -1,15 +1,39 @@
 import crypto from "node:crypto";
 
-const CLIENT_EMAIL = process.env.GOOGLE_CLIENT_EMAIL;
-const PRIVATE_KEY = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n");
-const DEFAULT_FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID;
-const WEBHOOK_URL = process.env.GOOGLE_DRIVE_WEBHOOK_URL;
+function getStorageConfig() {
+  return {
+    clientEmail: process.env.GOOGLE_CLIENT_EMAIL,
+    privateKey: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+    defaultFolderId: process.env.GOOGLE_DRIVE_FOLDER_ID,
+    webhookUrl1: process.env.GOOGLE_DRIVE_WEBHOOK_URL,
+    webhookUrl2: process.env.GOOGLE_DRIVE_WEBHOOK_URL_2,
+  };
+}
+
+export interface DriveUploadOptions {
+  fileName: string;
+  mimeType: string;
+  buffer: Buffer;
+  folderId?: string;
+  isPublic?: boolean;
+  targetKho?: "kho1" | "kho2" | "auto";
+}
+
+export interface DriveUploadResult {
+  fileId: string;
+  name: string;
+  viewUrl: string;
+  downloadUrl: string;
+  thumbnailUrl?: string;
+  storageWarehouse?: string;
+}
 
 /**
  * Tạo Google Drive OAuth2 Access Token bằng Service Account JWT (RS256)
  */
 async function getDriveAccessToken(): Promise<string | null> {
-  if (!CLIENT_EMAIL || !PRIVATE_KEY) {
+  const { clientEmail, privateKey } = getStorageConfig();
+  if (!clientEmail || !privateKey) {
     console.warn("⚠️ [GoogleDrive] Chưa cấu hình GOOGLE_CLIENT_EMAIL hoặc GOOGLE_PRIVATE_KEY.");
     return null;
   }
@@ -17,7 +41,7 @@ async function getDriveAccessToken(): Promise<string | null> {
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: "RS256", typ: "JWT" };
   const claim = {
-    iss: CLIENT_EMAIL,
+    iss: clientEmail,
     scope: "https://www.googleapis.com/auth/drive",
     aud: "https://oauth2.googleapis.com/token",
     exp: now + 3600,
@@ -36,7 +60,7 @@ async function getDriveAccessToken(): Promise<string | null> {
   const sign = crypto.createSign("RSA-SHA256");
   sign.update(unsignedToken);
   const signature = sign
-    .sign(PRIVATE_KEY, "base64")
+    .sign(privateKey, "base64")
     .replace(/=/g, "")
     .replace(/\+/g, "-")
     .replace(/\//g, "_");
@@ -67,55 +91,57 @@ async function getDriveAccessToken(): Promise<string | null> {
   }
 }
 
-export interface DriveUploadOptions {
-  fileName: string;
-  mimeType: string;
-  buffer: Buffer;
-  folderId?: string;
-  isPublic?: boolean;
-}
-
-export interface DriveUploadResult {
-  fileId: string;
-  name: string;
-  viewUrl: string;
-  downloadUrl: string;
-  thumbnailUrl?: string;
-}
-
 /**
- * Tải tệp (ảnh, video, bản sao lưu) lên Google Drive 5TB qua Multipart Upload
+ * Tải tệp (ảnh, video, bản sao lưu) lên Kho Lưu Trữ 10TB (2 Kho 5TB Google One chính chủ)
  */
 export async function uploadToGoogleDrive(
   options: DriveUploadOptions
 ): Promise<DriveUploadResult | null> {
-  // 🌟 Ưu tiên 1: Tải trực tiếp qua Google Apps Script Webhook (Hút trọn 5TB Google One chính chủ)
-  if (WEBHOOK_URL) {
-    try {
-      const base64 = options.buffer.toString("base64");
-      const res = await fetch(WEBHOOK_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fileName: options.fileName,
-          mimeType: options.mimeType,
-          base64: base64,
-        }),
-      });
+  const config = getStorageConfig();
+  const targetKho = options.targetKho || "auto";
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.fileId) {
-          return {
-            fileId: data.fileId,
-            name: options.fileName,
-            viewUrl: data.url || `https://drive.google.com/file/d/${data.fileId}/view`,
-            downloadUrl: `https://drive.google.com/uc?id=${data.fileId}&export=download`,
-          };
+  // Xác định danh sách Webhook theo thứ tự ưu tiên
+  const webhooksToTry: Array<{ name: string; url: string }> = [];
+  if (targetKho === "kho2" && config.webhookUrl2) {
+    webhooksToTry.push({ name: "Kho 2 (5TB)", url: config.webhookUrl2 });
+  } else if (targetKho === "kho1" && config.webhookUrl1) {
+    webhooksToTry.push({ name: "Kho 1 (5TB)", url: config.webhookUrl1 });
+  } else {
+    if (config.webhookUrl1) webhooksToTry.push({ name: "Kho 1 (5TB)", url: config.webhookUrl1 });
+    if (config.webhookUrl2) webhooksToTry.push({ name: "Kho 2 (5TB)", url: config.webhookUrl2 });
+  }
+
+  // 🌟 Ưu tiên 1: Tải trực tiếp qua Google Apps Script Webhooks (Tận dụng 10TB Google One)
+  if (webhooksToTry.length > 0) {
+    const base64 = options.buffer.toString("base64");
+    for (const wh of webhooksToTry) {
+      try {
+        const res = await fetch(wh.url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fileName: options.fileName,
+            mimeType: options.mimeType,
+            base64: base64,
+          }),
+          redirect: "follow",
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.fileId) {
+            return {
+              fileId: data.fileId,
+              name: options.fileName,
+              viewUrl: data.url || `https://drive.google.com/file/d/${data.fileId}/view`,
+              downloadUrl: data.downloadUrl || `https://drive.google.com/uc?id=${data.fileId}&export=download`,
+              storageWarehouse: wh.name,
+            };
+          }
         }
+      } catch (whErr) {
+        console.warn(`⚠️ [GoogleDrive] Lỗi tải lên ${wh.name}, thử phương án tiếp theo:`, whErr);
       }
-    } catch (whErr) {
-      console.warn("⚠️ [GoogleDrive] Lỗi tải qua Webhook 5TB, chuyển sang REST API:", whErr);
     }
   }
 
