@@ -146,9 +146,12 @@ export async function GET(
         ownerRealPhone: "098.765.4321",
         ownerAvatar: product.user?.avatar,
         hasActiveRentals: product.rentalHistory.length > 0,
-        reviews: product.reviews,
-        reviewCount: product.reviews.length,
-        averageRating: product.user?.rating || 4.9,
+        rentalCount: product.rentalHistory ? product.rentalHistory.length : 0,
+        reviews: product.reviews || [],
+        reviewCount: product.reviews ? product.reviews.length : 0,
+        averageRating: product.reviews && product.reviews.length > 0
+          ? Number((product.reviews.reduce((acc: number, r: any) => acc + (r.rating || 5), 0) / product.reviews.length).toFixed(1))
+          : (product.user?.rating || 5.0),
       },
     });
   } catch (error: any) {
