@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef } from "react";
+import Link from "next/link";
 import { 
   Star, 
   ThumbsUp, 
@@ -18,9 +19,13 @@ import {
   PenLine, 
   Flame, 
   Check,
-  AlertCircle
+  AlertCircle,
+  Lock,
+  ShoppingBag,
+  ExternalLink
 } from "lucide-react";
 import { toast } from "sonner";
+import { submitVerifiedProductReviewAction } from "@/app/actions/review";
 
 export interface ReviewMediaItem {
   type: "image" | "video";
@@ -46,6 +51,15 @@ export interface ReviewItem {
   helpfulCount?: number;
 }
 
+export interface UserRentalEligibility {
+  isLoggedIn: boolean;
+  canReview: boolean;
+  hasRented: boolean;
+  isCompleted: boolean;
+  hasReviewed: boolean;
+  reason?: string;
+}
+
 interface ProductReviewsSectionProps {
   productId?: string;
   productTitle?: string;
@@ -56,6 +70,7 @@ interface ProductReviewsSectionProps {
   dbReviews?: any[];
   averageRating?: number;
   totalReviews?: number;
+  userRentalStatus?: UserRentalEligibility;
 }
 
 // 🏷️ BỘ TAGS KHEN NGỢI CHUẨN SHOPEE
@@ -77,7 +92,14 @@ export default function ProductReviewsSection({
   ownerName = "Chủ tủ đồ CLOOP",
   dbReviews = [],
   averageRating = 0,
-  totalReviews = 0
+  totalReviews = 0,
+  userRentalStatus = {
+    isLoggedIn: false,
+    canReview: false,
+    hasRented: false,
+    isCompleted: false,
+    hasReviewed: false,
+  }
 }: ProductReviewsSectionProps) {
   // Lọc theo sao hoặc tiêu chí
   const [selectedFilter, setSelectedFilter] = useState<string>("ALL");
@@ -96,8 +118,21 @@ export default function ProductReviewsSection({
   const [writeTags, setWriteTags] = useState<string[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<Array<{ type: "image" | "video"; url: string; name: string }>>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [userCreatedReviews, setUserCreatedReviews] = useState<ReviewItem[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // State Modal Thông báo Quyền đánh giá (Chống Spam Dialog)
+  const [notEligibleModal, setNotEligibleModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    actionType?: "LOGIN" | "RENT" | "ORDERS";
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+  });
 
   // State Lightbox Modal xem ảnh / video unboxing chuẩn Shopee
   const [lightbox, setLightbox] = useState<{
@@ -196,7 +231,6 @@ export default function ProductReviewsSection({
   const filteredReviews = useMemo(() => {
     let result = allReviews;
 
-    // Lọc theo chip chính
     switch (selectedFilter) {
       case "STAR_5":
         result = result.filter(r => Math.round(r.rating) === 5);
@@ -219,7 +253,6 @@ export default function ProductReviewsSection({
         break;
     }
 
-    // Lọc theo tag khen ngợi (nếu đang chọn tag)
     if (selectedTag) {
       result = result.filter(r => r.tags && r.tags.includes(selectedTag));
     }
@@ -244,6 +277,51 @@ export default function ProductReviewsSection({
 
   const toggleHelpful = (id: string) => {
     setHelpfulLiked(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  // 🛡️ BẢO VỆ CHỐNG SPAM: KIỂM TRA ĐIỀU KIỆN KHI BẤM NÚT "VIẾT ĐÁNH GIÁ"
+  const handleOpenWriteModal = () => {
+    // 1. Chưa đăng nhập
+    if (!userRentalStatus.isLoggedIn) {
+      setNotEligibleModal({
+        isOpen: true,
+        title: "Yêu Cầu Đăng Nhập",
+        message: "Bạn cần đăng nhập tài khoản đã hoàn tất thuê trang phục này để gửi đánh giá xác thực.",
+        actionType: "LOGIN",
+      });
+      return;
+    }
+
+    // 2. Chưa từng thuê món đồ này
+    if (!userRentalStatus.hasRented) {
+      setNotEligibleModal({
+        isOpen: true,
+        title: "Đánh Giá Được Bảo Vệ (Chống Spam)",
+        message: "CLOOP chỉ cho phép khách hàng đã THUÊ và HOÀN TẤT đơn hàng gửi đánh giá thật để bảo đảm sự uy tín và minh bạch cho cộng đồng.",
+        actionType: "RENT",
+      });
+      return;
+    }
+
+    // 3. Đơn thuê đang diễn ra, chưa hoàn tất trả đồ
+    if (!userRentalStatus.isCompleted) {
+      setNotEligibleModal({
+        isOpen: true,
+        title: "Đơn Thuê Đang Xử Lý",
+        message: "Đơn thuê trang phục của bạn đang được tiến hành. Bạn sẽ có thể gửi đánh giá và nhận ngay +50 Leaf Coins sau khi hoàn tất trả đồ nhé!",
+        actionType: "ORDERS",
+      });
+      return;
+    }
+
+    // 4. Đã đánh giá rồi
+    if (userRentalStatus.hasReviewed) {
+      toast.info("Bạn đã hoàn tất gửi đánh giá cho đơn thuê trang phục này rồi!");
+      return;
+    }
+
+    // 5. Đủ điều kiện!
+    setIsWriteModalOpen(true);
   };
 
   // Mở Lightbox xem Ảnh hoặc Video unboxing
@@ -309,7 +387,6 @@ export default function ProductReviewsSection({
           ]);
           toast.success(`Đã tải lên ${file.name} thành công!`);
         } else {
-          // Fallback: URL.createObjectURL để user xem trước ngay
           const localUrl = URL.createObjectURL(file);
           setUploadedFiles(prev => [
             ...prev,
@@ -331,14 +408,15 @@ export default function ProductReviewsSection({
     }
   };
 
-  // Gửi đánh giá mới (Optimistic Shopee UI)
-  const handleReviewSubmit = (e: React.FormEvent) => {
+  // 🛡️ GỬI ĐÁNH GIÁ ĐÃ ĐƯỢC XÁC THỰC LÊN SERVER (CHỐNG SPAM TOÀN DIỆN)
+  const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!writeComment.trim() && uploadedFiles.length === 0) {
       toast.error("Vui lòng nhập lời nhận xét hoặc đính kèm ảnh/video nhé!");
       return;
     }
 
+    setIsSubmitting(true);
     const images = uploadedFiles.filter(f => f.type === "image").map(f => f.url);
     const videos = uploadedFiles.filter(f => f.type === "video").map(f => ({
       url: f.url,
@@ -346,30 +424,36 @@ export default function ProductReviewsSection({
       duration: "0:15"
     }));
 
-    const newReviewItem: ReviewItem = {
-      id: `user-rev-${Date.now()}`,
-      userName: "b*****n (Bạn)",
-      userAvatar: null,
-      rating: writeRating,
-      date: "Vừa xong",
-      variantInfo: `Size: ${size} | Vừa nhận`,
-      materialFeedback: writeRating >= 4 ? "Chất vải tuyệt vời, đúng mô tả" : "Tương đối ổn",
-      accuracyFeedback: "Khớp 100% hình ảnh",
-      comment: writeComment.trim() || "Sản phẩm thực tế rất đẹp, dịch vụ CLOOP đóng gói chỉn chu, giao nhận đúng hẹn!",
-      images: images,
-      videos: videos,
-      tags: writeTags.length > 0 ? writeTags : ["Chất vải đẹp", "Đúng với mô tả"],
-      shopResponse: `Dạ CLOOP Closet cảm ơn bạn đã gửi đánh giá tuyệt vời này! Chúc bạn diện trang phục thật tỏa sáng nha ❤️`,
-      helpfulCount: 0
-    };
+    try {
+      const res = await submitVerifiedProductReviewAction({
+        productId: productId || "",
+        rating: writeRating,
+        comment: writeComment,
+        images,
+        videos,
+        tags: writeTags,
+      });
 
-    setUserCreatedReviews(prev => [newReviewItem, ...prev]);
-    setIsWriteModalOpen(false);
-    setWriteComment("");
-    setUploadedFiles([]);
-    setWriteTags([]);
-    
-    toast.success("🎉 Đánh giá thành công! Bạn nhận được +50 Leaf Coins vào ví!");
+      if (!res.success) {
+        toast.error(res.error || "Không thể gửi đánh giá.");
+        return;
+      }
+
+      if (res.review) {
+        setUserCreatedReviews(prev => [res.review as any, ...prev]);
+      }
+
+      setIsWriteModalOpen(false);
+      setWriteComment("");
+      setUploadedFiles([]);
+      setWriteTags([]);
+      
+      toast.success(res.message || "🎉 Đánh giá thành công! Bạn nhận được +50 Leaf Coins vào ví!");
+    } catch (err: any) {
+      toast.error(err.message || "Lỗi khi gửi đánh giá.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const ratingDescriptions = ["", "Rất tệ", "Không hài lòng", "Bình thường", "Hài lòng", "Tuyệt vời"];
@@ -389,15 +473,32 @@ export default function ProductReviewsSection({
           </span>
         </div>
 
-        {/* Nút Viết Đánh Giá Shopee CTA */}
-        <button
-          type="button"
-          onClick={() => setIsWriteModalOpen(true)}
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#183A2D] hover:bg-[#235341] text-white text-xs font-bold font-ui rounded-xl shadow-xs transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
-        >
-          <PenLine size={14} />
-          <span>Viết Đánh Giá (+50 Xu)</span>
-        </button>
+        {/* 🛡️ Nút Viết Đánh Giá: Kiểm tra điều kiện thuê xong hoàn tất */}
+        {userRentalStatus.canReview ? (
+          <button
+            type="button"
+            onClick={handleOpenWriteModal}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#183A2D] hover:bg-[#235341] text-white text-xs font-bold font-ui rounded-xl shadow-xs transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <PenLine size={14} />
+            <span>Viết Đánh Giá (+50 Xu)</span>
+          </button>
+        ) : userRentalStatus.hasReviewed ? (
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200/70 text-xs font-bold font-ui rounded-xl shadow-2xs">
+            <CheckCircle2 size={13} className="text-emerald-700" />
+            <span>Đã Đánh Giá Đơn Thuê</span>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={handleOpenWriteModal}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold font-ui rounded-xl transition-all cursor-pointer border border-stone-200/80 shadow-2xs"
+            title="Chỉ khách hàng đã hoàn tất thuê mới có thể viết đánh giá"
+          >
+            <ShieldCheck size={14} className="text-emerald-700" />
+            <span>Viết Đánh Giá (Cần thuê xong)</span>
+          </button>
+        )}
       </div>
 
       {/* ⭐ BẢNG THỐNG KÊ RATING CHUẨN SHOPEE */}
@@ -468,7 +569,7 @@ export default function ProductReviewsSection({
               })}
             </div>
 
-            {/* Dải Tags khen ngợi nhanh chuẩn Shopee (Flame icon, NO Sparkles!) */}
+            {/* Dải Tags khen ngợi nhanh chuẩn Shopee */}
             <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-stone-200/60 text-[11px]">
               <span className="text-stone-400 font-medium mr-1 flex items-center gap-1">
                 <Flame size={12} className="text-amber-600" /> Hay khen:
@@ -502,7 +603,7 @@ export default function ProductReviewsSection({
           </div>
         </div>
       ) : (
-        /* 🌿 GIAO DIỆN CHƯA CÓ ĐÁNH GIÁ (ZERO MOCK REVIEWS, CHUẨN SHOPEE) */
+        /* 🌿 GIAO DIỆN CHƯA CÓ ĐÁNH GIÁ */
         <div className="rounded-2xl bg-[#FAF8F3] border border-[#EFE8DC] p-7 sm:p-9 text-center space-y-3">
           <div className="flex items-center justify-center gap-1 text-stone-300 my-1">
             {[1, 2, 3, 4, 5].map((star) => (
@@ -513,17 +614,28 @@ export default function ProductReviewsSection({
             Chưa Có Đánh Giá Nào Cho Món Đồ Này
           </p>
           <p className="text-xs text-stone-500 max-w-md mx-auto font-ui leading-relaxed">
-            Trang phục này mới lên sóng hoặc chưa có lượt đánh giá từ người thuê. Hãy là người đầu tiên diện thử và gửi cảm nhận để nhận ngay <strong className="text-emerald-800 font-bold">+50 Leaf Coins</strong> vào ví!
+            Trang phục này mới lên sóng hoặc chưa có lượt đánh giá từ người thuê. Hãy là người đầu tiên trải nghiệm để nhận ngay <strong className="text-emerald-800 font-bold">+50 Leaf Coins</strong> vào ví!
           </p>
           <div className="pt-2">
-            <button
-              type="button"
-              onClick={() => setIsWriteModalOpen(true)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#183A2D] hover:bg-[#235341] text-white text-xs font-bold font-ui rounded-xl shadow-xs transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
-            >
-              <PenLine size={14} />
-              <span>Viết Đánh Giá Đầu Tiên (+50 Xu)</span>
-            </button>
+            {userRentalStatus.canReview ? (
+              <button
+                type="button"
+                onClick={handleOpenWriteModal}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#183A2D] hover:bg-[#235341] text-white text-xs font-bold font-ui rounded-xl shadow-xs transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <PenLine size={14} />
+                <span>Viết Đánh Giá Đầu Tiên (+50 Xu)</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleOpenWriteModal}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#183A2D] hover:bg-[#235341] text-white text-xs font-bold font-ui rounded-xl shadow-xs transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <ShieldCheck size={14} className="text-emerald-300" />
+                <span>Viết Đánh Giá (Chỉ khách đã thuê)</span>
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -640,13 +752,11 @@ export default function ProductReviewsSection({
                             className="w-full h-full object-cover opacity-85 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300"
                             loading="lazy"
                           />
-                          {/* Play Icon Overlay */}
                           <div className="absolute inset-0 flex items-center justify-center bg-black/25 group-hover:bg-black/10 transition-colors">
                             <div className="w-8 h-8 rounded-full bg-white/90 text-[#183A2D] flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
                               <Play size={15} className="fill-[#183A2D] ml-0.5" />
                             </div>
                           </div>
-                          {/* Duration Badge Shopee */}
                           <div className="absolute bottom-1.5 right-1.5 bg-black/70 backdrop-blur-xs text-white text-[10px] font-mono font-bold px-1.5 py-0.5 rounded">
                             {vid.duration || "0:15"}
                           </div>
@@ -748,11 +858,75 @@ export default function ProductReviewsSection({
         </div>
       )}
 
+      {/* 🛡️ MODAL THÔNG BÁO QUYỀN ĐÁNH GIÁ (CHỐNG SPAM DIALOG) */}
+      {notEligibleModal.isOpen && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-stone-200 space-y-4 text-center">
+            
+            <div className="w-12 h-12 rounded-full bg-emerald-100/70 text-emerald-800 flex items-center justify-center mx-auto">
+              <ShieldCheck size={26} className="text-emerald-800" />
+            </div>
+
+            <h3 className="text-base font-bold text-stone-900 font-heading">
+              {notEligibleModal.title}
+            </h3>
+
+            <p className="text-xs text-stone-600 leading-relaxed font-ui">
+              {notEligibleModal.message}
+            </p>
+
+            <div className="pt-2 space-y-2">
+              {notEligibleModal.actionType === "LOGIN" && (
+                <Link
+                  href={`/login?redirect=/product/${productId || ''}#reviews-section`}
+                  className="w-full py-2.5 bg-[#183A2D] hover:bg-[#235341] text-white text-xs font-bold font-ui rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5"
+                >
+                  <span>Đăng Nhập Ngay</span>
+                  <ExternalLink size={13} />
+                </Link>
+              )}
+
+              {notEligibleModal.actionType === "RENT" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNotEligibleModal(prev => ({ ...prev, isOpen: false }));
+                    window.scrollTo({ top: 300, behavior: "smooth" });
+                  }}
+                  className="w-full py-2.5 bg-[#183A2D] hover:bg-[#235341] text-white text-xs font-bold font-ui rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <ShoppingBag size={14} />
+                  <span>Thuê Ngay Món Đồ Này</span>
+                </button>
+              )}
+
+              {notEligibleModal.actionType === "ORDERS" && (
+                <Link
+                  href="/my-closet/orders"
+                  className="w-full py-2.5 bg-[#183A2D] hover:bg-[#235341] text-white text-xs font-bold font-ui rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5"
+                >
+                  <span>Xem Đơn Hàng Của Tôi</span>
+                  <ExternalLink size={13} />
+                </Link>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setNotEligibleModal(prev => ({ ...prev, isOpen: false }))}
+                className="w-full py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+              >
+                Đã Hiểu
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
       {/* LIGHTBOX MODAL: XEM ẢNH TO & PHÁT VIDEO UNBOXING */}
       {lightbox.isOpen && lightbox.mediaList.length > 0 && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-200">
           
-          {/* Nút đóng X */}
           <button
             type="button"
             onClick={() => setLightbox({ isOpen: false, mediaList: [], currentIndex: 0 })}
@@ -761,7 +935,6 @@ export default function ProductReviewsSection({
             <X size={22} />
           </button>
 
-          {/* Nút lùi media */}
           {lightbox.mediaList.length > 1 && (
             <button
               type="button"
@@ -775,7 +948,6 @@ export default function ProductReviewsSection({
             </button>
           )}
 
-          {/* Vùng hiển thị Media chính */}
           <div className="max-w-3xl max-h-[85vh] w-full flex flex-col items-center justify-center space-y-4">
             {lightbox.mediaList[lightbox.currentIndex]?.type === "video" ? (
               <div className="relative w-full max-h-[70vh] flex items-center justify-center bg-black rounded-2xl overflow-hidden shadow-2xl">
@@ -797,7 +969,6 @@ export default function ProductReviewsSection({
               </div>
             )}
 
-            {/* Dải Thumbnails bên dưới */}
             {lightbox.mediaList.length > 1 && (
               <div className="flex items-center gap-2 overflow-x-auto p-2 bg-black/40 rounded-xl max-w-full">
                 {lightbox.mediaList.map((m, idx) => (
@@ -825,7 +996,6 @@ export default function ProductReviewsSection({
             )}
           </div>
 
-          {/* Nút tiến media */}
           {lightbox.mediaList.length > 1 && (
             <button
               type="button"
@@ -842,7 +1012,7 @@ export default function ProductReviewsSection({
         </div>
       )}
 
-      {/* MODAL VIẾT ĐÁNH GIÁ (SHOPEE STYLE - NO SPARKLES ICON) */}
+      {/* 🌟 MODAL VIẾT ĐÁNH GIÁ (DÀNH CHO KHÁCH THUÊ ĐÃ HOÀN TẤT) */}
       {isWriteModalOpen && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-stone-200 space-y-5 max-h-[90vh] overflow-y-auto">
@@ -852,7 +1022,7 @@ export default function ProductReviewsSection({
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-5 bg-[#183A2D] rounded-full" />
                 <h3 className="text-base font-bold text-[#142A1E] font-heading uppercase tracking-wide">
-                  Đánh Giá Sản Phẩm
+                  Đánh Giá Đơn Thuê Của Bạn
                 </h3>
               </div>
               <button 
@@ -875,13 +1045,16 @@ export default function ProductReviewsSection({
               </div>
               <div className="text-left space-y-0.5">
                 <p className="text-xs font-bold text-stone-900 line-clamp-1">{productTitle}</p>
-                <p className="text-[11px] text-stone-500 font-ui">Phân loại: Size {size} | {category}</p>
+                <div className="flex items-center gap-1.5 text-[11px] text-emerald-800 font-semibold font-ui">
+                  <CheckCircle2 size={11} className="text-emerald-700" />
+                  <span>Xác thực: Đơn thuê đã hoàn tất</span>
+                </div>
               </div>
             </div>
 
             {/* 1. Chọn Số Sao (1 - 5 Sao) */}
             <div className="space-y-2 text-center py-2 bg-[#FAF8F3] rounded-2xl border border-[#EFE8DC]">
-              <p className="text-xs font-semibold text-stone-600">Chất lượng sản phẩm</p>
+              <p className="text-xs font-semibold text-stone-600">Chất lượng sản phẩm & trải nghiệm</p>
               <div className="flex items-center justify-center gap-2 text-amber-400">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
@@ -954,7 +1127,6 @@ export default function ProductReviewsSection({
                 </span>
               </div>
 
-              {/* Danh sách media đã upload */}
               {uploadedFiles.length > 0 && (
                 <div className="flex flex-wrap gap-2 pt-1">
                   {uploadedFiles.map((file, idx) => (
@@ -978,7 +1150,6 @@ export default function ProductReviewsSection({
                 </div>
               )}
 
-              {/* Nút bấm chọn tệp */}
               <input
                 ref={fileInputRef}
                 type="file"
@@ -1016,11 +1187,11 @@ export default function ProductReviewsSection({
               <button
                 type="button"
                 onClick={handleReviewSubmit}
-                disabled={isUploading}
-                className="w-full py-3.5 bg-[#183A2D] hover:bg-[#235341] text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99]"
+                disabled={isUploading || isSubmitting}
+                className="w-full py-3.5 bg-[#183A2D] hover:bg-[#235341] disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99]"
               >
                 <Check size={15} className="text-white" />
-                <span>Hoàn Tất & Nhận Ngay +50 Leaf Coins</span>
+                <span>{isSubmitting ? "Đang ghi nhận đánh giá..." : "Hoàn Tất & Nhận Ngay +50 Leaf Coins"}</span>
               </button>
             </div>
 

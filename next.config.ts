@@ -9,20 +9,20 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "50mb",
       allowedOrigins: ["192.168.1.5:3000", "localhost:3000", "cloop-sable.vercel.app", "*.vercel.app"],
     },
-    // ⚡ GIẢM KÍCH THƯỚC SERVERLESS FUNCTIONS VERCEL: Loại bỏ các file không dùng khỏi bundle
-    outputFileTracingExcludes: {
-      "*": [
-        "node_modules/@swc/core-win32-x64-msvc",
-        "node_modules/@esbuild",
-        "node_modules/webpack",
-        "node_modules/terser",
-        "scripts/**",
-        "prisma/seed.ts",
-        ".git/**",
-        "**/*.md",
-        "**/*.docx",
-      ],
-    },
+  },
+  // ⚡ GIẢM KÍCH THƯỚC SERVERLESS FUNCTIONS VERCEL: Loại bỏ các file không dùng khỏi bundle
+  outputFileTracingExcludes: {
+    "*": [
+      "node_modules/@swc/core-win32-x64-msvc",
+      "node_modules/@esbuild",
+      "node_modules/webpack",
+      "node_modules/terser",
+      "scripts/**",
+      "prisma/seed.ts",
+      ".git/**",
+      "**/*.md",
+      "**/*.docx",
+    ],
   },
   // 📸 VÁ LỖI HÌNH ẢNH: Mở khóa ranh giới bảo mật cho Cloudinary, Supabase, Google Storage, Unsplash
   images: {

@@ -18,11 +18,20 @@ import ProductReviewsSection from "@/components/ProductReviewsSection";
 interface ProductDetailClientProps {
   initialProduct: any;
   initialType?: string;
+  userRentalStatus?: {
+    isLoggedIn: boolean;
+    canReview: boolean;
+    hasRented: boolean;
+    isCompleted: boolean;
+    hasReviewed: boolean;
+    reason?: string;
+  };
 }
 
 export default function ProductDetailClient({
   initialProduct,
   initialType,
+  userRentalStatus,
 }: ProductDetailClientProps) {
   const [product] = useState<any>(initialProduct);
   const [transactionMode, setTransactionMode] = useState<"RENT" | "SELL">(() => {
@@ -447,6 +456,7 @@ export default function ProductDetailClient({
             dbReviews={product.reviews || []}
             averageRating={product.averageRating || 0}
             totalReviews={product.reviewCount || 0}
+            userRentalStatus={userRentalStatus}
           />
         </div>
       </div>
