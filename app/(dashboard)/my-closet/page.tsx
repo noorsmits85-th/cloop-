@@ -49,21 +49,16 @@ export default async function MyClosetOverviewPage() {
   });
   const sevenDaysAgo = past7Days[0].dateObj;
 
-  // ⚡ TỐI ƯU SIÊU TỐC: Gom toàn bộ truy vấn song song (Parallel Fetching) & tính phân bổ danh mục in-memory
+  // ⚡ TỐI ƯU SIÊU TỐC: Gom toàn bộ truy vấn song song (Parallel Fetching) & dùng userAuth trực tiếp
   const [
-    user,
     products,
     dbMetrics,
     profileRes,
     completedRentals,
     soldItems
   ] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: userId },
-      select: { cloopCoins: true }
-    }),
     prisma.product.findMany({
-      where: { userId },
+      where: { userId, isDeleted: false },
       select: { category: true, material: true }
     }),
     getCachedEcoMetrics(),
@@ -116,7 +111,7 @@ export default async function MyClosetOverviewPage() {
   ]);
 
   const userProfile = profileRes?.data;
-  const cloopCoins = user?.cloopCoins || 0;
+  const cloopCoins = userAuth.cloopCoins || 0;
 
   // Convert array to Dictionary for fast lookup
   const ECO_MATRIX: Record<string, { water: number; co2: number; pts: number }> = {};

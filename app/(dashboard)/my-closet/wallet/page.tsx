@@ -42,73 +42,92 @@ export default async function WalletPage({
   const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   try {
+    // ⚡ TỐI ƯU SIÊU TỐC: Dùng userAuth sẵn có, gộp product count và tinh gọn invoice query
+    userProfile = {
+      walletBalance: userAuth.walletBalance ?? 0,
+      cloopCoins: userAuth.cloopCoins ?? 100,
+      name: userAuth.name || ""
+    };
+
     const [
-      userRes,
       profRes,
       claimsRes,
-      prodCntRes,
-      weeklyProdRes,
+      userProductsRes,
       fiveStarRes,
       ledgerRes,
       withdrawRes,
       invoicesRes
     ] = await Promise.allSettled([
-      prisma.user.findUnique({
-        where: { id: userId },
-        select: { walletBalance: true, cloopCoins: true, name: true }
-      }),
       supabase
         .from("profiles")
         .select("bank_name, bank_account, bank_owner, name")
         .eq("id", userId)
         .maybeSingle(),
       prisma.coinQuestClaim.findMany({
-        where: { userId: userId },
+        where: { userId },
         select: { questCode: true }
       }),
-      prisma.product.count({
-        where: { userId: userId, isDeleted: false }
-      }),
-      prisma.product.count({
-        where: { userId: userId, isDeleted: false, createdAt: { gte: oneWeekAgo } }
+      prisma.product.findMany({
+        where: { userId, isDeleted: false },
+        select: { createdAt: true }
       }),
       prisma.review.count({
         where: { revieweeId: userId, rating: { gte: 5 } }
       }),
       prisma.coinLedgerEntry.findMany({
-        where: { userId: userId },
+        where: { userId },
         orderBy: { createdAt: "desc" },
         take: 10
       }),
       prisma.withdrawalRequest.findMany({
-        where: { userId: userId },
+        where: { userId },
         orderBy: { createdAt: "desc" },
         take: 10
       }),
       prisma.invoice.findMany({
         where: { 
-          OR: [
-            { rental: { ownerId: userId } },
-            { rental: { product: { userId } } },
-            { rental: { renterId: userId } }
-          ],
+          rental: {
+            OR: [
+              { ownerId: userId },
+              { renterId: userId }
+            ]
+          },
           status: "PAID" 
         },
-        include: { 
-          rental: { 
-            include: { product: true } 
-          } 
+        select: {
+          id: true,
+          amount: true,
+          rentalFee: true,
+          depositAmount: true,
+          platformFee: true,
+          createdAt: true,
+          updatedAt: true,
+          rental: {
+            select: {
+              id: true,
+              ownerId: true,
+              renterId: true,
+              status: true,
+              completedAt: true,
+              product: {
+                select: {
+                  title: true
+                }
+              }
+            }
+          }
         },
         orderBy: { createdAt: "desc" },
-        take: 30
+        take: 20
       })
     ]);
 
-    if (userRes.status === "fulfilled") userProfile = userRes.value;
     if (profRes.status === "fulfilled") profileRecord = profRes.value;
     if (claimsRes.status === "fulfilled") claims = claimsRes.value || [];
-    if (prodCntRes.status === "fulfilled") productCount = prodCntRes.value || 0;
-    if (weeklyProdRes.status === "fulfilled") weeklyProductCount = weeklyProdRes.value || 0;
+    if (userProductsRes.status === "fulfilled" && Array.isArray(userProductsRes.value)) {
+      productCount = userProductsRes.value.length;
+      weeklyProductCount = userProductsRes.value.filter((p: any) => new Date(p.createdAt) >= oneWeekAgo).length;
+    }
     if (fiveStarRes.status === "fulfilled") fiveStarCount = fiveStarRes.value || 0;
     if (ledgerRes.status === "fulfilled") coinLedger = ledgerRes.value || [];
     if (withdrawRes.status === "fulfilled") realWithdrawals = withdrawRes.value || [];

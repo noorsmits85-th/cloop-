@@ -1,10 +1,20 @@
 import React from "react";
 import { requireUser } from "@/src/lib/auth";
-import { supabase } from "@/lib/supabase";
+import { prisma } from "@/src/lib/prisma";
 import { EcoClient } from "../_components/EcoClient";
 import { redirect } from "next/navigation";
+import { unstable_cache } from "next/cache";
 
 export const revalidate = 0;
+
+// Cache EcoMetrics
+const getCachedEcoMetrics = unstable_cache(
+  async () => {
+    return await prisma.ecoMetric.findMany();
+  },
+  ['eco-metrics'],
+  { revalidate: 86400 }
+);
 
 export default async function EcoPage() {
   let userAuth;
@@ -20,12 +30,47 @@ export default async function EcoPage() {
 
   const userId = userAuth.id;
 
-  // Fetch eco stats from user profile
-  const { data: userProfile } = await supabase
-    .from("profiles")
-    .select("carbon_saved, water_saved, items_recycled, cloopCoins")
-    .eq("id", userId)
-    .maybeSingle();
+  // ⚡ TỐI ƯU SIÊU TỐC: Truy vấn song song siêu nhẹ và dùng cache EcoMetrics
+  const [products, dbMetrics, completedRentalsCount] = await Promise.all([
+    prisma.product.findMany({
+      where: { userId, isDeleted: false },
+      select: { category: true, material: true }
+    }),
+    getCachedEcoMetrics(),
+    prisma.rentalHistory.count({
+      where: {
+        OR: [{ ownerId: userId }, { renterId: userId }],
+        status: "LENDER_COMPLETED"
+      }
+    })
+  ]);
+
+  const ECO_MATRIX: Record<string, { water: number; co2: number; pts: number }> = {};
+  dbMetrics.forEach((m: any) => {
+    ECO_MATRIX[m.keyword.toLowerCase().trim()] = { water: m.waterFactor, co2: m.co2Factor, pts: m.greenPts };
+  });
+
+  let carbonSaved = 0;
+  let waterSaved = 0;
+
+  products.forEach((product: any) => {
+    const cat = (product.category || "").toLowerCase().trim();
+    const mat = (product.material || "").toLowerCase().trim();
+    
+    let match = null;
+    for (const key of Object.keys(ECO_MATRIX)) {
+      if (cat.includes(key) || mat.includes(key)) {
+        match = ECO_MATRIX[key];
+        break;
+      }
+    }
+
+    const metrics = match || { water: 2000, co2: 15, pts: 100 };
+    carbonSaved += metrics.co2;
+    waterSaved += metrics.water;
+  });
+
+  const itemsRecycled = products.length + completedRentalsCount;
 
   return (
     <div className="min-h-screen bg-[#FAF9F5] py-8 px-4 sm:px-8 text-stone-800 antialiased">
@@ -45,9 +90,9 @@ export default async function EcoPage() {
         </div>
         
         <EcoClient 
-          carbonSaved={userProfile?.carbon_saved || 0} 
-          waterSaved={userProfile?.water_saved || 0} 
-          itemsRecycled={userProfile?.items_recycled || 0} 
+          carbonSaved={carbonSaved} 
+          waterSaved={waterSaved} 
+          itemsRecycled={itemsRecycled} 
         />
       </div>
     </div>

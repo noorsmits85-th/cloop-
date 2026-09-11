@@ -80,11 +80,19 @@ export default function DashboardLayout({
     };
   }, []);
 
+  const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
+
+  useEffect(() => {
+    setNavigatingTo(null);
+  }, [pathname]);
+
+  const currentPath = navigatingTo || pathname;
+
   const getNavClass = (path: string) => {
-    const isActive = pathname === path || (path !== "/my-closet" && pathname.startsWith(path));
-    return `flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium text-sm transition-colors ${
+    const isActive = currentPath === path || (path !== "/my-closet" && currentPath.startsWith(path));
+    return `flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-150 ${
       isActive
-        ? "bg-[#183A2D] text-white shadow-xs"
+        ? "bg-[#183A2D] text-white shadow-xs font-semibold"
         : "text-gray-500 hover:bg-emerald-50 hover:text-[#183A2D]"
     }`;
   };
@@ -174,7 +182,12 @@ export default function DashboardLayout({
                     href={item.path}
                     prefetch={true}
                     className={getNavClass(item.path)}
-                    onClick={() => setIsSidebarOpen(false)}
+                    onClick={() => {
+                      setIsSidebarOpen(false);
+                      if (pathname !== item.path) {
+                        setNavigatingTo(item.path);
+                      }
+                    }}
                   >
                     {item.icon}
                     <span className="flex-1">{item.name}</span>
