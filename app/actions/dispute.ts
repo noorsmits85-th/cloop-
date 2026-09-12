@@ -5,11 +5,14 @@ import { prisma } from "@/src/lib/prisma";
 import { requireUser, requireAdmin } from "@/src/lib/auth";
 import { generateDisputeVideoReadUrl } from "@/src/services/gcsStorage";
 
+export type DamageCategory = "WEAR_AND_TEAR" | "REPAIRABLE_DAMAGE" | "TOTAL_LOSS";
+
 export async function createDispute(data: {
   rentalId: string;
   invoiceId?: string;
   description: string;
   severity: DamageSeverity;
+  damageCategory?: DamageCategory;
   suggestedDeduction: number;
   evidenceUrls?: string[];
   idempotencyKey?: string;
@@ -37,6 +40,48 @@ export async function createDispute(data: {
 
     if (!isRenter && !isOwner && !isAdmin) {
       return { success: false, error: "Bạn không có quyền khiếu nại cho đơn thuê này" };
+    }
+
+    // 1b. DIGITAL DAMAGE PROTOCOL: Chặn đứng hành vi đòi cọc với Hao mòn thông thường (Wear & Tear)
+    const category: DamageCategory = data.damageCategory || 
+      (data.severity === "LOW" ? "WEAR_AND_TEAR" : data.severity === "MEDIUM" ? "REPAIRABLE_DAMAGE" : "TOTAL_LOSS");
+
+    if (category === "WEAR_AND_TEAR" && data.suggestedDeduction > 0) {
+      return {
+        success: false,
+        error: "Theo Chính Sách Vận Hành CLOOP: Vết bẩn bề mặt (son môi, phấn trang điểm nhẹ, mồ hôi, nếp nhăn) thuộc phạm vi Hao Mòn Thông Thường (Wear & Tear) đã được tính trong giá thuê. Chủ tủ tự xử lý giặt ủi, không được khấu trừ tiền cọc của khách!",
+      };
+    }
+
+    if (category === "REPAIRABLE_DAMAGE" && data.suggestedDeduction > 500000) {
+      return {
+        success: false,
+        error: "Đối với Hư hỏng có thể khắc phục (Repairable Damage), mức khấu trừ tối đa là 500.000đ theo chi phí giặt hấp/khâu vá thực tế, không được yêu cầu tịch thu toàn bộ tiền cọc!",
+      };
+    }
+
+    // 1c. OWNER RISK ENGINE: Soi xét tần suất khiếu nại của Chủ tủ (Phát hiện Moral Hazard)
+    let isHighDisputeOwner = false;
+    let ownerDisputeRate = 0;
+    if (isOwner) {
+      const ownerId = rental.ownerId || rental.product?.userId;
+      if (ownerId) {
+        const pastRentals = await prisma.rentalHistory.findMany({
+          where: { ownerId },
+          take: 10,
+          select: { id: true },
+        });
+        if (pastRentals.length >= 3) {
+          const pastRentalIds = pastRentals.map((r) => r.id);
+          const pastDisputes = await prisma.dispute.count({
+            where: { rentalId: { in: pastRentalIds } },
+          });
+          ownerDisputeRate = Math.round((pastDisputes / pastRentals.length) * 100);
+          if (ownerDisputeRate >= 25) {
+            isHighDisputeOwner = true;
+          }
+        }
+      }
     }
 
     // 2. IDEMPOTENCY CHECK: Chặn tạo khiếu nại trùng lặp khi đang có khiếu nại chưa xử lý
@@ -80,9 +125,12 @@ export async function createDispute(data: {
           afterStatus: "PENDING_REVIEW",
           metadata: JSON.stringify({
             severity: data.severity,
+            damageCategory: category,
             deduction: data.suggestedDeduction,
             evidenceCount: (data.evidenceUrls || []).length,
             creatorRole: isAdmin ? "ADMIN" : isOwner ? "OWNER" : "RENTER",
+            isHighDisputeOwner,
+            ownerDisputeRate: `${ownerDisputeRate}%`,
             idempotencyKey: data.idempotencyKey,
           }),
         },
