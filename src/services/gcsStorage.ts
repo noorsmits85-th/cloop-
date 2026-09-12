@@ -66,15 +66,7 @@ export async function generateDisputeVideoUploadUrl(params: {
   const storage = getStorageClient();
 
   if (!storage) {
-    console.warn(`⚠️ [GCS Storage][${traceId}] Chưa có Service Account, tạo mock URL cho dev.`);
-    return {
-      uploadUrl: `https://storage.googleapis.com/${BUCKET_NAME}/${objectName}?mock=true`,
-      objectName,
-      expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-      traceId,
-      maxSizeBytes,
-      isMock: true,
-    };
+    throw new Error("Dịch vụ Google Cloud Storage chưa được cấu hình (thiếu Service Account hoặc Private Key).");
   }
 
   try {
@@ -104,16 +96,10 @@ export async function generateDisputeVideoUploadUrl(params: {
       maxSizeBytes,
       isMock: false,
     };
-  } catch (error: any) {
-    console.error(`❌ [GCS Error][${traceId}]:`, error?.message || error);
-    return {
-      uploadUrl: `https://storage.googleapis.com/${BUCKET_NAME}/${objectName}?fallback=true`,
-      objectName,
-      expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-      traceId,
-      maxSizeBytes,
-      isMock: true,
-    };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`❌ [GCS Error][${traceId}]:`, message);
+    throw new Error(`Lỗi sinh Signed URL GCS: ${message}`);
   }
 }
 
@@ -123,7 +109,7 @@ export async function generateDisputeVideoUploadUrl(params: {
 export async function generateDisputeVideoReadUrl(objectName: string): Promise<string> {
   const storage = getStorageClient();
   if (!storage) {
-    return `https://storage.googleapis.com/${BUCKET_NAME}/${objectName}`;
+    throw new Error("Không thể tạo link xem bằng chứng: Dịch vụ Google Cloud Storage chưa được cấu hình.");
   }
 
   try {
@@ -137,9 +123,10 @@ export async function generateDisputeVideoReadUrl(objectName: string): Promise<s
     });
 
     return readUrl;
-  } catch (error: any) {
-    console.error("❌ [GCS Read Error]:", error?.message || error);
-    return `https://storage.googleapis.com/${BUCKET_NAME}/${objectName}`;
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("❌ [GCS Read Error]:", message);
+    throw new Error(`Lỗi đọc tệp từ Google Cloud Storage: ${message}`);
   }
 }
 
@@ -162,8 +149,11 @@ export async function verifyUploadedDisputeFile(params: {
 
   const storage = getStorageClient();
   if (!storage) {
-    // Môi trường Dev/Mock
-    return { isValid: true, size: 1024 * 1024, contentType: "video/mp4" };
+    // Fail-Closed: Không tự động xác nhận hợp lệ khi thiếu storage client
+    return { 
+      isValid: false, 
+      error: "Hệ thống lưu trữ Google Cloud Storage chưa được cấu hình hoặc không khả dụng. Không thể nghiệm thu tệp." 
+    };
   }
 
   try {

@@ -334,43 +334,34 @@ export async function checkExposureLimit({
 
   // VƯỢT HẠN MỨC TIÊU CHUẨN -> XÉT DUYỆT FAST-TRACK TRUST
   if (fastTrackOverride) {
-    // 🛡️ PHÒNG TUYẾN 1: Kiểm tra lịch sử tranh chấp đang mở
+    // 🛡️ PHÒNG TUYẾN 0: Bắt buộc xác minh danh tính (eKYC / SĐT / Level 1+)
+    // Chặn tài khoản mới tạo chưa xác thực (Level 0 unverified) kích hoạt Fast-Track
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { isVerified: true },
+    });
+
     const openDisputes = activeRentals.reduce(
       (acc, r) => acc + r.disputes.filter((d) => d.status === "PENDING_REVIEW" || d.status === "DISPUTED").length,
       0
     );
-    if (openDisputes > 0) {
-      return {
-        allowed: false,
-        currentExposure,
-        exposureLimit,
-        projectedExposure,
-        requiresFastTrack: true,
-        reason: "Tài khoản hiện có khiếu nại tranh chấp đang chờ xử lý. Không đủ điều kiện kích hoạt Fast-Track Trust.",
-      };
-    }
 
-    // 🛡️ PHÒNG TUYẾN 2: Chặn spam gom đồ của tài khoản mới (Level 0)
-    if (trustTier === "LEVEL_0_NEW" && activeRentals.length >= 1) {
-      return {
-        allowed: false,
-        currentExposure,
-        exposureLimit,
-        projectedExposure,
-        requiresFastTrack: true,
-        reason: "Thành viên mới chỉ được kích hoạt tối đa 1 đơn Fast-Track đồng thời. Vui lòng hoàn tất đơn thuê hiện tại trước khi đặt thêm món đồ giá trị cao.",
-      };
-    }
+    const evaluation = evaluateFastTrackEligibility({
+      trustTier,
+      isVerified: user?.isVerified === true,
+      activeRentalsCount: activeRentals.length,
+      openDisputesCount: openDisputes,
+      projectedExposure,
+    });
 
-    // 🛡️ PHÒNG TUYẾN 3: Chặn vượt trần Fast-Track tuyệt đối
-    if (projectedExposure > fastTrackCeiling) {
+    if (!evaluation.eligible) {
       return {
         allowed: false,
         currentExposure,
         exposureLimit,
         projectedExposure,
         requiresFastTrack: true,
-        reason: `Món đồ này (Tổng rủi ro: ${projectedExposure.toLocaleString()}đ) vượt trần tối đa của chế độ Fast-Track cho ${config.label} (${fastTrackCeiling.toLocaleString()}đ). Vui lòng tích lũy thêm đơn hoàn tất để tăng hạng tín nhiệm hoặc liên hệ Quản trị viên.`,
+        reason: evaluation.reason,
       };
     }
 
@@ -392,8 +383,50 @@ export async function checkExposureLimit({
     exposureLimit,
     projectedExposure,
     requiresFastTrack: true,
-    reason: `Món đồ này (hoặc tổng tài sản đang thuê: ${projectedExposure.toLocaleString()}đ) vượt hạn mức ${config.label} (${exposureLimit.toLocaleString()}đ). Bạn có thể kích hoạt chế độ Fast-Track Trust (thu 100% tiền cọc bảo chứng qua PayOS) để tiếp tục.`,
+    reason: `Tổng giá trị đồ thuê vượt hạn mức tín nhiệm hiện tại của ${config.label} (${exposureLimit.toLocaleString()}đ). Bạn có thể kích hoạt Chế độ Fast-Track (thu 100% tiền cọc bảo chứng) để thuê món đồ này ngay lập tức!`,
   };
+}
+
+/**
+ * 🛡️ HÀM ĐÁNH GIÁ ĐIỀU KIỆN FAST-TRACK (DÙNG CHO CẢ LOGIC LÕI VÀ TEST TỰ ĐỘNG)
+ */
+export function evaluateFastTrackEligibility(params: {
+  trustTier: TrustTier;
+  isVerified: boolean;
+  activeRentalsCount: number;
+  openDisputesCount: number;
+  projectedExposure: number;
+}): { eligible: boolean; reason?: string; fastTrackCeiling: number } {
+  const config = TRUST_TIERS[params.trustTier];
+  if (!params.isVerified && params.trustTier === "LEVEL_0_NEW") {
+    return {
+      eligible: false,
+      reason: "Tính năng Fast-Track bảo chứng chỉ áp dụng cho tài khoản đã xác minh danh tính (từ Level 1 Verified trở lên hoặc đã hoàn tất eKYC/SĐT). Vui lòng xác thực tài khoản để mở khóa.",
+      fastTrackCeiling: config.fastTrackCeiling,
+    };
+  }
+  if (params.openDisputesCount > 0) {
+    return {
+      eligible: false,
+      reason: "Tài khoản hiện có khiếu nại tranh chấp đang chờ xử lý. Không đủ điều kiện kích hoạt Fast-Track Trust.",
+      fastTrackCeiling: config.fastTrackCeiling,
+    };
+  }
+  if (params.trustTier === "LEVEL_0_NEW" && params.activeRentalsCount >= 1) {
+    return {
+      eligible: false,
+      reason: "Thành viên mới chỉ được kích hoạt tối đa 1 đơn Fast-Track đồng thời. Vui lòng hoàn tất đơn thuê hiện tại trước khi đặt thêm món đồ giá trị cao.",
+      fastTrackCeiling: config.fastTrackCeiling,
+    };
+  }
+  if (params.projectedExposure > config.fastTrackCeiling) {
+    return {
+      eligible: false,
+      reason: `Món đồ này (Tổng rủi ro: ${params.projectedExposure.toLocaleString("vi-VN")}đ) vượt trần tối đa của chế độ Fast-Track cho ${config.label} (${config.fastTrackCeiling.toLocaleString("vi-VN")}đ). Vui lòng tích lũy thêm đơn hoàn tất để tăng hạng tín nhiệm hoặc liên hệ Quản trị viên.`,
+      fastTrackCeiling: config.fastTrackCeiling,
+    };
+  }
+  return { eligible: true, fastTrackCeiling: config.fastTrackCeiling };
 }
 
 /**

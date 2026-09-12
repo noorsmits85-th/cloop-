@@ -73,7 +73,10 @@ export default function AdminDisputesClient({ initialDisputes }: { initialDisput
     if (d.images && d.images.length > 0) {
       setIsLoadingEvidence(true);
       try {
-        const urls = await getDisputeEvidenceUrls(d.images);
+        const urls = await getDisputeEvidenceUrls({
+          disputeId: d.id,
+          evidenceKeys: d.images,
+        });
         setEvidenceUrls(urls);
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Không thể lấy link video";

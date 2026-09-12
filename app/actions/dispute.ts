@@ -320,49 +320,42 @@ export async function resolveDispute(data: {
 export async function getDisputeEvidenceUrls(params: {
   disputeId: string;
   evidenceKeys?: string[];
-} | string[]): Promise<string[]> {
+}): Promise<string[]> {
   const user = await requireUser();
   if (!user) throw new Error("Unauthorized");
 
-  let disputeId: string | undefined;
-  let requestedKeys: string[] = [];
-
-  if (Array.isArray(params)) {
-    requestedKeys = params;
-  } else {
-    disputeId = params.disputeId;
-    requestedKeys = params.evidenceKeys || [];
+  if (!params || !params.disputeId) {
+    throw new Error("Missing disputeId: Yêu cầu mã hồ sơ tranh chấp để xác thực quyền truy cập.");
   }
 
-  if (disputeId) {
-    const dispute = await prisma.dispute.findUnique({
-      where: { id: disputeId },
-      include: {
-        rental: {
-          include: { product: true },
-        },
+  const dispute = await prisma.dispute.findUnique({
+    where: { id: params.disputeId },
+    include: {
+      rental: {
+        include: { product: true },
       },
-    });
+    },
+  });
 
-    if (!dispute) {
-      throw new Error("Không tìm thấy hồ sơ khiếu nại.");
-    }
+  if (!dispute) {
+    throw new Error("Không tìm thấy hồ sơ khiếu nại.");
+  }
 
-    const isRenter = dispute.rental.renterId === user.id;
-    const isOwner = dispute.rental.ownerId === user.id || dispute.rental.product?.userId === user.id;
-    const isAdmin = user.role === "ADMIN";
+  const isRenter = dispute.rental.renterId === user.id;
+  const isOwner = dispute.rental.ownerId === user.id || dispute.rental.product?.userId === user.id;
+  const isAdmin = user.role === "ADMIN";
 
-    if (!isRenter && !isOwner && !isAdmin) {
-      throw new Error("Forbidden: Bạn không có quyền truy cập bằng chứng của hồ sơ tranh chấp này.");
-    }
+  if (!isRenter && !isOwner && !isAdmin) {
+    throw new Error("Forbidden: Bạn không có quyền truy cập bằng chứng của hồ sơ tranh chấp này.");
+  }
 
-    // Nếu không truyền requestedKeys thì lấy toàn bộ ảnh/video của dispute
-    if (requestedKeys.length === 0) {
-      requestedKeys = dispute.images;
-    } else {
-      // Chỉ cho phép lấy các key nằm trong dispute.images
-      requestedKeys = requestedKeys.filter((k) => dispute.images.includes(k));
-    }
+  // Nếu không truyền evidenceKeys thì lấy toàn bộ ảnh/video của dispute
+  let requestedKeys = params.evidenceKeys || [];
+  if (requestedKeys.length === 0) {
+    requestedKeys = dispute.images;
+  } else {
+    // Chỉ cho phép lấy các key nằm trong dispute.images của chính hồ sơ này (chặn IDOR)
+    requestedKeys = requestedKeys.filter((k) => dispute.images.includes(k));
   }
 
   const urls = await Promise.all(
