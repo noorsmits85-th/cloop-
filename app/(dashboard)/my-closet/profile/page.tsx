@@ -1,6 +1,7 @@
 import React from "react";
 import { requireUser } from "@/src/lib/auth";
 import { supabase } from "@/lib/supabase";
+import { calculateUserTrustScore } from "@/lib/trust-engine";
 import { ProfileClient } from "../_components/ProfileClient";
 import ReviewSection from "@/app/(storefront)/closet/[userId]/_components/ReviewSection";
 import { redirect } from "next/navigation";
@@ -21,12 +22,15 @@ export default async function ProfilePage() {
 
   const userId = userAuth.id;
 
-  // Fetch user profile
-  const { data: userProfile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", userId)
-    .maybeSingle();
+  // Fetch user profile & Trust Stack data
+  const [{ data: userProfile }, trustBreakdown] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .maybeSingle(),
+    calculateUserTrustScore(userId),
+  ]);
 
   return (
     <div className="min-h-screen bg-[#FAF9F5] py-8 px-4 sm:px-8 text-stone-800 antialiased">
@@ -45,7 +49,10 @@ export default async function ProfilePage() {
           </p>
         </div>
         
-        <ProfileClient userProfile={userProfile || { id: userId, name: userAuth.name }} />
+        <ProfileClient 
+          userProfile={userProfile || { id: userId, name: userAuth.name }} 
+          trustBreakdown={trustBreakdown} 
+        />
 
         {/* 🌟 ĐÁNH GIÁ CỘNG ĐỒNG ĐÃ NHẬN (LIÊN KẾT TRỰC TIẾP VỚI TỦ ĐỒ CÔNG KHAI) */}
         <div className="pt-2">

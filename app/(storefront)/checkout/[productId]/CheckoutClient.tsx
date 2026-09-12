@@ -8,7 +8,7 @@ import { SignedShippingQuote } from "@/src/utils/shipping";
 import { 
   Loader2, ShieldCheck, MapPin, Calendar, Clock,
   Check, ArrowRight, User, Phone, Home, Shirt, Tag, AlertCircle, Navigation, Package, Truck,
-  Copy, CheckCircle2, ExternalLink, QrCode, X, Zap, Handshake, Leaf, RefreshCw, Star
+  Copy, CheckCircle2, ExternalLink, QrCode, X, Zap, Handshake, Leaf, RefreshCw, Star, Sparkles
 } from "lucide-react";
 import Image from "next/image";
 
@@ -84,6 +84,8 @@ export default function CheckoutClient({
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [isManualChecking, setIsManualChecking] = useState(false);
   const [manualCheckMsg, setManualCheckMsg] = useState<{ type: "info" | "error"; text: string } | null>(null);
+  const [fastTrackMode, setFastTrackMode] = useState(false);
+  const [requiresFastTrackWarning, setRequiresFastTrackWarning] = useState<string | null>(null);
 
   const handleManualCheck = async () => {
     if (!paymentData?.orderCode || isManualChecking) return;
@@ -370,7 +372,8 @@ export default function CheckoutClient({
         buyerAddress: `${addressDetail}, ${fullToProvinceStr}`,
         buyerPhone: phoneClean,
         startDate: startDate,
-        packageDays: selectedTier?.days || 3
+        packageDays: selectedTier?.days || 3,
+        fastTrackMode: fastTrackMode,
       };
 
       const res = await fetch("/api/checkout", {
@@ -382,6 +385,9 @@ export default function CheckoutClient({
       const data = await res.json();
 
       if (!res.ok) {
+        if (data.requiresFastTrack) {
+          setRequiresFastTrackWarning(data.error);
+        }
         throw new Error(data.error || "Lỗi khởi tạo cổng thanh toán");
       }
 
@@ -549,15 +555,26 @@ export default function CheckoutClient({
           </div>
 
           {isRental && actualDeposit > 0 && (
-            <div className="flex justify-between items-center text-amber-950 bg-amber-50/80 p-3 rounded-xl border border-amber-200/70">
-              <div className="space-y-0.5">
-                <p className="font-bold flex items-center gap-1.5 text-xs">
-                  <ShieldCheck size={14} className="text-amber-700" /> Tiền cọc Két Escrow (Tạm giữ):
-                </p>
-                <span className="text-[10px] text-amber-800 block">Tự động hoàn trả 100% khi trả đồ nguyên vẹn</span>
-                <span className="text-[9.5px] text-emerald-800 font-medium block">Đặc quyền VIP: Tích lũy 3 chuyến thuê xanh để tự động giảm 50% tiền cọc</span>
+            <div className="space-y-2 bg-amber-50/80 p-3.5 rounded-xl border border-amber-200/80">
+              <div className="flex justify-between items-center text-amber-950">
+                <div className="space-y-0.5">
+                  <p className="font-bold flex items-center gap-1.5 text-xs">
+                    <ShieldCheck size={14} className="text-emerald-700" /> Tiền cọc Bảo Chứng (Escrow):
+                  </p>
+                  <span className="text-[10px] text-amber-800 block">Tự động hoàn cọc 100% khi trả đồ an toàn</span>
+                </div>
+                <span className="font-bold font-mono text-sm text-amber-900 shrink-0">+{actualDeposit.toLocaleString('vi-VN')}đ</span>
               </div>
-              <span className="font-bold font-mono text-sm text-amber-900 shrink-0">+{actualDeposit.toLocaleString('vi-VN')}đ</span>
+              <div className="pt-1.5 border-t border-amber-200/60 flex items-center justify-between text-[10px]">
+                <span className="text-emerald-800 font-medium flex items-center gap-1">
+                  <Sparkles size={12} className="text-amber-500" />
+                  {fastTrackMode ? "⚡ Chế độ Fast-Track Trust kích hoạt" : "🛡️ Cơ chế Niềm tin Lũy tiến (Progressive Trust)"}
+                </span>
+                <span className="text-stone-500">Mục tiêu: Cọc 0đ - 50%</span>
+              </div>
+              <p className="text-[9.5px] text-stone-500 italic leading-snug">
+                🌟 Trả đồ đúng hạn ở đơn này để tích lũy Trust Score và tự động mở khóa ưu đãi giảm cọc cho các đơn tiếp theo!
+              </p>
             </div>
           )}
 
@@ -997,6 +1014,38 @@ export default function CheckoutClient({
           <div className="text-red-700 text-xs font-ui p-3 bg-red-50 rounded-xl border border-red-200 flex items-center gap-2">
             <AlertCircle size={14} className="shrink-0" />
             <span>{error}</span>
+          </div>
+        )}
+
+        {/* ⚡ FAST-TRACK TRUST (WHALE BYPASS CHO KHÁCH HÀNG VIP MỚI) */}
+        {isRental && (
+          <div className={`p-4 rounded-xl border transition-all text-xs font-body ${fastTrackMode ? 'bg-emerald-50/90 border-emerald-300' : 'bg-stone-50/90 border-stone-200'}`}>
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={fastTrackMode}
+                onChange={(e) => {
+                  setFastTrackMode(e.target.checked);
+                  if (e.target.checked) setRequiresFastTrackWarning(null);
+                }}
+                className="mt-0.5 h-4 w-4 rounded border-stone-300 text-emerald-800 focus:ring-emerald-700 cursor-pointer"
+              />
+              <div className="space-y-1">
+                <div className="font-bold text-[#183A2D] flex items-center gap-1.5 font-ui">
+                  <Sparkles size={14} className="text-amber-500" />
+                  Kích hoạt Fast-Track Trust (Vượt trần hạn mức cho thành viên mới)
+                </div>
+                <p className="text-stone-500 text-[11px] leading-relaxed">
+                  Cho phép bạn thuê ngay trang phục giá trị cao mà không bị giới hạn bởi hạn mức Exposure ban đầu, bằng cơ chế cọc bảo chứng 100% minh bạch qua VietQR Escrow.
+                </p>
+              </div>
+            </label>
+            {requiresFastTrackWarning && !fastTrackMode && (
+              <div className="mt-2.5 p-2 bg-amber-100/70 border border-amber-300 rounded-lg text-amber-900 text-[11px] font-medium flex items-center gap-1.5">
+                <AlertCircle size={14} className="shrink-0 text-amber-700" />
+                <span>Món đồ vượt hạn mức tài sản tạm thời. Vui lòng tick chọn ô trên để tiếp tục thuê!</span>
+              </div>
+            )}
           </div>
         )}
 

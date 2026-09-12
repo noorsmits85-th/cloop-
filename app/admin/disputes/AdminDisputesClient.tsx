@@ -18,6 +18,7 @@ import {
   ChevronRight
 } from "lucide-react";
 import { resolveDispute, getDisputeEvidenceUrls } from "@/app/actions/dispute";
+import { DigitalEvidenceTimeline } from "@/components/dispute/DigitalEvidenceTimeline";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
@@ -309,6 +310,17 @@ export default function AdminDisputesClient({ initialDisputes }: { initialDisput
                   </div>
                 )}
               </div>
+
+              {/* Digital Evidence Timeline (6 Chặng Vòng Đời & Phân Định Hư Hại) */}
+              <DigitalEvidenceTimeline 
+                rentalId={selectedDispute.rentalId} 
+                productTitle={selectedDispute.productTitle}
+                initialDispute={{
+                  damageCategory: (selectedDispute.severity === "LOW" ? "WEAR_AND_TEAR" : selectedDispute.severity === "MEDIUM" ? "REPAIRABLE_DAMAGE" : "TOTAL_LOSS"),
+                  suggestedDeduction: selectedDispute.suggestedDeduction,
+                  description: selectedDispute.description,
+                }}
+              />
 
               {/* Resolution Form */}
               <div className="p-5 rounded-2xl bg-emerald-50/60 border border-emerald-200 space-y-4">

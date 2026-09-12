@@ -4,6 +4,7 @@ import { createClient } from "@/src/utils/supabase/server";
 import { prisma } from "@/src/lib/prisma";
 
 import { Logger } from "next-axiom";
+import { calculateUserTrustScore, checkExposureLimit, calculateDynamicDeposit } from "@/lib/trust-engine";
 
 export async function createBooking({
   productId,
@@ -14,7 +15,8 @@ export async function createBooking({
   ownerName,
   ownerPhone,
   isRental,
-  shippingMode
+  shippingMode,
+  fastTrackMode = false
 }: {
   productId: string;
   startDate: string;
@@ -25,6 +27,7 @@ export async function createBooking({
   ownerPhone: string;
   isRental: boolean;
   shippingMode: "CLOOP_BOOK" | "SELF_BOOK";
+  fastTrackMode?: boolean;
 }) {
   const log = new Logger();
   
@@ -53,8 +56,39 @@ export async function createBooking({
     // Lấy thông tin Listing đầu tiên
     const listing = product.listings[0];
     const basePrice = listing.basePrice || 0;
-    const deposit = listing.deposit || 0;
+    const baseDeposit = listing.deposit || 0;
     const serviceFee = 0; // FREE LAUNCH
+    
+    // 🌟 CLOOP TRUST & RISK ENGINE SERVER-SIDE ENFORCEMENT
+    const approxItemValue = listing.salePrice || (listing.basePrice ? listing.basePrice * 8 : 1500000);
+    const trustBreakdown = await calculateUserTrustScore(user.id);
+
+    // Kiểm tra Hạn Mức Rủi Ro Tài Sản (Exposure Limit)
+    const exposureCheck = await checkExposureLimit({
+      userId: user.id,
+      newItemValue: approxItemValue,
+      trustTier: trustBreakdown.tier,
+      fastTrackOverride: Boolean(fastTrackMode),
+    });
+
+    if (!exposureCheck.allowed) {
+      return {
+        success: false,
+        error: exposureCheck.reason,
+        requiresFastTrack: true,
+      };
+    }
+
+    // Tính toán Tiền Cọc Động (Dynamic Deposit)
+    const depositCalculation = calculateDynamicDeposit({
+      baseDeposit: baseDeposit,
+      itemValue: approxItemValue,
+      trustTier: trustBreakdown.tier,
+      isRental,
+      fastTrackActive: Boolean(fastTrackMode),
+    });
+
+    const deposit = depositCalculation.finalDeposit;
     
     // Tính toán số ngày và tổng tiền trên Server
     const start = new Date(startDate);
@@ -148,6 +182,11 @@ export async function createBooking({
         success: true, 
         rentalId: rental.id, 
         totalAmount,
+        depositAmount: deposit,
+        depositDiscount: depositCalculation.discountAmount,
+        trustTier: trustBreakdown.tier,
+        trustScore: trustBreakdown.score,
+        depositExplanation: depositCalculation.explanation,
         message: "Tạo đơn hàng thành công! Vui lòng chuyển khoản." 
       };
     });

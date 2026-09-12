@@ -16,11 +16,22 @@ import {
   MapPin, 
   Quote, 
   FileText,
-  Heart
+  Heart,
+  Award,
+  Zap,
+  Lock,
+  ArrowUpRight
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { TRUST_TIERS, type TrustScoreBreakdown } from "@/lib/trust-engine";
 
-export function ProfileClient({ userProfile }: { userProfile: any }) {
+export function ProfileClient({ 
+  userProfile,
+  trustBreakdown
+}: { 
+  userProfile: any;
+  trustBreakdown?: TrustScoreBreakdown;
+}) {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isUploadingId, setIsUploadingId] = useState(false);
@@ -42,9 +53,11 @@ export function ProfileClient({ userProfile }: { userProfile: any }) {
     coverImage: userProfile?.coverImage || "",
   });
 
-  const trustScore = 45;
+  const trustScore = trustBreakdown?.score ?? 45;
   const maxScore = 100;
   const progressPercent = Math.min((trustScore / maxScore) * 100, 100);
+  const currentTier = trustBreakdown?.tier || (trustScore >= 85 ? "LEVEL_3_VIP" : trustScore >= 60 ? "LEVEL_2_TRUSTED" : trustScore >= 30 ? "LEVEL_1_VERIFIED" : "LEVEL_0_NEW");
+  const tierConfig = trustBreakdown?.config || TRUST_TIERS[currentTier];
 
   const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -343,90 +356,149 @@ export function ProfileClient({ userProfile }: { userProfile: any }) {
         </form>
       </div>
 
-      {/* 🛡️ 3. TRUST SCORE BAR */}
-      <div className="bg-white rounded-3xl border border-stone-200/80 shadow-xs p-6 sm:p-8">
-        <div className="flex justify-between items-end mb-4">
+      {/* 🛡️ 3. CLOOP TRUST STACK & EXPOSURE LIMIT DASHBOARD */}
+      <div className="bg-white rounded-3xl border border-stone-200/80 shadow-xs p-6 sm:p-8 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-100 pb-5">
           <div>
-            <h3 className="font-heading font-extrabold text-base sm:text-lg text-[#0A2517] flex items-center gap-2">
-              <ShieldCheck className="text-emerald-700" size={20} /> Điểm Uy Tín (TrustScore)
+            <div className="flex items-center gap-2 mb-1">
+              <span className={`text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full border ${tierConfig.badgeColor}`}>
+                {tierConfig.label}
+              </span>
+              <span className="text-[10px] text-stone-400 font-mono">CLOOP TRUST STACK</span>
+            </div>
+            <h3 className="font-heading font-extrabold text-lg sm:text-xl text-[#0A2517] flex items-center gap-2">
+              <ShieldCheck className="text-emerald-700" size={22} /> Điểm Uy Tín & Hạn Mức Tín Nhiệm
             </h3>
-            <p className="text-xs text-stone-500 font-light mt-1">Hoàn thành xác minh KYC và nhận đánh giá 5 sao từ khách thuê để tăng điểm.</p>
+            <p className="text-xs text-stone-500 font-light mt-1">
+              Điểm tín nhiệm lũy tiến theo lịch sử giao dịch và xác thực liên lạc. Không cần chụp giấy tờ tùy thân rườm rà.
+            </p>
           </div>
-          <div className="flex flex-col items-end">
-            <span className="text-2xl sm:text-3xl font-mono font-extrabold text-[#183A2D]">{trustScore}</span>
-            <span className="text-[10px] text-stone-400 font-bold uppercase">/ {maxScore} Pts</span>
+          <div className="flex items-baseline gap-1 bg-stone-50 px-4 py-2 rounded-2xl border border-stone-200/80 shrink-0">
+            <span className="text-3xl sm:text-4xl font-mono font-extrabold text-[#183A2D]">{trustScore}</span>
+            <span className="text-xs text-stone-400 font-bold uppercase">/ {maxScore} PTS</span>
           </div>
         </div>
-        
-        <div className="w-full h-3 bg-stone-100 rounded-full overflow-hidden relative">
-          <div 
-            className="h-full bg-gradient-to-r from-amber-400 to-emerald-600 rounded-full transition-all duration-1000"
-            style={{ width: `${progressPercent}%` }}
-          ></div>
+
+        {/* Thanh Tiến Trình TrustScore */}
+        <div>
+          <div className="w-full h-3.5 bg-stone-100 rounded-full overflow-hidden relative">
+            <div 
+              className="h-full bg-gradient-to-r from-amber-400 via-emerald-500 to-emerald-700 rounded-full transition-all duration-1000"
+              style={{ width: `${progressPercent}%` }}
+            ></div>
+          </div>
+          <div className="grid grid-cols-4 gap-2 mt-2 text-center text-[10px] font-bold text-stone-400">
+            <span className={currentTier === "LEVEL_0_NEW" ? "text-emerald-800 font-extrabold" : ""}>Level 0 (Mới)</span>
+            <span className={currentTier === "LEVEL_1_VERIFIED" ? "text-emerald-800 font-extrabold" : ""}>Level 1 (Xác thực)</span>
+            <span className={currentTier === "LEVEL_2_TRUSTED" ? "text-emerald-800 font-extrabold" : ""}>Level 2 (Khách quen)</span>
+            <span className={currentTier === "LEVEL_3_VIP" ? "text-amber-800 font-extrabold" : ""}>Level 3 (VIP Club)</span>
+          </div>
         </div>
-        
-        <div className="flex justify-between items-center mt-3 text-[10px] font-bold text-stone-400">
-          <span>0 (Mới tham gia)</span>
-          <span>50 (Chủ tủ đáng tin)</span>
-          <span>100 (Uy tín tuyệt đối)</span>
+
+        {/* Thẻ Chỉ Số Quản Trị Rủi Ro (Exposure Limit & Deposit Rate) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+          <div className="bg-[#FAF9F5] p-4 rounded-2xl border border-[#E9E2D8] space-y-1">
+            <span className="text-[10px] uppercase font-bold text-stone-400 tracking-wider">Hạn mức rủi ro tài sản (Exposure Limit)</span>
+            <div className="text-xl sm:text-2xl font-mono font-bold text-[#183A2D]">
+              {tierConfig.exposureLimit.toLocaleString('vi-VN')}đ
+            </div>
+            <p className="text-[11px] text-stone-500 font-light leading-relaxed">
+              Tổng giá trị trang phục tối đa bạn được phép giữ trong vòng thuê đồng thời.
+            </p>
+          </div>
+
+          <div className="bg-emerald-50/70 p-4 rounded-2xl border border-emerald-200/80 space-y-1">
+            <span className="text-[10px] uppercase font-bold text-emerald-800 tracking-wider">Đặc quyền tiền cọc hiện tại</span>
+            <div className="text-xl sm:text-2xl font-mono font-bold text-emerald-900">
+              {tierConfig.depositRate === 1 ? "Cọc 100%" : `Giảm ${(1 - tierConfig.depositRate) * 100}% Tiền Cọc`}
+            </div>
+            <p className="text-[11px] text-emerald-800/80 font-light leading-relaxed">
+              {tierConfig.perks[0]}
+            </p>
+          </div>
+        </div>
+
+        {/* 4 Yếu Tố Tín Nhiệm (Trust Factors) */}
+        <div className="pt-2">
+          <h4 className="text-xs font-bold text-stone-700 uppercase tracking-wider mb-3">
+            Chi tiết các yếu tố cấu thành điểm uy tín
+          </h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div className="flex items-center justify-between p-3 bg-stone-50 rounded-xl border border-stone-200/60">
+              <span className="text-stone-600 flex items-center gap-2">
+                <CheckCircle2 size={15} className="text-emerald-600" /> Xác thực Email & Điện thoại
+              </span>
+              <span className="font-bold font-mono text-emerald-700">+20 PTS</span>
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-stone-50 rounded-xl border border-stone-200/60">
+              <span className="text-stone-600 flex items-center gap-2">
+                <CheckCircle2 size={15} className={trustBreakdown?.factors.isStudent ? "text-emerald-600" : "text-stone-300"} />
+                Email Sinh Viên (@edu.vn)
+              </span>
+              <span className="font-bold font-mono text-emerald-700">
+                {trustBreakdown?.factors.isStudent ? "+15 PTS" : "Chưa kích hoạt"}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-stone-50 rounded-xl border border-stone-200/60">
+              <span className="text-stone-600 flex items-center gap-2">
+                <Sparkles size={15} className="text-amber-500" />
+                Lịch sử thuê thành công ({trustBreakdown?.factors.completedOrders || 0} đơn)
+              </span>
+              <span className="font-bold font-mono text-emerald-700">
+                +{trustBreakdown?.factors.orderPoints || 0} PTS
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-stone-50 rounded-xl border border-stone-200/60">
+              <span className="text-stone-600 flex items-center gap-2">
+                <Award size={15} className="text-blue-500" />
+                Đánh giá 5 sao ({trustBreakdown?.factors.fiveStarReviews || 0} lượt)
+              </span>
+              <span className="font-bold font-mono text-emerald-700">
+                +{trustBreakdown?.factors.reviewPoints || 0} PTS
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* 🪪 4. KYC UPLOAD MODULE */}
+      {/* 🔒 4. PRIVACY BY DESIGN & DATA PROTECTION MODULE */}
       <div className="bg-white rounded-3xl border border-stone-200/80 shadow-xs overflow-hidden flex flex-col">
-        <div className="px-6 sm:px-8 py-4 border-b border-stone-100 bg-[#FAF9F5]">
-          <h3 className="font-heading font-extrabold text-sm sm:text-base text-[#0A2517] uppercase tracking-wider">
-            Xác Thực Danh Tính (KYC)
+        <div className="px-6 sm:px-8 py-4 border-b border-stone-100 bg-[#FAF9F5] flex justify-between items-center">
+          <h3 className="font-heading font-extrabold text-sm sm:text-base text-[#0A2517] uppercase tracking-wider flex items-center gap-2">
+            <Lock size={16} className="text-emerald-800" /> Quản Trị Quyền Riêng Tư (Privacy By Design)
           </h3>
+          <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/70 px-2.5 py-0.5 rounded-full font-mono">
+            Luật 91/2025/QH15
+          </span>
         </div>
         
-        <div className="p-6 sm:p-8">
-          {kycStatus === 'verified' ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center bg-emerald-50 rounded-2xl border border-emerald-100">
-              <div className="w-16 h-16 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mb-4">
-                <CheckCircle2 size={32} />
-              </div>
-              <h4 className="font-heading font-bold text-emerald-900 text-base">Đã xác minh danh tính</h4>
-              <p className="text-xs text-emerald-700/90 mt-1 max-w-sm">Tài khoản của bạn đã được kiểm duyệt. Biểu tượng tick xanh đã được cấp cho các bài đăng của bạn.</p>
+        <div className="p-6 sm:p-8 space-y-4">
+          <div className="text-xs text-stone-600 bg-emerald-50/60 p-4 rounded-2xl border border-emerald-100/80 space-y-2">
+            <p className="font-bold text-emerald-950 flex items-center gap-2 text-xs">
+              <ShieldCheck size={16} className="text-emerald-700" /> Nguyên tắc &quot;Collect Less → Verify Smarter&quot;
+            </p>
+            <p className="text-[11px] text-emerald-900/80 font-light leading-relaxed">
+              CLOOP cam kết tuân thủ nghiêm ngặt Luật Bảo vệ Dữ liệu Cá nhân số 91/2025/QH15 và Nghị định 356/2025/NĐ-CP. Chúng tôi KHÔNG thu thập ảnh CCCD hay dữ liệu sinh trắc học của bạn khi không cần thiết. Uy tín được xây dựng tự nhiên qua từng giao dịch hoàn tất an toàn.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 text-xs">
+            <div className="p-3.5 rounded-xl border border-stone-200/70 space-y-1 bg-stone-50/50">
+              <span className="font-bold text-stone-800 text-[11px] block">Cấp 1-2: Dữ liệu Tài khoản</span>
+              <p className="text-[10.5px] text-stone-500 font-light">Email và SĐT được mã hóa SSL/TLS, chỉ phục vụ thông báo tình trạng đơn và đối soát thanh toán.</p>
             </div>
-          ) : kycStatus === 'pending' ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center bg-amber-50 rounded-2xl border border-amber-100">
-              <div className="w-16 h-16 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center mb-4">
-                <AlertCircle size={32} />
-              </div>
-              <h4 className="font-heading font-bold text-amber-900 text-base">Đang chờ xét duyệt</h4>
-              <p className="text-xs text-amber-700/90 mt-1 max-w-sm">Hệ thống đang kiểm tra hình ảnh thẻ Sinh viên / CCCD của bạn. Quá trình này có thể mất tới 24h.</p>
+            <div className="p-3.5 rounded-xl border border-stone-200/70 space-y-1 bg-stone-50/50">
+              <span className="font-bold text-stone-800 text-[11px] block">Cấp 3: Dòng tiền Escrow</span>
+              <p className="text-[10.5px] text-stone-500 font-light">Chứng từ kế toán và mã VietQR được lưu trữ theo quy chuẩn Nghị định 52/2024/NĐ-CP.</p>
             </div>
-          ) : (
-            <div className="flex flex-col gap-6">
-              <div className="text-sm text-stone-600 bg-emerald-50/60 p-5 rounded-2xl border border-emerald-100">
-                <p className="font-bold text-emerald-900 mb-1 flex items-center gap-2">
-                  <AlertCircle size={16} /> Tại sao cần xác thực danh tính?
-                </p>
-                <ul className="list-disc pl-5 text-xs text-emerald-800/80 space-y-1 mt-2 font-light">
-                  <li>Tăng độ tin cậy khi người khác muốn thuê đồ từ tủ của bạn.</li>
-                  <li>Mở khóa tính năng rút tiền thuê về tài khoản ngân hàng.</li>
-                  <li>Được cộng ngay <strong>+20 Điểm Uy Tín</strong> vào TrustScore.</li>
-                </ul>
-              </div>
-              
-              <div className="border-2 border-dashed border-stone-200 rounded-2xl p-8 flex flex-col items-center justify-center text-center hover:bg-stone-50 transition-colors">
-                <div className="w-12 h-12 bg-stone-100 text-stone-400 rounded-full flex items-center justify-center mb-3">
-                  <Upload size={20} />
-                </div>
-                <h4 className="font-heading font-bold text-stone-800 text-sm sm:text-base">Tải lên Thẻ Sinh Viên hoặc CCCD</h4>
-                <p className="text-[10px] text-stone-400 mt-1 mb-4">Chấp nhận JPG, PNG. Tối đa 5MB.</p>
-                
-                <button 
-                  onClick={handleUploadId}
-                  disabled={isUploadingId}
-                  className="px-7 py-3 bg-[#183A2D] text-white text-xs font-bold uppercase tracking-widest rounded-full shadow-sm hover:bg-[#112a20] transition-colors disabled:opacity-50 cursor-pointer"
-                >
-                  {isUploadingId ? "Đang tải lên..." : "Chọn ảnh tải lên"}
-                </button>
-              </div>
+            <div className="p-3.5 rounded-xl border border-stone-200/70 space-y-1 bg-stone-50/50">
+              <span className="font-bold text-stone-800 text-[11px] block">Cấp 5: Bằng chứng số</span>
+              <p className="text-[10.5px] text-stone-500 font-light">Video niêm phong và mở gói được lưu trữ trên Cold Storage và tự động tiêu hủy sau khi hoàn tất đơn.</p>
             </div>
-          )}
+          </div>
         </div>
       </div>
 

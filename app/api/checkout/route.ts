@@ -6,6 +6,7 @@ import { payos } from "@/src/utils/payos";
 import { generatePayOSOrderCode } from "@/src/utils/order-code";
 import { checkRateLimit } from "@/src/utils/rate-limit";
 import { startOfDay, endOfDay, addDays, subDays } from "date-fns";
+import { calculateUserTrustScore, checkExposureLimit, calculateDynamicDeposit } from "@/lib/trust-engine";
 import { z } from "zod";
 
 // Schema Validate dữ liệu đầu vào chuẩn Server-side
@@ -17,6 +18,7 @@ const CheckoutSchema = z.object({
   buyerPhone: z.string().regex(/(84|0[3|5|7|8|9])+([0-9]{8})\b/, "Số điện thoại không đúng định dạng (Ví dụ: 0987654321)"),
   startDate: z.string().datetime().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Ngày không hợp lệ")),
   packageDays: z.number().int().positive().refine(val => [1, 3, 7].includes(val), "Gói thuê không hợp lệ (Chỉ chấp nhận 1, 3, 7 ngày)"),
+  fastTrackMode: z.boolean().optional(),
 });
 
 export async function POST(req: Request) {
@@ -50,7 +52,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: firstError, details: parseResult.error.issues }, { status: 400 });
     }
 
-    const { productId, shippingToken, buyerAddress, buyerPhone, startDate, packageDays } = parseResult.data;
+    const { productId, shippingToken, buyerAddress, buyerPhone, startDate, packageDays, fastTrackMode } = parseResult.data;
 
     // 3. Fetch Product và Listing
     const product = await prisma.product.findUnique({
@@ -86,7 +88,40 @@ export async function POST(req: Request) {
        itemPrice = Math.round((activeListing.basePrice || 0) * packageDays * (packageDays >= 7 ? 0.7 : packageDays >= 3 ? 0.85 : 1) / 1000) * 1000;
     }
 
-    const depositPrice = activeListing.deposit || 0;
+    const baseDepositPrice = activeListing.deposit || 0;
+    const approxItemValue = activeListing.salePrice || (activeListing.basePrice ? activeListing.basePrice * 8 : 1500000);
+
+    // 🌟 CLOOP TRUST & RISK ENGINE SERVER-SIDE VERIFICATION
+    const trustBreakdown = await calculateUserTrustScore(realUserId);
+    
+    // Kiểm tra Hạn Mức Rủi Ro Tài Sản (Exposure Limit)
+    const exposureCheck = await checkExposureLimit({
+      userId: realUserId,
+      newItemValue: approxItemValue,
+      trustTier: trustBreakdown.tier,
+      fastTrackOverride: Boolean(fastTrackMode),
+    });
+
+    if (!exposureCheck.allowed) {
+      return NextResponse.json({
+        error: exposureCheck.reason,
+        requiresFastTrack: true,
+        currentExposure: exposureCheck.currentExposure,
+        exposureLimit: exposureCheck.exposureLimit,
+        projectedExposure: exposureCheck.projectedExposure,
+      }, { status: 400 });
+    }
+
+    // Tính toán Tiền Cọc Động (Dynamic Deposit)
+    const depositCalculation = calculateDynamicDeposit({
+      baseDeposit: baseDepositPrice,
+      itemValue: approxItemValue,
+      trustTier: trustBreakdown.tier,
+      isRental: true,
+      fastTrackActive: Boolean(fastTrackMode),
+    });
+
+    const depositPrice = depositCalculation.finalDeposit;
 
     // 4. Xác thực "Signed Quote Token" của Vận chuyển
     let shippingFee = 0;
@@ -211,7 +246,11 @@ export async function POST(req: Request) {
         accountName: paymentLinkRes.accountName,
         bin: paymentLinkRes.bin,
         amount: totalAmount,
-        description: paymentLinkRes.description || `CLOOP GD ${checkoutResult.orderCode}`
+        description: paymentLinkRes.description || `CLOOP GD ${checkoutResult.orderCode}`,
+        trustTier: trustBreakdown.tier,
+        trustScore: trustBreakdown.score,
+        depositDiscount: depositCalculation.discountAmount,
+        depositExplanation: depositCalculation.explanation,
       });
 
     } catch (payosErr: any) {
