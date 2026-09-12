@@ -9,12 +9,10 @@ import {
   Sparkles, 
   RotateCcw, 
   CheckCircle2, 
-  AlertTriangle, 
-  FileText, 
-  ExternalLink,
   ChevronDown,
   ChevronUp,
-  Clock
+  Clock,
+  FileText
 } from "lucide-react";
 import type { DamageCategory } from "@/app/actions/dispute";
 
@@ -32,94 +30,141 @@ export interface EvidenceEvent {
   deductionAmount?: number;
 }
 
+export interface RentalTimelineDetails {
+  createdAt?: string | Date | null;
+  startDate?: string | Date | null;
+  endDate?: string | Date | null;
+  actualReturnDate?: string | Date | null;
+  status?: string | null;
+  renterName?: string | null;
+  ownerName?: string | null;
+  deliveryTrackingCode?: string | null;
+  returnTrackingCode?: string | null;
+  deliveryStatus?: string | null;
+  returnStatus?: string | null;
+}
+
+export interface DisputeTimelineDetails {
+  damageCategory?: DamageCategory;
+  suggestedDeduction?: number;
+  finalDeduction?: number | null;
+  description?: string;
+  evidenceUrls?: string[];
+  adminNotes?: string | null;
+  createdAt?: string | Date | null;
+}
+
 interface DigitalEvidenceTimelineProps {
   rentalId: string;
   productTitle: string;
   events?: EvidenceEvent[];
-  initialDispute?: {
-    damageCategory: DamageCategory;
-    suggestedDeduction: number;
-    description: string;
-  };
+  rentalDetails?: RentalTimelineDetails;
+  initialDispute?: DisputeTimelineDetails;
+}
+
+function formatTimelineDate(dateInput?: string | Date | null): string {
+  if (!dateInput) return "Đang cập nhật";
+  try {
+    const d = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+    if (isNaN(d.getTime())) return "Đang cập nhật";
+    return d.toLocaleString("vi-VN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  } catch {
+    return "Đang cập nhật";
+  }
 }
 
 export function DigitalEvidenceTimeline({
   rentalId,
   productTitle,
   events,
+  rentalDetails,
   initialDispute,
 }: DigitalEvidenceTimelineProps) {
   const [expandedStage, setExpandedStage] = useState<number | null>(6);
 
-  // Mẫu sự kiện 6 chặng chuẩn Digital Evidence Timeline
-  const defaultEvents: EvidenceEvent[] = [
+  // Xây dựng 6 chặng dòng thời gian động từ dữ liệu thực tế trong CSDL
+  const dynamicEvents: EvidenceEvent[] = events || [
     {
-      id: "ev-1",
+      id: "ev-stage-1",
       stage: 1,
       title: "Chủ tủ ghi nhận hiện trạng & Niêm phong",
-      actor: "Chủ tủ (Lender)",
-      timestamp: "10:30 • 12/10/2026",
-      status: "COMPLETED",
-      description: "Quay video 360 độ hiện trạng váy dạ hội, kiểm tra khóa kéo, đường may và dán tem niêm phong CLOOP xanh.",
-      mediaUrls: ["https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=500&auto=format&fit=crop&q=60"],
-      notes: "Tình trạng ban đầu: Mới 98%, không vết ố, cúc áo đầy đủ.",
+      actor: rentalDetails?.ownerName ? `Chủ tủ (${rentalDetails.ownerName})` : "Chủ tủ (Lender)",
+      timestamp: formatTimelineDate(rentalDetails?.createdAt),
+      status: rentalDetails?.createdAt ? "COMPLETED" : "PENDING",
+      description: "Chủ tủ hoàn tất kiểm tra hiện trạng sản phẩm, đối chiếu mô tả và niêm phong kiện hàng sẵn sàng bàn giao vận chuyển.",
+      notes: "Niêm phong ban đầu được xác lập tại thời điểm tạo đơn.",
     },
     {
-      id: "ev-2",
+      id: "ev-stage-2",
       stage: 2,
-      title: "Đơn vị vận chuyển (GHN) tiếp nhận kiện hàng",
-      actor: "Shipper GHN",
-      timestamp: "11:45 • 12/10/2026",
-      status: "COMPLETED",
-      description: "Tài xế quét mã QR vận đơn GHN, xác nhận hộp nguyên vẹn và niêm phong không rách.",
-      notes: "Mã vận đơn: GHN-CLOOP-889921",
+      title: "Đơn vị vận chuyển tiếp nhận kiện hàng chiều đi",
+      actor: "Đối tác giao vận (GHN / GHTK)",
+      timestamp: rentalDetails?.deliveryTrackingCode ? "Đã xuất vận đơn" : "Đang xử lý vận đơn",
+      status: rentalDetails?.deliveryTrackingCode ? "COMPLETED" : "PENDING",
+      description: rentalDetails?.deliveryTrackingCode
+        ? `Kiện hàng đã được tiếp nhận và gán mã vận đơn giao hàng.`
+        : "Đơn vị vận chuyển đang chờ xác nhận lấy kiện hàng từ địa chỉ chủ tủ.",
+      notes: rentalDetails?.deliveryTrackingCode ? `Mã vận đơn chiều đi: ${rentalDetails.deliveryTrackingCode}` : undefined,
     },
     {
-      id: "ev-3",
+      id: "ev-stage-3",
       stage: 3,
       title: "Khách hàng nhận đồ & Video Unboxing",
-      actor: "Khách thuê (Renter)",
-      timestamp: "14:20 • 13/10/2026",
-      status: "COMPLETED",
-      description: "Khách quay video mở hộp unboxing, đối chiếu hiện trạng ban đầu trong vòng 3 giờ kể từ khi nhận hàng.",
-      mediaUrls: ["https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=500&auto=format&fit=crop&q=60"],
-      notes: "Xác nhận đúng mẫu, đúng size, tem niêm phong còn nguyên.",
+      actor: rentalDetails?.renterName ? `Khách thuê (${rentalDetails.renterName})` : "Khách thuê (Renter)",
+      timestamp: formatTimelineDate(rentalDetails?.startDate),
+      status: rentalDetails?.status && ["BORROWER_RECEIVED", "RETURNED", "DISPUTED", "LENDER_COMPLETED"].includes(rentalDetails.status) 
+        ? "COMPLETED" 
+        : "PENDING",
+      description: "Khách hàng tiếp nhận kiện hàng, quay video mở hộp unboxing và kiểm tra tem niêm phong trong vòng 3 giờ.",
+      notes: "Thời điểm kích hoạt thời hạn thuê chính thức theo hợp đồng.",
     },
     {
-      id: "ev-4",
+      id: "ev-stage-4",
       stage: 4,
       title: "Thời gian trải nghiệm sự kiện (Occasion Window)",
-      actor: "Khách thuê (Renter)",
-      timestamp: "18:00 • 14/10/2026",
-      status: "COMPLETED",
-      description: "Trang phục được mặc tham dự dạ hội tốt nghiệp. Áp dụng quy tắc bảo quản vải cao cấp.",
-      notes: "Thời gian thuê: Gói Cuối Tuần (3 ngày)",
+      actor: rentalDetails?.renterName ? `Khách thuê (${rentalDetails.renterName})` : "Khách thuê (Renter)",
+      timestamp: rentalDetails?.startDate && rentalDetails?.endDate 
+        ? `${formatTimelineDate(rentalDetails.startDate)} → ${formatTimelineDate(rentalDetails.endDate)}` 
+        : "Đang diễn ra",
+      status: rentalDetails?.actualReturnDate || (rentalDetails?.status && ["RETURNED", "DISPUTED", "LENDER_COMPLETED"].includes(rentalDetails.status))
+        ? "COMPLETED"
+        : "ACTIVE",
+      description: "Thời gian trải nghiệm trang phục của khách thuê theo gói hợp đồng được bảo vệ bởi Quỹ Rủi Ro & Cơ Chế Cọc Động.",
     },
     {
-      id: "ev-5",
+      id: "ev-stage-5",
       stage: 5,
       title: "Khách hàng đóng gói & Bàn giao gửi trả",
-      actor: "Khách thuê (Renter)",
-      timestamp: "09:15 • 16/10/2026",
-      status: "COMPLETED",
-      description: "Gấp gọn trang phục vào hộp nguyên bản, bàn giao shipper GHN chiều về (Cước trả đồ 0đ).",
-      notes: "Shipper đã lấy hàng thành công.",
+      actor: rentalDetails?.renterName ? `Khách thuê (${rentalDetails.renterName})` : "Khách thuê (Renter)",
+      timestamp: formatTimelineDate(rentalDetails?.actualReturnDate || rentalDetails?.endDate),
+      status: rentalDetails?.actualReturnDate || (rentalDetails?.status && ["RETURNED", "DISPUTED", "LENDER_COMPLETED"].includes(rentalDetails.status))
+        ? "COMPLETED"
+        : "PENDING",
+      description: "Khách hàng hoàn tất đóng gói trang phục nguyên bản, bàn giao cho shipper vận chuyển chiều thu hồi về chủ tủ.",
+      notes: rentalDetails?.returnTrackingCode ? `Mã vận đơn thu hồi: ${rentalDetails.returnTrackingCode}` : undefined,
     },
     {
-      id: "ev-6",
+      id: "ev-stage-6",
       stage: 6,
       title: "Chủ tủ nghiệm thu & Áp dụng Digital Damage Protocol",
-      actor: "Hệ thống / Chủ tủ",
-      timestamp: "15:40 • 17/10/2026",
-      status: "ACTIVE",
-      description: "Kiểm tra đối chiếu Before / After. Phân định rạch ròi giữa Hao mòn thông thường và Hư hại tài sản.",
+      actor: "Hệ thống Trọng tài CLOOP & Chủ tủ",
+      timestamp: formatTimelineDate(initialDispute?.createdAt),
+      status: initialDispute?.finalDeduction !== null && initialDispute?.finalDeduction !== undefined ? "COMPLETED" : "ACTIVE",
+      description: initialDispute?.description || "Kiểm tra đối chiếu Before / After khi nhận lại đồ. Phân định rạch ròi giữa Hao mòn thông thường và Hư hại tài sản.",
       damageCategory: initialDispute?.damageCategory || "WEAR_AND_TEAR",
-      deductionAmount: initialDispute?.suggestedDeduction || 0,
-      notes: "Phát hiện vết son môi nhẹ ở cổ áo. Thuộc danh mục WEAR_AND_TEAR (0đ khấu trừ cọc).",
+      deductionAmount: initialDispute?.finalDeduction ?? initialDispute?.suggestedDeduction ?? 0,
+      mediaUrls: initialDispute?.evidenceUrls && initialDispute.evidenceUrls.length > 0 ? initialDispute.evidenceUrls : undefined,
+      notes: initialDispute?.adminNotes ? `Ghi chú trọng tài: ${initialDispute.adminNotes}` : "Đang chờ phán quyết trọng tài BQT",
     },
   ];
 
-  const timeline = events || defaultEvents;
+  const timeline = dynamicEvents;
 
   return (
     <div className="bg-white rounded-3xl border border-stone-200/80 shadow-xs p-6 sm:p-8 space-y-6 font-body">
@@ -136,13 +181,13 @@ export function DigitalEvidenceTimeline({
             Dòng Thời Gian Chứng Cứ Số (Digital Evidence Timeline)
           </h3>
           <p className="text-xs text-stone-500 font-light mt-0.5">
-            Lưu vết chuỗi hành trình của món đồ {productTitle} với mốc thời gian (Timestamp) không thể làm giả.
+            Lưu vết chuỗi hành trình của món đồ {productTitle} với mốc thời gian (Timestamp) thực tế từ cơ sở dữ liệu.
           </p>
         </div>
 
         <div className="inline-flex items-center gap-1.5 bg-stone-50 px-3.5 py-1.5 rounded-xl border border-stone-200 text-xs font-mono text-stone-700">
           <Clock size={14} className="text-emerald-700" />
-          <span>6/6 Chặng Đã Lưu Vết</span>
+          <span>6/6 Chặng Hành Trình</span>
         </div>
       </div>
 
@@ -185,7 +230,7 @@ export function DigitalEvidenceTimeline({
                   <div className="space-y-0.5">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-[10px] font-bold text-stone-400 font-mono">CHẶNG {ev.stage}</span>
-                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.2 rounded font-ui">
+                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded font-ui">
                         {ev.actor}
                       </span>
                       <span className="text-[10.5px] text-stone-400 font-mono">{ev.timestamp}</span>
@@ -195,7 +240,7 @@ export function DigitalEvidenceTimeline({
                     </h4>
                   </div>
 
-                  <button className="text-stone-400 hover:text-stone-600 p-1">
+                  <button className="text-stone-400 hover:text-stone-600 p-1" aria-label="Toggle stage details">
                     {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                   </button>
                 </div>
@@ -205,16 +250,25 @@ export function DigitalEvidenceTimeline({
                   <div className="mt-3 pt-3 border-t border-stone-100 space-y-3 text-xs text-stone-600">
                     <p className="leading-relaxed font-light">{ev.description}</p>
 
-                    {/* Media Attachments */}
-                    {ev.mediaUrls && ev.mediaUrls.length > 0 && (
-                      <div className="flex gap-3 pt-1">
-                        {ev.mediaUrls.map((url, i) => (
-                          <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-stone-200 bg-stone-100 shrink-0">
-                            <img src={url} alt="Evidence" className="w-full h-full object-cover" />
-                          </div>
-                        ))}
+                    {/* Media Attachments - Real evidence only */}
+                    {ev.mediaUrls && ev.mediaUrls.length > 0 ? (
+                      <div className="space-y-1.5 pt-1">
+                        <span className="text-[11px] font-medium text-stone-700 flex items-center gap-1">
+                          <FileText size={12} className="text-emerald-700" /> Tệp chứng cứ số đính kèm:
+                        </span>
+                        <div className="flex flex-wrap gap-3">
+                          {ev.mediaUrls.map((url, i) => (
+                            <div key={i} className="relative w-24 h-24 rounded-xl overflow-hidden border border-stone-200 bg-stone-100 shrink-0">
+                              <img src={url} alt={`Evidence file ${i + 1}`} className="w-full h-full object-cover" />
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    )}
+                    ) : isFinalStage ? (
+                      <div className="text-[11px] text-stone-400 italic">
+                        Chưa có ảnh/video tải lên trực tiếp cho chặng này (hoặc chưa kích hoạt signed URL).
+                      </div>
+                    ) : null}
 
                     {/* Stage 6 Digital Damage Protocol Breakdown */}
                     {isFinalStage && (
@@ -238,15 +292,15 @@ export function DigitalEvidenceTimeline({
                         <div className="text-[11px] text-stone-600 space-y-1 font-light leading-relaxed">
                           {ev.damageCategory === "WEAR_AND_TEAR" ? (
                             <p className="text-emerald-900 font-medium">
-                              ✅ Vết son bề mặt / phấn trang điểm / nếp nhăn được phân loại là <strong>Hao mòn thông thường</strong>. Đơn hàng hoàn cọc 100% cho khách (0đ khấu trừ).
+                              ✅ Vết son bề mặt / phấn trang điểm / nếp nhăn nhẹ được phân loại là <strong>Hao mòn thông thường</strong>. Đơn hàng hoàn cọc 100% cho khách (0đ khấu trừ).
                             </p>
                           ) : ev.damageCategory === "REPAIRABLE_DAMAGE" ? (
                             <p className="text-amber-900 font-medium">
-                              ⚠️ Hư hỏng nhẹ (bung cúc, xước chỉ). Khấu trừ tối đa theo hóa đơn tiệm giặt/sửa thực tế: <strong>{(ev.deductionAmount || 0).toLocaleString('vi-VN')}đ</strong>.
+                              ⚠️ Hư hỏng nhẹ có thể khắc phục (bung cúc, xước đường may nhỏ). Khấu trừ tối đa theo chi phí giặt hấp/sửa chữa thực tế: <strong>{(ev.deductionAmount || 0).toLocaleString('vi-VN')}đ</strong>.
                             </p>
                           ) : (
                             <p className="text-rose-900 font-medium">
-                              ❌ Tổn thất nghiêm trọng. Bồi thường theo giá trị khấu hao thực tế của trang phục.
+                              ❌ Tổn thất nghiêm trọng / rách rưới không thể phục hồi. Bồi thường khấu trừ theo định giá tài sản được ghi nhận.
                             </p>
                           )}
                         </div>
@@ -255,7 +309,7 @@ export function DigitalEvidenceTimeline({
 
                     {ev.notes && (
                       <div className="text-[11px] text-stone-500 italic bg-stone-50 p-2.5 rounded-lg border border-stone-200/60">
-                        Ghi chú: {ev.notes}
+                        {ev.notes}
                       </div>
                     )}
                   </div>
@@ -270,10 +324,11 @@ export function DigitalEvidenceTimeline({
       <div className="p-3.5 bg-stone-50 rounded-2xl border border-stone-200/80 text-[11px] text-stone-500 flex items-center justify-between flex-wrap gap-2">
         <span className="flex items-center gap-1.5 font-medium text-stone-700">
           <CheckCircle2 size={14} className="text-emerald-700" />
-          Chứng cứ số được niêm phong mật mã và đối soát tự động bởi CLOOP Orchestration Layer.
+          Chứng cứ số được lưu vết bảo mật và đối soát theo quy trình trọng tài CLOOP.
         </span>
-        <span className="font-mono text-[10px] text-stone-400">ISO/IEC 27001 & Law 91/2025</span>
+        <span className="font-mono text-[10px] text-stone-400">Luật 91/2025/QH15 & NĐ 356/2025</span>
       </div>
     </div>
   );
 }
+

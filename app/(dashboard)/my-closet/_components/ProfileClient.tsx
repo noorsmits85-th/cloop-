@@ -4,8 +4,6 @@ import React, { useState, useRef } from "react";
 import Link from "next/link";
 import { 
   ShieldCheck, 
-  Upload, 
-  AlertCircle, 
   CheckCircle2, 
   User, 
   Camera, 
@@ -18,25 +16,36 @@ import {
   FileText,
   Heart,
   Award,
-  Zap,
-  Lock,
-  ArrowUpRight
+  Lock
 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
 import { TRUST_TIERS, type TrustScoreBreakdown } from "@/lib/trust-engine";
+import { updateUserProfileWithValidation } from "@/app/actions/user";
+
+export interface UserProfileData {
+  id?: string;
+  name?: string | null;
+  full_name?: string | null;
+  username?: string | null;
+  location?: string | null;
+  quote?: string | null;
+  bio?: string | null;
+  todaysMemory?: string | null;
+  avatar?: string | null;
+  avatar_url?: string | null;
+  coverImage?: string | null;
+  kyc_status?: string | null;
+}
 
 export function ProfileClient({ 
   userProfile,
   trustBreakdown
 }: { 
-  userProfile: any;
+  userProfile: UserProfileData;
   trustBreakdown?: TrustScoreBreakdown;
 }) {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [isUploadingId, setIsUploadingId] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-  const [kycStatus, setKycStatus] = useState(userProfile?.kyc_status || 'unverified');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const userId = userProfile?.id || "";
@@ -79,17 +88,21 @@ export function ProfileClient({
       const newAvatarUrl = data.url;
       setFormData(prev => ({ ...prev, avatar: newAvatarUrl }));
 
-      // Cập nhật ngay vào database
-      if (userId) {
-        await supabase
-          .from("profiles")
-          .update({ avatar: newAvatarUrl, avatar_url: newAvatarUrl })
-          .eq("id", userId);
+      // Cập nhật an toàn qua Server Action với quyền hạn session
+      const updateRes = await updateUserProfileWithValidation({
+        ...formData,
+        avatar: newAvatarUrl,
+      });
+
+      if (!updateRes.success) {
+        throw new Error(updateRes.error);
       }
+
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (error: any) {
-      alert(`Lỗi upload ảnh đại diện: ${error.message}`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Lỗi upload ảnh";
+      alert(`Lỗi upload ảnh đại diện: ${message}`);
     } finally {
       setIsUploadingAvatar(false);
     }
@@ -101,38 +114,30 @@ export function ProfileClient({
     setSaveSuccess(false);
 
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          name: formData.name,
-          username: formData.username,
-          location: formData.location,
-          quote: formData.quote,
-          bio: formData.bio,
-          todaysMemory: formData.todaysMemory,
-          avatar: formData.avatar,
-          coverImage: formData.coverImage,
-        })
-        .eq("id", userId);
+      // Xác thực và lưu qua Server Action
+      const res = await updateUserProfileWithValidation({
+        name: formData.name,
+        username: formData.username,
+        location: formData.location,
+        quote: formData.quote,
+        bio: formData.bio,
+        todaysMemory: formData.todaysMemory,
+        avatar: formData.avatar,
+        coverImage: formData.coverImage,
+      });
 
-      if (error) throw error;
+      if (!res.success) {
+        throw new Error(res.error);
+      }
 
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (err: any) {
-      alert(`Có lỗi xảy ra khi lưu: ${err.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Lỗi hệ thống";
+      alert(`Có lỗi xảy ra khi lưu: ${message}`);
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const handleUploadId = () => {
-    setIsUploadingId(true);
-    setTimeout(() => {
-      setIsUploadingId(false);
-      setKycStatus('pending');
-      alert("Đã tải lên giấy tờ tuỳ thân thành công. Hệ thống CLOOP sẽ xét duyệt trong 24h.");
-    }, 1500);
   };
 
   return (
@@ -322,7 +327,7 @@ export function ProfileClient({
           {/* Today's Memory */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-stone-700 uppercase tracking-wider flex items-center gap-1">
-              <Heart size={13} className="text-rose-500" /> Kỷ niệm hôm nay (Today's Memory):
+              <Heart size={13} className="text-rose-500" /> Kỷ niệm hôm nay (Today&apos;s Memory):
             </label>
             <input
               type="text"

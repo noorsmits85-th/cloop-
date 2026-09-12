@@ -144,16 +144,27 @@ export async function createDispute(data: {
         });
       }
 
+      // Cập nhật trạng thái Đơn thuê sang DISPUTE
+      await tx.rentalHistory.update({
+        where: { id: data.rentalId },
+        data: { status: "DISPUTE" },
+      });
+
       return dispute;
     });
 
     return { success: true, dispute: result };
-  } catch (error: any) {
-    console.error("Lỗi tạo Dispute:", error);
-    return { success: false, error: error.message || "Lỗi xử lý khiếu nại" };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Lỗi xử lý khiếu nại";
+    console.error("Lỗi tạo Dispute:", message);
+    return { success: false, error: message };
   }
 }
 
+/**
+ * ⚖️ RESOLVE DISPUTE WITH FULL DOUBLE-ENTRY FINANCIAL SETTLEMENT
+ * Kiểm tra chặt chẽ tiền cọc, ghi sổ cái LedgerTransaction, cập nhật ví chủ đồ và hoàn cọc cho khách.
+ */
 export async function resolveDispute(data: {
   disputeId: string;
   finalDeduction: number;
@@ -163,9 +174,47 @@ export async function resolveDispute(data: {
     const { profile: admin } = await requireAdmin();
     if (!admin) throw new Error("Unauthorized Admin");
 
+    // 1. Kiểm tra tranh chấp và giá trị cọc hợp lệ
+    const targetDispute = await prisma.dispute.findUnique({
+      where: { id: data.disputeId },
+      include: {
+        rental: {
+          include: {
+            invoice: true,
+            product: true,
+          },
+        },
+      },
+    });
+
+    if (!targetDispute) {
+      return { success: false, error: "Không tìm thấy hồ sơ khiếu nại." };
+    }
+
+    if (targetDispute.status !== "PENDING_REVIEW" && targetDispute.status !== "DISPUTED") {
+      return { success: false, error: "Khiếu nại này đã được xử lý trước đó (Idempotent lock)." };
+    }
+
+    const depositAmount = targetDispute.rental?.invoice?.depositAmount || 0;
+    if (data.finalDeduction < 0) {
+      return { success: false, error: "Số tiền khấu trừ không thể âm." };
+    }
+    if (data.finalDeduction > depositAmount) {
+      return {
+        success: false,
+        error: `Số tiền khấu trừ (${data.finalDeduction.toLocaleString("vi-VN")}đ) không được vượt quá số tiền cọc (${depositAmount.toLocaleString("vi-VN")}đ).`,
+      };
+    }
+
+    const refundAmount = depositAmount - data.finalDeduction;
+    const rental = targetDispute.rental;
+    const invoice = rental.invoice;
+    const ownerId = rental.ownerId || rental.product?.userId;
+
     const result = await prisma.$transaction(async (tx) => {
-      const updateResult = await tx.dispute.updateMany({
-        where: { id: data.disputeId, status: { in: ["PENDING_REVIEW", "DISPUTED"] } },
+      // 1. Cập nhật trạng thái Dispute
+      const updatedDispute = await tx.dispute.update({
+        where: { id: data.disputeId },
         data: {
           finalDeduction: data.finalDeduction,
           adminNotes: data.adminNotes,
@@ -173,50 +222,159 @@ export async function resolveDispute(data: {
         },
       });
 
-      if (updateResult.count === 0) {
-        throw new Error("Khiếu nại này đã được xử lý hoặc không hợp lệ.");
+      // 2. GHI SỔ CÁI KẾ TOÁN (LEDGER TRANSACTIONS)
+      // 2a. Nếu có bồi thường hư hại cho chủ tủ
+      if (data.finalDeduction > 0) {
+        await tx.ledgerTransaction.create({
+          data: {
+            invoiceId: invoice?.id,
+            type: "COMPENSATION_OUT",
+            amount: data.finalDeduction,
+            description: `Bồi thường thiệt hại cho chủ tủ từ tiền cọc đơn ${rental.id}`,
+            adminId: admin.id,
+            status: "COMPLETED",
+          },
+        });
+
+        // Cộng tiền bồi thường vào số dư ví của Chủ đồ
+        if (ownerId) {
+          await tx.user.update({
+            where: { id: ownerId },
+            data: {
+              walletBalance: { increment: data.finalDeduction },
+            },
+          });
+        }
       }
 
-      const dispute = await tx.dispute.findUnique({
-        where: { id: data.disputeId },
+      // 2b. Nếu có hoàn cọc phần còn lại cho khách thuê
+      if (refundAmount > 0) {
+        await tx.ledgerTransaction.create({
+          data: {
+            invoiceId: invoice?.id,
+            type: "REFUND_OUT",
+            amount: refundAmount,
+            description: `Hoàn trả cọc còn lại cho khách thuê đơn ${rental.id}`,
+            adminId: admin.id,
+            status: "COMPLETED",
+          },
+        });
+      }
+
+      // 3. Cập nhật trạng thái Hóa đơn
+      if (invoice?.id) {
+        await tx.invoice.update({
+          where: { id: invoice.id },
+          data: {
+            status: "PAID",
+            payosStatus: "RESOLVED",
+          },
+        });
+      }
+
+      // 4. Cập nhật trạng thái Đơn thuê hoàn tất
+      await tx.rentalHistory.update({
+        where: { id: rental.id },
+        data: {
+          status: "LENDER_COMPLETED",
+          completedAt: new Date(),
+          actual_return_date: rental.actual_return_date || new Date(),
+        },
       });
 
-      // LƯU VẾT KIỂM TOÁN (AUDIT LOG)
+      // 5. GHI AUDIT LOG ĐẦY ĐỦ METADATA TÀI CHÍNH
       await tx.auditLog.create({
         data: {
           adminId: admin.id,
-          action: "RESOLVE_DISPUTE",
+          action: "RESOLVE_DISPUTE_SETTLEMENT",
           targetType: "DISPUTE",
           targetId: data.disputeId,
           beforeStatus: "PENDING_REVIEW",
           afterStatus: "APPROVED_DEDUCTION",
           metadata: JSON.stringify({
             finalDeduction: data.finalDeduction,
+            refundAmount,
+            depositAmount,
+            ownerId,
+            renterId: rental.renterId,
             adminNotes: data.adminNotes,
           }),
         },
       });
 
-      return dispute;
+      return updatedDispute;
     });
 
     return { success: true, dispute: result };
-  } catch (error: any) {
-    console.error("Lỗi giải quyết Dispute:", error);
-    return { success: false, error: error.message || "Lỗi giải quyết khiếu nại" };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Lỗi giải quyết khiếu nại";
+    console.error("Lỗi giải quyết Dispute:", message);
+    return { success: false, error: message };
   }
 }
 
 /**
- * Lấy Signed URLs an toàn để Admin hoặc Bên liên quan xem video/ảnh bằng chứng
+ * 🔒 LẤY LINK BẰNG CHỨNG TRANH CHẤP CÓ PHÂN QUYỀN CHẶT CHẼ
+ * Chỉ cho phép Renter, Owner hoặc Admin của đúng hồ sơ đó xem video/ảnh.
  */
-export async function getDisputeEvidenceUrls(evidenceKeys: string[]): Promise<string[]> {
+export async function getDisputeEvidenceUrls(params: {
+  disputeId: string;
+  evidenceKeys?: string[];
+} | string[]): Promise<string[]> {
   const user = await requireUser();
   if (!user) throw new Error("Unauthorized");
 
+  let disputeId: string | undefined;
+  let requestedKeys: string[] = [];
+
+  if (Array.isArray(params)) {
+    requestedKeys = params;
+  } else {
+    disputeId = params.disputeId;
+    requestedKeys = params.evidenceKeys || [];
+  }
+
+  if (disputeId) {
+    const dispute = await prisma.dispute.findUnique({
+      where: { id: disputeId },
+      include: {
+        rental: {
+          include: { product: true },
+        },
+      },
+    });
+
+    if (!dispute) {
+      throw new Error("Không tìm thấy hồ sơ khiếu nại.");
+    }
+
+    const isRenter = dispute.rental.renterId === user.id;
+    const isOwner = dispute.rental.ownerId === user.id || dispute.rental.product?.userId === user.id;
+    const isAdmin = user.role === "ADMIN";
+
+    if (!isRenter && !isOwner && !isAdmin) {
+      throw new Error("Forbidden: Bạn không có quyền truy cập bằng chứng của hồ sơ tranh chấp này.");
+    }
+
+    // Nếu không truyền requestedKeys thì lấy toàn bộ ảnh/video của dispute
+    if (requestedKeys.length === 0) {
+      requestedKeys = dispute.images;
+    } else {
+      // Chỉ cho phép lấy các key nằm trong dispute.images
+      requestedKeys = requestedKeys.filter((k) => dispute.images.includes(k));
+    }
+  }
+
   const urls = await Promise.all(
-    evidenceKeys.map(async (key) => {
+    requestedKeys.map(async (key) => {
+      // Nếu là URL trực tiếp, chỉ cho phép các domain tin cậy đã được cấu hình
       if (key.startsWith("http://") || key.startsWith("https://")) {
+        const parsed = new URL(key);
+        const trustedDomains = ["storage.googleapis.com", "res.cloudinary.com", "supabase.co"];
+        const isTrusted = trustedDomains.some((d) => parsed.hostname.endsWith(d));
+        if (!isTrusted) {
+          throw new Error("Bằng chứng chứa liên kết từ nguồn không tin cậy.");
+        }
         return key;
       }
       return generateDisputeVideoReadUrl(key);

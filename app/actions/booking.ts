@@ -1,10 +1,10 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/src/utils/supabase/server";
 import { prisma } from "@/src/lib/prisma";
-
 import { Logger } from "next-axiom";
-import { calculateUserTrustScore, checkExposureLimit, calculateDynamicDeposit } from "@/lib/trust-engine";
+import { calculateUserTrustScore, checkExposureLimit, calculateDynamicDeposit, getItemValuation } from "@/lib/trust-engine";
 
 export async function createBooking({
   productId,
@@ -42,16 +42,40 @@ export async function createBooking({
     }
 
     // 1. Fetch real prices and owner info from the server/DB, NEVER trust client inputs!
-    const product = await prisma.product.findUnique({
-      where: { id: productId },
-      include: {
-        listings: true,
-      }
-    });
+    const [product, renterUser] = await Promise.all([
+      prisma.product.findUnique({
+        where: { id: productId },
+        include: {
+          listings: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      }),
+      prisma.user.findUnique({
+        where: { id: user.id },
+        select: {
+          id: true,
+          name: true,
+        },
+      }),
+    ]);
 
     if (!product || !product.listings || product.listings.length === 0) {
       return { success: false, error: "Sản phẩm không tồn tại hoặc đã bị gỡ." };
     }
+
+    if (product.userId === user.id) {
+      return { success: false, error: "Bạn không thể tự thuê sản phẩm của chính mình." };
+    }
+
+    const verifiedRenterName = renterUser?.name || renterName || "Khách thuê CLOOP";
+    const verifiedRenterPhone = renterPhone || "";
+    const verifiedOwnerName = product.user?.name || ownerName || "Chủ đồ CLOOP";
+    const verifiedOwnerPhone = ownerPhone || "";
 
     // Lấy thông tin Listing đầu tiên
     const listing = product.listings[0];
@@ -60,7 +84,7 @@ export async function createBooking({
     const serviceFee = 0; // FREE LAUNCH
     
     // 🌟 CLOOP TRUST & RISK ENGINE SERVER-SIDE ENFORCEMENT
-    const approxItemValue = listing.salePrice || (listing.basePrice ? listing.basePrice * 8 : 1500000);
+    const approxItemValue = getItemValuation(listing);
     const trustBreakdown = await calculateUserTrustScore(user.id);
 
     // Kiểm tra Hạn Mức Rủi Ro Tài Sản (Exposure Limit)
@@ -107,9 +131,11 @@ export async function createBooking({
       // Gọi lệnh này TRƯỚC khi thực hiện bất kỳ lệnh check hay create nào!
       try {
         await tx.$queryRaw`SELECT id FROM "products" WHERE id = ${productId} FOR UPDATE NOWAIT;`;
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        const code = typeof err === "object" && err && "code" in err ? String((err as Record<string, unknown>).code) : "";
         // Lỗi P2010 là Raw Query Error trong Prisma. Mã lỗi 55P03 trong Postgres nghĩa là "could not obtain lock".
-        if (err.code === "P2010" || err.message.includes("could not obtain lock") || err.message.includes("NOWAIT")) {
+        if (code === "P2010" || message.includes("could not obtain lock") || message.includes("NOWAIT")) {
           throw new Error("Rất tiếc, một khách hàng khác đang thanh toán món đồ này. Vui lòng thử lại sau vài giây!");
         }
         throw err;
@@ -139,10 +165,11 @@ export async function createBooking({
         data: {
           product_id: productId,
           renterId: user.id, // Lấy ID an toàn từ SSR Session
-          renter_name: renterName,
-          renter_phone: renterPhone,
-          owner_name: ownerName,
-          owner_phone: ownerPhone,
+          ownerId: product.userId,
+          renter_name: verifiedRenterName,
+          renter_phone: verifiedRenterPhone,
+          owner_name: verifiedOwnerName,
+          owner_phone: verifiedOwnerPhone,
           start_date: isRental ? start : new Date(),
           end_date: isRental ? end : new Date(),
           status: "PENDING_APPROVAL", // Giai đoạn Pilot: Tạo pending trước, sau đó Pilot sẽ check
@@ -191,14 +218,13 @@ export async function createBooking({
       };
     });
 
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Lỗi hệ thống khi tạo đơn hàng.";
     console.error("SERVER ACTION ERROR:", err);
-    return { success: false, error: err.message || "Lỗi hệ thống khi tạo đơn hàng." };
+    return { success: false, error: message };
   } finally {
     // 5. Kích nổ Cache của Next.js để tránh ảo giác giao diện!
-    // Tuyệt đối không dùng revalidatePath('/', 'layout') vì sẽ phá sập DB.
     try {
-      const { revalidatePath } = require("next/cache");
       revalidatePath(`/product/${productId}`, "page");
       revalidatePath("/", "page");
       revalidatePath("/shop", "page");
@@ -223,7 +249,8 @@ export async function confirmManualTransfer(rentalId: string) {
     });
 
     return { success: true };
-  } catch (err: any) {
-    return { success: false, error: err.message };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Lỗi xác nhận chuyển khoản.";
+    return { success: false, error: message };
   }
 }

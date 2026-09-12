@@ -6,7 +6,7 @@ import { payos } from "@/src/utils/payos";
 import { generatePayOSOrderCode } from "@/src/utils/order-code";
 import { checkRateLimit } from "@/src/utils/rate-limit";
 import { startOfDay, endOfDay, addDays, subDays } from "date-fns";
-import { calculateUserTrustScore, checkExposureLimit, calculateDynamicDeposit } from "@/lib/trust-engine";
+import { calculateUserTrustScore, checkExposureLimit, calculateDynamicDeposit, getItemValuation } from "@/lib/trust-engine";
 import { z } from "zod";
 
 // Schema Validate dữ liệu đầu vào chuẩn Server-side
@@ -76,7 +76,7 @@ export async function POST(req: Request) {
     
     // Tìm giá thuê trong JSONB pricing_tiers
     let itemPrice = activeListing.basePrice || 0;
-    const pricingTiers = activeListing.pricing_tiers as any[];
+    const pricingTiers = activeListing.pricing_tiers as Array<{ days: number; price: number }> | null;
     if (pricingTiers && Array.isArray(pricingTiers)) {
       const selectedTier = pricingTiers.find(t => t.days === packageDays);
       if (selectedTier) {
@@ -89,7 +89,7 @@ export async function POST(req: Request) {
     }
 
     const baseDepositPrice = activeListing.deposit || 0;
-    const approxItemValue = activeListing.salePrice || (activeListing.basePrice ? activeListing.basePrice * 8 : 1500000);
+    const approxItemValue = getItemValuation(activeListing);
 
     // 🌟 CLOOP TRUST & RISK ENGINE SERVER-SIDE VERIFICATION
     const trustBreakdown = await calculateUserTrustScore(realUserId);
@@ -135,8 +135,9 @@ export async function POST(req: Request) {
       );
       shippingFee = shippingQuote.fee;
       estimatedTransitDays = shippingQuote.estimatedDays > 0 ? shippingQuote.estimatedDays : 1;
-    } catch (err: any) {
-      return NextResponse.json({ error: err.message }, { status: 400 });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Lỗi xác thực phí vận chuyển";
+      return NextResponse.json({ error: message }, { status: 400 });
     }
 
     const totalAmount = itemPrice + depositPrice + shippingFee;
@@ -152,7 +153,11 @@ export async function POST(req: Request) {
     const bufferedNewStartDate = subDays(normStartDate, totalBufferDays);
     const bufferedNewEndDate = addDays(normEndDate, totalBufferDays);
 
-    let checkoutResult: any = null;
+    let checkoutResult: {
+      invoice: { id: string };
+      rental: { id: string };
+      orderCode: number;
+    } | null = null;
 
     // 5. Khóa Nguyên Tử (Pessimistic Locking) & Tạo Dữ Liệu
     try {
@@ -191,9 +196,9 @@ export async function POST(req: Request) {
           }
         });
 
-        // 5d. Tạo Hóa Đơn (Invoice) với chính sách 0% phí sàn cho Founding 100
-        const isFounding = (product.user as any)?.isFoundingMember ?? true;
-        const platformFee = isFounding ? 0 : Math.floor(itemPrice * 0.12);
+        // 5d. Tạo Hóa Đơn (Invoice) với chính sách ưu đãi 0% phí sàn giai đoạn ra mắt
+        const IS_FOUNDING_LAUNCH_0_FEE = true;
+        const platformFee = IS_FOUNDING_LAUNCH_0_FEE ? 0 : Math.floor(itemPrice * 0.12);
 
         const invoice = await tx.invoice.create({
           data: {
@@ -210,8 +215,9 @@ export async function POST(req: Request) {
 
         return { invoice, rental, orderCode };
       });
-    } catch (dbErr: any) {
-       return NextResponse.json({ error: dbErr.message || "Lỗi khóa dữ liệu" }, { status: 400 });
+    } catch (dbErr: unknown) {
+      const message = dbErr instanceof Error ? dbErr.message : "Lỗi khóa dữ liệu";
+      return NextResponse.json({ error: message }, { status: 400 });
     }
 
     // 6. Tạo Link PayOS (Sau khi đã Đóng Transaction)
@@ -253,7 +259,7 @@ export async function POST(req: Request) {
         depositExplanation: depositCalculation.explanation,
       });
 
-    } catch (payosErr: any) {
+    } catch (payosErr: unknown) {
       console.error("PayOS Error:", payosErr);
       // COMPENSATING ACTION (Hủy đơn nếu PayOS bị lỗi)
       await prisma.rentalHistory.update({
@@ -268,7 +274,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Lỗi kết nối cổng thanh toán. Đã hủy lệnh đặt chỗ." }, { status: 500 });
     }
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Lỗi API Checkout:", error);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
   }

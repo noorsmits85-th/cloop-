@@ -97,7 +97,7 @@ export function createDataPrivacyAuditRecord(
   action: string,
   level: DataClassificationLevel,
   userId: string,
-  details: Record<string, any>
+  details: Record<string, unknown>
 ) {
   return {
     privacyStandard: "LAW_91_2025_QH15",

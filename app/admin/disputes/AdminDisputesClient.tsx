@@ -6,14 +6,9 @@ import Link from "next/link";
 import { 
   ShieldAlert, 
   CheckCircle, 
-  XCircle, 
   Video, 
   ArrowLeft, 
-  Clock, 
   FileText, 
-  User, 
-  AlertTriangle,
-  PlayCircle,
   ExternalLink,
   ChevronRight
 } from "lucide-react";
@@ -39,11 +34,20 @@ interface DisputeItem {
   ownerName: string;
   depositAmount: number;
   rentalFee: number;
+  rentalCreatedAt?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  actualReturnDate?: string | null;
+  rentalStatus?: string | null;
+  deliveryTrackingCode?: string | null;
+  returnTrackingCode?: string | null;
+  deliveryStatus?: string | null;
+  returnStatus?: string | null;
 }
 
 export default function AdminDisputesClient({ initialDisputes }: { initialDisputes: DisputeItem[] }) {
   const router = useRouter();
-  const [disputes, setDisputes] = useState<DisputeItem[]>(initialDisputes);
+  const [disputes] = useState<DisputeItem[]>(initialDisputes);
   const [selectedDispute, setSelectedDispute] = useState<DisputeItem | null>(null);
   const [filterTab, setFilterTab] = useState<"ALL" | "PENDING" | "RESOLVED">("PENDING");
   
@@ -71,8 +75,9 @@ export default function AdminDisputesClient({ initialDisputes }: { initialDisput
       try {
         const urls = await getDisputeEvidenceUrls(d.images);
         setEvidenceUrls(urls);
-      } catch (err: any) {
-        toast.error("Không thể lấy link video bằng chứng", { description: err.message });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Không thể lấy link video";
+        toast.error("Không thể lấy link video bằng chứng", { description: message });
       } finally {
         setIsLoadingEvidence(false);
       }
@@ -105,8 +110,9 @@ export default function AdminDisputesClient({ initialDisputes }: { initialDisput
       } else {
         toast.error("Lỗi phân xử", { description: res.error });
       }
-    } catch (err: any) {
-      toast.error("Lỗi hệ thống", { description: err.message });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Lỗi hệ thống";
+      toast.error("Lỗi hệ thống", { description: message });
     } finally {
       setIsSubmitting(false);
     }
@@ -315,10 +321,27 @@ export default function AdminDisputesClient({ initialDisputes }: { initialDisput
               <DigitalEvidenceTimeline 
                 rentalId={selectedDispute.rentalId} 
                 productTitle={selectedDispute.productTitle}
+                rentalDetails={{
+                  createdAt: selectedDispute.rentalCreatedAt,
+                  startDate: selectedDispute.startDate,
+                  endDate: selectedDispute.endDate,
+                  actualReturnDate: selectedDispute.actualReturnDate,
+                  status: selectedDispute.rentalStatus,
+                  renterName: selectedDispute.renterName,
+                  ownerName: selectedDispute.ownerName,
+                  deliveryTrackingCode: selectedDispute.deliveryTrackingCode,
+                  returnTrackingCode: selectedDispute.returnTrackingCode,
+                  deliveryStatus: selectedDispute.deliveryStatus,
+                  returnStatus: selectedDispute.returnStatus,
+                }}
                 initialDispute={{
                   damageCategory: (selectedDispute.severity === "LOW" ? "WEAR_AND_TEAR" : selectedDispute.severity === "MEDIUM" ? "REPAIRABLE_DAMAGE" : "TOTAL_LOSS"),
                   suggestedDeduction: selectedDispute.suggestedDeduction,
+                  finalDeduction: selectedDispute.finalDeduction,
                   description: selectedDispute.description,
+                  evidenceUrls: evidenceUrls,
+                  adminNotes: selectedDispute.adminNotes,
+                  createdAt: selectedDispute.createdAt,
                 }}
               />
 

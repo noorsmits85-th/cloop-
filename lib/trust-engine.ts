@@ -9,6 +9,7 @@ export interface TrustTierConfig {
   maxScore: number;
   depositRate: number; // Tỷ lệ cọc so với cọc gốc (1.0 = 100%, 0.5 = 50%, ...)
   exposureLimit: number; // Hạn mức tổng giá trị tài sản đang trong vòng thuê
+  fastTrackCeiling: number; // Trần tối đa khi kích hoạt Fast-Track (thu 100% cọc qua PayOS)
   perks: string[];
   badgeColor: string;
 }
@@ -20,8 +21,9 @@ export const TRUST_TIERS: Record<TrustTier, TrustTierConfig> = {
     minScore: 0,
     maxScore: 29,
     depositRate: 1.0, // Cọc 100%
-    exposureLimit: 2000000, // Tối đa 2 triệu VNĐ tài sản đang thuê
-    perks: ["Thanh toán VietQR Escrow bảo vệ 2 chiều", "Tự động tích lũy điểm uy tín sau mỗi đơn"],
+    exposureLimit: 2000000, // Tiêu chuẩn: 2 triệu VNĐ
+    fastTrackCeiling: 6000000, // Trần Fast-Track tối đa: 6 triệu VNĐ (chặn attacker gom đồ chục triệu)
+    perks: ["Thanh toán PayOS bảo vệ 2 chiều", "Tự động tích lũy điểm uy tín sau mỗi đơn"],
     badgeColor: "bg-stone-100 text-stone-700 border-stone-300",
   },
   LEVEL_1_VERIFIED: {
@@ -30,7 +32,8 @@ export const TRUST_TIERS: Record<TrustTier, TrustTierConfig> = {
     minScore: 30,
     maxScore: 59,
     depositRate: 0.75, // Cọc 75%
-    exposureLimit: 5000000, // Tối đa 5 triệu VNĐ
+    exposureLimit: 5000000, // Tiêu chuẩn: 5 triệu VNĐ
+    fastTrackCeiling: 12000000, // Trần Fast-Track: 12 triệu VNĐ
     perks: ["Giảm 25% tiền cọc niêm yết", "Hạn mức thuê nâng lên 5.000.000đ", "Ưu tiên ghép nối tủ đồ gần"],
     badgeColor: "bg-blue-50 text-blue-700 border-blue-200",
   },
@@ -40,7 +43,8 @@ export const TRUST_TIERS: Record<TrustTier, TrustTierConfig> = {
     minScore: 60,
     maxScore: 84,
     depositRate: 0.5, // Cọc 50%
-    exposureLimit: 10000000, // Tối đa 10 triệu VNĐ
+    exposureLimit: 10000000, // Tiêu chuẩn: 10 triệu VNĐ
+    fastTrackCeiling: 20000000, // Trần Fast-Track: 20 triệu VNĐ
     perks: ["Giảm 50% tiền cọc", "Hạn mức thuê nâng lên 10.000.000đ", "Hỗ trợ giải quyết tranh chấp ưu tiên"],
     badgeColor: "bg-emerald-50 text-emerald-800 border-emerald-300",
   },
@@ -50,7 +54,8 @@ export const TRUST_TIERS: Record<TrustTier, TrustTierConfig> = {
     minScore: 85,
     maxScore: 100,
     depositRate: 0.25, // Cọc 25% (hoặc 0đ cho đồ < 1.000.000đ)
-    exposureLimit: 25000000, // Tối đa 25 triệu VNĐ
+    exposureLimit: 25000000, // Tiêu chuẩn: 25 triệu VNĐ
+    fastTrackCeiling: 35000000, // Trần Fast-Track: 35 triệu VNĐ
     perks: [
       "Giảm tới 75% tiền cọc (Miễn cọc với đồ dưới 1 triệu)",
       "Hạn mức thuê cao cấp 25.000.000đ",
@@ -59,6 +64,29 @@ export const TRUST_TIERS: Record<TrustTier, TrustTierConfig> = {
     badgeColor: "bg-amber-50 text-amber-900 border-amber-300",
   },
 };
+
+/**
+ * 📐 HÀM ĐỊNH GIÁ TÀI SẢN CHUẨN HÓA (STANDARDIZED ASSET VALUATION)
+ * Tính toán giá trị ước lượng của sản phẩm để quản trị rủi ro Exposure Limit.
+ */
+export function getItemValuation(listing?: {
+  salePrice?: number | null;
+  deposit?: number | null;
+  basePrice?: number | null;
+} | null): number {
+  if (!listing) return 1000000;
+
+  if (listing.salePrice && listing.salePrice > 0) {
+    return listing.salePrice;
+  }
+  if (listing.deposit && listing.deposit > 0) {
+    return Math.round(listing.deposit * 1.5);
+  }
+  if (listing.basePrice && listing.basePrice > 0) {
+    return Math.max(500000, listing.basePrice * 6);
+  }
+  return 1000000;
+}
 
 export interface TrustScoreBreakdown {
   score: number;
@@ -135,36 +163,72 @@ export async function calculateUserTrustScore(userId: string): Promise<TrustScor
     };
   }
 
-  // 1. Account Proof Signals
-  const emailVerified = true; // Supabase auth requires email
-  const emailPoints = 10;
-
-  const phoneVerified = user.isVerified || false;
-  const phonePoints = phoneVerified ? 10 : 5;
-
-  // Domain edu.vn / student indicator
-  const isStudent = user.email.toLowerCase().includes(".edu.vn") || user.email.toLowerCase().includes("student");
-  const studentPoints = isStudent ? 15 : 0;
-
-  // 2. Transaction Trust Signals
+  // 1. Transaction Trust Signals
   const completedOrdersCount = user.rentalHistory.filter(
     (r) => r.status === "LENDER_COMPLETED" || r.status === "BORROWER_RETURNED"
   ).length;
-  const orderPoints = Math.min(40, completedOrdersCount * 10);
 
   // Reviews Received
   const fiveStarReviewsCount = user.reviewsReceived.filter((rev) => rev.rating >= 4.8).length;
-  const reviewPoints = Math.min(20, fiveStarReviewsCount * 5);
 
   // 3. Penalties (Risk Signals)
   const disputeCount = user.rentalHistory.reduce((acc, r) => acc + (r.disputes?.length || 0), 0);
+  const cancelCount = user.rentalHistory.filter((r) => r.status === "CANCELLED").length;
+
+  return calculateUserTrustScoreFromData({
+    email: user.email,
+    isVerified: user.isVerified,
+    completedOrdersCount,
+    fiveStarReviewsCount,
+    disputeCount,
+    cancelCount,
+    hasStudentEmailProof: false,
+  });
+}
+
+/**
+ * 🧮 HÀM TÍNH TOÁN PURE FUNCTION (DÙNG CHO CẢ RUNTIME VÀ UNIT TEST)
+ */
+export function calculateUserTrustScoreFromData(data: {
+  email?: string | null;
+  isVerified?: boolean | null;
+  completedOrders?: number;
+  completedOrdersCount?: number;
+  rating?: number;
+  fiveStarReviewsCount?: number;
+  disputeCount?: number;
+  cancelCount?: number;
+  hasStudentEmailProof?: boolean;
+}): TrustScoreBreakdown {
+  // 1. Account Proof Signals (Xác thực thực tế)
+  const emailVerified = Boolean(data.email && data.email.includes("@"));
+  const emailPoints = emailVerified ? 10 : 0;
+
+  const phoneVerified = data.isVerified || false;
+  const phonePoints = phoneVerified ? 10 : 0;
+
+  // Tín hiệu email trường học (Student Email Signal)
+  const emailLower = (data.email || "").toLowerCase();
+  const isStudent = Boolean(data.hasStudentEmailProof) || emailLower.includes(".edu.vn") || emailLower.includes("student");
+  const studentPoints = isStudent ? 10 : 0;
+
+  // 2. Transaction Trust Signals
+  const orders = data.completedOrdersCount ?? data.completedOrders ?? 0;
+  const orderPoints = Math.min(40, orders * 10);
+
+  // Reviews Received
+  const reviews = data.fiveStarReviewsCount ?? (data.rating && data.rating >= 4.8 ? 2 : 0);
+  const reviewPoints = Math.min(20, reviews * 5);
+
+  // 3. Penalties (Risk Signals)
+  const disputeCount = data.disputeCount || 0;
   const disputePenalty = disputeCount * 25;
 
-  const cancelCount = user.rentalHistory.filter((r) => r.status === "CANCELLED").length;
+  const cancelCount = data.cancelCount || 0;
   const cancelPenalty = cancelCount * 10;
 
-  // Tổng hợp điểm và chặn biên [0, 100]
-  const rawScore = 15 + emailPoints + phonePoints + studentPoints + orderPoints + reviewPoints - disputePenalty - cancelPenalty;
+  // Điểm cơ bản ban đầu là 10 (tài khoản đã đăng ký hợp lệ)
+  const rawScore = 10 + emailPoints + phonePoints + studentPoints + orderPoints + reviewPoints - disputePenalty - cancelPenalty;
   const finalScore = Math.max(0, Math.min(100, Math.round(rawScore)));
 
   // Phân loại Tier
@@ -190,9 +254,9 @@ export async function calculateUserTrustScore(userId: string): Promise<TrustScor
       phonePoints,
       isStudent,
       studentPoints,
-      completedOrders: completedOrdersCount,
+      completedOrders: orders,
       orderPoints,
-      fiveStarReviews: fiveStarReviewsCount,
+      fiveStarReviews: reviews,
       reviewPoints,
       disputeCount,
       disputePenalty,
@@ -205,6 +269,7 @@ export async function calculateUserTrustScore(userId: string): Promise<TrustScor
 /**
  * 🛡️ KIỂM TRA HẠN MỨC RỦI RO TÀI SẢN (TRANSACTION EXPOSURE LIMIT)
  * Giới hạn tổng giá trị tài sản mà một user được phép giữ đồng thời trên đường thuê.
+ * Khóa chặt luồng Fast-Track: Bắt buộc tuân thủ điều kiện rủi ro & trần Fast-Track.
  */
 export async function checkExposureLimit({
   userId,
@@ -226,8 +291,9 @@ export async function checkExposureLimit({
 }> {
   const config = TRUST_TIERS[trustTier];
   const exposureLimit = config.exposureLimit;
+  const fastTrackCeiling = config.fastTrackCeiling;
 
-  // Tính tổng giá trị tài sản đang trong quá trình thuê của user
+  // Lấy các đơn thuê đang hoạt động của user để tính tổng exposure
   const activeRentals = await prisma.rentalHistory.findMany({
     where: {
       renterId: userId,
@@ -242,50 +308,96 @@ export async function checkExposureLimit({
           listings: { take: 1 },
         },
       },
+      disputes: {
+        select: { id: true, status: true },
+      },
     },
   });
 
   const currentExposure = activeRentals.reduce((sum, r) => {
     const listing = r.product?.listings?.[0];
-    const itemVal = listing?.salePrice || (listing?.basePrice ? listing.basePrice * 10 : 1000000);
-    return sum + itemVal;
+    return sum + getItemValuation(listing);
   }, 0);
 
   const projectedExposure = currentExposure + newItemValue;
 
-  if (projectedExposure > exposureLimit) {
-    if (fastTrackOverride) {
+  // Nếu trong hạn mức tiêu chuẩn -> Cho phép giao dịch bình thường
+  if (projectedExposure <= exposureLimit) {
+    return {
+      allowed: true,
+      currentExposure,
+      exposureLimit,
+      projectedExposure,
+      requiresFastTrack: false,
+    };
+  }
+
+  // VƯỢT HẠN MỨC TIÊU CHUẨN -> XÉT DUYỆT FAST-TRACK TRUST
+  if (fastTrackOverride) {
+    // 🛡️ PHÒNG TUYẾN 1: Kiểm tra lịch sử tranh chấp đang mở
+    const openDisputes = activeRentals.reduce(
+      (acc, r) => acc + r.disputes.filter((d) => d.status === "PENDING_REVIEW" || d.status === "DISPUTED").length,
+      0
+    );
+    if (openDisputes > 0) {
       return {
-        allowed: true,
+        allowed: false,
         currentExposure,
         exposureLimit,
         projectedExposure,
         requiresFastTrack: true,
-        reason: "Vượt hạn mức tiêu chuẩn nhưng đã kích hoạt Fast-Track Trust (Cọc bảo chứng 100%).",
+        reason: "Tài khoản hiện có khiếu nại tranh chấp đang chờ xử lý. Không đủ điều kiện kích hoạt Fast-Track Trust.",
       };
     }
 
+    // 🛡️ PHÒNG TUYẾN 2: Chặn spam gom đồ của tài khoản mới (Level 0)
+    if (trustTier === "LEVEL_0_NEW" && activeRentals.length >= 1) {
+      return {
+        allowed: false,
+        currentExposure,
+        exposureLimit,
+        projectedExposure,
+        requiresFastTrack: true,
+        reason: "Thành viên mới chỉ được kích hoạt tối đa 1 đơn Fast-Track đồng thời. Vui lòng hoàn tất đơn thuê hiện tại trước khi đặt thêm món đồ giá trị cao.",
+      };
+    }
+
+    // 🛡️ PHÒNG TUYẾN 3: Chặn vượt trần Fast-Track tuyệt đối
+    if (projectedExposure > fastTrackCeiling) {
+      return {
+        allowed: false,
+        currentExposure,
+        exposureLimit,
+        projectedExposure,
+        requiresFastTrack: true,
+        reason: `Món đồ này (Tổng rủi ro: ${projectedExposure.toLocaleString()}đ) vượt trần tối đa của chế độ Fast-Track cho ${config.label} (${fastTrackCeiling.toLocaleString()}đ). Vui lòng tích lũy thêm đơn hoàn tất để tăng hạng tín nhiệm hoặc liên hệ Quản trị viên.`,
+      };
+    }
+
+    // Đạt đủ điều kiện an toàn -> Chấp thuận Fast-Track
     return {
-      allowed: false,
+      allowed: true,
       currentExposure,
       exposureLimit,
       projectedExposure,
       requiresFastTrack: true,
-      reason: `Món đồ này (hoặc tổng tài sản đang thuê: ${projectedExposure.toLocaleString()}đ) vượt hạn mức ${config.label} (${exposureLimit.toLocaleString()}đ). Bạn có thể kích hoạt Fast-Track Trust để tiếp tục.`,
+      reason: "Đã kích hoạt Fast-Track Trust hợp lệ (thu 100% tiền cọc bảo chứng qua PayOS).",
     };
   }
 
+  // Nếu vượt hạn mức và CHƯA bật Fast-Track -> Yêu cầu bật Fast-Track
   return {
-    allowed: true,
+    allowed: false,
     currentExposure,
     exposureLimit,
     projectedExposure,
-    requiresFastTrack: false,
+    requiresFastTrack: true,
+    reason: `Món đồ này (hoặc tổng tài sản đang thuê: ${projectedExposure.toLocaleString()}đ) vượt hạn mức ${config.label} (${exposureLimit.toLocaleString()}đ). Bạn có thể kích hoạt chế độ Fast-Track Trust (thu 100% tiền cọc bảo chứng qua PayOS) để tiếp tục.`,
   };
 }
 
 /**
- * 💎 TÍNH TIỀN CỌC ĐỘNG VÀ THÔNG ĐIỆP GAMIFICATION (EXPLAINABLE DEPOSIT)
+ * 💎 TÍNH TIỀN CỌC ĐỘNG VÀ THÔNG ĐIỆP GIẢI THÍCH (EXPLAINABLE DEPOSIT)
  * Formula: Deposit = f(Item Value, Trust Score, Transaction History, FastTrack)
  */
 export function calculateDynamicDeposit({
@@ -319,19 +431,18 @@ export function calculateDynamicDeposit({
     };
   }
 
-  // Fast-Track Trust Mode (Khách hàng VIP mới muốn thuê đồ giá trị cao vượt hạn mức)
+  // Fast-Track Trust Mode: Bắt buộc thu 100% tiền cọc qua PayOS (không chiết khấu cọc)
   if (fastTrackActive) {
     return {
       finalDeposit: baseDeposit,
       originalDeposit: baseDeposit,
       discountAmount: 0,
       discountPercent: 0,
-      explanation: "⚡ Chế độ Fast-Track Trust: Áp dụng cọc 100% bảo chứng qua Escrow để mở khóa thuê trang phục giá trị cao ngay lập tức.",
-      nextTierGoal: "Trả đồ đúng hạn đơn này để được thăng hạng và giảm tiền cọc ở lần thuê kế tiếp!",
+      explanation: "⚡ Chế độ Fast-Track: Thu đủ 100% tiền cọc bảo chứng qua Cổng thanh toán PayOS để mở khóa thuê trang phục giá trị cao ngay lập tức.",
+      nextTierGoal: "Trả đồ đúng hạn đơn này để được thăng hạng tín nhiệm và hưởng ưu đãi giảm cọc ở lần thuê kế tiếp!",
     };
   }
 
-  const config = TRUST_TIERS[trustTier];
   let discountPercent = 0;
 
   switch (trustTier) {
