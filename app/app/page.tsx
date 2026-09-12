@@ -5,9 +5,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  Search, Camera, Sparkles, Bell, Heart, MapPin, 
+  Search, Camera, Bot, Bell, Heart, MapPin,
   Shirt, ArrowRight, Home, ShoppingBag, Plus, User,
-  CheckCircle2, Flame, Star
+  CheckCircle2, Flame
 } from "lucide-react";
 import VisualSearchModal from "@/app/components/VisualSearchModal";
 import { getTrendingProductsAction } from "@/app/actions/favorite";
@@ -112,7 +112,7 @@ export default function MobileAppPage() {
               className="px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200/80 flex items-center gap-1 text-emerald-800 text-xs font-bold shadow-3xs active:scale-95 transition-transform"
               title="Trợ lý AI Stylist"
             >
-              <Sparkles size={14} className="text-emerald-700 animate-spin [animation-duration:6s]" />
+              <Bot size={14} className="text-emerald-700" />
               <span className="text-[10px] uppercase font-ui tracking-wider">AI Stylist</span>
             </Link>
 
@@ -162,7 +162,7 @@ export default function MobileAppPage() {
           <div>
             <div className="flex items-center justify-between mb-2.5 px-0.5">
               <span className="text-[10.5px] font-extrabold tracking-wider uppercase text-[#183A2D] font-ui flex items-center gap-1.5">
-                <Sparkles size={12} className="text-[#C89D56]" />
+                <Flame size={12} className="text-[#C89D56]" />
                 Bộ Sưu Tập Nổi Bật
               </span>
               <span className="text-[10px] text-stone-400 font-medium">Vuốt sang →</span>

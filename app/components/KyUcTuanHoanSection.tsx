@@ -217,7 +217,7 @@ export default function KyUcTuanHoanSection({ recentBlogs }: Props) {
               {/* Cột chữ nội dung[cite: 5] */}
               <div className="flex flex-col justify-between space-y-4 text-left">
                 <div className="space-y-2">
-                  <span className="inline-block text-[9px] font-bold uppercase tracking-widest text-[#5C7A54] kyuc-body">✦ Bài viết mới</span>
+                  <span className="inline-block text-[9px] font-bold uppercase tracking-widest text-[#5C7A54] kyuc-body">Bài viết mới</span>
                   <h3 className="kyuc-heading text-[22px] font-semibold text-[#1F3D2B] leading-tight line-clamp-3">{mainStory.title}</h3>
                   <p className="kyuc-body text-[11px] text-stone-400 font-light leading-relaxed line-clamp-3">{mainStory.content}</p>
                 </div>

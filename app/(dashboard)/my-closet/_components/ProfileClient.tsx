@@ -8,7 +8,6 @@ import {
   User, 
   Camera, 
   ExternalLink, 
-  Sparkles, 
   Save, 
   Loader2, 
   MapPin, 
@@ -206,7 +205,7 @@ export function ProfileClient({
             
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
               <span className="px-3 py-1 bg-emerald-50 text-emerald-800 text-[10px] font-bold rounded-full border border-emerald-200/80 flex items-center gap-1">
-                <Sparkles size={11} className="text-emerald-600" /> Thành viên CLOOP
+                <ShieldCheck size={11} className="text-emerald-600" /> Thành viên CLOOP
               </span>
               <span className="px-3 py-1 bg-amber-50 text-amber-900 text-[10px] font-bold rounded-full border border-amber-200/80 flex items-center gap-1">
                 <MapPin size={11} className="text-amber-700" /> {formData.location}
@@ -448,7 +447,7 @@ export function ProfileClient({
 
             <div className="flex items-center justify-between p-3 bg-stone-50 rounded-xl border border-stone-200/60">
               <span className="text-stone-600 flex items-center gap-2">
-                <Sparkles size={15} className="text-amber-500" />
+                <CheckCircle2 size={15} className="text-amber-500" />
                 Lịch sử thuê thành công ({trustBreakdown?.factors.completedOrders || 0} đơn)
               </span>
               <span className="font-bold font-mono text-emerald-700">

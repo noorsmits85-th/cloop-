@@ -322,7 +322,7 @@ export function ItemsClient({ initialItems }: { initialItems: ItemData[] }) {
         showToast(
           boostPackage === "BOOST"
             ? `🚀 Đã Đẩy Top 12h cho "${selectedBoostItem.name}" thành công!`
-            : `✨ Đã bật Hào Quang Nổi Bật cho "${selectedBoostItem.name}" thành công!`
+            : `Đã bật Hào Quang Nổi Bật cho "${selectedBoostItem.name}" thành công!`
         );
         setSelectedBoostItem(null);
         router.refresh();
@@ -378,7 +378,7 @@ export function ItemsClient({ initialItems }: { initialItems: ItemData[] }) {
         return;
       }
       setItems((prev) => prev.filter((item) => item.id !== productId));
-      showToast("Đã xóa món đồ khỏi tủ đồ thành công! ✨");
+      showToast("Đã xóa món đồ khỏi tủ đồ thành công!");
       router.refresh();
     } catch (err: any) {
       showToast("Lỗi khi xóa món đồ: " + (err.message || err), "error");

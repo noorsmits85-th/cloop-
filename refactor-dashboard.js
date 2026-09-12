@@ -33,7 +33,7 @@ const newCards = `{/* GREEN IMPACT ESG DASHBOARD & COIN BALANCE */}\n` +
             </div>
             <div className="flex justify-between items-start z-10">
               <div className="w-10 h-10 rounded-full bg-white/20 text-white flex items-center justify-center backdrop-blur-sm">
-                <Sparkles size={18} />
+                <ShieldCheck size={18} />
               </div>
               <span className="text-[10px] font-bold text-emerald-200 bg-white/10 px-2 py-1 rounded-full border border-white/20 backdrop-blur-md">
                 Eco Warrior

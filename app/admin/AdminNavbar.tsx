@@ -16,8 +16,7 @@ import {
   Zap, 
   X, 
   CheckCircle2, 
-  HelpCircle,
-  Sparkles
+  HelpCircle
 } from "lucide-react";
 
 export default function AdminNavbar() {
@@ -205,7 +204,7 @@ export default function AdminNavbar() {
             <div className="flex items-start justify-between border-b border-stone-200 pb-4 mb-6">
               <div>
                 <div className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full uppercase tracking-wider mb-2">
-                  <Sparkles size={13} /> Mạch Dòng Tiền & Vận Hành Khép Kín CLOOP
+                  <Zap size={13} /> Mạch Dòng Tiền & Vận Hành Khép Kín CLOOP
                 </div>
                 <h2 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight">
                   Sơ Đồ Kết Nối Mạch Dòng Tiền Giữa Các Phân Hệ

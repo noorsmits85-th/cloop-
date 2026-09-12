@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Shirt, Plus, Bell, User, ShoppingBag, Sparkles } from "lucide-react";
+import { Home, Shirt, Plus, Bell, User, ShoppingBag } from "lucide-react";
 import { useAuthModal } from "@/app/AuthModalContext";
 import { getUserNotificationsAction } from "@/app/actions/notification";
 

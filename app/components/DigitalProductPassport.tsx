@@ -1,11 +1,10 @@
-﻿"use client";
+"use client";
 
 import React, { useState } from "react";
 import { 
   Leaf, 
   QrCode, 
   ShieldCheck, 
-  Sparkles, 
   RotateCcw, 
   Layers, 
   Award, 

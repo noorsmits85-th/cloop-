@@ -8,7 +8,6 @@ import {
   ShieldCheck, 
   Leaf, 
   Lock,
-  Sparkles,
   Heart,
   Droplet,
   DollarSign,

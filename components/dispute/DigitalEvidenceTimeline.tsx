@@ -6,7 +6,6 @@ import {
   Camera, 
   Truck, 
   PackageCheck, 
-  Sparkles, 
   RotateCcw, 
   CheckCircle2, 
   ChevronDown,
@@ -212,7 +211,7 @@ export function DigitalEvidenceTimeline({
                 {ev.stage === 1 ? <Camera size={14} /> :
                  ev.stage === 2 ? <Truck size={14} /> :
                  ev.stage === 3 ? <PackageCheck size={14} /> :
-                 ev.stage === 4 ? <Sparkles size={14} /> :
+                 ev.stage === 4 ? <Clock size={14} /> :
                  ev.stage === 5 ? <RotateCcw size={14} /> :
                  <ShieldCheck size={14} />}
               </div>

@@ -207,7 +207,7 @@ export default function CreateBlogPostPage() {
         localStorage.setItem("cloop_custom_blogs", JSON.stringify(existingLocal));
       }
 
-      setSuccessMessage("Ký ức của bạn đã được đính lên Bảo Tàng Ký Ức Tuần Hoàn thành công! ✨");
+      setSuccessMessage("Ký ức của bạn đã được đính lên Bảo Tàng Ký Ức Tuần Hoàn thành công!");
       setTimeout(() => {
         router.push("/blog");
       }, 1500);

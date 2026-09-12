@@ -26,7 +26,7 @@ export default function HeroImages() {
         className="absolute right-0 w-[220px] h-[340px] bg-[#FDFDFB] rounded-[2rem] border border-[#A5D6A7]/30 shadow-[0_20px_40px_rgba(27,94,32,0.04)] overflow-hidden flex flex-col items-center justify-center text-center p-4 cursor-pointer"
       >
         <div className="w-12 h-12 rounded-full bg-[#F2F7F2] flex items-center justify-center mb-3">
-          <span className="text-[#1B5E20] text-xs">✨</span>
+          <span className="text-[#1B5E20] text-xs">🍃</span>
         </div>
         <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#365C42] font-body">Lookbook 02</span>
       </motion.div>

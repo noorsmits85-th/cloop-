@@ -77,7 +77,7 @@ export default function ClosetProductGrid({
               className="w-full h-full object-cover"
             />
             <div className="absolute top-3 left-3 z-10">
-              {product.status === "active" && <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">✨ Đang hiển thị</span>}
+              {product.status === "active" && <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Đang hiển thị</span>}
               {product.status === "rented" && <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-blue-50 text-blue-700 border border-blue-200">💎 Đang được thuê</span>}
               {product.status === "hidden" && <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-50 text-amber-700 border border-amber-200">🔒 Tạm ẩn</span>}
               {product.status === "trash" && <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-rose-50 text-rose-700 border border-rose-200">🗑️ Thùng rác</span>}

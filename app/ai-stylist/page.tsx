@@ -148,7 +148,7 @@ export default function AIStylistHub() {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const [userInput, setUserInput] = useState("");
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-    { id: "1", role: "ai", text: "Chào cậu! Cậu cứ kể tự nhiên nhé, ví dụ: 'Cuối tuần mình đi Đà Lạt với người yêu, dáng mình hơi mũm mĩm xíu...' Mình sẽ hiểu và tự mix đồ cho cậu ngay! ✨" }
+    { id: "1", role: "ai", text: "Chào cậu! Cậu cứ kể tự nhiên nhé, ví dụ: 'Cuối tuần mình đi Đà Lạt với người yêu, dáng mình hơi mũm mĩm xíu...' Mình sẽ hiểu và tự mix đồ cho cậu ngay!" }
   ]);
 
   const [startDate, setStartDate] = useState("2026-07-01");
@@ -290,7 +290,7 @@ export default function AIStylistHub() {
       // Bỏ trạng thái typing, thay bằng tin nhắn phản hồi
       setChatHistory(prev => prev.filter(msg => msg.id !== aiTypingId));
       
-      let aiResponse = "Oke cậu ơi, gu này mình lo được! Mình đã tự động nhặt các từ khóa phong cách từ câu chuyện của cậu. Đang xuất kho kết quả mượt mà luôn ✨";
+      let aiResponse = "Oke cậu ơi, gu này mình lo được! Mình đã tự động nhặt các từ khóa phong cách từ câu chuyện của cậu. Đang xuất kho kết quả mượt mà luôn";
       if(textToAnalyze.toLowerCase().includes("crush") || textToAnalyze.toLowerCase().includes("hẹn hò")) {
         aiResponse = "Đi hẹn hò hả? Chuyến này phải cho crush lác mắt luôn! Mình đã chọn ra mấy bộ tông màu cực kì nịnh da và hack dáng, cậu xem bên phải nha! 🥰";
       } else if (textToAnalyze.toLowerCase().match(/đà lạt|lạnh|mưa/)) {
@@ -607,7 +607,7 @@ export default function AIStylistHub() {
                     </div>
                     <h4 className="text-sm font-bold text-stone-800 uppercase tracking-widest">Góc Lên Đồ AI</h4>
                     <p className="text-xs font-medium text-gray-400 leading-relaxed">
-                      Hãy nhắn cho AI biết cậu sắp đi đâu, vóc dáng ra sao ở khung chat bên trái. Cứ viết tự nhiên nha, AI tự bắt từ khóa đỉnh lắm đó! ✨
+                      Hãy nhắn cho AI biết cậu sắp đi đâu, vóc dáng ra sao ở khung chat bên trái. Cứ viết tự nhiên nha, AI tự bắt từ khóa đỉnh lắm đó!
                     </p>
                   </div>
                 )}
@@ -765,7 +765,7 @@ export default function AIStylistHub() {
             </div>
 
             <div className="mt-8 pt-4 border-t border-gray-100 flex flex-col gap-3">
-              <button type="button" onClick={() => { setCurrentStep("input"); setShowResult(false); setChatHistory([{ id: "1", role: "ai", text: "Chào cậu! Cậu cứ kể tự nhiên nhé, ví dụ: 'Cuối tuần mình đi Đà Lạt với người yêu, dáng mình hơi mũm mĩm xíu...' Mình sẽ hiểu và tự mix đồ cho cậu ngay! ✨" }]); setUserInput(""); }} className="w-full bg-[#183A2D] text-white py-3.5 rounded-full font-body font-bold uppercase tracking-widest text-[10px] hover:bg-[#254F3B] transition shadow-sm">
+              <button type="button" onClick={() => { setCurrentStep("input"); setShowResult(false); setChatHistory([{ id: "1", role: "ai", text: "Chào cậu! Cậu cứ kể tự nhiên nhé, ví dụ: 'Cuối tuần mình đi Đà Lạt với người yêu, dáng mình hơi mũm mĩm xíu...' Mình sẽ hiểu và tự mix đồ cho cậu ngay!" }]); setUserInput(""); }} className="w-full bg-[#183A2D] text-white py-3.5 rounded-full font-body font-bold uppercase tracking-widest text-[10px] hover:bg-[#254F3B] transition shadow-sm">
                 Quay lại Chat cùng AI Stylist
               </button>
               <Link href="/" className="font-body text-[11px] font-semibold text-gray-400 hover:text-[#183A2D] transition underline underline-offset-4">

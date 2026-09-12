@@ -1057,7 +1057,7 @@ export default function CheckoutClient({
               />
               <div className="space-y-1">
                 <div className="font-bold text-[#183A2D] flex items-center gap-1.5 font-ui">
-                  <Zap size={14} className="text-amber-600" />
+                  <ShieldCheck size={14} className="text-emerald-700" />
                   Kích hoạt Fast-Track Trust (Vượt trần hạn mức cho thành viên mới)
                 </div>
                 <p className="text-stone-500 text-[11px] leading-relaxed">
