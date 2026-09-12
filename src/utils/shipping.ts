@@ -17,6 +17,7 @@ export interface ShippingQuote {
   packagingNote?: string;
   expectedDeliveryDate?: string;
   expectedDeliveryRange?: string;
+  expectedDeliveryISODate?: string;
   leadtimeTimestamp?: number;
   deliverySource?: "GHN_GATEWAY" | "ESTIMATED";
 }
@@ -305,6 +306,7 @@ export function verifyShippingQuoteToken(tokenBase64: string, expectedFromProvin
       packagingNote: data.packagingNote,
       expectedDeliveryDate: data.expectedDeliveryDate,
       expectedDeliveryRange: data.expectedDeliveryRange,
+      expectedDeliveryISODate: data.expectedDeliveryISODate,
       leadtimeTimestamp: data.leadtimeTimestamp,
       deliverySource: data.deliverySource
     };

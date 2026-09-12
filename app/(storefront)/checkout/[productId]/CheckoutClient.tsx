@@ -8,7 +8,7 @@ import { SignedShippingQuote } from "@/src/utils/shipping";
 import { 
   Loader2, ShieldCheck, MapPin, Calendar, Clock,
   Check, ArrowRight, User, Phone, Home, Shirt, Tag, AlertCircle, Navigation, Package, Truck,
-  Copy, CheckCircle2, ExternalLink, QrCode, X, Zap, Handshake, Leaf, RefreshCw, Star, Sparkles
+  Copy, CheckCircle2, ExternalLink, QrCode, X, Zap, Handshake, Leaf, RefreshCw
 } from "lucide-react";
 import Image from "next/image";
 
@@ -61,7 +61,9 @@ export default function CheckoutClient({
   // Gói thuê & Lịch (Khởi tạo chuẩn xác từ lựa chọn của khách ở trang sản phẩm)
   const initialTier = pricingTiers.find(t => t.days === urlPackage) || pricingTiers[1] || pricingTiers[0];
   const [selectedTier, setSelectedTier] = useState<any>(initialTier);
+  const isStartDateFromQuery = Boolean(searchParams.get("startDate"));
   const [startDate, setStartDate] = useState<string>(urlStartDate);
+  const [hasUserCustomizedStartDate, setHasUserCustomizedStartDate] = useState<boolean>(isStartDateFromQuery);
 
   const [isLoadingShipping, setIsLoadingShipping] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -418,8 +420,11 @@ export default function CheckoutClient({
     !selectedProvince.name.trim().toLowerCase().includes(originProvinceStr)
   );
 
-  // Đơn liên tỉnh cần tối thiểu 3 ngày để xe tải GHN vận chuyển an toàn
-  const minDaysBuffer = isInterProvincial ? 3 : 1;
+  // Xác định ngày có thể nhận đồ sớm nhất từ GHN hoặc cấu hình liên tỉnh
+  let minDaysBuffer = isInterProvincial ? 3 : 1;
+  if (selectedQuote?.quote.estimatedDays && selectedQuote.quote.estimatedDays > 0) {
+    minDaysBuffer = selectedQuote.quote.estimatedDays;
+  }
   const earliestDateObj = new Date(Date.now() + minDaysBuffer * 86400000);
   const earliestStartDate = earliestDateObj.toISOString().slice(0, 10);
 
@@ -434,17 +439,35 @@ export default function CheckoutClient({
     }
   }, [isInterProvincial, earliestStartDate]);
 
-  // Tự động khớp ngày bắt đầu mặc đồ theo ngày giao hàng do GHN trả về
+  // Đồng bộ ngày bắt đầu mặc đồ thông minh từ GHN mà KHÔNG ghi đè ngày khách đã chủ động chọn
   useEffect(() => {
-    if (selectedQuote?.quote.expectedDeliveryDate && selectedQuote.quote.expectedDeliveryDate.includes("/")) {
+    let deliveryISODate: string | null = null;
+    if (selectedQuote?.quote.expectedDeliveryISODate) {
+      deliveryISODate = selectedQuote.quote.expectedDeliveryISODate.slice(0, 10);
+    } else if (selectedQuote?.quote.expectedDeliveryDate && selectedQuote.quote.expectedDeliveryDate.includes("/")) {
       const parts = selectedQuote.quote.expectedDeliveryDate.split("/");
       if (parts.length === 3) {
         const [day, month, year] = parts;
-        const ghnDeliveryISODate = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-        setStartDate(ghnDeliveryISODate);
+        deliveryISODate = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+      }
+    } else if (selectedQuote?.quote.expectedDeliveryDate === "Trong ngày") {
+      deliveryISODate = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(new Date());
+    }
+
+    if (deliveryISODate) {
+      // Chỉ tự động cập nhật nếu:
+      // 1. Chưa có startDate
+      // 2. Khách chưa từng tự tay chọn ngày (không truyền qua URL và chưa tự bấm đổi)
+      // 3. Hoặc ngày khách chọn nhỏ hơn ngày hàng có thể giao đến (bắt buộc phải lùi sang ngày giao)
+      if (!startDate) {
+        setStartDate(deliveryISODate);
+      } else if (!hasUserCustomizedStartDate) {
+        setStartDate(deliveryISODate);
+      } else if (startDate < deliveryISODate) {
+        setStartDate(deliveryISODate);
       }
     }
-  }, [selectedQuote]);
+  }, [selectedQuote, hasUserCustomizedStartDate]);
 
   const rentalFee = isRental ? (selectedTier?.price || 0) : (product.listings?.[0]?.salePrice || product.listings?.[0]?.basePrice || 0);
   const actualDeposit = isRental ? depositPrice : 0;
@@ -528,10 +551,9 @@ export default function CheckoutClient({
                 <p className="text-[11px] text-stone-500">
                   Chủ tủ: <strong className="text-stone-800 font-semibold">{product.user?.name || "Thành viên CLOOP"}</strong>
                 </p>
-                <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200/70 font-mono">
-                  <Star size={10} className="fill-amber-400 text-amber-500" />
+                <span className="inline-flex items-center text-[10px] font-bold text-stone-700 bg-stone-100 px-2 py-0.5 rounded font-mono">
                   <span>{product.user?.rating ? Number(product.user.rating).toFixed(1) : "5.0"}</span>
-                  {product.user?.reviewCount > 0 && <span className="text-stone-400 font-normal text-[9px]">({product.user.reviewCount})</span>}
+                  {product.user?.reviewCount > 0 && <span className="text-stone-400 font-normal text-[9px] ml-1">({product.user.reviewCount})</span>}
                 </span>
               </div>
               <p className="text-[11px] text-stone-500 font-body flex items-center gap-1 mt-0.5">
@@ -567,13 +589,13 @@ export default function CheckoutClient({
               </div>
               <div className="pt-1.5 border-t border-amber-200/60 flex items-center justify-between text-[10px]">
                 <span className="text-emerald-800 font-medium flex items-center gap-1">
-                  <Sparkles size={12} className="text-amber-500" />
-                  {fastTrackMode ? "⚡ Chế độ Fast-Track Trust kích hoạt" : "🛡️ Cơ chế Niềm tin Lũy tiến (Progressive Trust)"}
+                  <ShieldCheck size={12} className="text-emerald-700" />
+                  {fastTrackMode ? "Chế độ Fast-Track Trust kích hoạt" : "Cơ chế Niềm tin Lũy tiến (Progressive Trust)"}
                 </span>
                 <span className="text-stone-500">Mục tiêu: Cọc 0đ - 50%</span>
               </div>
               <p className="text-[9.5px] text-stone-500 italic leading-snug">
-                🌟 Trả đồ đúng hạn ở đơn này để tích lũy Trust Score và tự động mở khóa ưu đãi giảm cọc cho các đơn tiếp theo!
+                Trả đồ đúng hạn ở đơn này để tích lũy Trust Score và tự động mở khóa ưu đãi giảm cọc cho các đơn tiếp theo!
               </p>
             </div>
           )}
@@ -664,9 +686,9 @@ export default function CheckoutClient({
             </h2>
           </div>
 
-          <div className="inline-flex items-center gap-1.5 bg-amber-50/90 text-amber-900 border border-amber-200/80 px-3 py-1 rounded-full text-[11px] font-medium shadow-2xs">
-            <Star size={12} className="fill-amber-400 text-amber-500" />
-            <span>Tín nhiệm khách thuê: <strong className="font-mono font-bold text-amber-950">{customerRating.toFixed(1)}</strong></span>
+          <div className="inline-flex items-center gap-1.5 bg-emerald-50/90 text-emerald-900 border border-emerald-200/80 px-3 py-1 rounded-full text-[11px] font-medium shadow-2xs">
+            <ShieldCheck size={13} className="text-emerald-700" />
+            <span>Tín nhiệm khách thuê: <strong className="font-mono font-bold text-emerald-950">{customerRating.toFixed(1)}</strong></span>
             <span className="text-stone-300">•</span>
             <span className="text-emerald-700 font-semibold text-[10.5px]">Khách uy tín</span>
           </div>
@@ -800,7 +822,10 @@ export default function CheckoutClient({
                   type="date"
                   value={startDate}
                   min={earliestStartDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  onChange={(e) => {
+                    setStartDate(e.target.value);
+                    setHasUserCustomizedStartDate(true);
+                  }}
                   className="w-full px-3.5 py-2.5 border border-stone-200 rounded-xl font-ui text-xs font-medium focus:outline-none focus:border-[#183A2D] bg-[#FAF9F5] text-[#183A2D]"
                 />
               </div>
@@ -975,8 +1000,8 @@ export default function CheckoutClient({
               <span className="text-stone-700 font-medium">
                 Khách đặt đồ: <strong className="text-[#183A2D] font-bold">{recipientName}</strong>
               </span>
-              <div className="inline-flex items-center gap-1.5 text-amber-900 font-bold text-[11px] bg-white px-2.5 py-0.5 rounded-full border border-amber-200 shadow-2xs">
-                <Star size={11} className="fill-amber-400 text-amber-500" />
+              <div className="inline-flex items-center gap-1.5 text-stone-800 font-bold text-[11px] bg-white px-2.5 py-0.5 rounded-full border border-stone-200 shadow-2xs">
+                <ShieldCheck size={12} className="text-emerald-700" />
                 <span className="font-mono">{customerRating.toFixed(1)} / 5.0</span>
                 <span className="text-stone-400 font-normal text-[10px]">({customerReviewCount} đánh giá)</span>
                 <span className="text-emerald-700 font-semibold text-[10px] ml-0.5">• Uy tín</span>
@@ -1032,7 +1057,7 @@ export default function CheckoutClient({
               />
               <div className="space-y-1">
                 <div className="font-bold text-[#183A2D] flex items-center gap-1.5 font-ui">
-                  <Sparkles size={14} className="text-amber-500" />
+                  <Zap size={14} className="text-amber-600" />
                   Kích hoạt Fast-Track Trust (Vượt trần hạn mức cho thành viên mới)
                 </div>
                 <p className="text-stone-500 text-[11px] leading-relaxed">

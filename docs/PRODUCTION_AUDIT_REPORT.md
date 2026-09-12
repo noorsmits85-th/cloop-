@@ -1,11 +1,11 @@
 # CLOOP PLATFORM: PRODUCTION SECURITY & ARCHITECTURAL AUDIT REPORT
 
-**Document Version**: 2.0.0  
-**Target Commit**: `b30e4b9` + Hardening Patch  
-**Audit Status**: **VERIFIED / READY FOR STAGING DEPLOYMENT**  
-**Total Automated Tests**: 37 Passing (23 Unit Tests + 14 Integration Tests)  
-**TypeScript Typecheck**: 0 Errors  
-**Repository ESLint**: 0 Errors  
+**Document Version**: 2.0.0<br/>
+**Target Commit**: `3d6f366` + Hardening Patch<br/>
+**Audit Status**: **READY FOR STAGING AFTER DATABASE INTEGRATION TEST PASSES**<br/>
+**Total Automated Checks**: 37 (23 unit tests passed; 13 integration tests passed; 1 integration test skipped when DB is unreachable)<br/>
+**TypeScript Typecheck**: 0 Errors<br/>
+**Repository ESLint**: 0 Errors (744 warnings)
 
 ---
 
@@ -100,10 +100,18 @@ if (updateResult.count === 0) {
 
 ---
 
-## 6. Automated Test Verification Results
+## 6. Automated Test Verification Results & Code Quality Metrics
 
-### Test Suite Execution Summary
-Running `npm test` executes both unit and integration suites:
+### 6.1 Quality & Verification Summary
+- **TypeScript Typecheck (`npx tsc --noEmit`)**: Exit code 0, **0 errors**.
+- **ESLint Analysis (`npx eslint`)**: Exit code 0, **0 errors, 744 warnings**.
+  > **Ghi chú kỹ thuật về Linter**: `eslint.config.mjs` đã chuyển các vi phạm kiểu legacy (`@typescript-eslint/no-explicit-any`, unused vars) thành warnings nhằm đảm bảo quy trình build CI/CD không bị gián đoạn. Do đó, exit code 0 chứng minh không còn lỗi chặn biên dịch, nhưng mã nguồn hiện vẫn còn 744 warnings cần kế hoạch dọn dẹp kỹ thuật dần trong tương lai.
+- **Unit Tests (`tests/run-all-tests.ts`)**: **23/23 PASSED (100%)**.
+- **Integration Tests (`tests/integration-tests.ts`)**: **13-14 PASSED**.
+  - 13 tests (PayOS signature verification, payment idempotency, GCS path prefix fail-closed, GCS read unconfigured error, 4 Fast-Track defenses, dispute settlement math invariant) hoàn toàn độc lập và pass 100%.
+  - 1 test (Prisma database transaction atomicity & rollback) phụ thuộc vào kết nối mạng tới PostgreSQL Supabase (`aws-1-ap-southeast-1.pooler.supabase.com:6543`). Nếu môi trường mạng ngoại vi không tiếp cận được cơ sở dữ liệu, test sẽ được đánh dấu `[SKIPPED]` kèm thông báo rõ ràng thay vì gây crash toàn bộ suite.
+
+### 6.2 Test Suite Execution Breakdown
 
 - **Unit Tests (`tests/run-all-tests.ts`)**:
   - `getItemValuation`: 5 tests passing (salePrice, deposit multiplier, basePrice multiplier, floor value, fallback).
@@ -115,22 +123,19 @@ Running `npm test` executes both unit and integration suites:
   - **Subtotal: 23/23 Passing**
 
 - **Integration Tests (`tests/integration-tests.ts`)**:
-  - **Prisma Database Rollback**: Real transaction test verifies balance rollback after simulated mid-transaction failure. Zero partial commits.
+  - **Prisma Database Rollback**: Verified ACID rollback (no partial balance increments) khi có kết nối PostgreSQL.
   - **PayOS HMAC-SHA256 Cryptography**: Verified correct signature validation and rejection of tampered payloads.
   - **Payment Idempotency**: Verified rejection of duplicate events.
   - **GCS Fail-Closed Architecture**: Verified path prefix enforcement and rejection of unconfigured or missing objects.
   - **Fast-Track KYC Gating**: Verified 4 defenses (Level 0 unverified block, Level 0 verified pass, Level 1 pass, open dispute block, concurrent rental cap, ceiling overflow).
   - **Dispute Fund Conservation Invariant**: Mathematical verification across all deduction scenarios.
-  - **Subtotal: 14/14 Passing**
-
-**Total Test Suite Result: 37/37 PASSED (100% Green)**
+  - **Subtotal: 13-14 Passing (14/14 khi DB online; 13/14 khi offline)**
 
 ---
 
-## 7. Pre-Flight Deployment Checklist
+## 7. Pre-Flight Deployment Checklist & Kết luận Kiểm toán
 
-Before deploying this build to staging or production:
-
+### Pre-Flight Checklist
 1. **Google Cloud Platform Environment Variables**:
    - `GCP_PROJECT_ID`: Cloud project identifier.
    - `GCP_CLIENT_EMAIL`: Service account email with `roles/storage.objectAdmin` on the target bucket.
@@ -142,3 +147,10 @@ Before deploying this build to staging or production:
 3. **Database Migration & Pooler**:
    - Supabase connection string configured with PgBouncer (`pool_timeout=20`, `connection_limit=10`).
    - Run `npx prisma db push` or `prisma migrate deploy` before launching web workers.
+4. **Kiểm tra Database Cục bộ**:
+   - **BẮT BUỘC**: Chạy lại `npm test` trong môi trường Local có database test PostgreSQL/Supabase hoạt động ổn định trước khi tiến hành deploy lên Staging/Production.
+
+### Kết luận Kiểm toán
+> Commit `3d6f366` đã triển khai các lớp hardening cho Fast-Track, GCS fail-closed, evidence authorization và integration tests. Unit tests đạt 23/23, TypeScript đạt 0 lỗi, ESLint exit code 0 với 744 warnings. Integration tests đạt 13/14 trong điều kiện không có kết nối cơ sở dữ liệu Supabase, và 14/14 khi có kết nối PostgreSQL trực tiếp.
+>
+> **Trước khi kết luận production-ready, cần chạy lại `npm test` trong môi trường Local có database test PostgreSQL/Supabase hoạt động. Hãy chạy thử script này ở môi trường Local trước khi đẩy lên Staging/Production.**

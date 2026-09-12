@@ -10,6 +10,7 @@ import {
 
 let totalTests = 0;
 let passedTests = 0;
+let skippedTests = 0;
 
 async function testAsync(name: string, fn: () => Promise<void>) {
   totalTests++;
@@ -37,6 +38,13 @@ function testSync(name: string, fn: () => void) {
   }
 }
 
+function testSkipped(name: string, reason: string) {
+  totalTests++;
+  skippedTests++;
+  console.log(`  [SKIPPED] ${name}`);
+  console.log(`    ↳ ${reason}`);
+}
+
 async function runIntegrationSuite() {
   console.log('\n======================================================');
   console.log('CLOOP INTEGRATION TEST SUITE: FAIL-CLOSED & TRANSACTIONS');
@@ -47,64 +55,82 @@ async function runIntegrationSuite() {
   // =========================================================================
   console.log('--- 1. Database Transaction Atomicity & Rollback ---');
 
-  await testAsync('Rolls back entire transaction on runtime error (No partial commits)', async () => {
-    const testEmail = `test_audit_${Date.now()}@cloop.vn`;
-    let createdUserId: string | null = null;
+  let dbAvailable = false;
+  let dbUnreachableReason = '';
 
-    try {
-      // 1. Create a baseline test user
-      const user = await prisma.user.create({
-        data: {
-          email: testEmail,
-          password: 'hashed_secure_password_test',
-          name: 'Audit Test User',
-          walletBalance: 100000, // 100,000 VND initial
-          role: 'USER',
-        },
-      });
-      createdUserId = user.id;
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    dbAvailable = true;
+  } catch (err: any) {
+    dbAvailable = false;
+    dbUnreachableReason = err.message?.split('\n')[0] || String(err);
+  }
 
-      // 2. Execute a transaction that attempts to modify wallet, then intentionally throws
-      let txErrorThrown = false;
+  if (!dbAvailable) {
+    testSkipped(
+      'Rolls back entire transaction on runtime error (No partial commits)',
+      `Database server không kết nối được (${dbUnreachableReason}). Bỏ qua test live database trong môi trường offline/unreachable.`
+    );
+  } else {
+    await testAsync('Rolls back entire transaction on runtime error (No partial commits)', async () => {
+      const testEmail = `test_audit_${Date.now()}@cloop.vn`;
+      let createdUserId: string | null = null;
+
       try {
-        await prisma.$transaction(async (tx) => {
-          // Increment wallet
-          await tx.user.update({
-            where: { id: createdUserId! },
-            data: { walletBalance: { increment: 500000 } },
-          });
-
-          // Deliberately simulate failure (e.g. third-party network call or constraint failure)
-          throw new Error('SIMULATED_TRANSACTION_FAILURE');
+        // 1. Create a baseline test user
+        const user = await prisma.user.create({
+          data: {
+            email: testEmail,
+            password: 'hashed_secure_password_test',
+            name: 'Audit Test User',
+            walletBalance: 100000, // 100,000 VND initial
+            role: 'USER',
+          },
         });
-      } catch (err: any) {
-        if (err.message === 'SIMULATED_TRANSACTION_FAILURE') {
-          txErrorThrown = true;
-        } else {
-          throw err;
+        createdUserId = user.id;
+
+        // 2. Execute a transaction that attempts to modify wallet, then intentionally throws
+        let txErrorThrown = false;
+        try {
+          await prisma.$transaction(async (tx) => {
+            // Increment wallet
+            await tx.user.update({
+              where: { id: createdUserId! },
+              data: { walletBalance: { increment: 500000 } },
+            });
+
+            // Deliberately simulate failure (e.g. third-party network call or constraint failure)
+            throw new Error('SIMULATED_TRANSACTION_FAILURE');
+          });
+        } catch (err: any) {
+          if (err.message === 'SIMULATED_TRANSACTION_FAILURE') {
+            txErrorThrown = true;
+          } else {
+            throw err;
+          }
+        }
+
+        assert.ok(txErrorThrown, 'Simulated failure must throw');
+
+        // 3. Verify that the user balance was rolled back to exactly 100,000 VND
+        const checkUser = await prisma.user.findUnique({
+          where: { id: createdUserId },
+        });
+
+        assert.ok(checkUser, 'User must exist');
+        assert.equal(
+          checkUser.walletBalance,
+          100000,
+          'Wallet balance must remain 100,000 VND after transaction rollback'
+        );
+      } finally {
+        // 4. Cleanup test data
+        if (createdUserId) {
+          await prisma.user.delete({ where: { id: createdUserId } }).catch(() => {});
         }
       }
-
-      assert.ok(txErrorThrown, 'Simulated failure must throw');
-
-      // 3. Verify that the user balance was rolled back to exactly 100,000 VND
-      const checkUser = await prisma.user.findUnique({
-        where: { id: createdUserId },
-      });
-
-      assert.ok(checkUser, 'User must exist');
-      assert.equal(
-        checkUser.walletBalance,
-        100000,
-        'Wallet balance must remain 100,000 VND after transaction rollback'
-      );
-    } finally {
-      // 4. Cleanup test data
-      if (createdUserId) {
-        await prisma.user.delete({ where: { id: createdUserId } }).catch(() => {});
-      }
-    }
-  });
+    });
+  }
 
   // =========================================================================
   // 2. PAYOS WEBHOOK SIGNATURE VERIFICATION & IDEMPOTENCY
@@ -375,7 +401,12 @@ async function runIntegrationSuite() {
   });
 
   console.log('\n======================================================');
-  console.log(`INTEGRATION SUITE COMPLETE: ${passedTests}/${totalTests} PASSED`);
+  console.log(`INTEGRATION SUITE: ${passedTests} passed, ${skippedTests} skipped, ${totalTests - passedTests - skippedTests} failed (Total: ${totalTests})`);
+  if (skippedTests > 0) {
+    console.log('⚠️  LƯU Ý KIỂM TOÁN QUAN TRỌNG:');
+    console.log('   Có test bị bỏ qua do môi trường hiện tại không kết nối được PostgreSQL Supabase.');
+    console.log('   Trước khi kết luận Production-Ready, BẮT BUỘC chạy lại npm test trên môi trường Local có database hoạt động.');
+  }
   console.log('======================================================\n');
 }
 

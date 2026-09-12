@@ -501,12 +501,12 @@ export function calculateDynamicDeposit({
 
   if (trustTier === "LEVEL_0_NEW") {
     explanation = "Mức cọc tiêu chuẩn cho thành viên mới để đảm bảo an toàn giao dịch 2 chiều.";
-    nextTierGoal = "🌟 Hoàn tất đơn đầu tiên an toàn để mở khóa Hạng Tín Nhiệm và giảm 25% - 50% tiền cọc!";
+    nextTierGoal = "Hoàn tất đơn đầu tiên an toàn để mở khóa Hạng Tín Nhiệm và giảm 25% - 50% tiền cọc!";
   } else if (trustTier === "LEVEL_1_VERIFIED") {
-    explanation = `🌟 Đặc quyền Tín nhiệm Cơ bản: Bạn được giảm 25% tiền cọc (tiết kiệm ${discountAmount.toLocaleString()}đ).`;
+    explanation = `Đặc quyền Tín nhiệm Cơ bản: Bạn được giảm 25% tiền cọc (tiết kiệm ${discountAmount.toLocaleString()}đ).`;
     nextTierGoal = "Hoàn tất thêm 2 đơn thành công để thăng hạng Khách Quen và được giảm 50% tiền cọc!";
   } else if (trustTier === "LEVEL_2_TRUSTED") {
-    explanation = `🌟 Đặc quyền Khách Quen Uy Tín: Bạn được giảm 50% tiền cọc (tiết kiệm ${discountAmount.toLocaleString()}đ).`;
+    explanation = `Đặc quyền Khách Quen Uy Tín: Bạn được giảm 50% tiền cọc (tiết kiệm ${discountAmount.toLocaleString()}đ).`;
     nextTierGoal = "Đạt trên 85 điểm tín nhiệm để gia nhập VIP Club và hưởng đặc quyền miễn cọc!";
   } else {
     if (finalDeposit === 0) {

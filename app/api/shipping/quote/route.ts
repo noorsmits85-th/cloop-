@@ -55,6 +55,7 @@ export async function POST(req: Request) {
 
         // Tự động xác định service_id tối ưu từ GHN available-services cho tuyến đường này
         let selectedServiceId: number = 53321;
+        let selectedServiceTypeId: number = 2;
         try {
           const availRes = await fetch("https://online-gateway.ghn.vn/shiip/public-api/v2/shipping-order/available-services", {
             method: "POST",
@@ -72,7 +73,13 @@ export async function POST(req: Request) {
             const availData = await availRes.json();
             if (availData.data && availData.data.length > 0) {
               const lightService = availData.data.find((s: any) => s.service_type_id === 2);
-              selectedServiceId = lightService ? lightService.service_id : availData.data[0].service_id;
+              if (lightService) {
+                selectedServiceId = lightService.service_id;
+                selectedServiceTypeId = 2;
+              } else {
+                selectedServiceId = availData.data[0].service_id;
+                selectedServiceTypeId = availData.data[0].service_type_id || 2;
+              }
             }
           }
         } catch (_) {}
@@ -111,7 +118,8 @@ export async function POST(req: Request) {
               from_ward_code: fromWard,
               to_district_id: toDistrict,
               to_ward_code: toWard,
-              service_id: selectedServiceId
+              service_id: selectedServiceId,
+              service_type_id: selectedServiceTypeId
             })
           }) : Promise.resolve(null)
         ]);
@@ -127,18 +135,38 @@ export async function POST(req: Request) {
         // Trích xuất ngày giao dự kiến chính thức từ kết quả GHN trả về
         let expectedDeliveryDate: string | undefined;
         let expectedDeliveryRange: string | undefined;
+        let expectedDeliveryISODate: string | undefined;
         let leadtimeTimestamp: number | undefined;
         let estimatedDays = 2;
+
+        // Hàm tính khoảng cách số ngày lịch chuẩn theo múi giờ Việt Nam (Asia/Ho_Chi_Minh - UTC+7)
+        const getCalendarDaysDiffVN = (targetDate: Date): number => {
+          const formatter = new Intl.DateTimeFormat("en-CA", {
+            timeZone: "Asia/Ho_Chi_Minh",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+          });
+          const nowVN = formatter.format(new Date());
+          const targetVN = formatter.format(targetDate);
+          const nowTime = new Date(`${nowVN}T00:00:00+07:00`).getTime();
+          const targetTime = new Date(`${targetVN}T00:00:00+07:00`).getTime();
+          const diffDays = Math.round((targetTime - nowTime) / (1000 * 60 * 60 * 24));
+          return Math.max(1, diffDays);
+        };
 
         if (leadtimeData?.code === 200 && leadtimeData.data) {
           const lt = leadtimeData.data;
           leadtimeTimestamp = lt.leadtime || undefined;
 
           const formatDateStr = (d: Date) => {
-            const dd = String(d.getDate()).padStart(2, "0");
-            const mm = String(d.getMonth() + 1).padStart(2, "0");
-            const yyyy = d.getFullYear();
-            return `${dd}/${mm}/${yyyy}`;
+            const formatter = new Intl.DateTimeFormat("vi-VN", {
+              timeZone: "Asia/Ho_Chi_Minh",
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            });
+            return formatter.format(d);
           };
 
           if (lt.leadtime_order?.from_estimate_date && lt.leadtime_order?.to_estimate_date) {
@@ -146,11 +174,14 @@ export async function POST(req: Request) {
             const toD = new Date(lt.leadtime_order.to_estimate_date);
             expectedDeliveryDate = formatDateStr(toD);
             expectedDeliveryRange = `${formatDateStr(fromD)} - ${formatDateStr(toD)}`;
-            estimatedDays = Math.max(1, Math.round((toD.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+            expectedDeliveryISODate = toD.toISOString();
+            estimatedDays = getCalendarDaysDiffVN(toD);
           } else if (lt.leadtime) {
             const d = new Date(lt.leadtime * 1000);
             expectedDeliveryDate = formatDateStr(d);
             expectedDeliveryRange = formatDateStr(d);
+            expectedDeliveryISODate = d.toISOString();
+            estimatedDays = getCalendarDaysDiffVN(d);
           }
         }
         
@@ -171,6 +202,7 @@ export async function POST(req: Request) {
               estimatedDays,
               expectedDeliveryDate,
               expectedDeliveryRange,
+              expectedDeliveryISODate,
               leadtimeTimestamp,
               deliverySource: "GHN_GATEWAY",
               packagingNote: isRental 
