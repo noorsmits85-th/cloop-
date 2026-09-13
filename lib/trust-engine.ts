@@ -961,3 +961,149 @@ export function calculateDynamicDeposit({
     availableReserve,
   };
 }
+
+/**
+ * 🏦 LẤY SỐ LIỆU QUỸ DỰ PHÒNG THỰC TẾ TỪ CƠ SỞ DỮ LIỆU
+ * Nếu nền tảng chưa được cấp vốn dự phòng thực tế trong cấu hình/DB,
+ * số dư khả dụng mặc định là 0đ -> kích hoạt cơ chế phòng vệ Cold-start thu 100% cọc.
+ */
+export async function getLiveReserveFundStatus(): Promise<ReserveFundStatus> {
+  try {
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const paidClaimsAgg = await prisma.ledgerTransaction.aggregate({
+      where: {
+        type: "COMPENSATION_OUT",
+        status: "COMPLETED",
+        createdAt: { gte: startOfMonth },
+      },
+      _sum: { amount: true },
+    });
+    const paidClaims = paidClaimsAgg._sum.amount || 0;
+
+    const pendingDisputesAgg = await prisma.dispute.aggregate({
+      where: {
+        status: "PENDING_REVIEW",
+      },
+      _sum: { suggestedDeduction: true },
+    });
+    const pendingClaims = pendingDisputesAgg._sum.suggestedDeduction || 0;
+
+    const activeRentals = await prisma.rentalHistory.findMany({
+      where: {
+        status: { in: ["PENDING_APPROVAL", "OWNER_PACKED", "LENDER_SHIPPED", "BORROWER_RECEIVED", "BORROWER_RETURNED", "DISPUTE"] },
+        isDeleted: false,
+      },
+      include: {
+        invoice: { select: { depositAmount: true } },
+        product: {
+          include: {
+            listings: { where: { status: "AVAILABLE" } },
+          },
+        },
+      },
+    });
+
+    let committedActiveGuarantees = 0;
+    for (const r of activeRentals) {
+      const baseDeposit = r.product?.listings?.[0]?.deposit || 0;
+      const actualDeposit = r.invoice?.depositAmount || 0;
+      if (baseDeposit > actualDeposit) {
+        committedActiveGuarantees += (baseDeposit - actualDeposit);
+      }
+    }
+
+    // Lấy số dư vốn cấp từ biến môi trường nếu có
+    const configuredOpeningBalance = Number(process.env.RESERVE_FUND_OPENING_BALANCE) || 0;
+    const configuredCurrentBalance = Number(process.env.RESERVE_FUND_CURRENT_BALANCE) || configuredOpeningBalance;
+
+    return {
+      openingReserveFundBalance: configuredOpeningBalance,
+      currentReserveFundBalance: configuredCurrentBalance,
+      paidClaims,
+      pendingClaims,
+      committedActiveGuarantees,
+      lockedFunds: 0,
+    };
+  } catch (err) {
+    console.warn("[TrustEngine] Lỗi lấy số dư Quỹ dự phòng thực tế từ DB, fallback an toàn về 0đ:", err);
+    return {
+      openingReserveFundBalance: 0,
+      currentReserveFundBalance: 0,
+      paidClaims: 0,
+      pendingClaims: 0,
+      committedActiveGuarantees: 0,
+      lockedFunds: 0,
+    };
+  }
+}
+
+/**
+ * 🛡️ LẤY HẠN MỨC BẢO LÃNH VÀ ĐƠN ACTIVE THỰC TẾ CỦA USER TỪ DB
+ */
+export async function getUserActiveGuaranteeStatus(userId: string): Promise<UserGuaranteeStatus> {
+  try {
+    const activeRentals = await prisma.rentalHistory.findMany({
+      where: {
+        renterId: userId,
+        status: { in: ["PENDING_APPROVAL", "OWNER_PACKED", "LENDER_SHIPPED", "BORROWER_RECEIVED", "BORROWER_RETURNED", "DISPUTE"] },
+        isDeleted: false,
+      },
+      include: {
+        invoice: { select: { depositAmount: true } },
+        product: {
+          include: {
+            listings: { where: { status: "AVAILABLE" } },
+          },
+        },
+        disputes: {
+          where: { status: { in: ["PENDING_REVIEW", "DISPUTED"] } },
+          select: { id: true },
+        },
+      },
+    });
+
+    let currentActiveGuarantees = 0;
+    let activeDiscountedOrdersCount = 0;
+    let hasOpenDispute = false;
+
+    for (const r of activeRentals) {
+      if (r.disputes && r.disputes.length > 0) {
+        hasOpenDispute = true;
+      }
+      const baseDeposit = r.product?.listings?.[0]?.deposit || 0;
+      const actualDeposit = r.invoice?.depositAmount || 0;
+      if (baseDeposit > actualDeposit) {
+        currentActiveGuarantees += (baseDeposit - actualDeposit);
+        activeDiscountedOrdersCount++;
+      }
+    }
+
+    if (!hasOpenDispute) {
+      const openDisputeCount = await prisma.dispute.count({
+        where: {
+          rental: { renterId: userId },
+          status: { in: ["PENDING_REVIEW", "DISPUTED"] },
+        },
+      });
+      if (openDisputeCount > 0) {
+        hasOpenDispute = true;
+      }
+    }
+
+    return {
+      currentActiveGuarantees,
+      activeDiscountedOrdersCount,
+      hasOpenDispute,
+    };
+  } catch (err) {
+    console.warn("[TrustEngine] Lỗi lấy hạn mức bảo lãnh của user, fallback an toàn:", err);
+    return {
+      currentActiveGuarantees: 0,
+      activeDiscountedOrdersCount: 0,
+      hasOpenDispute: false,
+    };
+  }
+}

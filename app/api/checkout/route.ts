@@ -6,7 +6,7 @@ import { payos } from "@/src/utils/payos";
 import { generatePayOSOrderCode } from "@/src/utils/order-code";
 import { checkRateLimit } from "@/src/utils/rate-limit";
 import { startOfDay, endOfDay, addDays, subDays } from "date-fns";
-import { calculateUserTrustScore, checkExposureLimit, calculateDynamicDeposit, getItemValuation } from "@/lib/trust-engine";
+import { calculateUserTrustScore, checkExposureLimit, calculateDynamicDeposit, getItemValuation, getLiveReserveFundStatus, getUserActiveGuaranteeStatus } from "@/lib/trust-engine";
 import { z } from "zod";
 
 // Schema Validate dữ liệu đầu vào chuẩn Server-side
@@ -30,33 +30,28 @@ export async function POST(req: Request) {
     // 1. Xác thực Phiên Người Dùng Server-Side (Chống IDOR & Giả mạo danh tính)
     const sessionUser = await requireUser();
     if (!sessionUser) {
-      return NextResponse.json({ error: "Unauthorized: Vui lòng đăng nhập để thực hiện thanh toán!" }, { status: 401 });
+      return NextResponse.json({ error: "Bạn cần đăng nhập để thực hiện giao dịch!" }, { status: 401 });
     }
     const realUserId = sessionUser.id;
 
-    // 🛡️ CHỐNG SPAM / DDOS TẠO MÃ THANH TOÁN (Max 5 requests / phút / User)
+    // Rate Limit 5 request / phút / user
     const rateLimit = checkRateLimit(`checkout_${realUserId}`, 5, 60 * 1000);
     if (!rateLimit.success) {
-      return NextResponse.json(
-        { error: `Bạn đang tạo đơn quá nhanh. Vui lòng thử lại sau ${rateLimit.resetInSec} giây.` },
-        { status: 429 }
-      );
+      return NextResponse.json({ error: "Bạn đang thao tác quá nhanh, vui lòng chờ 1 phút." }, { status: 429 });
     }
 
+    // 2. Parse & Validate Payload bằng Zod
     const body = await req.json();
-    
-    // 2. Zod Validation
-    const parseResult = CheckoutSchema.safeParse(body);
-    if (!parseResult.success) {
-      const firstError = parseResult.error.issues[0].message;
-      return NextResponse.json({ error: firstError, details: parseResult.error.issues }, { status: 400 });
+    const parsed = CheckoutSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues[0]?.message || "Dữ liệu không hợp lệ" }, { status: 400 });
     }
 
-    const { productId, shippingToken, buyerAddress, buyerPhone, startDate, packageDays, fastTrackMode } = parseResult.data;
+    const { productId, shippingToken, buyerAddress, buyerPhone, startDate, packageDays, fastTrackMode } = parsed.data;
 
-    // 3. Fetch Product và Listing
+    // 3. Truy vấn Sản phẩm & Gói Listing từ Database
     const product = await prisma.product.findUnique({
-      where: { id: productId },
+      where: { id: productId, isDeleted: false },
       include: {
         listings: { where: { status: "AVAILABLE" } },
         user: { select: { id: true, name: true } }
@@ -112,13 +107,21 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    // Tính toán Tiền Cọc Động (Dynamic Deposit)
+    // Lấy số liệu Quỹ dự phòng và Hạn mức bảo lãnh thực tế từ Database
+    const [liveFundStatus, userGuaranteeStatus] = await Promise.all([
+      getLiveReserveFundStatus(),
+      getUserActiveGuaranteeStatus(realUserId),
+    ]);
+
+    // Tính toán Tiền Cọc Động (Dynamic Deposit) với dữ liệu DB thật (Không dùng quỹ ảo)
     const depositCalculation = calculateDynamicDeposit({
       baseDeposit: baseDepositPrice,
       itemValue: approxItemValue,
       trustTier: trustBreakdown.tier,
       isRental: true,
       fastTrackActive: Boolean(fastTrackMode),
+      fundStatus: liveFundStatus,
+      userGuaranteeStatus,
     });
 
     const depositPrice = depositCalculation.finalDeposit;

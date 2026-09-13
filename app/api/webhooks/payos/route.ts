@@ -170,8 +170,10 @@ export async function POST(req: Request) {
           where: { orderCode: BigInt(orderCode) }
         });
 
-        if (existingTx) {
-          console.log(`ℹ️ Transaction ${orderCode} đã tồn tại (Lặp Webhook). Đánh dấu DUPLICATE...`);
+        // 🛡️ CHỐNG POISON TRANSACTION: Chỉ bỏ qua nếu transaction trước đó đã được xử lý THÀNH CÔNG (PROCESSED)
+        // Nếu trước đó có bản ghi AMOUNT_MISMATCH, cho phép webhook hợp lệ tiếp theo cập nhật và kích hoạt đơn
+        if (existingTx && existingTx.status === 'PROCESSED') {
+          console.log(`ℹ️ Transaction ${orderCode} đã tồn tại (Lặp Webhook PROCESSED). Bỏ qua duplicate...`);
           return;
         }
         console.log(`➤ Cập nhật Invoice thành PAID/COMPLETED và Ghi Sổ Cái DEPOSIT_IN`);
@@ -184,9 +186,19 @@ export async function POST(req: Request) {
           return;
         }
 
-        console.log(`➤ Ghi nhận TransactionHistory (VERIFIED -> PROCESSED) cho orderCode ${orderCode}`);
-        await tx.transactionHistory.create({
-          data: {
+        console.log(`➤ Ghi nhận/Cập nhật TransactionHistory (VERIFIED -> PROCESSED) cho orderCode ${orderCode}`);
+        await tx.transactionHistory.upsert({
+          where: { orderCode: BigInt(orderCode) },
+          update: {
+            eventId: verifiedData.reference,
+            invoiceId: invoice.id,
+            amount: verifiedData.amount,
+            invoiceAmount: invoice.amount,
+            status: 'PROCESSED',
+            rawPayload: body,
+            processedAt: new Date()
+          },
+          create: {
             eventId: verifiedData.reference,
             orderCode: BigInt(orderCode),
             invoiceId: invoice.id,

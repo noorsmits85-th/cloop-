@@ -6,116 +6,15 @@ import { generatePayOSOrderCode } from "@/src/utils/order-code";
 
 import { createClient } from "@/src/utils/supabase/server";
 
+/**
+ * @deprecated Luồng tạo link thanh toán đã được chuyển sang `/api/checkout`
+ * để áp dụng tính cọc linh hoạt (Dynamic Deposit), kiểm tra Quỹ bảo chứng thực tế và Trust Score.
+ */
 export async function createPayOSPaymentLink(rentalId: string) {
-  try {
-    const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return { success: false, error: "Bạn cần đăng nhập để thanh toán." };
-    }
-
-    if (!payos) {
-      return { success: false, error: "Cau hinh PayOS chua san sang tren server." };
-    }
-
-    // 1. Lấy thông tin Hợp đồng thuê (Bảo vệ IDOR)
-    const rental = await prisma.rentalHistory.findUnique({
-      where: { id: rentalId, renterId: user.id },
-      include: {
-        product: {
-          include: {
-            listings: true,
-          }
-        }
-      }
-    });
-
-    if (!rental) {
-      throw new Error("Không tìm thấy hợp đồng thuê");
-    }
-
-    // 2. Tự tính toán số tiền để không phụ thuộc vào Client
-    const activeListing = rental.product.listings.find(l => l.listingType === "RENT");
-    if (!activeListing) {
-      throw new Error("Sản phẩm không có gói thuê hợp lệ");
-    }
-
-    const rentalFee = activeListing.basePrice || 0;
-    const depositAmount = activeListing.deposit || 0;
-    const totalAmount = rentalFee + depositAmount;
-
-    // 3. Khởi tạo Invoice hoặc lấy Invoice cũ
-    let invoice = await prisma.invoice.findUnique({
-      where: { rentalId: rentalId }
-    });
-
-    const orderCode = generatePayOSOrderCode();
-
-    if (invoice && invoice.payosStatus === "PAID") {
-      throw new Error("Hóa đơn này đã được thanh toán thành công, không thể tạo lại QR code.");
-    }
-
-    if (!invoice) {
-      invoice = await prisma.invoice.create({
-        data: {
-          rentalId: rentalId,
-          amount: totalAmount,
-          rentalFee: rentalFee,
-          depositAmount: depositAmount,
-          status: "PENDING",
-          orderCode: orderCode,
-        }
-      });
-    } else {
-      // Cập nhật lại orderCode mới cho lần gọi payment link này
-      invoice = await prisma.invoice.update({
-        where: { id: invoice.id },
-        data: { 
-          orderCode: orderCode, 
-          amount: totalAmount,
-          rentalFee: rentalFee,
-          depositAmount: depositAmount
-        }
-      });
-    }
-
-    // 4. Gọi API PayOS để tạo Payment Link
-    const { headers } = await import("next/headers");
-    let dynamicDomain = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://cloop-sable.vercel.app");
-    try {
-      const headerList = await headers();
-      const host = headerList.get("x-forwarded-host") || headerList.get("host");
-      const proto = headerList.get("x-forwarded-proto") || (host?.includes("localhost") ? "http" : "https");
-      const origin = headerList.get("origin") || (host ? `${proto}://${host}` : null);
-      if (origin) dynamicDomain = origin;
-    } catch {}
-
-    const YOUR_DOMAIN = dynamicDomain;
-
-    const body = {
-      orderCode: orderCode,
-      amount: totalAmount,
-      description: `CLOOP GD ${orderCode}`,
-      returnUrl: `${YOUR_DOMAIN}/payment/result?orderCode=${orderCode}`,
-      cancelUrl: `${YOUR_DOMAIN}/shop`
-    };
-
-    const paymentLinkRes = await payos.paymentRequests.create(body);
-
-    // 5. Lưu paymentLinkId vào DB
-    await prisma.invoice.update({
-      where: { id: invoice.id },
-      data: { paymentLinkId: paymentLinkRes.paymentLinkId }
-    });
-
-    return { success: true, checkoutUrl: paymentLinkRes.checkoutUrl };
-
-  } catch (error: any) {
-    console.error("Lỗi tạo PayOS link:", error);
-    // Fail-fast: Nếu thiếu key hoặc lỗi API, trả về null để Client tự handle
-    return { success: false, error: error.message };
-  }
+  return {
+    success: false,
+    error: "Phương thức này đã ngừng hoạt động. Vui lòng thanh toán qua luồng checkout chuẩn của CLOOP.",
+  };
 }
 
 export async function checkAndSyncPaymentStatusAction(orderCode: number | string) {
@@ -182,13 +81,21 @@ export async function checkAndSyncPaymentStatusAction(orderCode: number | string
             });
           }
 
-          await tx.transactionHistory.create({
-            data: {
+          await tx.transactionHistory.upsert({
+            where: { orderCode: BigInt(numericOrderCode) },
+            create: {
               orderCode: BigInt(numericOrderCode),
               invoiceId: invoice.id,
               amount: invoice.amount,
               invoiceAmount: invoice.amount,
               status: "PROCESSED",
+              rawPayload: paymentInfo as any,
+              processedAt: new Date()
+            },
+            update: {
+              status: "PROCESSED",
+              amount: invoice.amount,
+              invoiceAmount: invoice.amount,
               rawPayload: paymentInfo as any,
               processedAt: new Date()
             }

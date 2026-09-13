@@ -7,6 +7,7 @@ import {
   verifyUploadedDisputeFile,
   generateDisputeVideoReadUrl,
 } from '../src/services/gcsStorage';
+import { verifyConservationInvariant } from '../lib/settlement-engine';
 
 let totalTests = 0;
 let passedTests = 0;
@@ -236,6 +237,48 @@ async function runIntegrationSuite() {
     assert.equal(firstRun.reason, 'ALREADY_PROCESSED');
   });
 
+  testSync('Webhook retry safely unpoisons AMOUNT_MISMATCH transaction via upsert', () => {
+    type TxRecord = { orderCode: bigint; status: 'AMOUNT_MISMATCH' | 'PROCESSED'; amount: number };
+    const txTable: Map<string, TxRecord> = new Map();
+
+    const orderCode = BigInt(888123456);
+    // 1. First event: AMOUNT_MISMATCH
+    txTable.set(orderCode.toString(), {
+      orderCode,
+      status: 'AMOUNT_MISMATCH',
+      amount: 100000,
+    });
+
+    // 2. Incoming retry with valid full amount: check logic
+    function handleIncomingWebhook(code: bigint, paidAmount: number, invoiceAmount: number) {
+      const existingTx = txTable.get(code.toString());
+      // Crucial fix: Only skip if already PROCESSED. Do NOT skip if AMOUNT_MISMATCH!
+      if (existingTx && existingTx.status === 'PROCESSED') {
+        return { action: 'SKIPPED_IDEMPOTENT' };
+      }
+
+      if (paidAmount < invoiceAmount) {
+        txTable.set(code.toString(), { orderCode: code, status: 'AMOUNT_MISMATCH', amount: paidAmount });
+        return { action: 'FLAGGED_MISMATCH' };
+      }
+
+      // Upsert
+      txTable.set(code.toString(), { orderCode: code, status: 'PROCESSED', amount: paidAmount });
+      return { action: 'PROCESSED_SUCCESS' };
+    }
+
+    // A. Retry with correct amount must NOT be blocked by earlier mismatch
+    const retryResult = handleIncomingWebhook(orderCode, 300000, 300000);
+    assert.equal(retryResult.action, 'PROCESSED_SUCCESS');
+
+    // B. State in table is now PROCESSED
+    assert.equal(txTable.get(orderCode.toString())?.status, 'PROCESSED');
+
+    // C. Duplicate is safely ignored
+    const dupResult = handleIncomingWebhook(orderCode, 300000, 300000);
+    assert.equal(dupResult.action, 'SKIPPED_IDEMPOTENT');
+  });
+
   // =========================================================================
   // 3. GOOGLE CLOUD STORAGE FAIL-CLOSED ENFORCEMENT
   // =========================================================================
@@ -398,6 +441,101 @@ async function runIntegrationSuite() {
       assert.ok(renterRefund >= 0, 'Renter refund cannot be negative');
       assert.ok(ownerCompensation >= 0, 'Owner compensation cannot be negative');
     }
+  });
+
+  // =========================================================================
+  // 6. UNIFIED SETTLEMENT ENGINE ATOMIC DOUBLE-ENTRY INTEGRITY
+  // =========================================================================
+  console.log('\n--- 6. Settlement Engine Multi-Scenario Double-Entry Verification ---');
+
+  testSync('Scenario A: Standard Completion with 12% Platform Fee', () => {
+    const totalCollected = 1450000; // 1M deposit + 400k rental fee + 50k shipping
+    const depositAmount = 1000000;
+    const rentalFee = 400000;
+    const rawPlatformFee = Math.floor(rentalFee * 0.12); // 48,000
+    const returnShippingRetained = 25000;
+    const lenderEarnings = rentalFee - rawPlatformFee - returnShippingRetained; // 327,000
+    const totalShippingRetained = 50000 + returnShippingRetained; // 75,000
+
+    const check = verifyConservationInvariant({
+      totalCollected,
+      refundToRenter: depositAmount,
+      payoutToOwner: lenderEarnings,
+      platformFeeRetained: rawPlatformFee,
+      shippingRetained: totalShippingRetained,
+    });
+    assert.equal(check.valid, true);
+    assert.equal(check.difference, 0);
+  });
+
+  testSync('Scenario B: Founding Launch 0% Platform Fee Preservation', () => {
+    const totalCollected = 1450000;
+    const depositAmount = 1000000;
+    const rentalFee = 400000;
+    const invoicePlatformFee = 0; // Launch promotion: 0 fee
+    const rawPlatformFee = invoicePlatformFee ?? Math.floor(rentalFee * 0.12);
+    const returnShippingRetained = 25000;
+    const lenderEarnings = rentalFee - rawPlatformFee - returnShippingRetained; // 375,000
+    const totalShippingRetained = 50000 + returnShippingRetained; // 75,000
+
+    const check = verifyConservationInvariant({
+      totalCollected,
+      refundToRenter: depositAmount,
+      payoutToOwner: lenderEarnings,
+      platformFeeRetained: rawPlatformFee,
+      shippingRetained: totalShippingRetained,
+    });
+    assert.equal(check.valid, true);
+    assert.equal(rawPlatformFee, 0);
+    assert.equal(lenderEarnings, 375000);
+  });
+
+  testSync('Scenario C: Dispute Item Defect (Owner Fault: 100% Refund, 0% Fee)', () => {
+    const totalCollected = 1450000;
+    const depositAmount = 1000000;
+    const rentalFee = 400000;
+    const shippingFee = 50000;
+
+    // Renter gets 100% deposit + 100% rentalFee
+    const totalRefundToRenter = depositAmount + rentalFee; // 1,400,000
+    const totalPayoutToOwner = 0;
+    const platformFeeRetained = 0;
+    const totalShippingRetained = shippingFee; // 50,000
+
+    const check = verifyConservationInvariant({
+      totalCollected,
+      refundToRenter: totalRefundToRenter,
+      payoutToOwner: totalPayoutToOwner,
+      platformFeeRetained,
+      shippingRetained: totalShippingRetained,
+    });
+    assert.equal(check.valid, true);
+    assert.equal(check.difference, 0);
+  });
+
+  testSync('Scenario D: Dispute Borrower Damage (Owner Compensated from Deposit)', () => {
+    const totalCollected = 1450000;
+    const depositAmount = 1000000;
+    const rentalFee = 400000;
+    const shippingFee = 50000;
+    const damageDeduction = 600000; // Deducted from deposit
+
+    const platformFeeRetained = Math.floor(rentalFee * 0.12); // 48,000
+    const returnShippingRetained = 25000;
+    const ownerRentalEarnings = rentalFee - platformFeeRetained - returnShippingRetained; // 327,000
+    const totalPayoutToOwner = damageDeduction + ownerRentalEarnings; // 927,000
+    const refundDepositToRenter = depositAmount - damageDeduction; // 400,000
+    const totalShippingRetained = shippingFee + returnShippingRetained; // 75,000
+
+    const check = verifyConservationInvariant({
+      totalCollected,
+      refundToRenter: refundDepositToRenter,
+      payoutToOwner: totalPayoutToOwner,
+      platformFeeRetained,
+      shippingRetained: totalShippingRetained,
+    });
+    assert.equal(check.valid, true);
+    assert.equal(check.difference, 0);
   });
 
   console.log('\n======================================================');

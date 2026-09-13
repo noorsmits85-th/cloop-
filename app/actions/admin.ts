@@ -4,6 +4,7 @@ import { prisma } from "@/src/lib/prisma";
 import { createClient } from "@/src/utils/supabase/server";
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { revalidatePath } from "next/cache";
+import { settleCompletedRentalOrder } from "@/lib/settlement-engine";
 
 // Hàm tiện ích để check quyền Admin
 export async function requireAdmin() {
@@ -121,110 +122,9 @@ export async function releaseSingleEscrowOrderAction(rentalId: string) {
   try {
     const admin = await requireAdmin();
 
-    const rental = await prisma.rentalHistory.findUnique({
-      where: { id: rentalId },
-      include: {
-        invoice: true,
-        renter: true,
-        product: { select: { id: true, title: true, userId: true } }
-      }
-    });
-
-    if (!rental) {
-      return { success: false, error: "Không tìm thấy đơn hàng." };
-    }
-
-    const depositAmount = rental.invoice?.depositAmount || 1000000;
-    const rentalFee = rental.invoice?.rentalFee || (rental.invoice?.amount ? Math.max(0, rental.invoice.amount - depositAmount) : 350000);
-    const platformFee = Math.floor(rentalFee * 0.12);
-    
-    // Mô hình San Sẻ Vận Chuyển 50/50: Chủ tủ chịu cước chiều về (Thu hồi tài sản) 25.000₫
-    const returnShippingFee = rental.shippingCode ? 25000 : 0;
-    const lenderEarnings = Math.max(0, rentalFee - platformFee - returnShippingFee);
-    const invoiceId = rental.invoice?.id;
-
-    await prisma.$transaction(async (tx) => {
-      // 1. Cập nhật trạng thái đơn thành LENDER_COMPLETED
-      await tx.rentalHistory.update({
-        where: { id: rentalId },
-        data: {
-          status: "LENDER_COMPLETED",
-          completedAt: new Date()
-        }
-      });
-
-      // 2. Hoàn cọc 100% cho khách thuê
-      if (depositAmount > 0) {
-        await tx.user.update({
-          where: { id: rental.renterId },
-          data: {
-            walletBalance: { increment: depositAmount },
-            cloopCoins: { increment: 15 }
-          }
-        });
-
-        if (invoiceId) {
-          await tx.ledgerTransaction.create({
-            data: {
-              invoiceId,
-              type: "REFUND_OUT",
-              amount: depositAmount,
-              description: `[Escrow Settlement] Hoàn 100% cọc đơn #${rental.id.slice(0, 8)} cho khách thuê`
-            }
-          });
-        }
-      }
-
-      // 3. Trả tiền thuê cho chủ đồ (đã trừ 12% phí sàn & 25k cước chiều về)
-      const ownerId = rental.ownerId || rental.product?.userId;
-      if (ownerId && lenderEarnings > 0) {
-        await tx.user.update({
-          where: { id: ownerId },
-          data: {
-            walletBalance: { increment: lenderEarnings }
-          }
-        });
-
-        if (invoiceId) {
-          await tx.ledgerTransaction.create({
-            data: {
-              invoiceId,
-              type: "PAYOUT_OUT",
-              amount: lenderEarnings,
-              description: `[Escrow Settlement] Chi trả tiền thuê đơn #${rental.id.slice(0, 8)} cho chủ tủ (Đã trừ phí sàn 12% & ship chiều về 25k)`
-            }
-          });
-          await tx.ledgerTransaction.create({
-            data: {
-              invoiceId,
-              type: "FEE_RETAINED",
-              amount: platformFee,
-              description: `[Escrow Settlement] Phí dịch vụ 12% giữ lại nền tảng đơn #${rental.id.slice(0, 8)}`
-            }
-          });
-          if (returnShippingFee > 0) {
-            await tx.ledgerTransaction.create({
-              data: {
-                invoiceId,
-                type: "SHIPPING_RETAINED",
-                amount: returnShippingFee,
-                description: `[Escrow Settlement] Cước GHN chiều về thu hồi đồ đơn #${rental.id.slice(0, 8)}`
-              }
-            });
-          }
-        }
-      }
-
-      // 4. Ghi vết Audit Log
-      await tx.auditLog.create({
-        data: {
-          adminId: admin.id,
-          action: "ESCROW_SETTLEMENT",
-          targetType: "RENTAL",
-          targetId: rental.id,
-          metadata: JSON.stringify({ depositAmount, rentalFee, lenderEarnings, platformFee, returnShippingFee })
-        }
-      });
+    const result = await settleCompletedRentalOrder(rentalId, {
+      actorId: admin.id,
+      actorRole: "ADMIN",
     });
 
     revalidatePath("/admin");
@@ -234,7 +134,7 @@ export async function releaseSingleEscrowOrderAction(rentalId: string) {
 
     return {
       success: true,
-      message: `Đã hoàn tất giải ngân đơn #${rental.id.slice(0, 8)}! Hoàn cọc: ${depositAmount.toLocaleString()}₫ | Trả chủ tủ: ${lenderEarnings.toLocaleString()}₫`
+      message: `Đã hoàn tất giải ngân đơn #${rentalId.slice(0, 8)}! Hoàn cọc: ${result.depositRefunded.toLocaleString()}₫ | Trả chủ tủ: ${result.lenderEarnings.toLocaleString()}₫`
     };
   } catch (error: any) {
     return { success: false, error: error.message || "Lỗi khi giải ngân đơn hàng." };
@@ -242,67 +142,35 @@ export async function releaseSingleEscrowOrderAction(rentalId: string) {
 }
 
 /**
- * ⚡ KÍCH HOẠT NHẢ TIỀN TOÀN BỘ KÉT ESCROW HÀNG LOẠT
+ * ⚡ KÍCH HOẠT NHẢ TIỀN TOÀN BỘ KÉT ESCROW HÀNG LOẠT (TẠM KHÓA TRONG GIAI ĐOẠN MVP/PILOT)
  */
-export async function triggerFastEscrowReleaseAction(options?: { minutesThreshold?: number }) {
-  try {
-    await requireAdmin();
-
-    const eligibleRentals = await prisma.rentalHistory.findMany({
-      where: {
-        status: { in: ["BORROWER_RETURNED", "BORROWER_RECEIVED", "LENDER_SHIPPED"] },
-        disputes: {
-          none: {
-            status: { in: ["PENDING_REVIEW", "DISPUTED"] },
-          },
-        },
-      },
-      include: {
-        invoice: true,
-        renter: true,
-        product: true
-      },
-      take: 20
-    });
-
-    if (eligibleRentals.length === 0) {
-      return {
-        success: true,
-        message: "Hiện chưa có đơn thuê nào cần giải ngân (Tất cả đơn đều đã hoàn tất).",
-        processedCount: 0,
-        totalRefunded: 0,
-        totalPayout: 0
-      };
-    }
-
-    let processedCount = 0;
-    let totalRefunded = 0;
-    let totalPayout = 0;
-
-    for (const rental of eligibleRentals) {
-      const res = await releaseSingleEscrowOrderAction(rental.id);
-      if (res.success) {
-        processedCount++;
-      }
-    }
-
-    revalidatePath("/admin");
-    return {
-      success: true,
-      message: `Đã nhả tiền & giải ngân thành công cho ${processedCount} đơn hàng!`,
-      processedCount
-    };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Lỗi khi kích hoạt giải ngân Escrow." };
-  }
+export async function triggerFastEscrowReleaseAction(options?: { minutesThreshold?: number }): Promise<{
+  success: boolean;
+  message?: string;
+  error?: string;
+  processedCount: number;
+  totalRefunded: number;
+  totalPayout: number;
+}> {
+  return {
+    success: false,
+    error: "Tính năng giải ngân hàng loạt tạm thời bị vô hiệu hóa trong giai đoạn MVP/Pilot để đảm bảo kiểm soát dòng tiền và tránh giải ngân sai trạng thái.",
+    processedCount: 0,
+    totalRefunded: 0,
+    totalPayout: 0
+  };
 }
 
 /**
- * 🌟 SEED MẪU DỮ LIỆU ĐƠN HÀNG VẬN HÀNH THỰC TẾ
+ * 🌟 SEED MẪU DỮ LIỆU ĐƠN HÀNG VẬN HÀNH THỰC TẾ (DEV / DEMO ONLY)
  */
 export async function seedOperationalOrdersAction() {
   try {
     const admin = await requireAdmin();
+
+    if (process.env.NODE_ENV === "production") {
+      return { success: false, error: "Hành động seed dữ liệu mẫu bị chặn tuyệt đối trên môi trường Production." };
+    }
 
     // 1. Tìm hoặc tạo các sản phẩm mẫu
     const products = await prisma.product.findMany({

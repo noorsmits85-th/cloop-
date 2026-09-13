@@ -4,6 +4,7 @@ import { DamageSeverity } from "@prisma/client";
 import { prisma } from "@/src/lib/prisma";
 import { requireUser, requireAdmin } from "@/src/lib/auth";
 import { generateDisputeVideoReadUrl } from "@/src/services/gcsStorage";
+import { settleDisputedRentalOrder } from "@/lib/settlement-engine";
 
 export type DamageCategory = "WEAR_AND_TEAR" | "REPAIRABLE_DAMAGE" | "TOTAL_LOSS";
 
@@ -163,7 +164,7 @@ export async function createDispute(data: {
 
 /**
  * ⚖️ RESOLVE DISPUTE WITH FULL DOUBLE-ENTRY FINANCIAL SETTLEMENT
- * Kiểm tra chặt chẽ tiền cọc, ghi sổ cái LedgerTransaction, cập nhật ví chủ đồ và hoàn cọc cho khách.
+ * Kiểm tra chặt chẽ tiền cọc, ghi sổ cái LedgerTransaction, cập nhật ví chủ đồ và hoàn cọc cho khách qua Settlement Engine.
  */
 export async function resolveDispute(data: {
   disputeId: string;
@@ -174,136 +175,18 @@ export async function resolveDispute(data: {
     const { profile: admin } = await requireAdmin();
     if (!admin) throw new Error("Unauthorized Admin");
 
-    // 1. Kiểm tra tranh chấp và giá trị cọc hợp lệ
-    const targetDispute = await prisma.dispute.findUnique({
-      where: { id: data.disputeId },
-      include: {
-        rental: {
-          include: {
-            invoice: true,
-            product: true,
-          },
-        },
+    const result = await settleDisputedRentalOrder(
+      {
+        disputeId: data.disputeId,
+        finalDeduction: data.finalDeduction,
+        adminId: admin.id,
+        adminNotes: data.adminNotes,
       },
-    });
-
-    if (!targetDispute) {
-      return { success: false, error: "Không tìm thấy hồ sơ khiếu nại." };
-    }
-
-    if (targetDispute.status !== "PENDING_REVIEW" && targetDispute.status !== "DISPUTED") {
-      return { success: false, error: "Khiếu nại này đã được xử lý trước đó (Idempotent lock)." };
-    }
-
-    const depositAmount = targetDispute.rental?.invoice?.depositAmount || 0;
-    if (data.finalDeduction < 0) {
-      return { success: false, error: "Số tiền khấu trừ không thể âm." };
-    }
-    if (data.finalDeduction > depositAmount) {
-      return {
-        success: false,
-        error: `Số tiền khấu trừ (${data.finalDeduction.toLocaleString("vi-VN")}đ) không được vượt quá số tiền cọc (${depositAmount.toLocaleString("vi-VN")}đ).`,
-      };
-    }
-
-    const refundAmount = depositAmount - data.finalDeduction;
-    const rental = targetDispute.rental;
-    const invoice = rental.invoice;
-    const ownerId = rental.ownerId || rental.product?.userId;
-
-    const result = await prisma.$transaction(async (tx) => {
-      // 1. Cập nhật trạng thái Dispute
-      const updatedDispute = await tx.dispute.update({
-        where: { id: data.disputeId },
-        data: {
-          finalDeduction: data.finalDeduction,
-          adminNotes: data.adminNotes,
-          status: "APPROVED_DEDUCTION",
-        },
-      });
-
-      // 2. GHI SỔ CÁI KẾ TOÁN (LEDGER TRANSACTIONS)
-      // 2a. Nếu có bồi thường hư hại cho chủ tủ
-      if (data.finalDeduction > 0) {
-        await tx.ledgerTransaction.create({
-          data: {
-            invoiceId: invoice?.id,
-            type: "COMPENSATION_OUT",
-            amount: data.finalDeduction,
-            description: `Bồi thường thiệt hại cho chủ tủ từ tiền cọc đơn ${rental.id}`,
-            adminId: admin.id,
-            status: "COMPLETED",
-          },
-        });
-
-        // Cộng tiền bồi thường vào số dư ví của Chủ đồ
-        if (ownerId) {
-          await tx.user.update({
-            where: { id: ownerId },
-            data: {
-              walletBalance: { increment: data.finalDeduction },
-            },
-          });
-        }
+      {
+        actorId: admin.id,
+        actorRole: "ADMIN",
       }
-
-      // 2b. Nếu có hoàn cọc phần còn lại cho khách thuê
-      if (refundAmount > 0) {
-        await tx.ledgerTransaction.create({
-          data: {
-            invoiceId: invoice?.id,
-            type: "REFUND_OUT",
-            amount: refundAmount,
-            description: `Hoàn trả cọc còn lại cho khách thuê đơn ${rental.id}`,
-            adminId: admin.id,
-            status: "COMPLETED",
-          },
-        });
-      }
-
-      // 3. Cập nhật trạng thái Hóa đơn
-      if (invoice?.id) {
-        await tx.invoice.update({
-          where: { id: invoice.id },
-          data: {
-            status: "PAID",
-            payosStatus: "RESOLVED",
-          },
-        });
-      }
-
-      // 4. Cập nhật trạng thái Đơn thuê hoàn tất
-      await tx.rentalHistory.update({
-        where: { id: rental.id },
-        data: {
-          status: "LENDER_COMPLETED",
-          completedAt: new Date(),
-          actual_return_date: rental.actual_return_date || new Date(),
-        },
-      });
-
-      // 5. GHI AUDIT LOG ĐẦY ĐỦ METADATA TÀI CHÍNH
-      await tx.auditLog.create({
-        data: {
-          adminId: admin.id,
-          action: "RESOLVE_DISPUTE_SETTLEMENT",
-          targetType: "DISPUTE",
-          targetId: data.disputeId,
-          beforeStatus: "PENDING_REVIEW",
-          afterStatus: "APPROVED_DEDUCTION",
-          metadata: JSON.stringify({
-            finalDeduction: data.finalDeduction,
-            refundAmount,
-            depositAmount,
-            ownerId,
-            renterId: rental.renterId,
-            adminNotes: data.adminNotes,
-          }),
-        },
-      });
-
-      return updatedDispute;
-    });
+    );
 
     return { success: true, dispute: result };
   } catch (error: unknown) {

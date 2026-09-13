@@ -62,7 +62,7 @@ export async function processReconciliation(
 
     const invoice = await prisma.invoice.findUnique({ where: { id: invoiceId } });
     const shippingFee = invoice?.shippingFeeCollected || 0;
-    const platformFee = invoice?.platformFee && invoice.platformFee > 0 ? invoice.platformFee : FLAT_FEE;
+    const platformFee = invoice?.platformFee !== undefined && invoice?.platformFee !== null ? invoice.platformFee : FLAT_FEE;
 
     const totalIn = depositIn.amount;
     const totalOut = refundAmount + payoutAmount + platformFee + compensationAmount + shippingFee;
@@ -173,14 +173,45 @@ export async function processReconciliation(
         }
       });
 
-      // Cập nhật trạng thái RentalHistory thành "LENDER_COMPLETED"
-      const invoice = await tx.invoice.findUnique({ where: { id: invoiceId } });
-      if (invoice) {
+      // Cập nhật ví và trạng thái RentalHistory thành "LENDER_COMPLETED"
+      const freshInvoice = await tx.invoice.findUnique({
+        where: { id: invoiceId },
+        include: { rental: { include: { product: true } } }
+      });
+      if (freshInvoice && freshInvoice.rental) {
+        if (refundAmount > 0) {
+          await tx.user.update({
+            where: { id: freshInvoice.rental.renterId },
+            data: { walletBalance: { increment: refundAmount } }
+          });
+        }
+        const ownerId = freshInvoice.rental.ownerId || freshInvoice.rental.product?.userId;
+        const totalOwnerPayout = payoutAmount + compensationAmount;
+        if (ownerId && totalOwnerPayout > 0) {
+          await tx.user.update({
+            where: { id: ownerId },
+            data: { walletBalance: { increment: totalOwnerPayout } }
+          });
+        }
         await tx.rentalHistory.update({
-          where: { id: invoice.rentalId },
-          data: { status: "LENDER_COMPLETED" }
+          where: { id: freshInvoice.rental.id },
+          data: { status: "LENDER_COMPLETED", completedAt: new Date() }
         });
+        if (freshInvoice.rental.product_id) {
+          await tx.listing.updateMany({
+            where: { productId: freshInvoice.rental.product_id, isDeleted: false },
+            data: { status: "AVAILABLE" }
+          });
+          await tx.product.update({
+            where: { id: freshInvoice.rental.product_id },
+            data: { status: "ON_MARKET" }
+          });
+        }
       }
+      await tx.invoice.update({
+        where: { id: invoiceId },
+        data: { payosStatus: "RESOLVED" }
+      });
     });
 
     return { success: true };

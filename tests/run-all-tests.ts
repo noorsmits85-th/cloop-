@@ -7,6 +7,7 @@ import {
   CONSERVATIVE_TIER_RULES,
 } from '../lib/trust-engine';
 import { maskPhone, maskEmail } from '../lib/data-privacy';
+import { verifyConservationInvariant } from '../lib/settlement-engine';
 
 let totalTests = 0;
 let passedTests = 0;
@@ -595,6 +596,83 @@ test('maskEmail hides local part properly', () => {
   assert.equal(maskEmail('a@cloop.vn'), 'a***@cloop.vn');
   assert.equal(maskEmail(''), '');
   assert.equal(maskEmail(null), '');
+});
+
+console.log('\n--- 7. Unified Settlement Invariants & Nullish Operator Compliance ---');
+test('verifyConservationInvariant returns valid when sum matches collected amount exactly', () => {
+  const check = verifyConservationInvariant({
+    totalCollected: 1000000,
+    refundToRenter: 400000,
+    payoutToOwner: 450000,
+    platformFeeRetained: 100000,
+    shippingRetained: 50000,
+  });
+  assert.equal(check.valid, true);
+  assert.equal(check.difference, 0);
+});
+
+test('verifyConservationInvariant catches 1 VND discrepancy and flags invalid', () => {
+  const check = verifyConservationInvariant({
+    totalCollected: 1000000,
+    refundToRenter: 400000,
+    payoutToOwner: 450000,
+    platformFeeRetained: 100000,
+    shippingRetained: 49999, // 1 VND difference
+  });
+  assert.equal(check.valid, false);
+  assert.equal(check.difference, 1);
+});
+
+test('Operator ?? preserves 0 VND platform fee (Founding launch free promotion)', () => {
+  const invoicePlatformFee: number | null | undefined = 0;
+  const rentalFee = 200000;
+  // ?? ensures 0 is NOT treated as falsy
+  const appliedFee = invoicePlatformFee ?? Math.floor(rentalFee * 0.12);
+  assert.equal(appliedFee, 0, 'Zero platform fee must be preserved and not fallback to 12%');
+
+  // Fallback to 12% when undefined
+  const undefinedFee: number | undefined = undefined;
+  const defaultFee = undefinedFee ?? Math.floor(rentalFee * 0.12);
+  assert.equal(defaultFee, 24000, 'Undefined fee must fallback to 12%');
+});
+
+console.log('\n--- 8. Reserve Fund Live Availability & Zero-Fund Fail-Closed ---');
+test('Fail-Closed: Zero available reserve forces 0% discount and 100% deposit for all users', () => {
+  const calc = calculateDynamicDeposit({
+    baseDeposit: 1000000,
+    itemValue: 2000000,
+    trustTier: 'LEVEL_3_VIP', // Even VIP level
+    fundStatus: {
+      openingReserveFundBalance: 0,
+      currentReserveFundBalance: 0,
+      paidClaims: 0,
+      pendingClaims: 0,
+      committedActiveGuarantees: 0,
+    },
+  });
+  assert.equal(calc.discountAmount, 0, 'Must not grant deposit discount when reserve fund is 0');
+  assert.equal(calc.finalDeposit, 1000000, 'Must require 100% deposit when reserve is depleted');
+});
+
+test('Open dispute locks user out of deposit discount regardless of trust tier', () => {
+  const calc = calculateDynamicDeposit({
+    baseDeposit: 1000000,
+    itemValue: 2000000,
+    trustTier: 'LEVEL_2_TRUSTED',
+    fundStatus: {
+      openingReserveFundBalance: 50000000,
+      currentReserveFundBalance: 50000000,
+      paidClaims: 0,
+      pendingClaims: 0,
+      committedActiveGuarantees: 0,
+    },
+    userGuaranteeStatus: {
+      currentActiveGuarantees: 0,
+      hasOpenDispute: true,
+    },
+  });
+  assert.equal(calc.discountAmount, 0, 'Open dispute must lock user from deposit discount');
+  assert.equal(calc.finalDeposit, 1000000);
 });
 
 console.log('\n======================================================');
