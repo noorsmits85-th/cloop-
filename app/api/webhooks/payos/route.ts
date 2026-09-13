@@ -89,14 +89,17 @@ export async function POST(req: Request) {
             return;
           }
 
-          const isKycPackage = coinTopUp.packageCode === "KYC_1K";
+          const isKycPackage = coinTopUp.packageCode === "KYC_1K" || coinTopUp.packageCode === "KYC_2K";
           const updatedUser = await tx.user.update({
             where: { id: coinTopUp.userId },
             data: {
               cloopCoins: { increment: coinTopUp.totalCoins },
-              ...(isKycPackage ? { isVerified: true } : {}),
+              ...(isKycPackage ? { 
+                isVerified: true,
+                walletBalance: { increment: coinTopUp.amountVnd } 
+              } : {}),
             },
-            select: { cloopCoins: true }
+            select: { cloopCoins: true, walletBalance: true }
           });
 
           await tx.coinLedgerEntry.create({

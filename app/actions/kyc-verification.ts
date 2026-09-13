@@ -81,15 +81,15 @@ export async function createMicroKycPaymentAction(
 
     const orderCode = generatePayOSOrderCode();
 
-    // Tạo bản ghi CoinTopUp với gói KYC_1K (1.000đ -> 20 Xu Xanh)
+    // Tạo bản ghi CoinTopUp với gói KYC_2K (2.000đ -> hoàn 2.000đ vào ví có thể rút)
     const topUp = await prisma.coinTopUp.create({
       data: {
         userId: authUser.id,
-        packageCode: "KYC_1K",
+        packageCode: "KYC_2K",
         orderCode: BigInt(orderCode),
-        amountVnd: 1000,
-        baseCoins: 10,
-        bonusCoins: 10,
+        amountVnd: 2000,
+        baseCoins: 20,
+        bonusCoins: 0,
         totalCoins: 20,
         status: "PENDING",
         rawPayload: { phone: normalizedPhone, purpose: "EKYC_MICRO_DEPOSIT" },
@@ -106,7 +106,7 @@ export async function createMicroKycPaymentAction(
 
     const body = {
       orderCode: orderCode,
-      amount: 1000,
+      amount: 2000,
       description: payosDescription,
       returnUrl: `${DOMAIN}/my-closet/profile?status=kyc_success&orderCode=${orderCode}`,
       cancelUrl: `${DOMAIN}/my-closet/profile?status=kyc_cancel&orderCode=${orderCode}`,
@@ -196,14 +196,15 @@ export async function checkMicroKycStatusAction(orderCode: number, phone?: strin
 
             if (updateResult.count === 0) return;
 
-            // Nâng hạng xác thực và cộng 20 Xu Xanh vào ví
+            // Nâng hạng xác thực và cộng 2.000đ vào Số dư Ví (rút được)
             const updatedUser = await tx.user.update({
               where: { id: topUp.userId },
               data: {
                 isVerified: true,
+                walletBalance: { increment: topUp.amountVnd },
                 cloopCoins: { increment: topUp.totalCoins },
               },
-              select: { cloopCoins: true },
+              select: { cloopCoins: true, walletBalance: true },
             });
 
             // Ghi chép vào Sổ cái Xu minh bạch
@@ -214,7 +215,7 @@ export async function checkMicroKycStatusAction(orderCode: number, phone?: strin
                 type: "TOP_UP_IN",
                 amount: topUp.totalCoins,
                 balanceAfter: updatedUser.cloopCoins,
-                description: `Hoàn tiền 200% Định danh VietQR eKYC (+${topUp.totalCoins} Xu Xanh)`,
+                description: `Hoàn 100% Phí Định danh VietQR eKYC vào Ví (+${topUp.amountVnd.toLocaleString("vi-VN")}₫)`,
                 metadata: {
                   orderCode: orderCode,
                   amountVnd: topUp.amountVnd,
@@ -234,7 +235,7 @@ export async function checkMicroKycStatusAction(orderCode: number, phone?: strin
                 data: {
                   phone: normalizeVietnamPhone(savedPhone),
                   phone_verified: true,
-                  kyc_method: "VIETQR_EKYC_1K",
+                  kyc_method: "VIETQR_EKYC_2K",
                   kyc_verified_at: new Date().toISOString(),
                 },
               });

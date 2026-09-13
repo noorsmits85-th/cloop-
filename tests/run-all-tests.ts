@@ -792,6 +792,13 @@ test('KYC_1K Micro-Deposit package: 1,000 VND yields 20 coins (200% payback) for
   assert.equal(kycPkg.code, 'KYC_1K');
 });
 
+test('KYC_2K Micro-Deposit package: 2,000 VND bank transfer requirement for eKYC with 100% wallet refund', () => {
+  const kycPkg = COIN_PACKAGES.KYC_2K;
+  assert.ok(kycPkg, 'KYC_2K package must be defined');
+  assert.equal(kycPkg.amountVnd, 2000, 'Micro-deposit amount must be 2,000 VND for banking compliance');
+  assert.equal(kycPkg.code, 'KYC_2K');
+});
+
 test('VietQR eKYC Verification: isVerified: true elevates user to phoneVerified (+10 PTS)', () => {
   const unverifiedScore = calculateUserTrustScoreFromData({
     isVerified: false,

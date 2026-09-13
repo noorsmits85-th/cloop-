@@ -30,7 +30,8 @@ import {
   QrCode,
   Coins,
   ArrowRight,
-  Download
+  Download,
+  Wallet
 } from "lucide-react";
 import { TRUST_TIERS, type TrustScoreBreakdown } from "@/lib/trust-types";
 import { updateUserProfileWithValidation } from "@/app/actions/user";
@@ -686,7 +687,7 @@ export function ProfileClient({
                     )}
                   </div>
                   <span className="text-[10px] text-stone-400 font-mono">
-                    {isPhoneVerified ? maskPhoneNumber(currentPhone) : "Định danh cấp ngân hàng • Hoàn 200% vào ví"}
+                    {isPhoneVerified ? maskPhoneNumber(currentPhone) : "Định danh cấp ngân hàng • Hoàn 2.000đ vào ví rút được"}
                   </span>
                 </div>
               </div>
@@ -857,7 +858,7 @@ export function ProfileClient({
                     <div className="flex items-start gap-2 text-emerald-950">
                       <ShieldCheck size={16} className="text-emerald-700 shrink-0 mt-0.5" />
                       <div>
-                        <strong className="block text-stone-900 font-bold">Vì sao xác thực bằng giao dịch 1.000đ?</strong>
+                        <strong className="block text-stone-900 font-bold">Vì sao xác thực bằng giao dịch 2.000đ?</strong>
                         <p className="text-stone-600 text-[11px] leading-relaxed font-light mt-0.5">
                           Theo <strong>Quyết định 2345/QĐ-NHNN</strong>, 100% tài khoản ngân hàng tại Việt Nam đều đã được đối soát CCCD gắn chip và sinh trắc học. Đây là cách nhanh nhất để xác minh người dùng thật mà <strong>không cần bạn phải chụp ảnh CCCD gửi lên mạng</strong> (tuân thủ Luật 91/2025/QH15).
                         </p>
@@ -865,21 +866,11 @@ export function ProfileClient({
                     </div>
 
                     <div className="flex items-start gap-2 text-emerald-950 pt-2 border-t border-stone-200/60">
-                      <Coins size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                      <Wallet size={16} className="text-emerald-700 shrink-0 mt-0.5" />
                       <div>
-                        <strong className="block text-stone-900 font-bold">Cam kết Hoàn tiền 200% vào Ví CLOOP:</strong>
+                        <strong className="block text-stone-900 font-bold">Cam kết Hoàn trả 2.000đ ngay vào Ví CLOOP:</strong>
                         <p className="text-stone-600 text-[11px] leading-relaxed font-light mt-0.5">
-                          1.000đ chuyển khoản sẽ được nạp <strong>100% vào ví</strong> và được sàn <strong>tặng thêm 10 Xu Xanh (tổng nhận 20 Xu Xanh = 2.000đ)</strong>. Bạn hoàn toàn không mất tiền, số xu này được trừ trực tiếp khi bạn thuê váy áo!
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-2 text-emerald-950 pt-2 border-t border-stone-200/60">
-                      <Sparkles size={16} className="text-teal-600 shrink-0 mt-0.5" />
-                      <div>
-                        <strong className="block text-stone-900 font-bold">Tự động 100% & Nhận điểm Tín nhiệm:</strong>
-                        <p className="text-stone-600 text-[11px] leading-relaxed font-light mt-0.5">
-                          Quét mã VietQR trên app ngân hàng bất kỳ, hệ thống nhận diện sau 1-3 giây, tự động cộng <strong>+10 PTS</strong> và mở khóa đặc quyền giảm cọc.
+                          2.000đ xác thực sẽ được hoàn trả ngay <strong>100% vào Số dư Ví CLOOP</strong> của bạn sau khi quét mã thành công. Bạn hoàn toàn không mất tiền và có thể <strong>rút về tài khoản ngân hàng bất kỳ lúc nào</strong>!
                         </p>
                       </div>
                     </div>
@@ -898,7 +889,7 @@ export function ProfileClient({
                     ) : (
                       <>
                         <QrCode size={14} />
-                        <span>Tạo Mã VietQR Định Danh (1.000đ)</span>
+                        <span>Tạo Mã VietQR Định Danh (2.000đ)</span>
                         <ArrowRight size={14} />
                       </>
                     )}
@@ -921,15 +912,15 @@ export function ProfileClient({
                     {kycPaymentData.qrCode ? (
                       <div className="inline-block bg-white p-2.5 rounded-2xl border border-stone-200 shadow-xs">
                         <img 
-                          src={kycPaymentData.qrCode.startsWith("data:") ? kycPaymentData.qrCode : `https://api.vietqr.io/image/${kycPaymentData.bin}-${kycPaymentData.accountNumber}-compact2.jpg?amount=1000&addInfo=${encodeURIComponent(`KYC CLOOP ${kycPaymentData.orderCode?.toString().slice(-6)}`)}&accountName=${encodeURIComponent(kycPaymentData.accountName || "CLOOP")}`}
-                          alt="VietQR eKYC 1000d"
+                          src={kycPaymentData.qrCode.startsWith("data:") ? kycPaymentData.qrCode : `https://api.vietqr.io/image/${kycPaymentData.bin}-${kycPaymentData.accountNumber}-compact2.jpg?amount=2000&addInfo=${encodeURIComponent(`KYC CLOOP ${kycPaymentData.orderCode?.toString().slice(-6)}`)}&accountName=${encodeURIComponent(kycPaymentData.accountName || "CLOOP")}`}
+                          alt="VietQR eKYC 2000d"
                           className="w-48 h-48 object-contain mx-auto rounded-xl"
                         />
                       </div>
                     ) : (
                       <div className="py-8 space-y-2">
                         <QrCode size={48} className="mx-auto text-emerald-800" />
-                        <p className="text-xs text-stone-600 font-bold">Chuyển khoản 1.000đ qua PayOS</p>
+                        <p className="text-xs text-stone-600 font-bold">Chuyển khoản 2.000đ qua PayOS</p>
                       </div>
                     )}
 
@@ -945,7 +936,7 @@ export function ProfileClient({
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-stone-500 text-[11px]">Số tiền nạp:</span>
-                        <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">1.000 đ (Nhận lại 20 Xu)</span>
+                        <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">2.000 đ (Hoàn 100% vào Ví - Rút được)</span>
                       </div>
                       <div className="flex justify-between items-center pt-1 border-t border-stone-100">
                         <span className="text-stone-500 text-[11px]">Nội dung CK:</span>
@@ -1034,7 +1025,7 @@ export function ProfileClient({
                       Định Danh Chính Chủ Thành Công!
                     </h4>
                     <p className="text-xs text-stone-500 font-light">
-                      Giao dịch VietQR eKYC 1.000đ đã được Ngân hàng & PayOS xác thực thành công.
+                      Giao dịch VietQR eKYC 2.000đ đã được Ngân hàng & PayOS xác thực thành công.
                     </p>
                   </div>
 
@@ -1048,8 +1039,8 @@ export function ProfileClient({
                       <strong className="font-mono text-stone-900">{maskPhoneNumber(currentPhone)}</strong>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-stone-600">Hoàn tiền vào Ví CLOOP:</span>
-                      <strong className="text-amber-700 font-mono font-bold">+20 Xu Xanh (2.000đ)</strong>
+                      <span className="text-stone-600">Hoàn trả vào Ví CLOOP:</span>
+                      <strong className="text-emerald-800 font-mono font-bold">+2.000đ (Có thể rút ngay)</strong>
                     </div>
                     <div className="flex items-center justify-between pt-1 border-t border-emerald-200/60">
                       <span className="text-stone-600">Đặc quyền mới:</span>

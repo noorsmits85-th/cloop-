@@ -44,7 +44,7 @@ export default async function AdminIdentityPage() {
         orderBy: { createdAt: 'desc' },
       },
       coinTopUps: {
-        where: { packageCode: "KYC_1K", status: "PAID" },
+        where: { packageCode: { in: ["KYC_1K", "KYC_2K"] }, status: "PAID" },
         take: 1,
         orderBy: { paidAt: 'desc' },
         select: {
