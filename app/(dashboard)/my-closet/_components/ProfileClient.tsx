@@ -17,7 +17,7 @@ import {
   Award,
   Lock
 } from "lucide-react";
-import { TRUST_TIERS, type TrustScoreBreakdown } from "@/lib/trust-engine";
+import { TRUST_TIERS, type TrustScoreBreakdown } from "@/lib/trust-types";
 import { updateUserProfileWithValidation } from "@/app/actions/user";
 
 export interface UserProfileData {

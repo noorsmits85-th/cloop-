@@ -45,18 +45,13 @@ export default function Header() {
             }
           } else {
             try {
-              const { data: uData } = await supabase
-                .from("profiles")
-                .select("*")
-                .eq("id", storedUserId)
-                .single();
-              if (uData) {
-                setProfile({
-                  full_name: uData.name || uData.full_name || "Thành viên CLOOP",
-                  username: uData.username || "cloop_user",
-                  avatar_url: uData.avatar_url || uData.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb"
-                });
-              }
+              const { data: { session } } = await supabase.auth.getSession();
+              const meta = session?.user?.user_metadata || {};
+              setProfile({
+                full_name: meta.name || meta.full_name || "Thành viên CLOOP",
+                username: meta.username || "cloop_user",
+                avatar_url: meta.avatar_url || meta.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb"
+              });
             } catch (err) {
               setProfile({
                 full_name: "Thành viên CLOOP",

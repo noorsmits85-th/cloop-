@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { Save, MapPin, CreditCard, Store } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { updateUserSettingsAction } from "@/app/actions/user";
 import { useRouter } from "next/navigation";
 
 export function SettingsClient({ userProfile }: { userProfile: any }) {
@@ -17,24 +17,21 @@ export function SettingsClient({ userProfile }: { userProfile: any }) {
     e.preventDefault();
     setIsSaving(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user?.id) throw new Error("Chưa đăng nhập");
+      const res = await updateUserSettingsAction({
+        pickup_address: address,
+        phone: phone,
+        bank_name: bankName,
+        bank_account: bankAccount,
+      });
 
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          pickup_address: address,
-          phone: phone,
-          bank_name: bankName,
-          bank_account: bankAccount
-        })
-        .eq("id", session.user.id);
-      
-      if (error) throw error;
+      if (!res.success) {
+        throw new Error(res.error);
+      }
+
       alert("Đã lưu thông tin cài đặt thành công!");
       router.refresh();
     } catch (err: any) {
-      alert("Lỗi lưu thông tin: " + err.message);
+      alert("Lỗi lưu thông tin: " + (err.message || err));
     } finally {
       setIsSaving(false);
     }

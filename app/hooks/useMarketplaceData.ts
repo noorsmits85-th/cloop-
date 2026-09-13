@@ -86,14 +86,9 @@ export function useMarketplaceData() {
 
         const productUserIds = [...new Set((pData || []).map((item: any) => item.userId || item.user_id).filter(Boolean))];
         let usersDataForProducts: any[] = [];
-        
         if (productUserIds.length > 0) {
-          // Giữ nguyên truy vấn 2 bảng "User" và "users" bằng Promise.all
-          const [res1, res2] = await Promise.all([
-            supabase.from("profiles").select("id, name").in("id", productUserIds),
-            supabase.from("profiles").select("id, name").in("id", productUserIds)
-          ]);
-          usersDataForProducts = [...(res1.data || []), ...(res2.data || [])];
+          const res = await supabase.from("User").select("id, name").in("id", productUserIds);
+          usersDataForProducts = res.data || [];
         }
 
         if (pData) {
@@ -208,12 +203,8 @@ export function useMarketplaceData() {
           
           let allBlogUsers: any[] = [];
           if (userIds.length > 0) {
-            // Giữ nguyên truy vấn 2 bảng
-            const [res1, res2] = await Promise.all([
-              supabase.from("profiles").select("id, name, avatar").in("id", userIds),
-              supabase.from("profiles").select("id, name, avatar").in("id", userIds)
-            ]);
-            allBlogUsers = [...(res1.data || []), ...(res2.data || [])];
+            const res = await supabase.from("User").select("id, name, avatar").in("id", userIds);
+            allBlogUsers = res.data || [];
           }
 
           const mappedBlogs = blogData.map((b: any) => {

@@ -5,7 +5,7 @@ import {
   MapPin, CreditCard, Truck, CheckCircle2, AlertCircle, 
   ChevronRight, X, Save, Loader2, ShieldCheck, Building2
 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { updateUserSettingsAction } from "@/app/actions/user";
 import { motion, AnimatePresence } from "framer-motion";
 
 const POPULAR_BANKS = [
@@ -58,21 +58,17 @@ export function SmartSellerOnboardingCard({ userProfile }: SmartSellerOnboarding
     e.preventDefault();
     setIsSaving(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const currentId = session?.user?.id || userProfile?.id;
-      if (!currentId) throw new Error("Vui lòng đăng nhập để lưu cấu hình.");
+      const res = await updateUserSettingsAction({
+        pickup_address: address,
+        phone: phone,
+        bank_name: bankName,
+        bank_account: bankAccount,
+        bank_owner: bankOwner,
+      });
 
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          pickup_address: address,
-          phone: phone,
-          bank_name: bankName,
-          bank_account: bankAccount,
-        })
-        .eq("id", currentId);
-
-      if (error) throw error;
+      if (!res.success) {
+        throw new Error(res.error);
+      }
 
       setSavedSuccess(true);
       setTimeout(() => {

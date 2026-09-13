@@ -82,12 +82,13 @@ export default function CreateBlogPostPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setCurrentUserId(session.user.id);
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("id, name, avatar, isVip")
-          .eq("id", session.user.id)
-          .maybeSingle();
-        if (profile) setUserProfile(profile);
+        const meta = session.user.user_metadata || {};
+        setUserProfile({
+          id: session.user.id,
+          name: meta.name || meta.full_name || "Thành viên CLOOP",
+          avatar: meta.avatar_url || meta.avatar || null,
+          isVip: false
+        });
 
         // Lấy danh sách đồ trong tủ của user để liên kết
         const { data: prods } = await supabase

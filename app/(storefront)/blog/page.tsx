@@ -246,8 +246,14 @@ export default function BlogJournalPage() {
   useEffect(() => {
     if (!currentUserId) return;
     async function fetchMyProfile() {
-      const { data } = await supabase.from("profiles").select("id, name, avatar, isVip").eq("id", currentUserId).maybeSingle();
-      if (data) setMyProfile(data);
+      const { data: { session } } = await supabase.auth.getSession();
+      const meta = session?.user?.user_metadata || {};
+      setMyProfile({
+        id: currentUserId!,
+        name: meta.name || meta.full_name || "Thành viên CLOOP",
+        avatar: meta.avatar_url || meta.avatar || undefined,
+        isVip: false
+      });
     }
     fetchMyProfile();
   }, [currentUserId]);

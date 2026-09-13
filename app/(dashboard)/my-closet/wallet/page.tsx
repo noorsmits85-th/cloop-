@@ -2,7 +2,6 @@ import React from "react";
 import { requireUser } from "@/src/lib/auth";
 import { WalletClient } from "../_components/WalletClient";
 import { prisma } from "@/src/lib/prisma";
-import { supabase } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -50,7 +49,6 @@ export default async function WalletPage({
     };
 
     const [
-      profRes,
       claimsRes,
       userProductsRes,
       fiveStarRes,
@@ -58,11 +56,6 @@ export default async function WalletPage({
       withdrawRes,
       invoicesRes
     ] = await Promise.allSettled([
-      supabase
-        .from("profiles")
-        .select("bank_name, bank_account, bank_owner, name")
-        .eq("id", userId)
-        .maybeSingle(),
       prisma.coinQuestClaim.findMany({
         where: { userId },
         select: { questCode: true }
@@ -122,7 +115,7 @@ export default async function WalletPage({
       })
     ]);
 
-    if (profRes.status === "fulfilled") profileRecord = profRes.value;
+    const meta = (userAuth as any).metadata || {};
     if (claimsRes.status === "fulfilled") claims = claimsRes.value || [];
     if (userProductsRes.status === "fulfilled" && Array.isArray(userProductsRes.value)) {
       productCount = userProductsRes.value.length;
@@ -137,10 +130,11 @@ export default async function WalletPage({
     console.error("⚠️ [WalletPage Data Fetch Error]:", fetchErr);
   }
 
+  const meta = (userAuth as any).metadata || {};
   const bankInfo = {
-    bankName: profileRecord?.data?.bank_name || "",
-    bankAccount: profileRecord?.data?.bank_account || "",
-    bankOwner: profileRecord?.data?.bank_owner || profileRecord?.data?.name || userProfile?.name || ""
+    bankName: meta.bank_name || "",
+    bankAccount: meta.bank_account || "",
+    bankOwner: meta.bank_owner || userProfile?.name || ""
   };
 
   const rawClaimedCodes = (claims || []).map(c => c.questCode);

@@ -57,6 +57,7 @@ export const requireUser = cache(async () => {
       avatar: user.user_metadata?.avatar_url || null,
       walletBalance: profile.walletBalance,
       cloopCoins: profile.cloopCoins,
+      metadata: user.user_metadata || {},
     };
   } catch (syncErr) {
     try {
@@ -79,6 +80,7 @@ export const requireUser = cache(async () => {
           avatar: user.user_metadata?.avatar_url || null,
           walletBalance: profile.walletBalance,
           cloopCoins: profile.cloopCoins,
+          metadata: user.user_metadata || {},
         };
       }
     } catch (_) {}
@@ -92,6 +94,7 @@ export const requireUser = cache(async () => {
     avatar: user.user_metadata?.avatar_url || null,
     walletBalance: 0,
     cloopCoins: 100,
+    metadata: user.user_metadata || {},
   };
 });
 

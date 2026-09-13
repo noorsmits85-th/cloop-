@@ -37,12 +37,11 @@ export async function updateUserProfileWithValidation(input: ProfileUpdateInput)
       },
     });
 
-    // 2. Cập nhật bảng profiles trong Supabase qua Server Session
+    // 2. Cập nhật user_metadata trong Supabase qua Server Session
     try {
       const supabase = await createClient();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase.from("profiles") as any)
-        .update({
+      await supabase.auth.updateUser({
+        data: {
           name: validated.name,
           username: validated.username || undefined,
           location: validated.location || undefined,
@@ -52,11 +51,10 @@ export async function updateUserProfileWithValidation(input: ProfileUpdateInput)
           avatar: validated.avatar || undefined,
           avatar_url: validated.avatar || undefined,
           coverImage: validated.coverImage || undefined,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", userAuth.id);
+        }
+      });
     } catch (sbErr) {
-      console.warn("Supabase profiles table sync warning:", sbErr);
+      console.warn("Supabase user metadata sync warning:", sbErr);
     }
 
     // 3. Cache Purge
@@ -104,6 +102,58 @@ export async function updateUserProfile(data: { name?: string; bio?: string; ava
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Không thể cập nhật hồ sơ.";
     console.error("Error updating user profile:", error);
+    return { success: false, error: message };
+  }
+}
+
+const SettingsSchema = z.object({
+  pickup_address: z.string().trim().max(300, "Địa chỉ tối đa 300 ký tự").optional().or(z.literal("")),
+  phone: z.string().trim().max(30, "Số điện thoại tối đa 30 ký tự").optional().or(z.literal("")),
+  bank_name: z.string().trim().max(100, "Tên ngân hàng tối đa 100 ký tự").optional().or(z.literal("")),
+  bank_account: z.string().trim().max(50, "Số tài khoản tối đa 50 ký tự").optional().or(z.literal("")),
+  bank_owner: z.string().trim().max(100, "Tên chủ tài khoản tối đa 100 ký tự").optional().or(z.literal("")),
+});
+
+export type UserSettingsInput = z.infer<typeof SettingsSchema>;
+
+export async function updateUserSettingsAction(input: UserSettingsInput) {
+  try {
+    const userAuth = await requireUser();
+    if (!userAuth) {
+      return { success: false, error: "Vui lòng đăng nhập để lưu cấu hình." };
+    }
+
+    const validated = SettingsSchema.parse(input);
+
+    try {
+      const supabase = await createClient();
+      await supabase.auth.updateUser({
+        data: {
+          pickup_address: validated.pickup_address,
+          phone: validated.phone,
+          bank_name: validated.bank_name,
+          bank_account: validated.bank_account,
+          bank_owner: validated.bank_owner,
+        }
+      });
+    } catch (sbErr) {
+      console.warn("Supabase user metadata sync warning:", sbErr);
+    }
+
+    try {
+      revalidatePath("/my-closet/settings");
+      revalidatePath("/my-closet/wallet");
+      revalidatePath("/my-closet");
+    } catch (e) {
+      console.error("Cache purge failed:", e);
+    }
+
+    return { success: true };
+  } catch (err: unknown) {
+    if (err instanceof z.ZodError) {
+      return { success: false, error: err.issues[0]?.message || "Dữ liệu không hợp lệ." };
+    }
+    const message = err instanceof Error ? err.message : "Không thể lưu cài đặt.";
     return { success: false, error: message };
   }
 }

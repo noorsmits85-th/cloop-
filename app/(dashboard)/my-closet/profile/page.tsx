@@ -1,6 +1,5 @@
 import React from "react";
 import { requireUser } from "@/src/lib/auth";
-import { supabase } from "@/lib/supabase";
 import { calculateUserTrustScore } from "@/lib/trust-engine";
 import { ProfileClient } from "../_components/ProfileClient";
 import ReviewSection from "@/app/(storefront)/closet/[userId]/_components/ReviewSection";
@@ -22,16 +21,26 @@ export default async function ProfilePage() {
   }
 
   const userId = userAuth.id;
+  const meta = (userAuth as any).metadata || {};
 
-  // Fetch user profile & Trust Stack data
-  const [{ data: userProfile }, trustBreakdown] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", userId)
-      .maybeSingle(),
-    calculateUserTrustScore(userId),
-  ]);
+  const userProfile = {
+    id: userId,
+    name: userAuth.name || meta.name || meta.full_name || "Thành viên CLOOP",
+    username: meta.username || userId.substring(0, 8),
+    location: meta.location || "Hà Nội, Việt Nam",
+    quote: meta.quote || "Lưu giữ ký ức qua từng chiếc váy.",
+    bio: meta.bio || "Mình là một người yêu thời trang vintage và những chuyến đi. Mình tin rằng mỗi món đồ đều có một câu chuyện đẹp để kể lại.",
+    todaysMemory: meta.todaysMemory || "Hôm nay mình vừa cho thuê chiếc váy đầu tiên trên CLOOP. Một khởi đầu thật đáng nhớ!",
+    avatar: userAuth.avatar || meta.avatar_url || meta.avatar || "",
+    coverImage: meta.coverImage || "",
+  };
+
+  let trustBreakdown;
+  try {
+    trustBreakdown = await calculateUserTrustScore(userId);
+  } catch (err) {
+    console.warn("calculateUserTrustScore error fallback:", err);
+  }
 
   return (
     <div className="min-h-screen bg-[#FAF9F5] py-8 px-4 sm:px-8 text-stone-800 antialiased">

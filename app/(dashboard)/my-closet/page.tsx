@@ -4,7 +4,6 @@ import Image from "next/image";
 import { Plus, Leaf, Droplet, Sprout } from "lucide-react";
 import { requireUser } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
-import { supabase } from "@/lib/supabase";
 import { SmartSellerOnboardingCard } from "./_components/SmartSellerOnboardingCard";
 import { DashboardChartsClient } from "./_components/DashboardChartsClient";
 import { redirect } from "next/navigation";
@@ -50,11 +49,20 @@ export default async function MyClosetOverviewPage() {
   });
   const sevenDaysAgo = past7Days[0].dateObj;
 
+  const meta = (userAuth as any).metadata || {};
+  const userProfile = {
+    id: userId,
+    pickup_address: meta.pickup_address || null,
+    phone: meta.phone || null,
+    bank_name: meta.bank_name || null,
+    bank_account: meta.bank_account || null,
+    bank_owner: meta.bank_owner || userAuth.name || null,
+  };
+
   // ⚡ TỐI ƯU SIÊU TỐC: Gom toàn bộ truy vấn song song (Parallel Fetching) & dùng userAuth trực tiếp
   const [
     products,
     dbMetrics,
-    profileRes,
     completedRentals,
     soldItems
   ] = await Promise.all([
@@ -63,11 +71,6 @@ export default async function MyClosetOverviewPage() {
       select: { category: true, material: true }
     }),
     getCachedEcoMetrics(),
-    supabase
-      .from("profiles")
-      .select("id, pickup_address, phone, bank_name, bank_account, bank_owner")
-      .eq("id", userId)
-      .maybeSingle(),
     prisma.rentalHistory.findMany({
       where: {
         product: { userId },
@@ -111,7 +114,6 @@ export default async function MyClosetOverviewPage() {
     })
   ]);
 
-  const userProfile = profileRes?.data;
   const cloopCoins = userAuth.cloopCoins || 0;
 
   // Convert array to Dictionary for fast lookup

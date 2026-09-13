@@ -32,12 +32,8 @@ export function useTopClosets() {
         
         let allTopUsers: any[] = [];
         if (userIds.length > 0) {
-          // Giữ nguyên truy vấn 2 bảng "User" và "users" bằng Promise.all
-          const [res1, res2] = await Promise.all([
-            supabase.from("profiles").select("id, name, avatar").in("id", userIds),
-            supabase.from("profiles").select("id, name, avatar").in("id", userIds)
-          ]);
-          allTopUsers = [...(res1.data || []), ...(res2.data || [])];
+          const res = await supabase.from("User").select("id, name, avatar").in("id", userIds);
+          allTopUsers = res.data || [];
         }
 
         const merged = ranked.map((r) => {

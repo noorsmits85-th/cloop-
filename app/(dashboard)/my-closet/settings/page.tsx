@@ -1,6 +1,5 @@
 import React from "react";
 import { requireUser } from "@/src/lib/auth";
-import { supabase } from "@/lib/supabase";
 import { SettingsClient } from "../_components/SettingsClient";
 import { redirect } from "next/navigation";
 
@@ -20,12 +19,17 @@ export default async function SettingsPage() {
   }
 
   const userId = userAuth.id;
+  const meta = (userAuth as any).metadata || {};
 
-  const { data: userProfile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", userId)
-    .maybeSingle();
+  const userProfile = {
+    id: userId,
+    name: userAuth.name || meta.name || "",
+    pickup_address: meta.pickup_address || "",
+    phone: meta.phone || "",
+    bank_name: meta.bank_name || "",
+    bank_account: meta.bank_account || "",
+    bank_owner: meta.bank_owner || userAuth.name || "",
+  };
 
   return (
     <div className="min-h-screen bg-[#FAF9F5] py-8 px-4 sm:px-8 text-stone-800 antialiased">
