@@ -2,7 +2,7 @@
 
 **Target Commit Baseline**: Cashflow Hardening & Dual-Entry Settlement Engine<br/>
 **Audit Verification Date**: September 13, 2026<br/>
-**Status**: Production & Pilot Ready (72/72 automated checks passed with live database connection; 71/72 passed with 1 skipped when offline)
+**Status**: MVP / Pilot Ready (Local/offline result: 71/72 passed, 1 skipped due unavailable Supabase PostgreSQL. Full live result target: 72/72 when connected to active test database)
 
 ---
 
@@ -134,20 +134,20 @@ INTEGRATION SUITE: 22 passed, 0 skipped, 0 failed (Total: 22)
 2. **ESLint Whole-Repo Verification**:
    ```bash
    npx eslint
-   # Exit code 0 (0 errors, 744 warnings retained from legacy untyped files)
+   # Exit code 0 (0 errors, 752 warnings retained from legacy untyped files)
    ```
    > [!NOTE]
-   > File cấu hình `eslint.config.mjs` đã chuyển các lỗi type legacy thành warnings để đảm bảo quy trình build không bị crash. Codebase hiện tại đạt 0 errors nhưng vẫn còn 744 warnings cần tiếp tục refactor dần về lâu dài.
+   > File cấu hình `eslint.config.mjs` đã chuyển các lỗi type legacy thành warnings để đảm bảo quy trình build không bị crash. Codebase hiện tại đạt 0 errors nhưng vẫn còn 752 warnings cần tiếp tục refactor dần về lâu dài.
 
 3. **Automated Unit & Integration Test Suite**:
    ```bash
    npm test
    # Unit tests: 50/50 PASSED
-   # Integration tests: 22/22 PASSED (hoặc 21 passed, 1 skipped khi offline không có DB)
-   # Tổng: 72/72 PASSED (hoặc 71/72 passed, 1 skipped)
+   # Integration tests: 21/22 PASSED, 1 SKIPPED (khi máy local offline không reach được Supabase PostgreSQL; target 22/22 khi có live test DB)
+   # Tổng: Local/offline result: 71/72 passed, 1 skipped due unavailable Supabase PostgreSQL. Full live result target: 72/72 when connected to active test database.
    ```
 
-4. **Khuyến nghị Kiểm toán Trước khi Deploy Production**:
+4. **Khuyến nghị Kiểm toán Trước khi Vận hành**:
    > [!IMPORTANT]
    > Hệ thống CLOOP hiện tại đã đồng bộ toàn bộ logic tài chính vào động cơ quyết toán kép (`lib/settlement-engine.ts`), thiết lập các chốt chặn fail-closed cho PayOS webhook, Cron SLA và Checkout.
-   > Ở quy mô MVP/Pilot, toàn bộ 72 kiểm tra tự động đã pass. Khi chuyển sang giai đoạn thương mại hóa chính thức, cần phối hợp cùng tư vấn pháp lý và tài chính để kiện toàn tư cách pháp nhân, hợp đồng bảo đảm và cơ chế hóa đơn thuế.
+   > Ở quy mô MVP/Pilot, hệ thống đạt chất lượng kỹ thuật tốt để trình diễn Techfest. Tuyệt đối chưa tuyên bố "production-ready thương mại" cho đến khi hoàn tất tư cách pháp nhân, kiểm thử trên database live thật, hoàn thiện quy trình kế toán/thuế và ban hành điều khoản vận hành chính thức.

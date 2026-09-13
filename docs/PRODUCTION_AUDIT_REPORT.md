@@ -3,9 +3,9 @@
 **Document Version**: 2.3.0<br/>
 **Target Commit**: Cashflow Hardening, Dual-Entry Settlement & Fail-Closed Gates<br/>
 **Audit Status**: **MVP/PILOT DEPLOYMENT (TECHFEST DEMO READY)**<br/>
-**Total Automated Checks**: 72/72 automated checks passed when live Supabase PostgreSQL is connected (50/50 unit, 22/22 integration). In offline test environments where external Supabase is unreachable, 71/72 passed with 1 live database rollback test skipped safely.<br/>
+**Total Automated Checks**: Local/offline result: 71/72 passed, 1 skipped due unavailable Supabase PostgreSQL. Full live result target: 72/72 when connected to active test database.<br/>
 **TypeScript Typecheck**: 0 Errors<br/>
-**Repository ESLint**: 0 Errors (744 warnings)
+**Repository ESLint**: 0 Errors (752 warnings)
 
 > [!WARNING]
 > **TUYÊN BỐ MIỄN TRÁCH & TÌNH TRẠNG PHÁP NHÂN (LEGAL & ENTITY DISCLAIMER):**<br/>
@@ -129,13 +129,13 @@ if (updateResult.count === 0) {
 
 ### 6.1 Quality & Verification Summary
 - **TypeScript Typecheck (`npx tsc --noEmit`)**: Exit code 0, **0 errors**.
-- **ESLint Analysis (`npx eslint`)**: Exit code 0, **0 errors, 744 warnings**.
-  > **Ghi chú kỹ thuật về Linter**: `eslint.config.mjs` đã chuyển các vi phạm kiểu legacy (`@typescript-eslint/no-explicit-any`, unused vars) thành warnings nhằm đảm bảo quy trình build CI/CD không bị gián đoạn. Do đó, exit code 0 chứng minh không còn lỗi chặn biên dịch, nhưng mã nguồn hiện vẫn còn 744 warnings cần kế hoạch dọn dẹp kỹ thuật dần trong tương lai.
+- **ESLint Analysis (`npx eslint`)**: Exit code 0, **0 errors, 752 warnings**.
+  > **Ghi chú kỹ thuật về Linter**: `eslint.config.mjs` đã chuyển các vi phạm kiểu legacy (`@typescript-eslint/no-explicit-any`, unused vars) thành warnings nhằm đảm bảo quy trình build CI/CD không bị gián đoạn. Do đó, exit code 0 chứng minh không còn lỗi chặn biên dịch, nhưng mã nguồn hiện vẫn còn 752 warnings cần kế hoạch dọn dẹp kỹ thuật dần trong tương lai.
 - **Unit Tests (`tests/run-all-tests.ts`)**: **50/50 PASSED (100%)**.
-- **Integration Tests (`tests/integration-tests.ts`)**: **22/22 PASSED (100%)** khi có kết nối Supabase; **21/22 PASSED, 1 SKIPPED** (khi ở môi trường mạng cục bộ offline không tiếp cận được cơ sở dữ liệu Supabase ngoại vi).
+- **Integration Tests (`tests/integration-tests.ts`)**: **21/22 PASSED, 1 SKIPPED** (trên máy hiện tại do không kết nối được live Supabase PostgreSQL; target 22/22 khi có kết nối cơ sở dữ liệu test live).
   - 21 tests (PayOS webhook crypto, payment idempotency, webhook retry unpoisoning for orders & CoinTopUp, GCS path prefix fail-closed, GCS unconfigured fail-closed, 4 Fast-Track defenses, dispute settlement math invariant, settlement engine 4-scenario double-entry accounting, cron fail-closed auth, dispute invoice precondition) hoàn toàn độc lập và pass 100%.
   - 1 test (Prisma database transaction atomicity & rollback) kiểm tra tính toàn vẹn ACID qua kết nối PostgreSQL live. Nếu môi trường mạng ngoại vi không tiếp cận được cơ sở dữ liệu test, test được ghi nhận `[SKIPPED]` an toàn thay vì crash suite.
-- **Tổng cộng kết quả môi trường**: **72/72 automated checks passed** (hoặc **71/72 passed, 1 skipped** khi môi trường offline ngắt kết nối Supabase).
+- **Tổng cộng kết quả môi trường**: **Local/offline result: 71/72 passed, 1 skipped due unavailable Supabase PostgreSQL. Full live result target: 72/72 when connected to active test database.**
 
 ### 6.2 Test Suite Execution Breakdown
 
@@ -222,13 +222,13 @@ if (updateResult.count === 0) {
    - Chuẩn bị cấu trúc dữ liệu kế toán để hỗ trợ xuất hóa đơn/chứng từ khi đơn vị vận hành đủ điều kiện pháp lý.
    - Run `npx prisma db push` or `prisma migrate deploy` before launching web workers.
 4. **Kiểm tra Kiểm thử Toàn diện**:
-   - **72/72 automated checks passed** (hoặc 71/72 passed, 1 skipped khi offline). 0 lỗi TypeScript (`npx tsc --noEmit`).
+   - **Local/offline result: 71/72 passed, 1 skipped due unavailable Supabase PostgreSQL. Full live result target: 72/72 when connected to active test database.** 0 lỗi TypeScript (`npx tsc --noEmit`).
 
 ### Kết luận Kiểm toán (Audit Conclusion)
 > **CLOOP hiện là MVP/Pilot. Các cơ chế giảm cọc, quỹ dự phòng và xử lý tranh chấp được thiết kế theo hướng kiểm soát rủi ro, nhưng chỉ triển khai thương mại chính thức sau khi hoàn tất pháp nhân, điều khoản dịch vụ, chính sách bảo vệ dữ liệu và quy trình kế toán/thuế.**
 >
-> - **Chỉ số kỹ thuật cục bộ**: 50/50 unit tests passed, 22/22 integration tests passed (hoặc 21 passed, 1 skipped khi mạng chưa kết nối Supabase). 0 lỗi TypeScript (`npx tsc --noEmit`), 0 lỗi ESLint.
+> - **Chỉ số kỹ thuật cục bộ**: 50/50 unit tests passed, 21/22 integration tests passed, 1 skipped (live database rollback test skipped khi mạng chưa kết nối Supabase PostgreSQL; target 22/22 khi có kết nối cơ sở dữ liệu test live). 0 lỗi TypeScript (`npx tsc --noEmit`), 0 lỗi ESLint (752 warnings legacy).
 > - **Kiến trúc rủi ro tài chính**: Động cơ quyết toán kép (`lib/settlement-engine.ts`) bảo toàn dòng tiền, ngăn chặn thất thoát do tính toán phân tán. Trần bảo lãnh theo từng đơn và theo từng tài khoản, loại bỏ hoàn toàn nhánh cọc 0 đồng, thiết lập mức sàn cọc tối thiểu an toàn.
 > - **Bảo mật luồng webhook & cron**: Khắc phục trạng thái kẹt `AMOUNT_MISMATCH`, đóng cơ chế tùy biến số tiền thủ công ở trang đối soát Admin, thiết lập xác thực ngắt mạch fail-closed (HTTP 401) cho Cron job.
 > - **Giao diện & Trải nghiệm**: Phân tách lỗi tranh chấp có chủ đích và hủy đơn chính đáng; tối ưu luồng đăng đồ không cần đăng nhập trước (`/my-closet/create`) với cơ chế lưu bản nháp `sessionStorage` (chỉ lưu dữ liệu phi nhạy cảm, không lưu thông tin thanh toán hay session).
-> - **Sẵn sàng trình diễn**: Hệ thống hoàn toàn sẵn sàng cho phiên thuyết trình và demo Techfest dưới tư cách mô hình MVP thử nghiệm sáng tạo.
+> - **Sẵn sàng trình diễn Techfest**: Hệ thống đạt chất lượng kỹ thuật tốt để trình diễn Techfest dưới tư cách mô hình MVP thử nghiệm sáng tạo. Tuyệt đối chưa tuyên bố "production-ready thương mại" cho đến khi hoàn tất tư cách pháp nhân, chạy kiểm thử trên DB live thật, thiết lập quy trình kế toán/thuế và điều khoản vận hành chính thức.
