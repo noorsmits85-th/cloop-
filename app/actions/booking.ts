@@ -35,10 +35,14 @@ export async function createBooking({
 
   try {
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return { success: false, error: "Bạn cần đăng nhập bằng ID Xanh để thực hiện giao dịch này." };
+    const { data: { session } } = await supabase.auth.getSession();
+    let user = session?.user || null;
+    if (!user) {
+      const { data: { user: fetchedUser }, error: authError } = await supabase.auth.getUser();
+      user = fetchedUser;
+      if (authError || !user) {
+        return { success: false, error: "Bạn cần đăng nhập bằng ID Xanh để thực hiện giao dịch này." };
+      }
     }
 
     // 1. Fetch real prices and owner info from the server/DB, NEVER trust client inputs!
@@ -238,7 +242,12 @@ export async function createBooking({
 export async function confirmManualTransfer(rentalId: string) {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { session } } = await supabase.auth.getSession();
+    let user = session?.user || null;
+    if (!user) {
+      const { data: { user: fetchedUser } } = await supabase.auth.getUser();
+      user = fetchedUser;
+    }
     if (!user) return { success: false, error: "Chưa đăng nhập." };
 
     // Fake confirmation for Pilot (changes status to active upon click "Tôi đã chuyển khoản")

@@ -1,4 +1,5 @@
 import { getClosetFullDataAction } from "@/app/actions/closet";
+import { getScrubbedReviewsAction } from "@/app/(dashboard)/my-closet/orders/actions";
 import { requireUser } from "@/src/lib/auth";
 import ClosetProfileClient from "./_components/ClosetProfileClient";
 import { notFound } from "next/navigation";
@@ -23,7 +24,12 @@ export default async function ClosetProfilePage({
     // Guest viewer
   }
 
-  const res = await getClosetFullDataAction(userId);
+  // ⚡ Song song hóa tải dữ liệu tủ đồ và danh sách đánh giá từ server
+  const [res, reviewsRes] = await Promise.all([
+    getClosetFullDataAction(userId),
+    getScrubbedReviewsAction(userId, currentUserId || undefined).catch(() => ({ success: true, reviews: [] }))
+  ]);
+
   if (!res.success || !res.ownerInfo) {
     notFound();
   }
@@ -49,6 +55,8 @@ export default async function ClosetProfilePage({
       initialMemories={res.memories || []}
       rawProductCount={res.rawProductCount || 0}
       isCurrentUser={isCurrentUser}
+      initialReviews={reviewsRes?.reviews || []}
+      viewerId={currentUserId || undefined}
     />
   );
 }

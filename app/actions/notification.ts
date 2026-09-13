@@ -75,11 +75,11 @@ export async function getUserNotificationsAction(): Promise<{
 }> {
   try {
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
     const userId = user?.id;
 
-    // Cache hit check
+    // ⚡ Cache hit check siêu tốc (0ms, không tốn network roundtrip)
     if (userId) {
       const cached = notifCache.get(userId);
       if (cached && Date.now() < cached.expiry) {

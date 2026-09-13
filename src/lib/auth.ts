@@ -9,10 +9,17 @@ import { redirect } from "next/navigation";
  */
 export const requireUser = cache(async () => {
   const supabase = await createClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
   
-  if (error || !user) {
-    throw new Error("Unauthorized: Không tìm thấy phiên đăng nhập.");
+  // ⚡ SIÊU TỐI ƯU TỐC ĐỘ: Đọc User từ Session Cookie cục bộ (0ms, không tốn HTTPS roundtrip qua Singapore)
+  const { data: { session } } = await supabase.auth.getSession();
+  let user = session?.user;
+
+  if (!user) {
+    const { data: { user: fetchedUser }, error } = await supabase.auth.getUser();
+    if (error || !fetchedUser) {
+      throw new Error("Unauthorized: Không tìm thấy phiên đăng nhập.");
+    }
+    user = fetchedUser;
   }
 
   const name = user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Thành viên CLOOP";
@@ -134,23 +141,13 @@ export async function requireAdmin() {
  */
 export async function requireAdminOrRedirect() {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await requireUser();
 
-    if (!user) {
+    if (!user || user.role !== "ADMIN") {
       redirect("/");
     }
 
-    const profile = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: { id: true, role: true, name: true }
-    });
-
-    if (!profile || profile.role !== "ADMIN") {
-      redirect("/");
-    }
-
-    return { authUser: user, profile };
+    return { authUser: user, profile: user };
   } catch (error) {
     // Nếu có lỗi do redirect (NEXT_REDIRECT) thì throw tiếp
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) {

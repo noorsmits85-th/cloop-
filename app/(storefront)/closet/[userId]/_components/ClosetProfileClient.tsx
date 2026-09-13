@@ -33,6 +33,8 @@ interface ClosetProfileClientProps {
   initialMemories: ClosetMemory[];
   rawProductCount: number;
   isCurrentUser: boolean;
+  initialReviews?: any[];
+  viewerId?: string;
 }
 
 export default function ClosetProfileClient({
@@ -42,6 +44,8 @@ export default function ClosetProfileClient({
   initialMemories,
   rawProductCount,
   isCurrentUser,
+  initialReviews,
+  viewerId,
 }: ClosetProfileClientProps) {
   const [ownerInfo, setOwnerInfo] = useState<ClosetUserProfile>(initialOwnerInfo);
   const [allProducts] = useState<FormattedClosetProduct[]>(initialProducts);
@@ -525,7 +529,11 @@ export default function ClosetProfileClient({
           )}
         </div>
 
-        <ReviewSection targetUserId={userId} />
+        <ReviewSection 
+          targetUserId={userId} 
+          initialReviews={initialReviews} 
+          viewerId={viewerId} 
+        />
       </div>
 
       {/* ========================================================

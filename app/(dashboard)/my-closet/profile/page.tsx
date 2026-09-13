@@ -3,6 +3,7 @@ import { requireUser } from "@/src/lib/auth";
 import { calculateUserTrustScore } from "@/lib/trust-engine";
 import { ProfileClient } from "../_components/ProfileClient";
 import ReviewSection from "@/app/(storefront)/closet/[userId]/_components/ReviewSection";
+import { getScrubbedReviewsAction } from "@/app/(dashboard)/my-closet/orders/actions";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -38,12 +39,16 @@ export default async function ProfilePage() {
     coverImage: meta.coverImage || "",
   };
 
-  let trustBreakdown;
-  try {
-    trustBreakdown = await calculateUserTrustScore(userId);
-  } catch (err) {
-    console.warn("calculateUserTrustScore error fallback:", err);
-  }
+  const [trustBreakdown, reviewsRes] = await Promise.all([
+    calculateUserTrustScore(userId).catch((err) => {
+      console.warn("calculateUserTrustScore error fallback:", err);
+      return undefined;
+    }),
+    getScrubbedReviewsAction(userId, userId).catch((err) => {
+      console.warn("getScrubbedReviewsAction error fallback:", err);
+      return { success: true, reviews: [] };
+    }),
+  ]);
 
   return (
     <div className="min-h-screen bg-[#FAF9F5] py-8 px-4 sm:px-8 text-stone-800 antialiased">
@@ -69,7 +74,11 @@ export default async function ProfilePage() {
 
         {/* 🌟 ĐÁNH GIÁ CỘNG ĐỒNG ĐÃ NHẬN (LIÊN KẾT TRỰC TIẾP VỚI TỦ ĐỒ CÔNG KHAI) */}
         <div className="pt-2">
-          <ReviewSection targetUserId={userId} />
+          <ReviewSection 
+            targetUserId={userId} 
+            initialReviews={reviewsRes?.reviews || []} 
+            viewerId={userId} 
+          />
         </div>
       </div>
     </div>

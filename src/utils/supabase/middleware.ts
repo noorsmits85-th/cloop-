@@ -35,7 +35,17 @@ export async function updateSession(request: NextRequest) {
       }
     );
 
-    const { data: { user }, error } = await supabase.auth.getUser();
+    // ⚡ SIÊU TỐI ƯU: Đọc session từ cookie trước (0ms) thay vì luôn gửi request HTTPS sang server Supabase
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    let user = session?.user || null;
+    let error = sessionError;
+
+    // Chỉ gọi getUser() qua mạng khi không có session hoặc token sắp hết hạn (< 60s) để refresh token
+    if (!user || (session?.expires_at && session.expires_at * 1000 < Date.now() + 60000)) {
+      const { data: { user: fetchedUser }, error: fetchError } = await supabase.auth.getUser();
+      user = fetchedUser;
+      error = fetchError;
+    }
 
     return { response: supabaseResponse, user, error };
   } catch (err: any) {

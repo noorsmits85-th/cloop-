@@ -14,12 +14,14 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 interface ReviewSectionProps {
   targetUserId: string;
+  initialReviews?: any[];
+  viewerId?: string;
 }
 
-export default function ReviewSection({ targetUserId }: ReviewSectionProps) {
-  const [reviews, setReviews] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [currentUserId, setCurrentUserId] = useState<string | undefined>();
+export default function ReviewSection({ targetUserId, initialReviews, viewerId: propViewerId }: ReviewSectionProps) {
+  const [reviews, setReviews] = useState<any[]>(initialReviews || []);
+  const [loading, setLoading] = useState(initialReviews === undefined);
+  const [currentUserId, setCurrentUserId] = useState<string | undefined>(propViewerId);
   
   // Modal state
   const [unlockModalOpen, setUnlockModalOpen] = useState(false);
@@ -29,6 +31,11 @@ export default function ReviewSection({ targetUserId }: ReviewSectionProps) {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    // ⚡ Bỏ qua fetch client nếu Server Component đã cấp sẵn dữ liệu
+    if (initialReviews !== undefined && propViewerId !== undefined) {
+      return;
+    }
+
     async function loadData() {
       setLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
@@ -42,7 +49,7 @@ export default function ReviewSection({ targetUserId }: ReviewSectionProps) {
       setLoading(false);
     }
     loadData();
-  }, [targetUserId]);
+  }, [targetUserId, initialReviews, propViewerId]);
 
   const handleOpenUnlock = (review: any) => {
     setSelectedReview(review);

@@ -13,11 +13,8 @@ import { settleCompletedRentalOrder, settleDisputedRentalOrder } from "@/lib/set
 export async function recordDepositIn(invoiceId: string, amount: number) {
   try {
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    // Trong môi trường Pilot, nếu admin tự chạy hoặc webhook chạy, có thể bỏ qua check Auth
-    // Nhưng vì an toàn, ta ghi nhận adminId nếu có
-    const adminId = user?.id;
+    const { data: { session } } = await supabase.auth.getSession();
+    const adminId = session?.user?.id;
 
     await prisma.ledgerTransaction.create({
       data: {

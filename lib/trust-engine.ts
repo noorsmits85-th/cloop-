@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { prisma } from "@/src/lib/prisma";
 export * from "./trust-types";
 import {
@@ -14,8 +15,9 @@ import {
 
 /**
  * 🧮 TÍNH TOÁN TRUST SCORE CỦA USER DỰA TRÊN DỮ LIỆU THỰC TẾ (DATABASE RUNTIME)
+ * ⚡ TỐI ƯU HÓA: Dùng React cache() để gom và chia sẻ kết quả giữa các components trong cùng 1 request
  */
-export async function calculateUserTrustScore(userId: string): Promise<TrustScoreBreakdown> {
+export const calculateUserTrustScore = cache(async (userId: string): Promise<TrustScoreBreakdown> => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
@@ -142,7 +144,7 @@ export async function calculateUserTrustScore(userId: string): Promise<TrustScor
     openDisputeCount,
     hasStudentEmailProof: false,
   });
-}
+});
 
 
 /**

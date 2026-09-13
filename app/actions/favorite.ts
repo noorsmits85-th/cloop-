@@ -10,10 +10,14 @@ import { revalidatePath } from "next/cache";
 export async function toggleProductInteractionAction(productId: string, type: "LIKE" | "SAVE") {
   try {
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return { success: false, error: "AUTH_REQUIRED", message: "Vui lòng đăng nhập để lưu hoặc thả tim sản phẩm." };
+    const { data: { session } } = await supabase.auth.getSession();
+    let user = session?.user || null;
+    if (!user) {
+      const { data: { user: fetchedUser }, error: authError } = await supabase.auth.getUser();
+      user = fetchedUser;
+      if (authError || !user) {
+        return { success: false, error: "AUTH_REQUIRED", message: "Vui lòng đăng nhập để lưu hoặc thả tim sản phẩm." };
+      }
     }
 
     const userId = user.id;
@@ -105,7 +109,8 @@ export async function toggleProductInteractionAction(productId: string, type: "L
 export async function getProductInteractionStatusAction(productId: string) {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
 
     const product = await prisma.product.findUnique({
       where: { id: productId },
@@ -144,10 +149,14 @@ export async function getProductInteractionStatusAction(productId: string) {
 export async function getUserWishlistAction(filter: "ALL" | "SAVE" | "LIKE" = "SAVE") {
   try {
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return { success: false, error: "AUTH_REQUIRED", items: [], counts: { all: 0, save: 0, like: 0 } };
+    const { data: { session } } = await supabase.auth.getSession();
+    let user = session?.user || null;
+    if (!user) {
+      const { data: { user: fetchedUser }, error: authError } = await supabase.auth.getUser();
+      user = fetchedUser;
+      if (authError || !user) {
+        return { success: false, error: "AUTH_REQUIRED", items: [], counts: { all: 0, save: 0, like: 0 } };
+      }
     }
 
     const whereType = filter === "ALL" ? undefined : filter;
