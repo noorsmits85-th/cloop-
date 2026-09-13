@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import ArchiveClientUI from "./ArchiveClientUI";
 import { fetchArchivedListings } from "./actions";
 
+export const dynamic = "force-dynamic";
+
 export default async function ArchivePage() {
   let userAuth;
   try {

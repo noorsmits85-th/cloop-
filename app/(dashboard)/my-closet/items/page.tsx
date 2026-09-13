@@ -6,6 +6,8 @@ import { ItemsClient } from "../_components/ItemsClient";
 
 const PLACEHOLDER_IMG = "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=120";
 
+export const dynamic = "force-dynamic";
+
 export default async function MyClosetItemsPage() {
   let userAuth;
   try {

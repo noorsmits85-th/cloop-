@@ -193,7 +193,6 @@ function MobileBottomNavbar({ darkMode, currentUser, handleFeatureRequirement }:
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { showAuthModal, setShowAuthModal, activeFeatureName, handleFeatureRequirement, currentUser, setCurrentUser } = useAuthModal();
   const [darkMode, setDarkMode] = useState<boolean>(false);
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot' | 'forgot_otp'>('login');
@@ -543,9 +542,10 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                       return;
                     }
 
+                    const redirectParam = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('redirectTo') || undefined : undefined;
+
                     if (authMode === 'login') {
-                      const redirectTo = searchParams.get('redirectTo') || undefined;
-                      const res = await loginWithCredentials({ email: email.trim(), password, redirectTo });
+                      const res = await loginWithCredentials({ email: email.trim(), password, redirectTo: redirectParam });
 
                       if (res.error) {
                         setAuthModalError(translateAuthError(res.error));
@@ -569,12 +569,11 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                       }
                       
                     } else if (authMode === 'register') {
-                      const redirectTo = searchParams.get('redirectTo') || undefined;
                       const res = await registerWithCredentials({ 
                         email: email.trim(), 
                         password, 
                         name: name,
-                        redirectTo 
+                        redirectTo: redirectParam 
                       });
                       
                       if (res.error) {

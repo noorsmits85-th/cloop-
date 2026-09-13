@@ -33,7 +33,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { currentUser, setCurrentUser } = useAuthModal();
+  const { currentUser, setCurrentUser, setShowAuthModal } = useAuthModal();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [disputeCount, setDisputeCount] = useState(0);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
@@ -182,7 +182,12 @@ export default function DashboardLayout({
                     href={item.path}
                     prefetch={true}
                     className={getNavClass(item.path)}
-                    onClick={() => {
+                    onClick={(e) => {
+                      if (!currentUser?.isLoggedIn) {
+                        e.preventDefault();
+                        setShowAuthModal(true);
+                        return;
+                      }
                       setIsSidebarOpen(false);
                       if (pathname !== item.path) {
                         setNavigatingTo(item.path);

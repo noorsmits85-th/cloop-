@@ -10,6 +10,7 @@ import { DashboardChartsClient } from "./_components/DashboardChartsClient";
 import { redirect } from "next/navigation";
 import { unstable_cache } from "next/cache";
 
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 // Cache EcoMetrics

@@ -428,7 +428,10 @@ export default function CreateProductListingPage() {
         
         {/* THANH ĐIỀU HƯỚNG */}
         <div className="mb-6 flex items-center justify-between">
-            <Link href="/my-closet" className="inline-flex items-center gap-2 text-xs font-bold text-stone-500 hover:text-stone-800 transition-colors uppercase tracking-wider bg-white/50 px-4 py-2 rounded-full border border-stone-200/50 backdrop-blur-md">
+            <Link 
+              href={currentUser?.isLoggedIn ? "/my-closet" : "/"} 
+              className="inline-flex items-center gap-2 text-xs font-bold text-stone-500 hover:text-stone-800 transition-colors uppercase tracking-wider bg-white/50 px-4 py-2 rounded-full border border-stone-200/50 backdrop-blur-md"
+            >
               <ArrowLeft size={14} /> Gấp sổ lại
             </Link>
         </div>

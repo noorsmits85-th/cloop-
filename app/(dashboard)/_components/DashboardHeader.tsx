@@ -286,9 +286,15 @@ export function DashboardHeader({
               <div className="p-2.5 bg-stone-50 border-t border-stone-100 text-center font-ui">
                 <Link
                   href="/my-closet/notifications"
-                  prefetch={true}
-                  onClick={() => setShowNotifications(false)}
-                  className="text-[11px] font-bold text-[#183A2D] hover:underline block"
+                  onClick={(e) => {
+                    if (!currentUser?.isLoggedIn) {
+                      e.preventDefault();
+                      setShowNotifications(false);
+                      setShowAuthModal(true);
+                      return;
+                    }
+                    setShowNotifications(false);
+                  }}
                 >
                   Xem toàn bộ lịch sử hoạt động ({notifications.length}) →
                 </Link>

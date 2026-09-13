@@ -5,6 +5,7 @@ import { EcoClient } from "../_components/EcoClient";
 import { redirect } from "next/navigation";
 import { unstable_cache } from "next/cache";
 
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 // Cache EcoMetrics

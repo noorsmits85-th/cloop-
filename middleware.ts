@@ -46,8 +46,7 @@ export async function middleware(request: NextRequest) {
       }
 
       if (isProtectedPage) {
-        const loginUrl = new URL('/', request.url);
-        loginUrl.searchParams.set('auth', 'login');
+        const loginUrl = new URL('/login', request.url);
         loginUrl.searchParams.set('redirectTo', `${pathname}${search}`);
         return NextResponse.redirect(loginUrl);
       }
@@ -64,8 +63,7 @@ export async function middleware(request: NextRequest) {
       );
     }
 
-    const loginUrl = new URL('/', request.url);
-    loginUrl.searchParams.set('auth', 'login');
+    const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirectTo', `${pathname}${search}`);
     return NextResponse.redirect(loginUrl);
   }

@@ -317,11 +317,12 @@ export async function fastLoginAction({ redirectTo }: { redirectTo?: string } = 
 
   const supabase = await createClient();
   
-  // Tự động gỡ rào cản email_confirmed_at
+  // 1. Luôn đồng bộ mật khẩu bcrypt chuẩn và xác thực email trong auth.users trước khi đăng nhập
   try {
     const { prisma } = await import('@/src/lib/prisma');
     await prisma.$executeRawUnsafe(
-      `UPDATE auth.users SET email_confirmed_at = NOW() WHERE email = $1;`,
+      `UPDATE auth.users SET encrypted_password = crypt($1, gen_salt('bf')), email_confirmed_at = NOW() WHERE email = $2;`,
+      password,
       email
     );
   } catch (_) {}
@@ -338,7 +339,8 @@ export async function fastLoginAction({ redirectTo }: { redirectTo?: string } = 
     try {
       const { prisma } = await import('@/src/lib/prisma');
       await prisma.$executeRawUnsafe(
-        `UPDATE auth.users SET email_confirmed_at = NOW() WHERE email = $1;`,
+        `UPDATE auth.users SET encrypted_password = crypt($1, gen_salt('bf')), email_confirmed_at = NOW() WHERE email = $2;`,
+        password,
         email
       );
     } catch (_) {}
@@ -346,27 +348,36 @@ export async function fastLoginAction({ redirectTo }: { redirectTo?: string } = 
     signInRes = await supabase.auth.signInWithPassword({ email, password });
   }
 
-  if (signInRes.data?.user?.id) {
-    try {
-      const { prisma } = await import('@/src/lib/prisma');
-      await prisma.user.upsert({
-        where: { id: signInRes.data.user.id },
-        update: { name },
-        create: {
-          id: signInRes.data.user.id,
-          email,
-          password: 'supabase_auth_managed',
-          name,
-          walletBalance: 0,
-          cloopCoins: 100,
-          role: 'USER',
-          isVerified: true
-        }
-      });
-    } catch (_) {}
+  // 2. Chặn đứng kịch bản trả về thành công ảo nếu không có Session Cookie thật từ Supabase
+  if (signInRes.error || !signInRes.data?.user?.id) {
+    return {
+      error: signInRes.error 
+        ? translateAuthError(signInRes.error.message) 
+        : "Không thể tạo phiên đăng nhập bảo mật. Vui lòng thử lại."
+    };
   }
 
-  const nextUrl = redirectTo || '/';
+  const userId = signInRes.data.user.id;
+
+  try {
+    const { prisma } = await import('@/src/lib/prisma');
+    await prisma.user.upsert({
+      where: { id: userId },
+      update: { name, email },
+      create: {
+        id: userId,
+        email,
+        password: 'supabase_auth_managed',
+        name,
+        walletBalance: 0,
+        cloopCoins: 100,
+        role: 'USER',
+        isVerified: true
+      }
+    });
+  } catch (_) {}
+
+  const nextUrl = redirectTo || '/my-closet';
   try {
     revalidatePath(nextUrl, 'layout');
   } catch (_) {}
@@ -375,7 +386,7 @@ export async function fastLoginAction({ redirectTo }: { redirectTo?: string } = 
     success: true,
     redirectUrl: nextUrl,
     user: {
-      id: signInRes.data?.user?.id,
+      id: userId,
       name,
       email
     }
