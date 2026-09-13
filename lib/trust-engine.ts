@@ -2,12 +2,83 @@ import { prisma } from "@/src/lib/prisma";
 
 export type TrustTier = "LEVEL_0_NEW" | "LEVEL_1_VERIFIED" | "LEVEL_2_TRUSTED" | "LEVEL_3_VIP";
 
+export interface TierCriteria {
+  tier: TrustTier;
+  label: string;
+  minCompletedOrders: number;
+  minRentalSpend: number; // Tổng chi tiêu thuê thành công tối thiểu (VNĐ)
+  minOwnerReviews: number; // Số đánh giá từ chủ đồ
+  minAverageRating: number; // Điểm đánh giá trung bình tối thiểu (sao)
+  minDistinctLenders: number; // Số chủ đồ khác nhau đã giao dịch (chống thông đồng cày đơn)
+  minDaysSinceFirstOrder?: number; // Khoảng cách thời gian (14 ngày đối với Level 1)
+  depositDiscountRate: number; // 0.0, 0.10, 0.20, 0.30
+  depositRate: number; // 1.0, 0.90, 0.80, 0.70
+  maxCoveragePerOrder: number; // Giới hạn quỹ bảo lãnh tối đa trên mỗi đơn (VNĐ)
+  fundThresholdRequired: number; // Ngưỡng số dư quỹ bảo chứng khả dụng tối thiểu để mở quyền lợi (VNĐ)
+}
+
+export const CONSERVATIVE_TIER_RULES: Record<TrustTier, TierCriteria> = {
+  LEVEL_0_NEW: {
+    tier: "LEVEL_0_NEW",
+    label: "Thành viên Mới (Khám phá)",
+    minCompletedOrders: 0,
+    minRentalSpend: 0,
+    minOwnerReviews: 0,
+    minAverageRating: 0,
+    minDistinctLenders: 0,
+    depositDiscountRate: 0.0,
+    depositRate: 1.0,
+    maxCoveragePerOrder: 0,
+    fundThresholdRequired: 0,
+  },
+  LEVEL_1_VERIFIED: {
+    tier: "LEVEL_1_VERIFIED",
+    label: "Đã Xác Thực (Tín nhiệm cơ bản)",
+    minCompletedOrders: 3,
+    minRentalSpend: 1000000,
+    minOwnerReviews: 3,
+    minAverageRating: 4.0,
+    minDistinctLenders: 2,
+    minDaysSinceFirstOrder: 14,
+    depositDiscountRate: 0.10, // 10%
+    depositRate: 0.90,
+    maxCoveragePerOrder: 200000, // Trần 200.000đ
+    fundThresholdRequired: 5000000, // Quỹ từ 5 triệu VNĐ
+  },
+  LEVEL_2_TRUSTED: {
+    tier: "LEVEL_2_TRUSTED",
+    label: "Khách Quen Uy Tín (Đáng tin cậy)",
+    minCompletedOrders: 8,
+    minRentalSpend: 3000000,
+    minOwnerReviews: 8,
+    minAverageRating: 4.0,
+    minDistinctLenders: 3,
+    depositDiscountRate: 0.20, // 20%
+    depositRate: 0.80,
+    maxCoveragePerOrder: 500000, // Trần 500.000đ
+    fundThresholdRequired: 15000000, // Quỹ từ 15 triệu VNĐ
+  },
+  LEVEL_3_VIP: {
+    tier: "LEVEL_3_VIP",
+    label: "CLOOP VIP Club (Tín nhiệm cao cấp)",
+    minCompletedOrders: 12,
+    minRentalSpend: 8000000,
+    minOwnerReviews: 12,
+    minAverageRating: 4.5,
+    minDistinctLenders: 5,
+    depositDiscountRate: 0.30, // 30% - tuyệt đối không có 0 đồng!
+    depositRate: 0.70,
+    maxCoveragePerOrder: 1000000, // Trần 1.000.000đ
+    fundThresholdRequired: 30000000, // Quỹ từ 30 triệu VNĐ
+  },
+};
+
 export interface TrustTierConfig {
   tier: TrustTier;
   label: string;
   minScore: number;
   maxScore: number;
-  depositRate: number; // Tỷ lệ cọc so với cọc gốc (1.0 = 100%, 0.5 = 50%, ...)
+  depositRate: number; // Tỷ lệ cọc thực tế (1.0 = 100%, 0.9 = 90%, ...)
   exposureLimit: number; // Hạn mức tổng giá trị tài sản đang trong vòng thuê
   fastTrackCeiling: number; // Trần tối đa khi kích hoạt Fast-Track (thu 100% cọc qua PayOS)
   perks: string[];
@@ -22,7 +93,7 @@ export const TRUST_TIERS: Record<TrustTier, TrustTierConfig> = {
     maxScore: 29,
     depositRate: 1.0, // Cọc 100%
     exposureLimit: 2000000, // Tiêu chuẩn: 2 triệu VNĐ
-    fastTrackCeiling: 6000000, // Trần Fast-Track tối đa: 6 triệu VNĐ (chặn attacker gom đồ chục triệu)
+    fastTrackCeiling: 6000000, // Trần Fast-Track tối đa: 6 triệu VNĐ
     perks: ["Thanh toán PayOS bảo vệ 2 chiều", "Tự động tích lũy điểm uy tín sau mỗi đơn"],
     badgeColor: "bg-stone-100 text-stone-700 border-stone-300",
   },
@@ -31,10 +102,14 @@ export const TRUST_TIERS: Record<TrustTier, TrustTierConfig> = {
     label: "Đã Xác Thực (Tín nhiệm cơ bản)",
     minScore: 30,
     maxScore: 59,
-    depositRate: 0.75, // Cọc 75%
+    depositRate: 0.9, // Cọc 90% (giảm 10%, trần 200k)
     exposureLimit: 5000000, // Tiêu chuẩn: 5 triệu VNĐ
     fastTrackCeiling: 12000000, // Trần Fast-Track: 12 triệu VNĐ
-    perks: ["Giảm 25% tiền cọc niêm yết", "Hạn mức thuê nâng lên 5.000.000đ", "Ưu tiên ghép nối tủ đồ gần"],
+    perks: [
+      "Bảo lãnh giảm 10% tiền cọc (tối đa 200.000đ/đơn)",
+      "Hạn mức thuê nâng lên 5.000.000đ",
+      "Ưu tiên ghép nối tủ đồ gần",
+    ],
     badgeColor: "bg-blue-50 text-blue-700 border-blue-200",
   },
   LEVEL_2_TRUSTED: {
@@ -42,22 +117,26 @@ export const TRUST_TIERS: Record<TrustTier, TrustTierConfig> = {
     label: "Khách Quen Uy Tín (Đáng tin cậy)",
     minScore: 60,
     maxScore: 84,
-    depositRate: 0.5, // Cọc 50%
+    depositRate: 0.8, // Cọc 80% (giảm 20%, trần 500k)
     exposureLimit: 10000000, // Tiêu chuẩn: 10 triệu VNĐ
     fastTrackCeiling: 20000000, // Trần Fast-Track: 20 triệu VNĐ
-    perks: ["Giảm 50% tiền cọc", "Hạn mức thuê nâng lên 10.000.000đ", "Hỗ trợ giải quyết tranh chấp ưu tiên"],
+    perks: [
+      "Bảo lãnh giảm 20% tiền cọc (tối đa 500.000đ/đơn)",
+      "Hạn mức thuê nâng lên 10.000.000đ",
+      "Hỗ trợ giải quyết tranh chấp ưu tiên",
+    ],
     badgeColor: "bg-emerald-50 text-emerald-800 border-emerald-300",
   },
   LEVEL_3_VIP: {
     tier: "LEVEL_3_VIP",
-    label: "CLOOP VIP Club (Tín nhiệm tuyệt đối)",
+    label: "CLOOP VIP Club (Tín nhiệm cao cấp)",
     minScore: 85,
     maxScore: 100,
-    depositRate: 0.25, // Cọc 25% (hoặc 0đ cho đồ < 1.000.000đ)
+    depositRate: 0.7, // Cọc 70% (giảm 30%, trần 1.000.000đ - loại bỏ hoàn toàn 0đ)
     exposureLimit: 25000000, // Tiêu chuẩn: 25 triệu VNĐ
     fastTrackCeiling: 35000000, // Trần Fast-Track: 35 triệu VNĐ
     perks: [
-      "Giảm tới 75% tiền cọc (Miễn cọc với đồ dưới 1 triệu)",
+      "Bảo lãnh giảm 30% tiền cọc (tối đa 1.000.000đ/đơn, không miễn cọc 0đ)",
       "Hạn mức thuê cao cấp 25.000.000đ",
       "Đặc quyền mượn đồ thiết kế dạ hội VIP",
     ],
@@ -92,6 +171,7 @@ export interface TrustScoreBreakdown {
   score: number;
   tier: TrustTier;
   config: TrustTierConfig;
+  criteria: TierCriteria;
   factors: {
     emailVerified: boolean;
     emailPoints: number;
@@ -103,15 +183,24 @@ export interface TrustScoreBreakdown {
     orderPoints: number;
     fiveStarReviews: number;
     reviewPoints: number;
+    totalRentalSpend: number;
+    averageRating: number;
+    distinctLenders: number;
+    daysSinceFirstOrder?: number;
     disputeCount: number;
     disputePenalty: number;
     cancelCount: number;
     cancelPenalty: number;
   };
+  eligibility: {
+    isEligible: boolean;
+    unmetCriteria: string[];
+    studentVoucherEligible: boolean;
+  };
 }
 
 /**
- * 🧮 TÍNH TOÁN TRUST SCORE CỦA USER DỰA TRÊN DỮ LIỆU THỰC TẾ
+ * 🧮 TÍNH TOÁN TRUST SCORE CỦA USER DỰA TRÊN DỮ LIỆU THỰC TẾ (DATABASE RUNTIME)
  */
 export async function calculateUserTrustScore(userId: string): Promise<TrustScoreBreakdown> {
   const user = await prisma.user.findUnique({
@@ -120,17 +209,18 @@ export async function calculateUserTrustScore(userId: string): Promise<TrustScor
       id: true,
       email: true,
       isVerified: true,
-      completedOrders: true,
       rentalHistory: {
         where: { isDeleted: false },
         select: {
           id: true,
           status: true,
-          disputes: { select: { id: true } },
+          ownerId: true,
+          createdAt: true,
+          invoice: {
+            select: { rentalFee: true, amount: true },
+          },
+          disputes: { select: { id: true, status: true } },
         },
-      },
-      reviewsGiven: {
-        select: { id: true, rating: true },
       },
       reviewsReceived: {
         select: { id: true, rating: true },
@@ -140,10 +230,12 @@ export async function calculateUserTrustScore(userId: string): Promise<TrustScor
 
   if (!user) {
     const config = TRUST_TIERS.LEVEL_0_NEW;
+    const criteria = CONSERVATIVE_TIER_RULES.LEVEL_0_NEW;
     return {
       score: 10,
       tier: "LEVEL_0_NEW",
       config,
+      criteria,
       factors: {
         emailVerified: false,
         emailPoints: 0,
@@ -155,21 +247,50 @@ export async function calculateUserTrustScore(userId: string): Promise<TrustScor
         orderPoints: 0,
         fiveStarReviews: 0,
         reviewPoints: 0,
+        totalRentalSpend: 0,
+        averageRating: 0,
+        distinctLenders: 0,
+        daysSinceFirstOrder: 0,
         disputeCount: 0,
         disputePenalty: 0,
         cancelCount: 0,
         cancelPenalty: 0,
       },
+      eligibility: {
+        isEligible: false,
+        unmetCriteria: ["Tài khoản không tồn tại"],
+        studentVoucherEligible: false,
+      },
     };
   }
 
   // 1. Transaction Trust Signals
-  const completedOrdersCount = user.rentalHistory.filter(
+  const completedRentals = user.rentalHistory.filter(
     (r) => r.status === "LENDER_COMPLETED" || r.status === "BORROWER_RETURNED"
-  ).length;
+  );
+  const completedOrdersCount = completedRentals.length;
+  const totalRentalSpend = completedRentals.reduce((sum, r) => sum + (r.invoice?.rentalFee || 0), 0);
+
+  // Distinct Lenders count (chống thông đồng cày đơn)
+  const distinctLendersCount = new Set(
+    completedRentals.map((r) => r.ownerId).filter((id): id is string => Boolean(id))
+  ).size;
+
+  // Days since first completed rental
+  let daysSinceFirstOrder = 0;
+  if (completedRentals.length > 0) {
+    const sortedRentals = [...completedRentals].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    const firstDate = sortedRentals[0].createdAt;
+    daysSinceFirstOrder = Math.max(0, Math.floor((Date.now() - firstDate.getTime()) / (1000 * 60 * 60 * 24)));
+  }
 
   // Reviews Received
-  const fiveStarReviewsCount = user.reviewsReceived.filter((rev) => rev.rating >= 4.8).length;
+  const ownerReviews = user.reviewsReceived || [];
+  const ownerReviewsCount = ownerReviews.length;
+  const averageRating = ownerReviewsCount > 0
+    ? ownerReviews.reduce((acc, rev) => acc + rev.rating, 0) / ownerReviewsCount
+    : 0;
+  const fiveStarReviewsCount = ownerReviews.filter((rev) => rev.rating >= 4.0).length;
 
   // 3. Penalties (Risk Signals)
   const disputeCount = user.rentalHistory.reduce((acc, r) => acc + (r.disputes?.length || 0), 0);
@@ -179,6 +300,11 @@ export async function calculateUserTrustScore(userId: string): Promise<TrustScor
     email: user.email,
     isVerified: user.isVerified,
     completedOrdersCount,
+    totalRentalSpend,
+    distinctLendersCount,
+    daysSinceFirstOrder,
+    ownerReviewsCount,
+    averageRating,
     fiveStarReviewsCount,
     disputeCount,
     cancelCount,
@@ -188,37 +314,47 @@ export async function calculateUserTrustScore(userId: string): Promise<TrustScor
 
 /**
  * 🧮 HÀM TÍNH TOÁN PURE FUNCTION (DÙNG CHO CẢ RUNTIME VÀ UNIT TEST)
+ * Ràng buộc điều kiện đa yếu tố: Không chỉ nhìn điểm số mà bắt buộc thỏa mãn đồng thời:
+ * Số đơn, tổng chi tiêu tiền thuê, đánh giá chủ đồ >= 4★, số chủ đồ khác nhau, không tranh chấp.
  */
 export function calculateUserTrustScoreFromData(data: {
   email?: string | null;
   isVerified?: boolean | null;
   completedOrders?: number;
   completedOrdersCount?: number;
+  totalRentalSpend?: number;
   rating?: number;
+  averageRating?: number;
   fiveStarReviewsCount?: number;
+  ownerReviewsCount?: number;
+  distinctLendersCount?: number;
+  daysSinceFirstOrder?: number;
   disputeCount?: number;
   cancelCount?: number;
   hasStudentEmailProof?: boolean;
 }): TrustScoreBreakdown {
-  // 1. Account Proof Signals (Xác thực thực tế)
+  // 1. Account Proof Signals
   const emailVerified = Boolean(data.email && data.email.includes("@"));
   const emailPoints = emailVerified ? 10 : 0;
 
-  const phoneVerified = data.isVerified || false;
+  const phoneVerified = Boolean(data.isVerified);
   const phonePoints = phoneVerified ? 10 : 0;
 
   // Tín hiệu email trường học (Student Email Signal)
+  // Quy định rủi ro: Sinh viên được cấp huy hiệu & voucher thuê 10%, TUYỆT ĐỐI KHÔNG tự động giảm cọc.
   const emailLower = (data.email || "").toLowerCase();
   const isStudent = Boolean(data.hasStudentEmailProof) || emailLower.includes(".edu.vn") || emailLower.includes("student");
   const studentPoints = isStudent ? 10 : 0;
 
   // 2. Transaction Trust Signals
   const orders = data.completedOrdersCount ?? data.completedOrders ?? 0;
-  const orderPoints = Math.min(40, orders * 10);
+  const orderPoints = Math.min(40, orders * 5);
 
-  // Reviews Received
-  const reviews = data.fiveStarReviewsCount ?? (data.rating && data.rating >= 4.8 ? 2 : 0);
-  const reviewPoints = Math.min(20, reviews * 5);
+  const totalSpend = data.totalRentalSpend ?? (orders > 0 ? orders * 350000 : 0);
+  const spendPoints = Math.min(10, Math.floor(totalSpend / 1000000) * 2);
+
+  const reviews = data.fiveStarReviewsCount ?? data.ownerReviewsCount ?? (data.rating && data.rating >= 4.0 ? orders : 0);
+  const reviewPoints = Math.min(20, reviews * 2.5);
 
   // 3. Penalties (Risk Signals)
   const disputeCount = data.disputeCount || 0;
@@ -228,25 +364,100 @@ export function calculateUserTrustScoreFromData(data: {
   const cancelPenalty = cancelCount * 10;
 
   // Điểm cơ bản ban đầu là 10 (tài khoản đã đăng ký hợp lệ)
-  const rawScore = 10 + emailPoints + phonePoints + studentPoints + orderPoints + reviewPoints - disputePenalty - cancelPenalty;
+  const rawScore = 10 + emailPoints + phonePoints + studentPoints + orderPoints + spendPoints + reviewPoints - disputePenalty - cancelPenalty;
   const finalScore = Math.max(0, Math.min(100, Math.round(rawScore)));
 
-  // Phân loại Tier
-  let tier: TrustTier = "LEVEL_0_NEW";
+  // 4. KIỂM TRA ĐIỀU KIỆN ĐA YẾU TỐ (MULTI-FACTOR CONSERVATIVE ELIGIBILITY)
+  const avgRating = data.averageRating ?? data.rating ?? (reviews > 0 ? 5.0 : 0);
+  const distinctLenders = data.distinctLendersCount !== undefined
+    ? data.distinctLendersCount
+    : (orders >= 2 ? Math.min(orders, 5) : orders);
+  const daysSinceFirst = data.daysSinceFirstOrder ?? 14;
+
+  function evaluateTierEligibility(tier: TrustTier): { eligible: boolean; unmetReasons: string[] } {
+    const rule = CONSERVATIVE_TIER_RULES[tier];
+    const reasons: string[] = [];
+
+    if (disputeCount > 0) {
+      reasons.push(`Tài khoản có ${disputeCount} tranh chấp vi phạm (yêu cầu 0 tranh chấp)`);
+    }
+    if (orders < rule.minCompletedOrders) {
+      reasons.push(`Số đơn hoàn tất (${orders}) chưa đạt tối thiểu (${rule.minCompletedOrders} đơn)`);
+    }
+    if (totalSpend < rule.minRentalSpend) {
+      reasons.push(`Tổng chi tiêu thuê (${totalSpend.toLocaleString("vi-VN")}đ) chưa đạt tối thiểu (${rule.minRentalSpend.toLocaleString("vi-VN")}đ)`);
+    }
+    if (reviews < rule.minOwnerReviews) {
+      reasons.push(`Số đánh giá từ chủ đồ (${reviews}) chưa đạt tối thiểu (${rule.minOwnerReviews} đánh giá)`);
+    }
+    if (avgRating < rule.minAverageRating) {
+      reasons.push(`Điểm đánh giá trung bình (${avgRating.toFixed(1)} sao) chưa đạt chuẩn (${rule.minAverageRating.toFixed(1)} sao)`);
+    }
+    if (distinctLenders < rule.minDistinctLenders) {
+      reasons.push(`Số chủ đồ khác nhau đã giao dịch (${distinctLenders}) chưa đạt yêu cầu (${rule.minDistinctLenders} chủ đồ)`);
+    }
+    if (rule.minDaysSinceFirstOrder && daysSinceFirst < rule.minDaysSinceFirstOrder) {
+      reasons.push(`Thời gian từ đơn đầu tiên (${daysSinceFirst} ngày) chưa đủ ${rule.minDaysSinceFirstOrder} ngày bảo chứng`);
+    }
+
+    return {
+      eligible: reasons.length === 0,
+      unmetReasons: reasons,
+    };
+  }
+
+  // Đánh giá thăng hạng từ cao xuống thấp
+  let finalTier: TrustTier = "LEVEL_0_NEW";
+  let unmetCriteria: string[] = [];
+
   if (finalScore >= 85) {
-    tier = "LEVEL_3_VIP";
+    const l3Check = evaluateTierEligibility("LEVEL_3_VIP");
+    if (l3Check.eligible) {
+      finalTier = "LEVEL_3_VIP";
+    } else {
+      unmetCriteria = l3Check.unmetReasons;
+      const l2Check = evaluateTierEligibility("LEVEL_2_TRUSTED");
+      if (l2Check.eligible) {
+        finalTier = "LEVEL_2_TRUSTED";
+      } else {
+        const l1Check = evaluateTierEligibility("LEVEL_1_VERIFIED");
+        if (l1Check.eligible) {
+          finalTier = "LEVEL_1_VERIFIED";
+        } else {
+          finalTier = "LEVEL_0_NEW";
+        }
+      }
+    }
   } else if (finalScore >= 60) {
-    tier = "LEVEL_2_TRUSTED";
+    const l2Check = evaluateTierEligibility("LEVEL_2_TRUSTED");
+    if (l2Check.eligible) {
+      finalTier = "LEVEL_2_TRUSTED";
+    } else {
+      unmetCriteria = l2Check.unmetReasons;
+      const l1Check = evaluateTierEligibility("LEVEL_1_VERIFIED");
+      if (l1Check.eligible) {
+        finalTier = "LEVEL_1_VERIFIED";
+      } else {
+        finalTier = "LEVEL_0_NEW";
+      }
+    }
   } else if (finalScore >= 30) {
-    tier = "LEVEL_1_VERIFIED";
+    const l1Check = evaluateTierEligibility("LEVEL_1_VERIFIED");
+    if (l1Check.eligible) {
+      finalTier = "LEVEL_1_VERIFIED";
+    } else {
+      unmetCriteria = l1Check.unmetReasons;
+      finalTier = "LEVEL_0_NEW";
+    }
   } else {
-    tier = "LEVEL_0_NEW";
+    finalTier = "LEVEL_0_NEW";
   }
 
   return {
     score: finalScore,
-    tier,
-    config: TRUST_TIERS[tier],
+    tier: finalTier,
+    config: TRUST_TIERS[finalTier],
+    criteria: CONSERVATIVE_TIER_RULES[finalTier],
     factors: {
       emailVerified,
       emailPoints,
@@ -258,10 +469,19 @@ export function calculateUserTrustScoreFromData(data: {
       orderPoints,
       fiveStarReviews: reviews,
       reviewPoints,
+      totalRentalSpend: totalSpend,
+      averageRating: avgRating,
+      distinctLenders,
+      daysSinceFirstOrder: daysSinceFirst,
       disputeCount,
       disputePenalty,
       cancelCount,
       cancelPenalty,
+    },
+    eligibility: {
+      isEligible: finalTier !== "LEVEL_0_NEW",
+      unmetCriteria,
+      studentVoucherEligible: isStudent,
     },
   };
 }
@@ -429,9 +649,35 @@ export function evaluateFastTrackEligibility(params: {
   return { eligible: true, fastTrackCeiling: config.fastTrackCeiling };
 }
 
+export interface ReserveFundStatus {
+  openingReserveFundBalance: number; // Số dư đầu tháng của Quỹ bảo chứng (VNĐ)
+  currentReserveFundBalance: number; // Số dư khả dụng hiện tại (VNĐ)
+  committedClaims: number; // Tổng các khoản bồi thường đã chi + bảo lãnh cam kết trong tháng
+}
+
+export const DEFAULT_RESERVE_FUND_STATUS: ReserveFundStatus = {
+  openingReserveFundBalance: 50000000,
+  currentReserveFundBalance: 50000000,
+  committedClaims: 0,
+};
+
+export interface DynamicDepositResult {
+  finalDeposit: number;
+  originalDeposit: number;
+  discountAmount: number;
+  discountPercent: number;
+  explanation: string;
+  nextTierGoal: string;
+  circuitBreakerTriggered?: boolean;
+  effectiveCoverageCap?: number;
+}
+
 /**
- * 💎 TÍNH TIỀN CỌC ĐỘNG VÀ THÔNG ĐIỆP GIẢI THÍCH (EXPLAINABLE DEPOSIT)
- * Formula: Deposit = f(Item Value, Trust Score, Transaction History, FastTrack)
+ * TÍNH TIỀN CỌC ĐỘNG BẢO TOÀN NGUỒN VỐN (FUND-CAPACITY CONSTRAINED GUARANTEE)
+ * 1. Circuit Breaker: Trần bảo lãnh/bồi thường tối đa trong tháng là 30% số dư đầu kỳ (bảo toàn 70% đệm vốn).
+ * 2. Ngưỡng số dư quỹ: < 5M cọc 100% toàn sàn; >= 5M mở Level 1; >= 15M mở Level 2; >= 30M mở Level 3.
+ * 3. Bảo lãnh có hạn mức trần: Level 1 (200k), Level 2 (500k), Level 3 (1M).
+ * 4. Tuyệt đối không có cọc 0đ trong thanh toán nội địa VietQR.
  */
 export function calculateDynamicDeposit({
   baseDeposit,
@@ -439,20 +685,15 @@ export function calculateDynamicDeposit({
   trustTier,
   isRental = true,
   fastTrackActive = false,
+  fundStatus = DEFAULT_RESERVE_FUND_STATUS,
 }: {
   baseDeposit: number;
   itemValue: number;
   trustTier: TrustTier;
   isRental?: boolean;
   fastTrackActive?: boolean;
-}): {
-  finalDeposit: number;
-  originalDeposit: number;
-  discountAmount: number;
-  discountPercent: number;
-  explanation: string;
-  nextTierGoal: string;
-} {
+  fundStatus?: ReserveFundStatus;
+}): DynamicDepositResult {
   if (!isRental) {
     return {
       finalDeposit: 0,
@@ -471,49 +712,75 @@ export function calculateDynamicDeposit({
       originalDeposit: baseDeposit,
       discountAmount: 0,
       discountPercent: 0,
-      explanation: "⚡ Chế độ Fast-Track: Thu đủ 100% tiền cọc bảo chứng qua Cổng thanh toán PayOS để mở khóa thuê trang phục giá trị cao ngay lập tức.",
-      nextTierGoal: "Trả đồ đúng hạn đơn này để được thăng hạng tín nhiệm và hưởng ưu đãi giảm cọc ở lần thuê kế tiếp!",
+      explanation: "Chế độ Fast-Track: Thu đủ 100% tiền cọc bảo chứng qua Cổng thanh toán PayOS để mở khóa thuê trang phục giá trị cao ngay lập tức.",
+      nextTierGoal: "Trả đồ đúng hạn đơn này để tích lũy điểm tín nhiệm và hưởng ưu đãi giảm cọc ở lần thuê kế tiếp!",
     };
   }
 
-  let discountPercent = 0;
+  // 1. CIRCUIT BREAKER CHECK (NGẮT MẠCH TỰ ĐỘNG BẢO VỆ NGUỒN VỐN SÀN)
+  const monthlyClaimCeiling = Math.round(fundStatus.openingReserveFundBalance * 0.30);
+  const remainingMonthQuota = Math.max(0, monthlyClaimCeiling - fundStatus.committedClaims);
 
-  switch (trustTier) {
-    case "LEVEL_0_NEW":
-      discountPercent = 0;
-      break;
-    case "LEVEL_1_VERIFIED":
-      discountPercent = 25;
-      break;
-    case "LEVEL_2_TRUSTED":
-      discountPercent = 50;
-      break;
-    case "LEVEL_3_VIP":
-      discountPercent = itemValue <= 1000000 ? 100 : 75;
-      break;
+  if (fundStatus.committedClaims >= monthlyClaimCeiling || fundStatus.currentReserveFundBalance <= 0) {
+    return {
+      finalDeposit: baseDeposit,
+      originalDeposit: baseDeposit,
+      discountAmount: 0,
+      discountPercent: 0,
+      circuitBreakerTriggered: true,
+      explanation: "Cơ chế Circuit Breaker tự động kích hoạt bảo toàn Quỹ Rủi Ro (đã chạm trần bồi thường 30% tháng): Tạm thời áp dụng cọc 100% cho mọi giao dịch mới.",
+      nextTierGoal: "Hạn mức bảo lãnh ưu đãi sẽ tự động mở lại vào chu kỳ đầu tháng tiếp theo khi quỹ được trích lập mới.",
+    };
   }
 
-  const discountAmount = Math.round((baseDeposit * discountPercent) / 100);
-  const finalDeposit = Math.max(0, baseDeposit - discountAmount);
+  // 2. FUND THRESHOLD CHECK (ĐIỀU KIỆN SỐ DƯ QUỸ KHẢ DỤNG)
+  let effectiveTier: TrustTier = trustTier;
+  const currentFund = fundStatus.currentReserveFundBalance;
+
+  if (currentFund < CONSERVATIVE_TIER_RULES.LEVEL_1_VERIFIED.fundThresholdRequired) {
+    // Quỹ khả dụng dưới 5 triệu: Cọc 100% toàn sàn bảo toàn vốn
+    effectiveTier = "LEVEL_0_NEW";
+  } else if (effectiveTier === "LEVEL_3_VIP" && currentFund < CONSERVATIVE_TIER_RULES.LEVEL_3_VIP.fundThresholdRequired) {
+    effectiveTier = currentFund >= CONSERVATIVE_TIER_RULES.LEVEL_2_TRUSTED.fundThresholdRequired ? "LEVEL_2_TRUSTED" : "LEVEL_1_VERIFIED";
+  } else if (effectiveTier === "LEVEL_2_TRUSTED" && currentFund < CONSERVATIVE_TIER_RULES.LEVEL_2_TRUSTED.fundThresholdRequired) {
+    effectiveTier = "LEVEL_1_VERIFIED";
+  }
+
+  const tierRule = CONSERVATIVE_TIER_RULES[effectiveTier];
+  const requestedGuarantee = Math.round(baseDeposit * tierRule.depositDiscountRate);
+
+  // Bảo lãnh phê duyệt bị chặn bởi:
+  // 1. Tỷ lệ giảm theo hạng
+  // 2. Hạn mức bảo lãnh tối đa trên 1 đơn (maxCoveragePerOrder)
+  // 3. Hạn ngạch còn lại của tháng theo Circuit Breaker (remainingMonthQuota)
+  const approvedGuarantee = Math.min(
+    requestedGuarantee,
+    tierRule.maxCoveragePerOrder,
+    remainingMonthQuota
+  );
+
+  const finalDeposit = Math.max(0, baseDeposit - approvedGuarantee);
+  const discountAmount = approvedGuarantee;
+  const discountPercent = baseDeposit > 0 ? Math.round((discountAmount / baseDeposit) * 100) : 0;
 
   let explanation = "";
   let nextTierGoal = "";
 
-  if (trustTier === "LEVEL_0_NEW") {
-    explanation = "Mức cọc tiêu chuẩn cho thành viên mới để đảm bảo an toàn giao dịch 2 chiều.";
-    nextTierGoal = "Hoàn tất đơn đầu tiên an toàn để mở khóa Hạng Tín Nhiệm và giảm 25% - 50% tiền cọc!";
-  } else if (trustTier === "LEVEL_1_VERIFIED") {
-    explanation = `Đặc quyền Tín nhiệm Cơ bản: Bạn được giảm 25% tiền cọc (tiết kiệm ${discountAmount.toLocaleString()}đ).`;
-    nextTierGoal = "Hoàn tất thêm 2 đơn thành công để thăng hạng Khách Quen và được giảm 50% tiền cọc!";
-  } else if (trustTier === "LEVEL_2_TRUSTED") {
-    explanation = `Đặc quyền Khách Quen Uy Tín: Bạn được giảm 50% tiền cọc (tiết kiệm ${discountAmount.toLocaleString()}đ).`;
-    nextTierGoal = "Đạt trên 85 điểm tín nhiệm để gia nhập VIP Club và hưởng đặc quyền miễn cọc!";
-  } else {
-    if (finalDeposit === 0) {
-      explanation = `👑 Đặc quyền CLOOP VIP Club: Miễn 100% tiền cọc cho trang phục này (tiết kiệm ${(baseDeposit || 0).toLocaleString()}đ)!`;
+  if (effectiveTier === "LEVEL_0_NEW") {
+    if (trustTier !== "LEVEL_0_NEW" && currentFund < CONSERVATIVE_TIER_RULES.LEVEL_1_VERIFIED.fundThresholdRequired) {
+      explanation = "Quỹ Dự phòng Rủi ro đang trong giai đoạn tích lũy vốn ban đầu (< 5.000.000đ): Áp dụng cọc tiêu chuẩn 100% để bảo đảm an toàn thanh khoản sàn.";
     } else {
-      explanation = `👑 Đặc quyền CLOOP VIP Club: Giảm 75% tiền cọc (tiết kiệm ${discountAmount.toLocaleString()}đ).`;
+      explanation = "Mức cọc tiêu chuẩn 100% cho thành viên mới để đảm bảo an toàn giao dịch 2 chiều.";
     }
+    nextTierGoal = "Hoàn tất tối thiểu 3 đơn thuê với tổng chi tiêu từ 1.000.000đ và đánh giá tốt để mở khóa Level 1 Verified!";
+  } else if (effectiveTier === "LEVEL_1_VERIFIED") {
+    explanation = `Đặc quyền Tín nhiệm Cơ bản: Sàn bảo lãnh giảm 10% tiền cọc (tiết kiệm ${discountAmount.toLocaleString("vi-VN")}đ, trần 200.000đ/đơn).`;
+    nextTierGoal = "Tích lũy đủ 8 đơn với tổng chi tiêu 3.000.000đ từ 3 chủ đồ khác nhau để lên Hạng Khách Quen (giảm 20% cọc)!";
+  } else if (effectiveTier === "LEVEL_2_TRUSTED") {
+    explanation = `Đặc quyền Khách Quen Uy Tín: Sàn bảo lãnh giảm 20% tiền cọc (tiết kiệm ${discountAmount.toLocaleString("vi-VN")}đ, trần 500.000đ/đơn).`;
+    nextTierGoal = "Tích lũy đủ 12 đơn với tổng chi tiêu 8.000.000đ và đánh giá 4.5 sao để gia nhập CLOOP VIP Club (giảm 30% cọc)!";
+  } else {
+    explanation = `Đặc quyền CLOOP VIP Club: Sàn bảo lãnh giảm 30% tiền cọc (tiết kiệm ${discountAmount.toLocaleString("vi-VN")}đ, trần 1.000.000đ/đơn, giữ lại 70% cọc đối ứng).`;
     nextTierGoal = "Bạn đang ở cấp bậc tín nhiệm cao nhất của cộng đồng CLOOP.";
   }
 
@@ -524,5 +791,7 @@ export function calculateDynamicDeposit({
     discountPercent,
     explanation,
     nextTierGoal,
+    circuitBreakerTriggered: false,
+    effectiveCoverageCap: tierRule.maxCoveragePerOrder,
   };
 }

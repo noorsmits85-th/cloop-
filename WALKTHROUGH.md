@@ -84,7 +84,7 @@ export async function getDisputeEvidenceUrls(params: {
 
 ## 3. Test Coverage & Verification Results
 
-The test suite consists of **37 automated tests** (23 unit tests + 14 integration tests):
+The test suite consists of **45 automated tests** (31 unit tests + 14 integration tests):
 
 ```bash
 $ npm test
@@ -104,14 +104,22 @@ CLOOP PRODUCTION TEST SUITE: TRUST STACK & DISPUTES
   [PASS] Student email @edu.vn adds student email signal
   [PASS] Completed orders add logarithmic bonus without inflation
   [PASS] Disputes apply severe penalty to score
-  [PASS] Tier boundaries are strictly enforced
+  [PASS] Tier boundaries and criteria are strictly defined
+  [PASS] Student email alone does NOT unlock deposit discount (stays LEVEL_0_NEW without orders/spend)
+  [PASS] Anti-farming: 3 orders with low spend (< 1,000,000 VND) stays LEVEL_0_NEW
+  [PASS] Anti-collusion: 3 orders from only 1 distinct lender stays LEVEL_0_NEW
+  [PASS] Disputes immediately revoke tier eligibility back to LEVEL_0_NEW
 
---- 3. Dynamic Deposit Calculation ---
+--- 3. Dynamic Deposit Calculation (Conservative & Fund-Driven) ---
   [PASS] LEVEL_0_NEW pays 100% deposit
-  [PASS] LEVEL_1_VERIFIED pays 75% deposit (25% discount)
-  [PASS] LEVEL_2_TRUSTED pays 50% deposit (50% discount)
-  [PASS] LEVEL_3_VIP pays 25% deposit for expensive items
-  [PASS] LEVEL_3_VIP pays 0 VND deposit for items under 1,000,000 VND
+  [PASS] LEVEL_1_VERIFIED pays 90% deposit (10% discount, max 200k VND)
+  [PASS] LEVEL_2_TRUSTED pays 80% deposit (20% discount, max 500k VND)
+  [PASS] LEVEL_3_VIP pays 70% deposit (30% discount, max 1.000.000 VND)
+  [PASS] LEVEL_3_VIP pays 70% deposit for 400,000 VND deposit item (0 VND deposit abolished)
+  [PASS] Single-order guarantee cap protects platform on high-value deposit
+  [PASS] Circuit breaker triggers when committed claims reach 30% monthly ceiling
+  [PASS] Cold-start fund protection: forces 100% deposit when fund < 5,000,000 VND
+  [PASS] Fund threshold gating: Level 2 user downgraded to Level 1 when fund is between 5M and 15M VND
   [PASS] Fast-Track forces 100% deposit regardless of trust tier
 
 --- 4. Fast-Track Ceilings & Security Constraints ---
@@ -126,14 +134,13 @@ CLOOP PRODUCTION TEST SUITE: TRUST STACK & DISPUTES
 --- 6. Data Privacy & Law 91/2025 Compliance Masking ---
   [PASS] maskPhone hides middle digits properly
   [PASS] maskEmail hides local part properly
-ALL TESTS COMPLETE: 23/23 PASSED
+ALL TESTS COMPLETE: 31/31 PASSED
 
 ======================================================
 CLOOP INTEGRATION TEST SUITE: FAIL-CLOSED & TRANSACTIONS
 ======================================================
 --- 1. Database Transaction Atomicity & Rollback ---
   [PASS] Rolls back entire transaction on runtime error (No partial commits)
-  (Hoặc [SKIPPED] nếu môi trường mạng cục bộ không thể kết nối tới Supabase PostgreSQL)
 
 --- 2. PayOS Webhook HMAC-SHA256 Cryptography & Idempotency ---
   [PASS] Valid PayOS webhook signature passes cryptographic verification
@@ -155,7 +162,7 @@ CLOOP INTEGRATION TEST SUITE: FAIL-CLOSED & TRANSACTIONS
 
 --- 5. Dispute Evidence Authorization (Zero IDOR) ---
   [PASS] Dispute settlement conservation of funds invariant
-INTEGRATION SUITE: 14 passed (13 passed, 1 skipped nếu không có kết nối DB ngoại vi)
+INTEGRATION SUITE: 14 passed, 0 skipped, 0 failed (Total: 14)
 ```
 
 ---

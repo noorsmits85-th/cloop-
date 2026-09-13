@@ -4,6 +4,7 @@ import {
   calculateUserTrustScoreFromData,
   calculateDynamicDeposit,
   TRUST_TIERS,
+  CONSERVATIVE_TIER_RULES,
 } from '../lib/trust-engine';
 import { maskPhone, maskEmail } from '../lib/data-privacy';
 
@@ -125,7 +126,7 @@ test('Disputes apply severe penalty to score', () => {
   assert.ok(disputedUser.score < cleanUser.score - 40, 'Disputes must deduct significant points');
 });
 
-test('Tier boundaries are strictly enforced', () => {
+test('Tier boundaries and criteria are strictly defined', () => {
   assert.equal(TRUST_TIERS.LEVEL_0_NEW.minScore, 0);
   assert.equal(TRUST_TIERS.LEVEL_0_NEW.maxScore, 29);
   assert.equal(TRUST_TIERS.LEVEL_1_VERIFIED.minScore, 30);
@@ -134,9 +135,77 @@ test('Tier boundaries are strictly enforced', () => {
   assert.equal(TRUST_TIERS.LEVEL_2_TRUSTED.maxScore, 84);
   assert.equal(TRUST_TIERS.LEVEL_3_VIP.minScore, 85);
   assert.equal(TRUST_TIERS.LEVEL_3_VIP.maxScore, 100);
+
+  // New Conservative Tier Rules
+  assert.equal(CONSERVATIVE_TIER_RULES.LEVEL_1_VERIFIED.depositDiscountRate, 0.10);
+  assert.equal(CONSERVATIVE_TIER_RULES.LEVEL_2_TRUSTED.depositDiscountRate, 0.20);
+  assert.equal(CONSERVATIVE_TIER_RULES.LEVEL_3_VIP.depositDiscountRate, 0.30);
+  assert.equal(CONSERVATIVE_TIER_RULES.LEVEL_1_VERIFIED.maxCoveragePerOrder, 200000);
+  assert.equal(CONSERVATIVE_TIER_RULES.LEVEL_2_TRUSTED.maxCoveragePerOrder, 500000);
+  assert.equal(CONSERVATIVE_TIER_RULES.LEVEL_3_VIP.maxCoveragePerOrder, 1000000);
 });
 
-console.log('\n--- 3. Dynamic Deposit Calculation ---');
+test('Student email alone does NOT unlock deposit discount (stays LEVEL_0_NEW without orders/spend)', () => {
+  const res = calculateUserTrustScoreFromData({
+    email: 'sinhvien@hcmus.edu.vn',
+    isVerified: true,
+    completedOrders: 0,
+    totalRentalSpend: 0,
+    disputeCount: 0,
+    cancelCount: 0,
+    hasStudentEmailProof: true,
+  });
+  assert.equal(res.tier, 'LEVEL_0_NEW');
+  assert.ok(res.eligibility.studentVoucherEligible, 'Should be eligible for student rental voucher');
+  assert.equal(res.eligibility.isEligible, false, 'Should not be eligible for deposit discount');
+});
+
+test('Anti-farming: 3 orders with low spend (< 1,000,000 VND) stays LEVEL_0_NEW', () => {
+  const res = calculateUserTrustScoreFromData({
+    email: 'user@cloop.vn',
+    isVerified: true,
+    completedOrders: 3,
+    totalRentalSpend: 150000, // Chiêu trò đơn ảo giá rẻ
+    fiveStarReviewsCount: 3,
+    distinctLendersCount: 3,
+    disputeCount: 0,
+    cancelCount: 0,
+  });
+  assert.equal(res.tier, 'LEVEL_0_NEW');
+  assert.equal(res.eligibility.isEligible, false);
+});
+
+test('Anti-collusion: 3 orders from only 1 distinct lender stays LEVEL_0_NEW', () => {
+  const res = calculateUserTrustScoreFromData({
+    email: 'user@cloop.vn',
+    isVerified: true,
+    completedOrders: 3,
+    totalRentalSpend: 1500000,
+    fiveStarReviewsCount: 3,
+    distinctLendersCount: 1, // Thông đồng với 1 chủ đồ duy nhất
+    disputeCount: 0,
+    cancelCount: 0,
+  });
+  assert.equal(res.tier, 'LEVEL_0_NEW');
+  assert.equal(res.eligibility.isEligible, false);
+});
+
+test('Disputes immediately revoke tier eligibility back to LEVEL_0_NEW', () => {
+  const res = calculateUserTrustScoreFromData({
+    email: 'user@cloop.vn',
+    isVerified: true,
+    completedOrders: 10,
+    totalRentalSpend: 5000000,
+    fiveStarReviewsCount: 10,
+    distinctLendersCount: 4,
+    disputeCount: 1, // Có tranh chấp đang mở hoặc lỗi
+    cancelCount: 0,
+  });
+  assert.equal(res.tier, 'LEVEL_0_NEW');
+  assert.equal(res.eligibility.isEligible, false);
+});
+
+console.log('\n--- 3. Dynamic Deposit Calculation (Conservative & Fund-Driven) ---');
 test('LEVEL_0_NEW pays 100% deposit', () => {
   const calc = calculateDynamicDeposit({
     baseDeposit: 1000000,
@@ -146,50 +215,119 @@ test('LEVEL_0_NEW pays 100% deposit', () => {
   });
   assert.equal(calc.finalDeposit, 1000000);
   assert.equal(calc.discountAmount, 0);
+  assert.equal(calc.discountPercent, 0);
 });
 
-test('LEVEL_1_VERIFIED pays 75% deposit (25% discount)', () => {
+test('LEVEL_1_VERIFIED pays 90% deposit (10% discount, max 200k VND)', () => {
   const calc = calculateDynamicDeposit({
     baseDeposit: 1000000,
     itemValue: 1500000,
     trustTier: 'LEVEL_1_VERIFIED',
     isRental: true,
   });
-  assert.equal(calc.finalDeposit, 750000);
-  assert.equal(calc.discountAmount, 250000);
+  assert.equal(calc.finalDeposit, 900000);
+  assert.equal(calc.discountAmount, 100000);
+  assert.equal(calc.discountPercent, 10);
 });
 
-test('LEVEL_2_TRUSTED pays 50% deposit (50% discount)', () => {
+test('LEVEL_2_TRUSTED pays 80% deposit (20% discount, max 500k VND)', () => {
   const calc = calculateDynamicDeposit({
     baseDeposit: 1000000,
     itemValue: 1500000,
     trustTier: 'LEVEL_2_TRUSTED',
     isRental: true,
   });
-  assert.equal(calc.finalDeposit, 500000);
-  assert.equal(calc.discountAmount, 500000);
+  assert.equal(calc.finalDeposit, 800000);
+  assert.equal(calc.discountAmount, 200000);
+  assert.equal(calc.discountPercent, 20);
 });
 
-test('LEVEL_3_VIP pays 25% deposit for expensive items', () => {
+test('LEVEL_3_VIP pays 70% deposit (30% discount, max 1.000.000 VND)', () => {
   const calc = calculateDynamicDeposit({
     baseDeposit: 1000000,
     itemValue: 2500000,
     trustTier: 'LEVEL_3_VIP',
     isRental: true,
   });
-  assert.equal(calc.finalDeposit, 250000);
-  assert.equal(calc.discountAmount, 750000);
+  assert.equal(calc.finalDeposit, 700000);
+  assert.equal(calc.discountAmount, 300000);
+  assert.equal(calc.discountPercent, 30);
 });
 
-test('LEVEL_3_VIP pays 0 VND deposit for items under 1,000,000 VND', () => {
+test('LEVEL_3_VIP pays 70% deposit for 400,000 VND deposit item (0 VND deposit abolished)', () => {
   const calc = calculateDynamicDeposit({
     baseDeposit: 400000,
     itemValue: 900000,
     trustTier: 'LEVEL_3_VIP',
     isRental: true,
   });
-  assert.equal(calc.finalDeposit, 0);
-  assert.equal(calc.discountAmount, 400000);
+  // 30% of 400k = 120k discount, final deposit = 280k
+  assert.equal(calc.finalDeposit, 280000);
+  assert.equal(calc.discountAmount, 120000);
+  assert.equal(calc.discountPercent, 30);
+  assert.ok(calc.finalDeposit > 0, 'Must not allow zero deposit under VietQR');
+});
+
+test('Single-order guarantee cap protects platform on high-value deposit', () => {
+  const calc = calculateDynamicDeposit({
+    baseDeposit: 5000000, // Cọc gốc 5 triệu
+    itemValue: 8000000,
+    trustTier: 'LEVEL_1_VERIFIED', // 10% đáng lẽ là 500k, nhưng bị giới hạn trần 200k
+    isRental: true,
+  });
+  assert.equal(calc.discountAmount, 200000, 'Must cap guarantee at 200,000 VND for Level 1');
+  assert.equal(calc.finalDeposit, 4800000);
+});
+
+test('Circuit breaker triggers when committed claims reach 30% monthly ceiling', () => {
+  const calc = calculateDynamicDeposit({
+    baseDeposit: 1000000,
+    itemValue: 2000000,
+    trustTier: 'LEVEL_2_TRUSTED',
+    isRental: true,
+    fundStatus: {
+      openingReserveFundBalance: 10000000, // Đầu tháng 10 triệu
+      currentReserveFundBalance: 7000000,
+      committedClaims: 3000000, // Đã cam kết 3 triệu = đúng 30% trần
+    },
+  });
+  assert.equal(calc.circuitBreakerTriggered, true);
+  assert.equal(calc.finalDeposit, 1000000);
+  assert.equal(calc.discountAmount, 0);
+});
+
+test('Cold-start fund protection: forces 100% deposit when fund < 5,000,000 VND', () => {
+  const calc = calculateDynamicDeposit({
+    baseDeposit: 1000000,
+    itemValue: 2000000,
+    trustTier: 'LEVEL_1_VERIFIED',
+    isRental: true,
+    fundStatus: {
+      openingReserveFundBalance: 4000000,
+      currentReserveFundBalance: 4000000, // Dưới 5 triệu VND
+      committedClaims: 0,
+    },
+  });
+  assert.equal(calc.finalDeposit, 1000000);
+  assert.equal(calc.discountAmount, 0);
+});
+
+test('Fund threshold gating: Level 2 user downgraded to Level 1 when fund is between 5M and 15M VND', () => {
+  const calc = calculateDynamicDeposit({
+    baseDeposit: 1000000,
+    itemValue: 2000000,
+    trustTier: 'LEVEL_2_TRUSTED',
+    isRental: true,
+    fundStatus: {
+      openingReserveFundBalance: 10000000,
+      currentReserveFundBalance: 10000000, // 10 triệu (< 15 triệu của Level 2)
+      committedClaims: 0,
+    },
+  });
+  // Hạ xuống Level 1: 10% discount thay vì 20%
+  assert.equal(calc.finalDeposit, 900000);
+  assert.equal(calc.discountAmount, 100000);
+  assert.equal(calc.discountPercent, 10);
 });
 
 test('Fast-Track forces 100% deposit regardless of trust tier', () => {

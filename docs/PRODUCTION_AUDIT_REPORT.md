@@ -3,7 +3,7 @@
 **Document Version**: 2.0.0<br/>
 **Target Commit**: `3d6f366` + Hardening Patch<br/>
 **Audit Status**: **READY FOR STAGING AFTER DATABASE INTEGRATION TEST PASSES**<br/>
-**Total Automated Checks**: 37 (23 unit tests passed; 13 integration tests passed; 1 integration test skipped when DB is unreachable)<br/>
+**Total Automated Checks**: 45 (31 unit tests passed; 14 integration tests passed)<br/>
 **TypeScript Typecheck**: 0 Errors<br/>
 **Repository ESLint**: 0 Errors (744 warnings)
 
@@ -45,14 +45,14 @@ graph TD
     E -->|Within Ceiling| OK[APPROVE: Thu 100% cọc qua PayOS]
 ```
 
-### Tier Exposure Limits & Fast-Track Ceilings
+### Tier Exposure Limits, Criteria & Fund-Capacity Constrained Guarantee
 
-| Trust Tier | Trust Score Range | Standard Exposure Limit | Fast-Track Absolute Ceiling | Deposit Discount |
-|---|---|---|---|---|
-| **LEVEL_0_NEW** | 0 – 29 | 2,000,000 VND | 6,000,000 VND | 0% (Pays 100% deposit) |
-| **LEVEL_1_VERIFIED** | 30 – 59 | 5,000,000 VND | 12,000,000 VND | 25% discount |
-| **LEVEL_2_TRUSTED** | 60 – 84 | 10,000,000 VND | 20,000,000 VND | 50% discount |
-| **LEVEL_3_VIP** | 85 – 100 | 20,000,000 VND | 35,000,000 VND | 75% – 100% discount |
+| Trust Tier | Mandatory Multi-Factor Criteria | Reserve Fund Threshold | Standard Exposure | Fast-Track Absolute Ceiling | Deposit Guarantee Policy |
+|---|---|---|---|---|---|
+| **LEVEL_0_NEW** | Default new account | N/A | 2,000,000 VND | 6,000,000 VND | 0% (Pays 100% deposit) |
+| **LEVEL_1_VERIFIED** | $\ge 3$ orders, $\ge 1\text{M}$ spend, $\ge 3$ reviews $\ge 4.0\text{★}$, $\ge 2$ lenders, 14 days | $\ge 5,000,000$ VND | 5,000,000 VND | 12,000,000 VND | 10% guarantee discount (max 200k VND/order) |
+| **LEVEL_2_TRUSTED** | $\ge 8$ orders, $\ge 3\text{M}$ spend, $\ge 8$ reviews $\ge 4.0\text{★}$, $\ge 3$ lenders | $\ge 15,000,000$ VND | 10,000,000 VND | 20,000,000 VND | 20% guarantee discount (max 500k VND/order) |
+| **LEVEL_3_VIP** | $\ge 12$ orders, $\ge 8\text{M}$ spend, avg rating $\ge 4.5\text{★}$, $\ge 5$ lenders | $\ge 30,000,000$ VND | 25,000,000 VND | 35,000,000 VND | 30% guarantee discount (max 1M VND/order, no 0 VND branch) |
 
 ---
 
