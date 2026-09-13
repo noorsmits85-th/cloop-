@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { Save, MapPin, CreditCard, Store } from "lucide-react";
+import { Save, MapPin, CreditCard, Store, ShieldCheck, AlertCircle } from "lucide-react";
 import { updateUserSettingsAction } from "@/app/actions/user";
+import { isValidVietnamPhone, getVietnamCarrier, normalizeVietnamPhone } from "@/lib/validations/phone";
 import { useRouter } from "next/navigation";
 
 export function SettingsClient({ userProfile }: { userProfile: any }) {
@@ -13,13 +14,20 @@ export function SettingsClient({ userProfile }: { userProfile: any }) {
   const [isSaving, setIsSaving] = useState(false);
   const router = useRouter();
 
+  const isPhoneValid = !phone.trim() || isValidVietnamPhone(phone);
+  const carrierInfo = getVietnamCarrier(phone);
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (phone.trim() && !isValidVietnamPhone(phone)) {
+      alert("Số điện thoại không đúng định dạng 10 số của các nhà mạng Việt Nam (03, 05, 07, 08, 09). Vui lòng kiểm tra lại.");
+      return;
+    }
     setIsSaving(true);
     try {
       const res = await updateUserSettingsAction({
         pickup_address: address,
-        phone: phone,
+        phone: phone.trim() ? normalizeVietnamPhone(phone) : "",
         bank_name: bankName,
         bank_account: bankAccount,
       });
@@ -48,14 +56,29 @@ export function SettingsClient({ userProfile }: { userProfile: any }) {
         
         <div className="p-6 space-y-4">
           <div className="space-y-1.5">
-            <label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider">Số điện thoại liên hệ</label>
+            <div className="flex items-center justify-between">
+              <label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider">Số điện thoại liên hệ</label>
+              {phone && (
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${carrierInfo.badgeColor}`}>
+                  {carrierInfo.name}
+                </span>
+              )}
+            </div>
             <input
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="VD: 0901234567"
-              className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm focus:outline-none focus:border-[#183A2D] bg-white transition-colors"
+              maxLength={11}
+              className={`w-full px-4 py-3 rounded-xl border text-sm focus:outline-none bg-white transition-colors font-mono font-medium ${
+                !isPhoneValid ? "border-rose-400 focus:border-rose-600 bg-rose-50/20" : "border-stone-200 focus:border-[#183A2D]"
+              }`}
             />
+            {!isPhoneValid && (
+              <p className="text-[11px] text-rose-600 flex items-center gap-1 font-medium">
+                <AlertCircle size={12} /> Số điện thoại phải gồm 10 chữ số thuộc các mạng Viettel, Vina, Mobi, Vietnamobile, Wintel.
+              </p>
+            )}
           </div>
           
           <div className="space-y-1.5">

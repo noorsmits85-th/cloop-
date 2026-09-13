@@ -26,6 +26,7 @@ export const requireUser = cache(async () => {
         role: true,
         walletBalance: true,
         cloopCoins: true,
+        isVerified: true,
       }
     });
 
@@ -45,6 +46,7 @@ export const requireUser = cache(async () => {
           role: true,
           walletBalance: true,
           cloopCoins: true,
+          isVerified: true,
         }
       });
     }
@@ -54,6 +56,7 @@ export const requireUser = cache(async () => {
       email: email,
       name: name,
       role: profile.role,
+      isVerified: profile.isVerified === true,
       avatar: user.user_metadata?.avatar_url || null,
       walletBalance: profile.walletBalance,
       cloopCoins: profile.cloopCoins,
@@ -69,6 +72,7 @@ export const requireUser = cache(async () => {
             role: true,
             walletBalance: true,
             cloopCoins: true,
+            isVerified: true,
           }
         });
 
@@ -77,6 +81,7 @@ export const requireUser = cache(async () => {
           email: email,
           name: name,
           role: profile.role,
+          isVerified: profile.isVerified === true,
           avatar: user.user_metadata?.avatar_url || null,
           walletBalance: profile.walletBalance,
           cloopCoins: profile.cloopCoins,
@@ -91,6 +96,7 @@ export const requireUser = cache(async () => {
     email: email,
     name: name,
     role: "USER",
+    isVerified: false,
     avatar: user.user_metadata?.avatar_url || null,
     walletBalance: 0,
     cloopCoins: 100,

@@ -18,7 +18,14 @@ import {
   Lock,
   Copy,
   Check,
-  Fingerprint
+  Fingerprint,
+  Phone,
+  Smartphone,
+  ShieldAlert,
+  AlertCircle,
+  X,
+  RefreshCw,
+  Sparkles
 } from "lucide-react";
 import { TRUST_TIERS, type TrustScoreBreakdown } from "@/lib/trust-types";
 import { updateUserProfileWithValidation } from "@/app/actions/user";
@@ -28,9 +35,22 @@ import {
   formatClooperCode, 
   formatCleanUsername 
 } from "@/lib/constants/provinces";
+import { 
+  isValidVietnamPhone, 
+  normalizeVietnamPhone, 
+  maskPhoneNumber, 
+  getVietnamCarrier 
+} from "@/lib/validations/phone";
+import { 
+  requestPhoneOtpAction, 
+  verifyPhoneOtpAction 
+} from "@/app/actions/phone-verification";
 
 export interface UserProfileData {
   id?: string;
+  email?: string | null;
+  phone?: string | null;
+  isVerified?: boolean | null;
   name?: string | null;
   full_name?: string | null;
   username?: string | null;
@@ -59,6 +79,72 @@ export function ProfileClient({
   const userId = userProfile?.id || "";
   const clooperCode = formatClooperCode(userId);
   const [copiedCode, setCopiedCode] = useState(false);
+
+  // 🟢 QUẢN LÝ XÁC THỰC SỐ ĐIỆN THOẠI CHÍNH CHỦ (CHỐNG SPAM & ANTI-SYBIL)
+  const initialPhoneVerified = Boolean(userProfile?.isVerified || trustBreakdown?.factors?.phoneVerified);
+  const [isPhoneVerified, setIsPhoneVerified] = useState<boolean>(initialPhoneVerified);
+  const [currentPhone, setCurrentPhone] = useState<string>(userProfile?.phone || "");
+  const [isPhoneModalOpen, setIsPhoneModalOpen] = useState(false);
+  const [phoneInput, setPhoneInput] = useState(userProfile?.phone || "");
+  const [otpInput, setOtpInput] = useState("");
+  const [otpStep, setOtpStep] = useState<"PHONE" | "OTP" | "SUCCESS">("PHONE");
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpError, setOtpError] = useState("");
+  const [demoOtpCode, setDemoOtpCode] = useState<string | undefined>();
+  const [otpCountdown, setOtpCountdown] = useState(0);
+
+  // Đếm ngược 180s cho mã OTP
+  React.useEffect(() => {
+    if (otpCountdown > 0) {
+      const timer = setTimeout(() => setOtpCountdown(prev => prev - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [otpCountdown]);
+
+  const handleSendOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setOtpError("");
+    setOtpLoading(true);
+
+    try {
+      const res = await requestPhoneOtpAction({ phone: phoneInput });
+      if (!res.success) {
+        throw new Error(res.error);
+      }
+      setDemoOtpCode(res.demoOtp);
+      setOtpStep("OTP");
+      setOtpCountdown(180);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Không thể gửi mã OTP";
+      setOtpError(msg);
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setOtpError("");
+    setOtpLoading(true);
+
+    try {
+      const res = await verifyPhoneOtpAction({ phone: phoneInput, otp: otpInput });
+      if (!res.success) {
+        throw new Error(res.error);
+      }
+      setIsPhoneVerified(true);
+      setCurrentPhone(res.phone || phoneInput);
+      setOtpStep("SUCCESS");
+      setTimeout(() => {
+        setIsPhoneModalOpen(false);
+      }, 2200);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Mã xác thực không hợp lệ";
+      setOtpError(msg);
+    } finally {
+      setOtpLoading(false);
+    }
+  };
 
   // Form state for live public profile editing
   const [formData, setFormData] = useState({
@@ -543,23 +629,72 @@ export function ProfileClient({
             Chi tiết các yếu tố cấu thành điểm uy tín
           </h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            {/* 1. Xác thực Email */}
             <div className="flex items-center justify-between p-3 bg-stone-50 rounded-xl border border-stone-200/60">
-              <span className="text-stone-600 flex items-center gap-2">
-                <CheckCircle2 size={15} className="text-emerald-600" /> Xác thực Email & Điện thoại
-              </span>
-              <span className="font-bold font-mono text-emerald-700">+20 PTS</span>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                <div>
+                  <span className="text-stone-800 font-semibold block">Xác thực Email tài khoản</span>
+                  <span className="text-[10px] text-stone-400 font-mono">{userProfile.email || "Đã liên kết"}</span>
+                </div>
+              </div>
+              <span className="font-bold font-mono text-emerald-700">+10 PTS</span>
             </div>
 
+            {/* 2. Xác thực Số điện thoại */}
+            <div className="flex items-center justify-between p-3 bg-stone-50 rounded-xl border border-stone-200/60">
+              <div className="flex items-center gap-2">
+                {isPhoneVerified ? (
+                  <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                ) : (
+                  <ShieldAlert size={16} className="text-amber-500 shrink-0" />
+                )}
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-stone-800 font-semibold">Số điện thoại chính chủ</span>
+                    {isPhoneVerified ? (
+                      <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded-full font-bold">Đã xác minh</span>
+                    ) : (
+                      <span className="text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded-full font-bold">Chưa xác thực</span>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-stone-400 font-mono">
+                    {isPhoneVerified ? maskPhoneNumber(currentPhone) : "Cần xác thực để liên lạc ship hàng"}
+                  </span>
+                </div>
+              </div>
+
+              {isPhoneVerified ? (
+                <span className="font-bold font-mono text-emerald-700">+10 PTS</span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOtpStep("PHONE");
+                    setOtpError("");
+                    setPhoneInput(currentPhone);
+                    setIsPhoneModalOpen(true);
+                  }}
+                  className="px-3 py-1.5 bg-[#183A2D] hover:bg-emerald-800 text-white rounded-lg text-[11px] font-bold transition-all shadow-2xs cursor-pointer flex items-center gap-1"
+                >
+                  <Smartphone size={12} />
+                  <span>Xác thực ngay</span>
+                </button>
+              )}
+            </div>
+
+            {/* 3. Email Sinh Viên */}
             <div className="flex items-center justify-between p-3 bg-stone-50 rounded-xl border border-stone-200/60">
               <span className="text-stone-600 flex items-center gap-2">
                 <CheckCircle2 size={15} className={trustBreakdown?.factors.isStudent ? "text-emerald-600" : "text-stone-300"} />
                 Email Sinh Viên (@edu.vn)
               </span>
               <span className="font-bold font-mono text-emerald-700">
-                {trustBreakdown?.factors.isStudent ? "+15 PTS" : "Chưa kích hoạt"}
+                {trustBreakdown?.factors.isStudent ? "+10 PTS" : "Chưa kích hoạt"}
               </span>
             </div>
 
+            {/* 4. Lịch sử thuê thành công */}
             <div className="flex items-center justify-between p-3 bg-stone-50 rounded-xl border border-stone-200/60">
               <span className="text-stone-600 flex items-center gap-2">
                 <CheckCircle2 size={15} className="text-amber-500" />
@@ -570,7 +705,8 @@ export function ProfileClient({
               </span>
             </div>
 
-            <div className="flex items-center justify-between p-3 bg-stone-50 rounded-xl border border-stone-200/60">
+            {/* 5. Đánh giá 5 sao */}
+            <div className="flex items-center justify-between p-3 bg-stone-50 rounded-xl border border-stone-200/60 sm:col-span-2">
               <span className="text-stone-600 flex items-center gap-2">
                 <Award size={15} className="text-blue-500" />
                 Đánh giá 5 sao ({trustBreakdown?.factors.fiveStarReviews || 0} lượt)
@@ -620,6 +756,205 @@ export function ProfileClient({
           </div>
         </div>
       </div>
+
+      {/* 📱 POPUP XÁC THỰC SỐ ĐIỆN THOẠI CHÍNH CHỦ (OTP VERIFICATION MODAL) */}
+      {isPhoneModalOpen && (
+        <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-stone-200 overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-stone-100 bg-[#FAF9F5] flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-800 flex items-center justify-center">
+                  <Smartphone size={16} />
+                </div>
+                <div>
+                  <h3 className="font-heading font-extrabold text-sm text-[#0A2517]">
+                    Xác Thực Số Điện Thoại Chính Chủ
+                  </h3>
+                  <p className="text-[10px] text-stone-400 font-mono">BẢO MẬT & CHỐNG SPAM</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPhoneModalOpen(false)}
+                className="w-8 h-8 rounded-full text-stone-400 hover:text-stone-700 hover:bg-stone-100 flex items-center justify-center transition cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-4">
+              {otpError && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-start gap-2">
+                  <AlertCircle size={15} className="shrink-0 mt-0.5 text-rose-600" />
+                  <span className="leading-relaxed">{otpError}</span>
+                </div>
+              )}
+
+              {otpStep === "PHONE" && (
+                <form onSubmit={handleSendOtp} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-stone-700 uppercase tracking-wider">
+                        Số điện thoại di động:
+                      </label>
+                      {phoneInput && (
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${getVietnamCarrier(phoneInput).badgeColor}`}>
+                          {getVietnamCarrier(phoneInput).name}
+                        </span>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 text-xs font-mono font-bold">+84</span>
+                      <input
+                        type="tel"
+                        value={phoneInput}
+                        onChange={(e) => setPhoneInput(e.target.value)}
+                        placeholder="0987654321"
+                        maxLength={11}
+                        className="w-full pl-12 pr-4 py-2.5 rounded-xl border border-stone-200 focus:border-[#183A2D] focus:ring-1 focus:ring-[#183A2D] outline-none text-sm font-mono font-bold"
+                        required
+                        autoFocus
+                      />
+                    </div>
+                    <p className="text-[11px] text-stone-400">
+                      Chấp nhận đầu số 10 số của Viettel, VinaPhone, MobiFone, Vietnamobile, Wintel.
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-100 text-[11px] text-emerald-950 space-y-1">
+                    <div className="font-bold flex items-center gap-1.5 text-emerald-900">
+                      <ShieldCheck size={13} className="text-emerald-700" /> Ràng buộc độc bản (Anti-Sybil Invariant):
+                    </div>
+                    <p className="text-stone-600 leading-relaxed font-light">
+                      Mỗi số điện thoại chỉ liên kết với 1 tài khoản duy nhất. Điều này bảo vệ bạn khỏi các rủi ro mạo danh và chống gian lận tiền cọc.
+                    </p>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={otpLoading || !phoneInput.trim()}
+                    className="w-full py-3 rounded-xl bg-[#183A2D] hover:bg-emerald-800 text-white font-heading font-extrabold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer shadow-sm"
+                  >
+                    {otpLoading ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" />
+                        <span>Đang kiểm tra & gửi mã...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Smartphone size={14} />
+                        <span>Gửi Mã Xác Thực OTP (+10 PTS)</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+              )}
+
+              {otpStep === "OTP" && (
+                <form onSubmit={handleVerifyOtp} className="space-y-4">
+                  <div className="text-center space-y-1">
+                    <span className="text-xs text-stone-500">Mã xác thực đã được gửi tới:</span>
+                    <div className="text-base font-mono font-bold text-[#183A2D]">
+                      {maskPhoneNumber(phoneInput)}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setOtpStep("PHONE"); setOtpError(""); }}
+                      className="text-[11px] text-emerald-700 hover:underline font-medium"
+                    >
+                      Đổi số điện thoại khác
+                    </button>
+                  </div>
+
+                  {demoOtpCode && (
+                    <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900 flex items-center justify-between">
+                      <span className="flex items-center gap-1 font-medium">
+                        <Sparkles size={13} className="text-amber-600" /> Mã thử nghiệm Techfest:
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setOtpInput(demoOtpCode)}
+                        className="font-mono font-black bg-amber-200/80 px-2 py-0.5 rounded text-amber-950 hover:bg-amber-300 transition cursor-pointer"
+                        title="Bấm để tự động điền mã"
+                      >
+                        {demoOtpCode} (Điền nhanh)
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-stone-700 uppercase tracking-wider block text-center">
+                      Nhập mã OTP 6 chữ số:
+                    </label>
+                    <input
+                      type="text"
+                      value={otpInput}
+                      onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      placeholder="••••••"
+                      maxLength={6}
+                      className="w-full text-center tracking-[0.4em] py-3 rounded-xl border border-stone-200 focus:border-[#183A2D] focus:ring-1 focus:ring-[#183A2D] outline-none text-xl font-mono font-black"
+                      required
+                      autoFocus
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs text-stone-500 pt-1">
+                    <span>
+                      {otpCountdown > 0 ? (
+                        <span>Gửi lại mã sau <strong className="font-mono text-emerald-800">{otpCountdown}s</strong></span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleSendOtp}
+                          disabled={otpLoading}
+                          className="text-emerald-700 hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                        >
+                          <RefreshCw size={12} /> Gửi lại mã OTP
+                        </button>
+                      )}
+                    </span>
+                    <span className="text-[10px] text-stone-400 font-mono">Hiệu lực 3 phút</span>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={otpLoading || otpInput.length !== 6}
+                    className="w-full py-3 rounded-xl bg-[#183A2D] hover:bg-emerald-800 text-white font-heading font-extrabold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer shadow-sm"
+                  >
+                    {otpLoading ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" />
+                        <span>Đang xác thực...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 size={14} />
+                        <span>Xác Nhận & Kích Hoạt (+10 PTS)</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+              )}
+
+              {otpStep === "SUCCESS" && (
+                <div className="text-center py-6 space-y-3">
+                  <div className="w-14 h-14 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto animate-bounce">
+                    <CheckCircle2 size={32} />
+                  </div>
+                  <h4 className="text-base font-bold text-stone-900 font-heading">
+                    Xác Thực Thành Công!
+                  </h4>
+                  <p className="text-xs text-stone-600 max-w-xs mx-auto leading-relaxed">
+                    Số điện thoại <strong className="font-mono text-emerald-900">{maskPhoneNumber(currentPhone)}</strong> đã được xác minh chính chủ. Điểm tín nhiệm của bạn đã được cộng <strong className="text-emerald-800">+10 PTS</strong>!
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

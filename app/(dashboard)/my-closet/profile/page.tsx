@@ -25,9 +25,12 @@ export default async function ProfilePage() {
 
   const userProfile = {
     id: userId,
+    email: userAuth.email || "",
+    isVerified: Boolean(userAuth.isVerified),
+    phone: meta.phone || "",
     name: userAuth.name || meta.name || meta.full_name || "Thành viên CLOOP",
     username: meta.username || userId.substring(0, 8),
-    location: meta.location || "Hà Nội, Việt Nam",
+    location: meta.location || "Nghệ An",
     quote: meta.quote || "Lưu giữ ký ức qua từng chiếc váy.",
     bio: meta.bio || "Mình là một người yêu thời trang vintage và những chuyến đi. Mình tin rằng mỗi món đồ đều có một câu chuyện đẹp để kể lại.",
     todaysMemory: meta.todaysMemory || "Hôm nay mình vừa cho thuê chiếc váy đầu tiên trên CLOOP. Một khởi đầu thật đáng nhớ!",

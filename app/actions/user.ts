@@ -106,9 +106,14 @@ export async function updateUserProfile(data: { name?: string; bio?: string; ava
   }
 }
 
+import { isValidVietnamPhone, normalizeVietnamPhone } from "@/lib/validations/phone";
+
 const SettingsSchema = z.object({
   pickup_address: z.string().trim().max(300, "Địa chỉ tối đa 300 ký tự").optional().or(z.literal("")),
-  phone: z.string().trim().max(30, "Số điện thoại tối đa 30 ký tự").optional().or(z.literal("")),
+  phone: z.string().trim().max(30, "Số điện thoại tối đa 30 ký tự").refine(val => {
+    if (!val) return true;
+    return isValidVietnamPhone(val);
+  }, "Số điện thoại không đúng định dạng 10 số của các nhà mạng Việt Nam (03, 05, 07, 08, 09).").optional().or(z.literal("")),
   bank_name: z.string().trim().max(100, "Tên ngân hàng tối đa 100 ký tự").optional().or(z.literal("")),
   bank_account: z.string().trim().max(50, "Số tài khoản tối đa 50 ký tự").optional().or(z.literal("")),
   bank_owner: z.string().trim().max(100, "Tên chủ tài khoản tối đa 100 ký tự").optional().or(z.literal("")),
@@ -127,10 +132,11 @@ export async function updateUserSettingsAction(input: UserSettingsInput) {
 
     try {
       const supabase = await createClient();
+      const normalizedPhone = validated.phone ? normalizeVietnamPhone(validated.phone) : undefined;
       await supabase.auth.updateUser({
         data: {
           pickup_address: validated.pickup_address,
-          phone: validated.phone,
+          phone: normalizedPhone,
           bank_name: validated.bank_name,
           bank_account: validated.bank_account,
           bank_owner: validated.bank_owner,

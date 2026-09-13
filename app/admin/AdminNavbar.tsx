@@ -16,7 +16,8 @@ import {
   Zap, 
   X, 
   CheckCircle2, 
-  HelpCircle
+  HelpCircle,
+  UserCheck
 } from "lucide-react";
 
 export default function AdminNavbar() {
@@ -36,6 +37,12 @@ export default function AdminNavbar() {
       href: "/admin/deposit-vault",
       icon: <ShieldCheck size={15} />,
       badge: "Két cọc"
+    },
+    {
+      label: "Định Danh & SĐT",
+      href: "/admin/identity",
+      icon: <UserCheck size={15} />,
+      badge: "KYC"
     },
     {
       label: "Vận Chuyển GHN",

@@ -8,6 +8,13 @@ import {
 } from '../lib/trust-engine';
 import { maskPhone, maskEmail } from '../lib/data-privacy';
 import { verifyConservationInvariant } from '../lib/settlement-engine';
+import {
+  isValidVietnamPhone,
+  normalizeVietnamPhone,
+  cleanRawPhone,
+  maskPhoneNumber,
+  getVietnamCarrier,
+} from '../lib/validations/phone';
 
 let totalTests = 0;
 let passedTests = 0;
@@ -715,6 +722,65 @@ test('Fail-Closed: Listing with deposit <= 0 automatically falls back to minimum
 
   assert.equal(baseDepositPrice, 600000, 'Must default to 50% of item valuation (600,000đ)');
   assert.ok(baseDepositPrice >= 300000, 'Must enforce minimum 300,000đ deposit floor');
+});
+
+console.log('\n--- 11. Vietnam Phone Verification & Anti-Fraud Shield ---');
+test('Normalizes phone numbers: removes spaces, dots, dashes, converts +84 and 84 to 0', () => {
+  assert.equal(normalizeVietnamPhone('+84 981 234 567'), '0981234567');
+  assert.equal(normalizeVietnamPhone('84981234567'), '0981234567');
+  assert.equal(normalizeVietnamPhone('098.123.4567'), '0981234567');
+  assert.equal(normalizeVietnamPhone('098-123-4567'), '0981234567');
+});
+
+test('Validates legitimate 10-digit Vietnamese carrier prefixes', () => {
+  // Viettel
+  assert.equal(isValidVietnamPhone('0981234567'), true);
+  assert.equal(isValidVietnamPhone('0387654321'), true);
+  assert.equal(isValidVietnamPhone('0869999999'), true);
+
+  // VinaPhone
+  assert.equal(isValidVietnamPhone('0912345678'), true);
+  assert.equal(isValidVietnamPhone('0841234567'), true);
+  assert.equal(isValidVietnamPhone('0888888888'), true);
+
+  // MobiFone
+  assert.equal(isValidVietnamPhone('0901234567'), true);
+  assert.equal(isValidVietnamPhone('0701234567'), true);
+  assert.equal(isValidVietnamPhone('0899999999'), true);
+
+  // Vietnamobile & Wintel
+  assert.equal(isValidVietnamPhone('0921234567'), true);
+  assert.equal(isValidVietnamPhone('0561234567'), true);
+  assert.equal(isValidVietnamPhone('0551234567'), true);
+});
+
+test('Rejects invalid phone numbers and foreign/spam prefixes', () => {
+  assert.equal(isValidVietnamPhone(''), false);
+  assert.equal(isValidVietnamPhone('098123456'), false); // 9 digits
+  assert.equal(isValidVietnamPhone('09812345678'), false); // 11 digits
+  assert.equal(isValidVietnamPhone('0123456789'), false); // Old 11-digit prefix 012
+  assert.equal(isValidVietnamPhone('0241234567'), false); // Landline prefix 024
+  assert.equal(isValidVietnamPhone('0412345678'), false); // Non-existent prefix
+  assert.equal(isValidVietnamPhone('abcdefghij'), false); // Alphabetic
+  assert.equal(isValidVietnamPhone('+12025550123'), false); // US number
+});
+
+test('Detects mobile carrier names and returns badge metadata', () => {
+  assert.equal(getVietnamCarrier('0981234567').name, 'Viettel Telecom');
+  assert.equal(getVietnamCarrier('0981234567').shortName, 'VIETTEL');
+  assert.equal(getVietnamCarrier('0912345678').name, 'VNPT VinaPhone');
+  assert.equal(getVietnamCarrier('0912345678').shortName, 'VINAPHONE');
+  assert.equal(getVietnamCarrier('0901234567').name, 'MobiFone');
+  assert.equal(getVietnamCarrier('0901234567').shortName, 'MOBIFONE');
+  assert.equal(getVietnamCarrier('0921234567').name, 'Vietnamobile');
+  assert.equal(getVietnamCarrier('0551234567').name, 'Wintel / I-Telecom');
+  assert.equal(getVietnamCarrier('').name, 'Chưa xác định');
+});
+
+test('Masks phone numbers adhering to Data Privacy Law 91/2025/QH15', () => {
+  assert.equal(maskPhoneNumber('0981234567'), '098***4567');
+  assert.equal(maskPhoneNumber('0387654321'), '038***4321');
+  assert.equal(maskPhoneNumber(''), 'Chưa cập nhật');
 });
 
 console.log('\n======================================================');
