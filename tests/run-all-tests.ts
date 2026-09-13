@@ -15,6 +15,7 @@ import {
   maskPhoneNumber,
   getVietnamCarrier,
 } from '../lib/validations/phone';
+import { COIN_PACKAGES } from '../lib/coinPackages';
 
 let totalTests = 0;
 let passedTests = 0;
@@ -781,6 +782,34 @@ test('Masks phone numbers adhering to Data Privacy Law 91/2025/QH15', () => {
   assert.equal(maskPhoneNumber('0981234567'), '098***4567');
   assert.equal(maskPhoneNumber('0387654321'), '038***4321');
   assert.equal(maskPhoneNumber(''), 'Chưa cập nhật');
+});
+
+test('KYC_1K Micro-Deposit package: 1,000 VND yields 20 coins (200% payback) for eKYC', () => {
+  const kycPkg = COIN_PACKAGES.KYC_1K;
+  assert.ok(kycPkg, 'KYC_1K package must be defined');
+  assert.equal(kycPkg.amountVnd, 1000, 'Micro-deposit amount must be exactly 1,000 VND');
+  assert.equal(kycPkg.totalCoins, 20, 'Must reward 20 Leaf Coins (200% return)');
+  assert.equal(kycPkg.code, 'KYC_1K');
+});
+
+test('VietQR eKYC Verification: isVerified: true elevates user to phoneVerified (+10 PTS)', () => {
+  const unverifiedScore = calculateUserTrustScoreFromData({
+    isVerified: false,
+    email: 'user@gmail.com',
+    completedOrders: 0,
+    disputeCount: 0,
+  });
+
+  const verifiedScore = calculateUserTrustScoreFromData({
+    isVerified: true,
+    email: 'user@gmail.com',
+    completedOrders: 0,
+    disputeCount: 0,
+  });
+
+  assert.equal(unverifiedScore.factors.phoneVerified, false);
+  assert.equal(verifiedScore.factors.phoneVerified, true);
+  assert.equal(verifiedScore.score, unverifiedScore.score + 10, 'Must award exactly +10 PTS for phone eKYC');
 });
 
 console.log('\n======================================================');

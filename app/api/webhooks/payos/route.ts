@@ -89,10 +89,12 @@ export async function POST(req: Request) {
             return;
           }
 
+          const isKycPackage = coinTopUp.packageCode === "KYC_1K";
           const updatedUser = await tx.user.update({
             where: { id: coinTopUp.userId },
             data: {
-              cloopCoins: { increment: coinTopUp.totalCoins }
+              cloopCoins: { increment: coinTopUp.totalCoins },
+              ...(isKycPackage ? { isVerified: true } : {}),
             },
             select: { cloopCoins: true }
           });
@@ -124,6 +126,8 @@ export async function POST(req: Request) {
       try {
         const { revalidatePath } = require("next/cache");
         revalidatePath("/my-closet/wallet");
+        revalidatePath("/my-closet/profile");
+        revalidatePath("/admin/identity");
       } catch (_) {}
 
       return NextResponse.json({ success: true, message: "Coin Top-up processed successfully" }, { status: 200 });

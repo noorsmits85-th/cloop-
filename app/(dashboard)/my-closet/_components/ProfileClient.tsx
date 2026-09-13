@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { 
   ShieldCheck, 
   CheckCircle2, 
@@ -25,7 +26,11 @@ import {
   AlertCircle,
   X,
   RefreshCw,
-  Sparkles
+  Sparkles,
+  QrCode,
+  Coins,
+  ArrowRight,
+  Download
 } from "lucide-react";
 import { TRUST_TIERS, type TrustScoreBreakdown } from "@/lib/trust-types";
 import { updateUserProfileWithValidation } from "@/app/actions/user";
@@ -42,9 +47,10 @@ import {
   getVietnamCarrier 
 } from "@/lib/validations/phone";
 import { 
-  requestPhoneOtpAction, 
-  verifyPhoneOtpAction 
-} from "@/app/actions/phone-verification";
+  createMicroKycPaymentAction, 
+  checkMicroKycStatusAction, 
+  type MicroKycPaymentResult 
+} from "@/app/actions/kyc-verification";
 
 export interface UserProfileData {
   id?: string;
@@ -74,75 +80,96 @@ export function ProfileClient({
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const router = useRouter();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const userId = userProfile?.id || "";
   const clooperCode = formatClooperCode(userId);
   const [copiedCode, setCopiedCode] = useState(false);
 
-  // 🟢 QUẢN LÝ XÁC THỰC SỐ ĐIỆN THOẠI CHÍNH CHỦ (CHỐNG SPAM & ANTI-SYBIL)
+  // 🟢 QUẢN LÝ ĐỊNH DANH SỐ THỰC CHẤT QUA VIETQR 1.000đ (MICRO-DEPOSIT BANK eKYC)
   const initialPhoneVerified = Boolean(userProfile?.isVerified || trustBreakdown?.factors?.phoneVerified);
   const [isPhoneVerified, setIsPhoneVerified] = useState<boolean>(initialPhoneVerified);
   const [currentPhone, setCurrentPhone] = useState<string>(userProfile?.phone || "");
-  const [isPhoneModalOpen, setIsPhoneModalOpen] = useState(false);
+  const [isKycModalOpen, setIsKycModalOpen] = useState(false);
   const [phoneInput, setPhoneInput] = useState(userProfile?.phone || "");
-  const [otpInput, setOtpInput] = useState("");
-  const [otpStep, setOtpStep] = useState<"PHONE" | "OTP" | "SUCCESS">("PHONE");
-  const [otpLoading, setOtpLoading] = useState(false);
-  const [otpError, setOtpError] = useState("");
-  const [demoOtpCode, setDemoOtpCode] = useState<string | undefined>();
-  const [otpCountdown, setOtpCountdown] = useState(0);
+  const [kycStep, setKycStep] = useState<"PHONE" | "QR" | "SUCCESS">("PHONE");
+  const [kycLoading, setKycLoading] = useState(false);
+  const [kycError, setKycError] = useState("");
+  const [kycPaymentData, setKycPaymentData] = useState<MicroKycPaymentResult | null>(null);
+  const [kycCountdown, setKycCountdown] = useState(900);
+  const [copiedTransferContent, setCopiedTransferContent] = useState(false);
 
-  // Đếm ngược 180s cho mã OTP
+  // Tự động kiểm tra trạng thái thanh toán VietQR eKYC mỗi 2.5 giây khi đang ở bước QR
   React.useEffect(() => {
-    if (otpCountdown > 0) {
-      const timer = setTimeout(() => setOtpCountdown(prev => prev - 1), 1000);
+    if (kycStep !== "QR" || !kycPaymentData?.orderCode || isPhoneVerified) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await checkMicroKycStatusAction(kycPaymentData.orderCode!, phoneInput);
+        if (res.isPaid) {
+          setIsPhoneVerified(true);
+          setCurrentPhone(phoneInput);
+          setKycStep("SUCCESS");
+          clearInterval(interval);
+          router.refresh();
+        }
+      } catch (err) {
+        console.warn("Polling kyc status error:", err);
+      }
+    }, 2500);
+
+    return () => clearInterval(interval);
+  }, [kycStep, kycPaymentData, phoneInput, isPhoneVerified, router]);
+
+  // Đếm ngược 15 phút cho mã VietQR
+  React.useEffect(() => {
+    if (kycStep === "QR" && kycCountdown > 0) {
+      const timer = setTimeout(() => setKycCountdown(prev => prev - 1), 1000);
       return () => clearTimeout(timer);
     }
-  }, [otpCountdown]);
+  }, [kycStep, kycCountdown]);
 
-  const handleSendOtp = async (e?: React.FormEvent) => {
+  const handleCreateKycQr = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    setOtpError("");
-    setOtpLoading(true);
+    setKycError("");
+    setKycLoading(true);
 
     try {
-      const res = await requestPhoneOtpAction({ phone: phoneInput });
+      const res = await createMicroKycPaymentAction({ phone: phoneInput });
       if (!res.success) {
         throw new Error(res.error);
       }
-      setDemoOtpCode(res.demoOtp);
-      setOtpStep("OTP");
-      setOtpCountdown(180);
+      setKycPaymentData(res);
+      setKycCountdown(900);
+      setKycStep("QR");
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Không thể gửi mã OTP";
-      setOtpError(msg);
+      const msg = err instanceof Error ? err.message : "Không thể tạo mã VietQR";
+      setKycError(msg);
     } finally {
-      setOtpLoading(false);
+      setKycLoading(false);
     }
   };
 
-  const handleVerifyOtp = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    setOtpError("");
-    setOtpLoading(true);
-
+  const handleManualCheckKyc = async () => {
+    if (!kycPaymentData?.orderCode) return;
+    setKycLoading(true);
+    setKycError("");
     try {
-      const res = await verifyPhoneOtpAction({ phone: phoneInput, otp: otpInput });
-      if (!res.success) {
-        throw new Error(res.error);
+      const res = await checkMicroKycStatusAction(kycPaymentData.orderCode, phoneInput);
+      if (res.isPaid) {
+        setIsPhoneVerified(true);
+        setCurrentPhone(phoneInput);
+        setKycStep("SUCCESS");
+        router.refresh();
+      } else {
+        setKycError("Hệ thống chưa nhận được tín hiệu chuyển khoản từ ngân hàng. Nếu bạn vừa quét mã, vui lòng đợi 2-3 giây.");
       }
-      setIsPhoneVerified(true);
-      setCurrentPhone(res.phone || phoneInput);
-      setOtpStep("SUCCESS");
-      setTimeout(() => {
-        setIsPhoneModalOpen(false);
-      }, 2200);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Mã xác thực không hợp lệ";
-      setOtpError(msg);
+      const msg = err instanceof Error ? err.message : "Lỗi kiểm tra trạng thái";
+      setKycError(msg);
     } finally {
-      setOtpLoading(false);
+      setKycLoading(false);
     }
   };
 
@@ -641,7 +668,7 @@ export function ProfileClient({
               <span className="font-bold font-mono text-emerald-700">+10 PTS</span>
             </div>
 
-            {/* 2. Xác thực Số điện thoại */}
+            {/* 2. Xác thực Định danh VietQR & SĐT */}
             <div className="flex items-center justify-between p-3 bg-stone-50 rounded-xl border border-stone-200/60">
               <div className="flex items-center gap-2">
                 {isPhoneVerified ? (
@@ -651,15 +678,15 @@ export function ProfileClient({
                 )}
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-stone-800 font-semibold">Số điện thoại chính chủ</span>
+                    <span className="text-stone-800 font-semibold">Định danh VietQR & SĐT chính chủ</span>
                     {isPhoneVerified ? (
-                      <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded-full font-bold">Đã xác minh</span>
+                      <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded-full font-bold">Đã định danh</span>
                     ) : (
-                      <span className="text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded-full font-bold">Chưa xác thực</span>
+                      <span className="text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded-full font-bold">Chưa định danh</span>
                     )}
                   </div>
                   <span className="text-[10px] text-stone-400 font-mono">
-                    {isPhoneVerified ? maskPhoneNumber(currentPhone) : "Cần xác thực để liên lạc ship hàng"}
+                    {isPhoneVerified ? maskPhoneNumber(currentPhone) : "Định danh cấp ngân hàng • Hoàn 200% vào ví"}
                   </span>
                 </div>
               </div>
@@ -670,14 +697,14 @@ export function ProfileClient({
                 <button
                   type="button"
                   onClick={() => {
-                    setOtpStep("PHONE");
-                    setOtpError("");
+                    setKycStep("PHONE");
+                    setKycError("");
                     setPhoneInput(currentPhone);
-                    setIsPhoneModalOpen(true);
+                    setIsKycModalOpen(true);
                   }}
-                  className="px-3 py-1.5 bg-[#183A2D] hover:bg-emerald-800 text-white rounded-lg text-[11px] font-bold transition-all shadow-2xs cursor-pointer flex items-center gap-1"
+                  className="px-3 py-1.5 bg-[#183A2D] hover:bg-emerald-800 text-white rounded-lg text-[11px] font-bold transition-all shadow-2xs cursor-pointer flex items-center gap-1.5"
                 >
-                  <Smartphone size={12} />
+                  <QrCode size={12} />
                   <span>Xác thực ngay</span>
                 </button>
               )}
@@ -757,26 +784,27 @@ export function ProfileClient({
         </div>
       </div>
 
-      {/* 📱 POPUP XÁC THỰC SỐ ĐIỆN THOẠI CHÍNH CHỦ (OTP VERIFICATION MODAL) */}
-      {isPhoneModalOpen && (
+      {/* 💳 POPUP ĐỊNH DANH SỐ VIETQR eKYC 1.000đ (MICRO-DEPOSIT BANK eKYC MODAL) */}
+      {isKycModalOpen && (
         <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-stone-200 overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-stone-200 overflow-hidden animate-in zoom-in-95 duration-200 max-h-[92vh] flex flex-col">
+            
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-stone-100 bg-[#FAF9F5] flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-stone-100 bg-[#FAF9F5] flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-800 flex items-center justify-center">
-                  <Smartphone size={16} />
+                <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-900 flex items-center justify-center shadow-2xs">
+                  <QrCode size={18} />
                 </div>
                 <div>
-                  <h3 className="font-heading font-extrabold text-sm text-[#0A2517]">
-                    Xác Thực Số Điện Thoại Chính Chủ
+                  <h3 className="font-heading font-extrabold text-sm sm:text-base text-[#0A2517]">
+                    Định Danh Số VietQR eKYC
                   </h3>
-                  <p className="text-[10px] text-stone-400 font-mono">BẢO MẬT & CHỐNG SPAM</p>
+                  <p className="text-[10px] text-stone-400 font-mono">CHUẨN NGÂN HÀNG • BẢO MẬT DỮ LIỆU CÁ NHÂN</p>
                 </div>
               </div>
               <button
                 type="button"
-                onClick={() => setIsPhoneModalOpen(false)}
+                onClick={() => setIsKycModalOpen(false)}
                 className="w-8 h-8 rounded-full text-stone-400 hover:text-stone-700 hover:bg-stone-100 flex items-center justify-center transition cursor-pointer"
               >
                 <X size={16} />
@@ -784,20 +812,21 @@ export function ProfileClient({
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 space-y-4">
-              {otpError && (
+            <div className="p-6 space-y-4 overflow-y-auto">
+              {kycError && (
                 <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-start gap-2">
                   <AlertCircle size={15} className="shrink-0 mt-0.5 text-rose-600" />
-                  <span className="leading-relaxed">{otpError}</span>
+                  <span className="leading-relaxed">{kycError}</span>
                 </div>
               )}
 
-              {otpStep === "PHONE" && (
-                <form onSubmit={handleSendOtp} className="space-y-4">
+              {/* BƯỚC 1: NHẬP SỐ ĐIỆN THOẠI & ĐỌC LỜI GIẢI THÍCH TINH TẾ */}
+              {kycStep === "PHONE" && (
+                <form onSubmit={handleCreateKycQr} className="space-y-4">
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-bold text-stone-700 uppercase tracking-wider">
-                        Số điện thoại di động:
+                        Số điện thoại di động chính chủ:
                       </label>
                       {phoneInput && (
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${getVietnamCarrier(phoneInput).badgeColor}`}>
@@ -823,134 +852,221 @@ export function ProfileClient({
                     </p>
                   </div>
 
-                  <div className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-100 text-[11px] text-emerald-950 space-y-1">
-                    <div className="font-bold flex items-center gap-1.5 text-emerald-900">
-                      <ShieldCheck size={13} className="text-emerald-700" /> Ràng buộc độc bản (Anti-Sybil Invariant):
+                  {/* KHỐI TRẤN AN VÀ GIẢI THÍCH TÂM LÝ KHÉO LÉO */}
+                  <div className="space-y-2.5 bg-stone-50 p-4 rounded-2xl border border-stone-200/80 text-xs">
+                    <div className="flex items-start gap-2 text-emerald-950">
+                      <ShieldCheck size={16} className="text-emerald-700 shrink-0 mt-0.5" />
+                      <div>
+                        <strong className="block text-stone-900 font-bold">Vì sao xác thực bằng giao dịch 1.000đ?</strong>
+                        <p className="text-stone-600 text-[11px] leading-relaxed font-light mt-0.5">
+                          Theo <strong>Quyết định 2345/QĐ-NHNN</strong>, 100% tài khoản ngân hàng tại Việt Nam đều đã được đối soát CCCD gắn chip và sinh trắc học. Đây là cách nhanh nhất để xác minh người dùng thật mà <strong>không cần bạn phải chụp ảnh CCCD gửi lên mạng</strong> (tuân thủ Luật 91/2025/QH15).
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-stone-600 leading-relaxed font-light">
-                      Mỗi số điện thoại chỉ liên kết với 1 tài khoản duy nhất. Điều này bảo vệ bạn khỏi các rủi ro mạo danh và chống gian lận tiền cọc.
+
+                    <div className="flex items-start gap-2 text-emerald-950 pt-2 border-t border-stone-200/60">
+                      <Coins size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <strong className="block text-stone-900 font-bold">Cam kết Hoàn tiền 200% vào Ví CLOOP:</strong>
+                        <p className="text-stone-600 text-[11px] leading-relaxed font-light mt-0.5">
+                          1.000đ chuyển khoản sẽ được nạp <strong>100% vào ví</strong> và được sàn <strong>tặng thêm 10 Xu Xanh (tổng nhận 20 Xu Xanh = 2.000đ)</strong>. Bạn hoàn toàn không mất tiền, số xu này được trừ trực tiếp khi bạn thuê váy áo!
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2 text-emerald-950 pt-2 border-t border-stone-200/60">
+                      <Sparkles size={16} className="text-teal-600 shrink-0 mt-0.5" />
+                      <div>
+                        <strong className="block text-stone-900 font-bold">Tự động 100% & Nhận điểm Tín nhiệm:</strong>
+                        <p className="text-stone-600 text-[11px] leading-relaxed font-light mt-0.5">
+                          Quét mã VietQR trên app ngân hàng bất kỳ, hệ thống nhận diện sau 1-3 giây, tự động cộng <strong>+10 PTS</strong> và mở khóa đặc quyền giảm cọc.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={kycLoading || !phoneInput.trim()}
+                    className="w-full py-3.5 rounded-xl bg-[#183A2D] hover:bg-emerald-800 text-white font-heading font-extrabold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer shadow-sm"
+                  >
+                    {kycLoading ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" />
+                        <span>Đang kết nối cổng VietQR...</span>
+                      </>
+                    ) : (
+                      <>
+                        <QrCode size={14} />
+                        <span>Tạo Mã VietQR Định Danh (1.000đ)</span>
+                        <ArrowRight size={14} />
+                      </>
+                    )}
+                  </button>
+                </form>
+              )}
+
+              {/* BƯỚC 2: HIỂN THỊ MÃ VIETQR ĐỘNG & TỰ ĐỘNG LẮNG NGHE POLLING */}
+              {kycStep === "QR" && kycPaymentData && (
+                <div className="space-y-4">
+                  <div className="text-center space-y-1">
+                    <span className="text-xs text-stone-500">Mã VietQR Định Danh cho SĐT:</span>
+                    <div className="text-base font-mono font-bold text-[#183A2D]">
+                      {maskPhoneNumber(kycPaymentData.phone || phoneInput)}
+                    </div>
+                  </div>
+
+                  {/* THẺ HIỂN THỊ MÃ QR */}
+                  <div className="bg-stone-50 p-5 rounded-2xl border border-stone-200 text-center space-y-3">
+                    {kycPaymentData.qrCode ? (
+                      <div className="inline-block bg-white p-2.5 rounded-2xl border border-stone-200 shadow-xs">
+                        <img 
+                          src={kycPaymentData.qrCode.startsWith("data:") ? kycPaymentData.qrCode : `https://api.vietqr.io/image/${kycPaymentData.bin}-${kycPaymentData.accountNumber}-compact2.jpg?amount=1000&addInfo=${encodeURIComponent(`KYC CLOOP ${kycPaymentData.orderCode?.toString().slice(-6)}`)}&accountName=${encodeURIComponent(kycPaymentData.accountName || "CLOOP")}`}
+                          alt="VietQR eKYC 1000d"
+                          className="w-48 h-48 object-contain mx-auto rounded-xl"
+                        />
+                      </div>
+                    ) : (
+                      <div className="py-8 space-y-2">
+                        <QrCode size={48} className="mx-auto text-emerald-800" />
+                        <p className="text-xs text-stone-600 font-bold">Chuyển khoản 1.000đ qua PayOS</p>
+                      </div>
+                    )}
+
+                    {/* THÔNG TIN CHUYỂN KHOẢN CHI TIẾT */}
+                    <div className="bg-white p-3 rounded-xl border border-stone-200/80 text-left text-xs space-y-1.5 font-mono">
+                      <div className="flex justify-between items-center text-stone-500 text-[11px]">
+                        <span>Ngân hàng:</span>
+                        <span className="font-bold text-stone-900">MBBank / VietinBank</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-stone-500 text-[11px]">Số tài khoản:</span>
+                        <span className="font-bold text-emerald-900 select-all">{kycPaymentData.accountNumber || "Theo mã QR"}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-stone-500 text-[11px]">Số tiền nạp:</span>
+                        <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">1.000 đ (Nhận lại 20 Xu)</span>
+                      </div>
+                      <div className="flex justify-between items-center pt-1 border-t border-stone-100">
+                        <span className="text-stone-500 text-[11px]">Nội dung CK:</span>
+                        <div className="flex items-center gap-1">
+                          <span className="font-bold text-stone-900 select-all">KYC CLOOP {kycPaymentData.orderCode?.toString().slice(-6)}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(`KYC CLOOP ${kycPaymentData.orderCode?.toString().slice(-6)}`);
+                              setCopiedTransferContent(true);
+                              setTimeout(() => setCopiedTransferContent(false), 2000);
+                            }}
+                            className="p-1 text-emerald-800 hover:bg-emerald-50 rounded"
+                            title="Sao chép nội dung"
+                          >
+                            {copiedTransferContent ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* VÒNG QUAY TỰ ĐỘNG LẮNG NGHE POLLING */}
+                    <div className="flex items-center justify-center gap-2 text-xs text-stone-500 pt-1">
+                      <Loader2 size={13} className="animate-spin text-emerald-700" />
+                      <span>Đang tự động lắng nghe giao dịch từ Ngân hàng...</span>
+                    </div>
+
+                    <div className="text-[11px] text-stone-400 font-mono">
+                      Mã thanh toán tự động hết hạn sau: <strong className="text-stone-700">{Math.floor(kycCountdown / 60)}:{String(kycCountdown % 60).padStart(2, "0")}</strong>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={handleManualCheckKyc}
+                      disabled={kycLoading}
+                      className="w-full py-3 rounded-xl bg-[#183A2D] hover:bg-emerald-800 text-white font-heading font-extrabold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                    >
+                      {kycLoading ? (
+                        <>
+                          <Loader2 size={14} className="animate-spin" />
+                          <span>Đang kiểm tra giao dịch...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 size={14} />
+                          <span>Tôi Đã Chuyển Khoản Xong</span>
+                        </>
+                      )}
+                    </button>
+
+                    {kycPaymentData.checkoutUrl && (
+                      <a
+                        href={kycPaymentData.checkoutUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="w-full py-2.5 rounded-xl border border-stone-200 hover:bg-stone-50 text-stone-700 font-bold text-xs flex items-center justify-center gap-1.5 transition"
+                      >
+                        <span>Mở Cổng Thanh Toán PayOS Trực Tiếp</span>
+                        <ExternalLink size={13} />
+                      </a>
+                    )}
+
+                    <div className="text-center pt-1">
+                      <button
+                        type="button"
+                        onClick={() => { setKycStep("PHONE"); setKycError(""); }}
+                        className="text-[11px] text-stone-500 hover:text-stone-800 hover:underline font-medium"
+                      >
+                        ← Đổi số điện thoại khác
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* BƯỚC 3: THÀNH CÔNG RỰC RỠ */}
+              {kycStep === "SUCCESS" && (
+                <div className="text-center py-6 space-y-4">
+                  <div className="w-16 h-16 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto animate-bounce shadow-sm">
+                    <CheckCircle2 size={36} />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-lg font-bold text-stone-900 font-heading">
+                      Định Danh Chính Chủ Thành Công!
+                    </h4>
+                    <p className="text-xs text-stone-500 font-light">
+                      Giao dịch VietQR eKYC 1.000đ đã được Ngân hàng & PayOS xác thực thành công.
                     </p>
                   </div>
 
-                  <button
-                    type="submit"
-                    disabled={otpLoading || !phoneInput.trim()}
-                    className="w-full py-3 rounded-xl bg-[#183A2D] hover:bg-emerald-800 text-white font-heading font-extrabold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer shadow-sm"
-                  >
-                    {otpLoading ? (
-                      <>
-                        <Loader2 size={14} className="animate-spin" />
-                        <span>Đang kiểm tra & gửi mã...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Smartphone size={14} />
-                        <span>Gửi Mã Xác Thực OTP (+10 PTS)</span>
-                      </>
-                    )}
-                  </button>
-                </form>
-              )}
-
-              {otpStep === "OTP" && (
-                <form onSubmit={handleVerifyOtp} className="space-y-4">
-                  <div className="text-center space-y-1">
-                    <span className="text-xs text-stone-500">Mã xác thực đã được gửi tới:</span>
-                    <div className="text-base font-mono font-bold text-[#183A2D]">
-                      {maskPhoneNumber(phoneInput)}
+                  <div className="bg-emerald-50/80 p-4 rounded-2xl border border-emerald-200 text-xs text-emerald-950 space-y-2 text-left">
+                    <div className="flex items-center justify-between">
+                      <span className="text-stone-600">Điểm Tín Nhiệm:</span>
+                      <strong className="text-emerald-800 font-mono font-black text-sm">+10 PTS</strong>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => { setOtpStep("PHONE"); setOtpError(""); }}
-                      className="text-[11px] text-emerald-700 hover:underline font-medium"
-                    >
-                      Đổi số điện thoại khác
-                    </button>
-                  </div>
-
-                  {demoOtpCode && (
-                    <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900 flex items-center justify-between">
-                      <span className="flex items-center gap-1 font-medium">
-                        <Sparkles size={13} className="text-amber-600" /> Mã thử nghiệm Techfest:
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setOtpInput(demoOtpCode)}
-                        className="font-mono font-black bg-amber-200/80 px-2 py-0.5 rounded text-amber-950 hover:bg-amber-300 transition cursor-pointer"
-                        title="Bấm để tự động điền mã"
-                      >
-                        {demoOtpCode} (Điền nhanh)
-                      </button>
+                    <div className="flex items-center justify-between">
+                      <span className="text-stone-600">Số điện thoại xác thực:</span>
+                      <strong className="font-mono text-stone-900">{maskPhoneNumber(currentPhone)}</strong>
                     </div>
-                  )}
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-stone-700 uppercase tracking-wider block text-center">
-                      Nhập mã OTP 6 chữ số:
-                    </label>
-                    <input
-                      type="text"
-                      value={otpInput}
-                      onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                      placeholder="••••••"
-                      maxLength={6}
-                      className="w-full text-center tracking-[0.4em] py-3 rounded-xl border border-stone-200 focus:border-[#183A2D] focus:ring-1 focus:ring-[#183A2D] outline-none text-xl font-mono font-black"
-                      required
-                      autoFocus
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs text-stone-500 pt-1">
-                    <span>
-                      {otpCountdown > 0 ? (
-                        <span>Gửi lại mã sau <strong className="font-mono text-emerald-800">{otpCountdown}s</strong></span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={handleSendOtp}
-                          disabled={otpLoading}
-                          className="text-emerald-700 hover:underline font-bold flex items-center gap-1 cursor-pointer"
-                        >
-                          <RefreshCw size={12} /> Gửi lại mã OTP
-                        </button>
-                      )}
-                    </span>
-                    <span className="text-[10px] text-stone-400 font-mono">Hiệu lực 3 phút</span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-stone-600">Hoàn tiền vào Ví CLOOP:</span>
+                      <strong className="text-amber-700 font-mono font-bold">+20 Xu Xanh (2.000đ)</strong>
+                    </div>
+                    <div className="flex items-center justify-between pt-1 border-t border-emerald-200/60">
+                      <span className="text-stone-600">Đặc quyền mới:</span>
+                      <span className="text-emerald-900 font-bold">Mở khóa chiết khấu tiền cọc</span>
+                    </div>
                   </div>
 
                   <button
-                    type="submit"
-                    disabled={otpLoading || otpInput.length !== 6}
-                    className="w-full py-3 rounded-xl bg-[#183A2D] hover:bg-emerald-800 text-white font-heading font-extrabold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer shadow-sm"
+                    type="button"
+                    onClick={() => setIsKycModalOpen(false)}
+                    className="w-full py-3 rounded-xl bg-[#183A2D] hover:bg-emerald-800 text-white font-heading font-extrabold text-xs uppercase tracking-wider transition-all cursor-pointer shadow-sm"
                   >
-                    {otpLoading ? (
-                      <>
-                        <Loader2 size={14} className="animate-spin" />
-                        <span>Đang xác thực...</span>
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 size={14} />
-                        <span>Xác Nhận & Kích Hoạt (+10 PTS)</span>
-                      </>
-                    )}
+                    Hoàn Tất & Khám Phá Tủ Đồ
                   </button>
-                </form>
-              )}
-
-              {otpStep === "SUCCESS" && (
-                <div className="text-center py-6 space-y-3">
-                  <div className="w-14 h-14 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto animate-bounce">
-                    <CheckCircle2 size={32} />
-                  </div>
-                  <h4 className="text-base font-bold text-stone-900 font-heading">
-                    Xác Thực Thành Công!
-                  </h4>
-                  <p className="text-xs text-stone-600 max-w-xs mx-auto leading-relaxed">
-                    Số điện thoại <strong className="font-mono text-emerald-900">{maskPhoneNumber(currentPhone)}</strong> đã được xác minh chính chủ. Điểm tín nhiệm của bạn đã được cộng <strong className="text-emerald-800">+10 PTS</strong>!
-                  </p>
                 </div>
               )}
+
             </div>
           </div>
         </div>

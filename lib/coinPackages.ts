@@ -1,4 +1,4 @@
-﻿export interface CoinPackage {
+export interface CoinPackage {
   code: string;
   name: string;
   amountVnd: number;
@@ -10,6 +10,15 @@
 }
 
 export const COIN_PACKAGES: Record<string, CoinPackage> = {
+  KYC_1K: {
+    code: "KYC_1K",
+    name: "Xác Thực Định Danh VietQR eKYC",
+    amountVnd: 1000,
+    baseCoins: 10,
+    bonusCoins: 10,
+    totalCoins: 20,
+    badge: "KYC Tín Nhiệm",
+  },
   LEAF_10K: {
     code: "LEAF_10K",
     name: "Gói Trải Nghiệm",
