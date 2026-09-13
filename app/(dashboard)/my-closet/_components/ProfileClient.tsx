@@ -15,10 +15,19 @@ import {
   FileText,
   Heart,
   Award,
-  Lock
+  Lock,
+  Copy,
+  Check,
+  Fingerprint
 } from "lucide-react";
 import { TRUST_TIERS, type TrustScoreBreakdown } from "@/lib/trust-types";
 import { updateUserProfileWithValidation } from "@/app/actions/user";
+import { 
+  VIETNAM_34_PROVINCES, 
+  normalizeProvince, 
+  formatClooperCode, 
+  formatCleanUsername 
+} from "@/lib/constants/provinces";
 
 export interface UserProfileData {
   id?: string;
@@ -48,18 +57,28 @@ export function ProfileClient({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const userId = userProfile?.id || "";
+  const clooperCode = formatClooperCode(userId);
+  const [copiedCode, setCopiedCode] = useState(false);
 
   // Form state for live public profile editing
   const [formData, setFormData] = useState({
     name: userProfile?.name || userProfile?.full_name || "Thành viên CLOOP",
-    username: userProfile?.username || (userId ? userId.substring(0, 8) : "user"),
-    location: userProfile?.location || "Hà Nội, Việt Nam",
+    username: formatCleanUsername(userProfile?.username || (userId ? userId.substring(0, 8) : "user")),
+    location: normalizeProvince(userProfile?.location),
     quote: userProfile?.quote || "Lưu giữ ký ức qua từng chiếc váy.",
     bio: userProfile?.bio || "Mình là một người yêu thời trang vintage và những chuyến đi. Mình tin rằng mỗi món đồ đều có một câu chuyện đẹp để kể lại.",
     todaysMemory: userProfile?.todaysMemory || "Hôm nay mình vừa cho thuê chiếc váy đầu tiên trên CLOOP. Một khởi đầu thật đáng nhớ!",
     avatar: userProfile?.avatar || userProfile?.avatar_url || "",
     coverImage: userProfile?.coverImage || "",
   });
+
+  const handleCopyClooperCode = () => {
+    if (typeof window !== "undefined") {
+      navigator.clipboard.writeText(clooperCode);
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 2000);
+    }
+  };
 
   const trustScore = trustBreakdown?.score ?? 45;
   const maxScore = 100;
@@ -199,9 +218,22 @@ export function ProfileClient({
             </button>
           </div>
 
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <h2 className="text-xl sm:text-2xl font-extrabold text-[#0A2517] font-heading">{formData.name}</h2>
-            <p className="text-xs text-stone-400 font-mono">@{formData.username}</p>
+            
+            <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
+              <span className="text-xs text-stone-600 font-mono font-bold bg-stone-100 px-2.5 py-0.5 rounded-full border border-stone-200">
+                @{formData.username}
+              </span>
+              <button
+                type="button"
+                onClick={handleCopyClooperCode}
+                className="text-[11px] font-mono font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-200/80 flex items-center gap-1 cursor-pointer transition-colors"
+                title="Mã định danh độc bản duy nhất của bạn trên hệ thống CLOOP. Nhấn để chép."
+              >
+                <Fingerprint size={12} className="text-emerald-700" /> #{clooperCode.replace("CLOOP-", "")}
+              </button>
+            </div>
             
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
               <span className="px-3 py-1 bg-emerald-50 text-emerald-800 text-[10px] font-bold rounded-full border border-emerald-200/80 flex items-center gap-1">
@@ -209,6 +241,9 @@ export function ProfileClient({
               </span>
               <span className="px-3 py-1 bg-amber-50 text-amber-900 text-[10px] font-bold rounded-full border border-amber-200/80 flex items-center gap-1">
                 <MapPin size={11} className="text-amber-700" /> {formData.location}
+              </span>
+              <span className="px-2.5 py-1 bg-stone-100 text-stone-600 text-[10px] font-medium rounded-full border border-stone-200 flex items-center gap-1" title="Bảo mật địa chỉ nhà riêng theo chuẩn Privacy by Design">
+                <Lock size={10} className="text-stone-500" /> Cấp Tỉnh (Bảo mật riêng tư)
               </span>
             </div>
           </div>
@@ -264,37 +299,117 @@ export function ProfileClient({
               />
             </div>
 
-            {/* Username / Handle */}
+            {/* Unique Clooper ID (Độc bản, Hệ thống cấp) */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-stone-700 uppercase tracking-wider">
-                Tên tài khoản (@username):
-              </label>
-              <input
-                type="text"
-                value={formData.username}
-                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                placeholder="VD: elena.closet, the.archive..."
-                className="w-full px-4 py-2.5 rounded-xl border border-stone-200 focus:border-[#183A2D] focus:ring-1 focus:ring-[#183A2D] outline-none text-xs sm:text-sm font-mono"
-                required
-              />
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <Fingerprint size={13} className="text-emerald-700" /> Mã Ký Hiệu Clooper (Độc Bản):
+                </label>
+                <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
+                  Hệ thống cấp
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    readOnly
+                    value={clooperCode}
+                    className="w-full px-4 py-2.5 rounded-xl border border-stone-200 bg-stone-50/80 text-[#183A2D] font-mono font-bold text-xs sm:text-sm cursor-not-allowed select-all"
+                  />
+                  <Lock size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400" />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopyClooperCode}
+                  className="px-3.5 py-2.5 rounded-xl border border-stone-200 hover:border-emerald-600 bg-white hover:bg-emerald-50 text-stone-600 hover:text-emerald-800 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 shadow-2xs"
+                  title="Sao chép mã định danh độc bản"
+                >
+                  {copiedCode ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
+                  <span>{copiedCode ? "Đã chép" : "Sao chép"}</span>
+                </button>
+              </div>
+              <p className="text-[11px] text-stone-400 font-light">
+                Mã độc bản duy nhất gắn liền với tài khoản, giúp chống giả mạo và phân biệt người dùng.
+              </p>
             </div>
 
-            {/* Location */}
+            {/* Username / Handle */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-stone-700 uppercase tracking-wider flex items-center gap-1">
-                <MapPin size={13} /> Tỉnh / Thành phố:
+                <User size={13} /> Tên tài khoản (@username):
               </label>
-              <input
-                type="text"
-                value={formData.location}
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 font-mono text-sm font-semibold">@</span>
+                <input
+                  type="text"
+                  value={formData.username}
+                  onChange={(e) => {
+                    const cleaned = formatCleanUsername(e.target.value);
+                    setFormData({ ...formData, username: cleaned });
+                  }}
+                  placeholder="elena_closet"
+                  className="w-full pl-8 pr-4 py-2.5 rounded-xl border border-stone-200 focus:border-[#183A2D] focus:ring-1 focus:ring-[#183A2D] outline-none text-xs sm:text-sm font-mono"
+                  required
+                />
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-stone-400">
+                <span>Chỉ gồm ký tự a-z, 0-9, gạch dưới</span>
+                <span className="font-mono text-emerald-800 font-semibold">
+                  @{formData.username || "user"} #{clooperCode.replace("CLOOP-", "")}
+                </span>
+              </div>
+            </div>
+
+            {/* Location (Standardized 34 Provinces dropdown + Privacy Notice) */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-stone-700 uppercase tracking-wider flex items-center gap-1">
+                  <MapPin size={13} className="text-emerald-700" /> Tỉnh / Thành phố:
+                </label>
+                <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60 flex items-center gap-1">
+                  <ShieldCheck size={10} /> 34 Tỉnh thành chuẩn
+                </span>
+              </div>
+              <select
+                value={normalizeProvince(formData.location)}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                placeholder="VD: Hà Nội, TP. Hồ Chí Minh, Đà Nẵng..."
-                className="w-full px-4 py-2.5 rounded-xl border border-stone-200 focus:border-[#183A2D] focus:ring-1 focus:ring-[#183A2D] outline-none text-xs sm:text-sm font-medium"
-              />
+                className="w-full px-4 py-2.5 rounded-xl border border-stone-200 focus:border-[#183A2D] focus:ring-1 focus:ring-[#183A2D] outline-none text-xs sm:text-sm font-medium bg-white text-stone-800 cursor-pointer"
+              >
+                <optgroup label="── MIỀN BẮC ──">
+                  {VIETNAM_34_PROVINCES.filter(p => p.region === "NORTH").map(p => (
+                    <option key={p.id} value={p.name}>
+                      {p.name} {p.mergerNote ? `(${p.mergerNote})` : ""}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="── MIỀN TRUNG & TÂY NGUYÊN ──">
+                  {VIETNAM_34_PROVINCES.filter(p => p.region === "CENTRAL").map(p => (
+                    <option key={p.id} value={p.name}>
+                      {p.name} {p.mergerNote ? `(${p.mergerNote})` : ""}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="── MIỀN NAM ──">
+                  {VIETNAM_34_PROVINCES.filter(p => p.region === "SOUTH").map(p => (
+                    <option key={p.id} value={p.name}>
+                      {p.name} {p.mergerNote ? `(${p.mergerNote})` : ""}
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
+
+              {/* Privacy Notice Reassurance (Privacy by Design - Luật 91/2025/QH15) */}
+              <div className="p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200/70 text-[11px] text-emerald-950 leading-relaxed flex items-start gap-2">
+                <ShieldCheck size={14} className="text-emerald-700 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold text-emerald-900">Bảo mật địa chỉ riêng tư (Privacy by Design):</span> Hệ thống chỉ lưu và hiển thị cấp Tỉnh/Thành để tính cước vận chuyển (GHN/GHTK) và gợi ý kết nối. Địa chỉ nhà riêng, xóm/phường của bạn tuyệt đối không công khai trên hồ sơ.
+                </div>
+              </div>
             </div>
 
             {/* Fashion Quote */}
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 sm:col-span-2">
               <label className="text-xs font-bold text-stone-700 uppercase tracking-wider flex items-center gap-1">
                 <Quote size={13} /> Châm ngôn thời trang (Quote):
               </label>

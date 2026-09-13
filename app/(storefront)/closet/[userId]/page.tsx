@@ -14,9 +14,11 @@ export default async function ClosetProfilePage({
   if (!userId) notFound();
 
   let currentUserId: string | null = null;
+  let currentUserMeta: any = null;
   try {
     const userAuth = await requireUser();
     currentUserId = userAuth?.id || null;
+    currentUserMeta = (userAuth as any)?.metadata || null;
   } catch {
     // Guest viewer
   }
@@ -31,10 +33,18 @@ export default async function ClosetProfilePage({
     currentUserId.toLowerCase() === userId.toLowerCase()
   );
 
+  const ownerInfo = {
+    ...res.ownerInfo,
+    ...(isCurrentUser && currentUserMeta?.location && { location: currentUserMeta.location }),
+    ...(isCurrentUser && currentUserMeta?.bio && { bio: currentUserMeta.bio }),
+    ...(isCurrentUser && currentUserMeta?.quote && { quote: currentUserMeta.quote }),
+    ...(isCurrentUser && currentUserMeta?.todaysMemory && { todaysMemory: currentUserMeta.todaysMemory }),
+  };
+
   return (
     <ClosetProfileClient
       userId={userId}
-      initialOwnerInfo={res.ownerInfo}
+      initialOwnerInfo={ownerInfo}
       initialProducts={res.products || []}
       initialMemories={res.memories || []}
       rawProductCount={res.rawProductCount || 0}

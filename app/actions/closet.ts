@@ -190,6 +190,10 @@ export async function updateClosetProfileAction(data: {
   userId: string;
   name?: string;
   avatar?: string | null;
+  location?: string;
+  bio?: string;
+  quote?: string;
+  todaysMemory?: string;
 }) {
   try {
     const userAuth = await requireUser();
@@ -204,6 +208,23 @@ export async function updateClosetProfileAction(data: {
         ...(data.avatar !== undefined && { avatar: data.avatar })
       }
     });
+
+    try {
+      const { createClient } = await import("@/src/utils/supabase/server");
+      const supabase = await createClient();
+      await supabase.auth.updateUser({
+        data: {
+          name: data.name,
+          location: data.location || undefined,
+          quote: data.quote || undefined,
+          bio: data.bio || undefined,
+          todaysMemory: data.todaysMemory || undefined,
+          avatar: data.avatar || undefined,
+        }
+      });
+    } catch (sbErr) {
+      console.warn("Supabase user metadata sync warning:", sbErr);
+    }
 
     revalidatePath(`/closet/${data.userId}`);
     revalidatePath(`/my-closet/profile`);

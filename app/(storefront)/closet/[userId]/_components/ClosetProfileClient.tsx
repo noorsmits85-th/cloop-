@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   MapPin, Star, ShieldCheck, ArrowLeft, Shirt, Settings, 
   Calendar, Leaf, Heart, Share2, Plus, BookOpen,
-  X, Camera, Save, Loader2 
+  X, Camera, Save, Loader2, Fingerprint 
 } from "lucide-react";
 import ReviewSection from "./ReviewSection";
 import { 
@@ -17,6 +17,11 @@ import {
   updateClosetProfileAction 
 } from "@/app/actions/closet";
 import { toast } from "sonner";
+import { 
+  VIETNAM_34_PROVINCES, 
+  normalizeProvince, 
+  formatClooperCode 
+} from "@/lib/constants/provinces";
 
 const DEFAULT_VINTAGE_COVER = "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?q=80&w=800"; 
 const PAPER_BG = "https://www.transparenttextures.com/patterns/cream-paper.png"; 
@@ -46,6 +51,7 @@ export default function ClosetProfileClient({
   // ==========================================
   // 🟢 STATE QUẢN LÝ POPUPS CHỈNH SỬA
   // ==========================================
+  const clooperCode = formatClooperCode(userId);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [uploadingField, setUploadingField] = useState<"avatar" | "coverImage" | null>(null);
@@ -54,7 +60,7 @@ export default function ClosetProfileClient({
     name: ownerInfo.name || "",
     bio: ownerInfo.bio || "",
     quote: ownerInfo.quote || "",
-    location: ownerInfo.location || "",
+    location: normalizeProvince(ownerInfo.location),
     todaysMemory: ownerInfo.todaysMemory || "",
     avatar: ownerInfo.avatar || null,
     coverImage: ownerInfo.coverImage || null,
@@ -65,7 +71,7 @@ export default function ClosetProfileClient({
       name: ownerInfo.name,
       bio: ownerInfo.bio,
       quote: ownerInfo.quote,
-      location: ownerInfo.location,
+      location: normalizeProvince(ownerInfo.location),
       todaysMemory: ownerInfo.todaysMemory,
       avatar: ownerInfo.avatar,
       coverImage: ownerInfo.coverImage,
@@ -107,10 +113,15 @@ export default function ClosetProfileClient({
   const handleSaveProfile = async () => {
     setIsSaving(true);
     try {
+      const standardLocation = normalizeProvince(editForm.location);
       const res = await updateClosetProfileAction({
         userId,
         name: editForm.name,
         avatar: editForm.avatar,
+        location: standardLocation,
+        bio: editForm.bio,
+        quote: editForm.quote,
+        todaysMemory: editForm.todaysMemory,
       });
 
       if (!res.success) {
@@ -123,7 +134,7 @@ export default function ClosetProfileClient({
         avatar: editForm.avatar,
         bio: editForm.bio,
         quote: editForm.quote,
-        location: editForm.location,
+        location: standardLocation,
         todaysMemory: editForm.todaysMemory,
         coverImage: editForm.coverImage,
       }));
@@ -226,8 +237,11 @@ export default function ClosetProfileClient({
             </div>
 
             <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <h1 className="text-4xl font-bold text-[#183A2D] font-heading">{ownerInfo.name || "Thành viên CLOOP"}</h1>
+              <div className="flex items-center gap-2.5 flex-wrap justify-center md:justify-start">
+                <h1 className="text-3xl sm:text-4xl font-bold text-[#183A2D] font-heading">{ownerInfo.name || "Thành viên CLOOP"}</h1>
+                <span className="text-[11px] font-mono font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/80 flex items-center gap-1 shadow-2xs" title="Mã định danh Clooper ID độc bản duy nhất">
+                  <Fingerprint size={12} className="text-emerald-700" /> #{clooperCode.replace("CLOOP-", "")}
+                </span>
                 {isCurrentUser && (
                   <button
                     type="button"
@@ -243,7 +257,7 @@ export default function ClosetProfileClient({
             </div>
 
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-xs font-medium text-stone-500">
-              <span className="flex items-center gap-1.5"><MapPin size={14} className="text-stone-400" /> {ownerInfo.location}</span>
+              <span className="flex items-center gap-1.5"><MapPin size={14} className="text-stone-400" /> {normalizeProvince(ownerInfo.location)}</span>
               <span className="flex items-center gap-1.5"><Calendar size={14} className="text-stone-400" /> Thành viên từ {ownerInfo.joinDate}</span>
             </div>
 
@@ -570,14 +584,44 @@ export default function ClosetProfileClient({
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Địa điểm (Vị trí)</label>
-                    <input 
-                      type="text" 
-                      value={editForm.location} 
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold text-stone-500 uppercase tracking-wider flex items-center gap-1">
+                        <MapPin size={11} className="text-emerald-700" /> Tỉnh / Thành phố
+                      </label>
+                      <span className="text-[10px] text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60 font-semibold flex items-center gap-1">
+                        <ShieldCheck size={10} /> 34 Tỉnh thành
+                      </span>
+                    </div>
+                    <select 
+                      value={normalizeProvince(editForm.location)} 
                       onChange={(e) => setEditForm({...editForm, location: e.target.value})}
-                      className="w-full px-4 py-3 rounded-xl border border-stone-200 bg-white text-sm focus:outline-none focus:border-[#183A2D] transition-colors"
-                      placeholder="VD: Nghệ An, Việt Nam"
-                    />
+                      className="w-full px-4 py-3 rounded-xl border border-stone-200 bg-white text-sm focus:outline-none focus:border-[#183A2D] transition-colors cursor-pointer text-stone-800"
+                    >
+                      <optgroup label="── MIỀN BẮC ──">
+                        {VIETNAM_34_PROVINCES.filter(p => p.region === "NORTH").map(p => (
+                          <option key={p.id} value={p.name}>
+                            {p.name} {p.mergerNote ? `(${p.mergerNote})` : ""}
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="── MIỀN TRUNG & TÂY NGUYÊN ──">
+                        {VIETNAM_34_PROVINCES.filter(p => p.region === "CENTRAL").map(p => (
+                          <option key={p.id} value={p.name}>
+                            {p.name} {p.mergerNote ? `(${p.mergerNote})` : ""}
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="── MIỀN NAM ──">
+                        {VIETNAM_34_PROVINCES.filter(p => p.region === "SOUTH").map(p => (
+                          <option key={p.id} value={p.name}>
+                            {p.name} {p.mergerNote ? `(${p.mergerNote})` : ""}
+                          </option>
+                        ))}
+                      </optgroup>
+                    </select>
+                    <p className="text-[10px] text-stone-400">
+                      Bảo vệ riêng tư: Chỉ hiển thị cấp Tỉnh/Thành, không công khai địa chỉ nhà riêng.
+                    </p>
                   </div>
                 </div>
 
