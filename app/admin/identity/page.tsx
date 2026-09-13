@@ -43,6 +43,17 @@ export default async function AdminIdentityPage() {
         take: 3,
         orderBy: { createdAt: 'desc' },
       },
+      coinTopUps: {
+        where: { packageCode: "KYC_1K", status: "PAID" },
+        take: 1,
+        orderBy: { paidAt: 'desc' },
+        select: {
+          orderCode: true,
+          amountVnd: true,
+          paidAt: true,
+          rawPayload: true,
+        },
+      },
     },
   });
 
@@ -50,6 +61,10 @@ export default async function AdminIdentityPage() {
     const phone = u.rentalHistory.find((r) => r.renter_phone || r.owner_phone)?.renter_phone ||
                   u.rentalHistory.find((r) => r.owner_phone)?.owner_phone ||
                   undefined;
+
+    const kycTopUp = u.coinTopUps?.[0];
+    const kycPhone = (kycTopUp?.rawPayload as any)?.phone;
+    const finalPhone = kycPhone || phone || undefined;
 
     return {
       id: u.id,
@@ -59,7 +74,9 @@ export default async function AdminIdentityPage() {
       isVerified: Boolean(u.isVerified),
       completedOrders: u.completedOrders ?? 0,
       createdAt: u.createdAt.toISOString(),
-      phone: phone || undefined,
+      phone: finalPhone,
+      kycOrderCode: kycTopUp?.orderCode ? kycTopUp.orderCode.toString() : undefined,
+      kycPaidAt: kycTopUp?.paidAt ? kycTopUp.paidAt.toISOString() : undefined,
     };
   });
 

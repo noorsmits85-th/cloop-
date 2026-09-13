@@ -31,6 +31,8 @@ export interface AdminUserItem {
   completedOrders: number;
   createdAt: string;
   phone?: string;
+  kycOrderCode?: string;
+  kycPaidAt?: string;
 }
 
 export default function IdentityVerificationClient({ initialUsers }: { initialUsers: AdminUserItem[] }) {
@@ -225,19 +227,33 @@ export default function IdentityVerificationClient({ initialUsers }: { initialUs
                         )}
                       </td>
 
-                      {/* Status */}
+                      {/* Status & Audit Trail */}
                       <td className="py-3.5 px-4 text-center">
                         {u.isVerified ? (
                           <div className="space-y-0.5">
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
                               <CheckCircle2 size={11} className="text-emerald-600" /> ĐÃ ĐỊNH DANH
                             </span>
-                            <div className="text-[9px] text-emerald-700 font-mono">VietQR eKYC 1K</div>
+                            {u.kycOrderCode ? (
+                              <div className="text-[10px] text-stone-500 font-mono">
+                                <span className="text-emerald-800 font-bold">PayOS #{u.kycOrderCode}</span>
+                                {u.kycPaidAt && (
+                                  <span className="block text-[9px] text-stone-400">
+                                    {new Date(u.kycPaidAt).toLocaleDateString("vi-VN")}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="block text-[9px] text-stone-400 font-mono">Admin phê duyệt</span>
+                            )}
                           </div>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                            <Clock size={11} className="text-amber-600" /> CHƯA ĐỊNH DANH
-                          </span>
+                          <div className="space-y-0.5">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                              <Clock size={11} className="text-amber-600" /> CHƯA ĐỊNH DANH
+                            </span>
+                            <span className="block text-[9px] text-stone-400 font-mono">Cọc 100% Escrow</span>
+                          </div>
                         )}
                       </td>
 
