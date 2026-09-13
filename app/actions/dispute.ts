@@ -35,6 +35,10 @@ export async function createDispute(data: {
       return { success: false, error: "Không tìm thấy đơn thuê" };
     }
 
+    if (!rental.invoice || rental.invoice.status !== "PAID") {
+      return { success: false, error: "Đơn thuê không có hóa đơn hợp lệ hoặc chưa được thanh toán thành công, không thể mở khiếu nại tài chính." };
+    }
+
     const isRenter = rental.renterId === user.id;
     const isOwner = rental.ownerId === user.id || rental.product?.userId === user.id;
     const isAdmin = user.role === "ADMIN";

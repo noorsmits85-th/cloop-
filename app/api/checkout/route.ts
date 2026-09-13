@@ -83,8 +83,13 @@ export async function POST(req: Request) {
        itemPrice = Math.round((activeListing.basePrice || 0) * packageDays * (packageDays >= 7 ? 0.7 : packageDays >= 3 ? 0.85 : 1) / 1000) * 1000;
     }
 
-    const baseDepositPrice = activeListing.deposit || 0;
     const approxItemValue = getItemValuation(activeListing);
+    let baseDepositPrice = activeListing.deposit || 0;
+
+    // 🛡️ Fail-Closed: Đồ cho thuê bắt buộc phải có tiền cọc > 0 để bảo toàn dòng tiền
+    if (baseDepositPrice <= 0) {
+      baseDepositPrice = Math.max(300000, Math.round(approxItemValue * 0.5));
+    }
 
     // 🌟 CLOOP TRUST & RISK ENGINE SERVER-SIDE VERIFICATION
     const trustBreakdown = await calculateUserTrustScore(realUserId);

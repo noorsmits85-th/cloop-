@@ -41,16 +41,9 @@ export default function LedgerClient({ initialInvoices, totalPlatformFee, totalI
 
   const handleReconcile = async (invoice: any) => {
     setIsProcessing(invoice.id);
-    
-    // Tính toán số liệu phân bổ theo chuẩn Techfest & TT 99
-    const platformFee = Math.floor(invoice.rentalFee * 0.12) || 42000;
-    const vatFee = Math.round(platformFee * 0.1);
-    const netPlatformFee = platformFee - vatFee;
-    const payoutToOwner = Math.max(0, invoice.rentalFee - platformFee - 25000);
-    const refundToRenter = invoice.depositRefund;
 
     try {
-      const res = await processReconciliation(invoice.id, refundToRenter, payoutToOwner);
+      const res = await processReconciliation(invoice.id);
       
       if (!res.success) {
         throw new Error(res.error);
@@ -64,7 +57,7 @@ export default function LedgerClient({ initialInvoices, totalPlatformFee, totalI
         setSelectedInvoice({ ...invoice, status: "COMPLETED" });
       }
       
-      alert(`✅ Đối soát thành công Sổ cái (Chuẩn TT 99)!\n- Hoàn cọc (TK 3386 -> 112): ${refundToRenter.toLocaleString()}đ\n- Chuyển chủ đồ (TK 33882 -> 112): ${payoutToOwner.toLocaleString()}đ\n- Phí dịch vụ sàn (TK 5113): ${netPlatformFee.toLocaleString()}đ\n- Thuế GTGT đầu ra (TK 33311): ${vatFee.toLocaleString()}đ\n- Cước GHN 2 chiều: 42.000đ | Đệm 5K: 8.000đ`);
+      alert(`✅ Đối soát thành công Sổ cái qua Settlement Engine!\nHóa đơn #${invoice.id.slice(0, 8)} đã được quyết toán nguyên tử và bảo toàn dòng tiền.`);
     } catch (error: any) {
       alert("Lỗi đối soát: " + error.message);
     } finally {

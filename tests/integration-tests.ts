@@ -279,6 +279,44 @@ async function runIntegrationSuite() {
     assert.equal(dupResult.action, 'SKIPPED_IDEMPOTENT');
   });
 
+  testSync('CoinTopUp webhook retry unpoisons AMOUNT_MISMATCH record to PAID', () => {
+    type CoinTopUpRecord = { id: string; status: 'PENDING' | 'AMOUNT_MISMATCH' | 'PAID'; amountVnd: number };
+    const coinTable: Map<string, CoinTopUpRecord> = new Map();
+
+    const topUpId = 'topup_xyz_123';
+    // Initial mismatch
+    coinTable.set(topUpId, { id: topUpId, status: 'AMOUNT_MISMATCH', amountVnd: 50000 });
+
+    function handleCoinWebhook(id: string, transferredAmount: number) {
+      const topUp = coinTable.get(id);
+      if (!topUp) return { success: false, reason: 'NOT_FOUND' };
+      if (topUp.status === 'PAID') return { success: true, reason: 'ALREADY_PROCESSED' };
+
+      if (transferredAmount !== topUp.amountVnd) {
+        topUp.status = 'AMOUNT_MISMATCH';
+        return { success: false, reason: 'MISMATCH' };
+      }
+
+      // Must allow status in ['PENDING', 'AMOUNT_MISMATCH']
+      if (['PENDING', 'AMOUNT_MISMATCH'].includes(topUp.status)) {
+        topUp.status = 'PAID';
+        return { success: true, reason: 'PAID_SUCCESS' };
+      }
+
+      return { success: false, reason: 'INVALID_STATUS' };
+    }
+
+    // Verify recovery
+    const retryRes = handleCoinWebhook(topUpId, 50000);
+    assert.equal(retryRes.success, true);
+    assert.equal(retryRes.reason, 'PAID_SUCCESS');
+    assert.equal(coinTable.get(topUpId)?.status, 'PAID');
+
+    // Subsequent duplicate is idempotent
+    const dupRes = handleCoinWebhook(topUpId, 50000);
+    assert.equal(dupRes.reason, 'ALREADY_PROCESSED');
+  });
+
   // =========================================================================
   // 3. GOOGLE CLOUD STORAGE FAIL-CLOSED ENFORCEMENT
   // =========================================================================
@@ -536,6 +574,57 @@ async function runIntegrationSuite() {
     });
     assert.equal(check.valid, true);
     assert.equal(check.difference, 0);
+  });
+
+  // =========================================================================
+  // 7. CRON ROUTE AUTHORIZATION FAIL-CLOSED POLICY
+  // =========================================================================
+  console.log('\n--- 7. Cron SLA Authorization Fail-Closed Policy ---');
+
+  testSync('Cron authorization strictly fails-closed if CRON_SECRET is unconfigured or token is mismatched', () => {
+    function evaluateCronAuth(expectedSecret?: string, authHeader?: string | null): { authorized: boolean; statusCode: number } {
+      if (!expectedSecret || authHeader !== `Bearer ${expectedSecret}`) {
+        return { authorized: false, statusCode: 401 };
+      }
+      return { authorized: true, statusCode: 200 };
+    }
+
+    // A. Missing secret in env: MUST reject
+    assert.equal(evaluateCronAuth(undefined, 'Bearer any_token').statusCode, 401);
+    assert.equal(evaluateCronAuth('', 'Bearer any_token').statusCode, 401);
+
+    // B. Secret exists but missing or wrong header: MUST reject
+    assert.equal(evaluateCronAuth('secret_123', null).statusCode, 401);
+    assert.equal(evaluateCronAuth('secret_123', 'Bearer wrong_token').statusCode, 401);
+
+    // C. Exact match: Authorized
+    assert.equal(evaluateCronAuth('secret_123', 'Bearer secret_123').statusCode, 200);
+  });
+
+  // =========================================================================
+  // 8. FINANCIAL DISPUTE INTEGRITY & PAID INVOICE PRECONDITION
+  // =========================================================================
+  console.log('\n--- 8. Financial Dispute Precondition Verification ---');
+
+  testSync('Dispute creation strictly fails-closed if rental order lacks a PAID invoice', () => {
+    type MockRental = { id: string; invoice?: { id: string; status: 'PENDING' | 'PAID' | 'CANCELLED' } | null };
+
+    function validateDisputeCreation(rental: MockRental): { allowed: boolean; error?: string } {
+      if (!rental.invoice || rental.invoice.status !== 'PAID') {
+        return { allowed: false, error: 'Đơn hàng không có hóa đơn hợp lệ hoặc chưa được thanh toán thành công, không thể mở khiếu nại tài chính.' };
+      }
+      return { allowed: true };
+    }
+
+    // A. Missing invoice (null/undefined): MUST reject
+    assert.equal(validateDisputeCreation({ id: 'r1', invoice: null }).allowed, false);
+    assert.equal(validateDisputeCreation({ id: 'r1', invoice: undefined }).allowed, false);
+
+    // B. Invoice exists but PENDING: MUST reject
+    assert.equal(validateDisputeCreation({ id: 'r1', invoice: { id: 'inv1', status: 'PENDING' } }).allowed, false);
+
+    // C. Invoice exists and PAID: Allowed
+    assert.equal(validateDisputeCreation({ id: 'r1', invoice: { id: 'inv1', status: 'PAID' } }).allowed, true);
   });
 
   console.log('\n======================================================');

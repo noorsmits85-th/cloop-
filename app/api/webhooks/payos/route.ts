@@ -64,9 +64,9 @@ export async function POST(req: Request) {
       // Atomic Transaction: Cập nhật CoinTopUp -> Tăng cloopCoins -> Ghi CoinLedgerEntry
       try {
         await prisma.$transaction(async (tx) => {
-          // 🛡️ CHỐT CHẶN NGUYÊN TỬ: Chỉ cập nhật nếu status VẪN ĐANG LÀ PENDING
+          // 🛡️ CHỐT CHẶN NGUYÊN TỬ: Cho phép cập nhật nếu status là PENDING hoặc phục hồi từ AMOUNT_MISMATCH
           const updateResult = await tx.coinTopUp.updateMany({
-            where: { id: coinTopUp.id, status: "PENDING" },
+            where: { id: coinTopUp.id, status: { in: ["PENDING", "AMOUNT_MISMATCH"] } },
             data: {
               status: "PAID",
               payosStatus: "success",

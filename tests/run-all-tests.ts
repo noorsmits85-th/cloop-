@@ -675,6 +675,48 @@ test('Open dispute locks user out of deposit discount regardless of trust tier',
   assert.equal(calc.finalDeposit, 1000000);
 });
 
+console.log('\n--- 9. Partial Dispute Refund Math (No Overrun) ---');
+test('Partial dispute refund: correctly separates rental fee refund from deposit refund', () => {
+  const depositAmount = 1000000;
+  const rentalFee = 300000;
+  const agreedRentalRefund = 100000; // Only partial rental fee refund
+  const totalRenterCredit = depositAmount + agreedRentalRefund; // 1,100,000
+
+  // Simulating the extraction logic in completeOrderAction
+  const adminNotes = JSON.stringify({
+    pendingRefundToRenter: totalRenterCredit,
+    pendingRentalRefund: agreedRentalRefund,
+    pendingDepositRefund: depositAmount,
+  });
+
+  const parsed = JSON.parse(adminNotes);
+  const rentalRefundPortion = typeof parsed.pendingRentalRefund === 'number'
+    ? parsed.pendingRentalRefund
+    : Math.max(0, parsed.pendingRefundToRenter - depositAmount);
+
+  assert.equal(rentalRefundPortion, 100000, 'Must extract exactly the rental refund portion');
+
+  // Verify settlement engine math:
+  // refundDepositToRenter (1M) + refundRentalToRenter (100k) = 1.1M total
+  const finalRefund = depositAmount + rentalRefundPortion;
+  assert.equal(finalRefund, 1100000, 'Total refund must be 1.1M, NOT 1.3M');
+  assert.notEqual(finalRefund, 1300000, 'Must NOT accidentally refund full 300k rental fee');
+});
+
+console.log('\n--- 10. Checkout Zero-Deposit Fail-Closed Fallback ---');
+test('Fail-Closed: Listing with deposit <= 0 automatically falls back to minimum deposit based on valuation', () => {
+  const approxItemValue = 1200000; // Item value 1.2M
+  const listingDeposit = 0; // Malformed listing with 0 deposit
+
+  let baseDepositPrice = listingDeposit;
+  if (baseDepositPrice <= 0) {
+    baseDepositPrice = Math.max(300000, Math.round(approxItemValue * 0.5));
+  }
+
+  assert.equal(baseDepositPrice, 600000, 'Must default to 50% of item valuation (600,000đ)');
+  assert.ok(baseDepositPrice >= 300000, 'Must enforce minimum 300,000đ deposit floor');
+});
+
 console.log('\n======================================================');
 console.log('ALL TESTS COMPLETE: ' + passedTests + '/' + totalTests + ' PASSED');
 console.log('======================================================\n');

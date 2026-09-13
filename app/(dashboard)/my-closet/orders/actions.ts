@@ -139,6 +139,7 @@ export async function completeOrderAction(orderId: string) {
       where: { id: orderId },
       include: {
         product: true,
+        invoice: true,
         disputes: {
           where: { status: { in: ["APPROVED_DEDUCTION", "PENDING_REVIEW"] } },
           orderBy: { createdAt: "desc" },
@@ -169,8 +170,14 @@ export async function completeOrderAction(orderId: string) {
     if (activeDispute?.adminNotes) {
       try {
         const notes = JSON.parse(activeDispute.adminNotes);
-        if (typeof notes.pendingRefundToRenter === "number") {
-          pendingRefund = notes.pendingRefundToRenter;
+        if (typeof notes.pendingRentalRefund === "number") {
+          pendingRefund = notes.pendingRentalRefund;
+          isDisputeReturn = true;
+        } else if (typeof notes.pendingRefundToRenter === "number") {
+          // Fallback an toàn: pendingRefundToRenter lưu tổng tiền (Cọc + Thuê)
+          // Cần trừ cọc để chỉ trích xuất phần hoàn phí thuê
+          const depositAmount = rental.invoice?.depositAmount || 0;
+          pendingRefund = Math.max(0, notes.pendingRefundToRenter - depositAmount);
           isDisputeReturn = true;
         }
       } catch {}
@@ -264,8 +271,8 @@ export async function raiseDisputeWithProposalAction(
       return { success: false, error: "Đơn hàng đã hoàn tất hoặc đã bị hủy, không thể mở khiếu nại." };
     }
 
-    if (rental.invoice && rental.invoice.status !== "PAID") {
-      return { success: false, error: "Đơn hàng chưa được thanh toán thành công, không thể khiếu nại." };
+    if (!rental.invoice || rental.invoice.status !== "PAID") {
+      return { success: false, error: "Đơn hàng không có hóa đơn hợp lệ hoặc chưa được thanh toán thành công, không thể mở khiếu nại tài chính." };
     }
 
     const isRenter = rental.renterId === userAuth.id;
@@ -500,6 +507,8 @@ export async function acceptDisputeProposalAction(disputeId: string) {
               deduction,
               initiatorRole: "RENTER",
               pendingRefundToRenter: totalRenterCredit,
+              pendingRentalRefund: refundRentalToRenter,
+              pendingDepositRefund: refundDepositToRenter,
               pendingOwnerPayout: ownerRentalPayout,
               platformFeeCollected,
               shippingFeeCollected,

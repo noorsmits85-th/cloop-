@@ -17,7 +17,8 @@ export async function GET(req: Request) {
   const authHeader = req.headers.get("authorization");
   const expectedSecret = process.env.CRON_SECRET;
 
-  if (expectedSecret && authHeader !== `Bearer ${expectedSecret}`) {
+  // Fail-Closed: Thiếu CRON_SECRET trong env hoặc sai bearer token đều bị chặn 401 Unauthorized ngay lập tức
+  if (!expectedSecret || authHeader !== `Bearer ${expectedSecret}`) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
