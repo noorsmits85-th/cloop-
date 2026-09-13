@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Search, Bell, Plus, Award, LogOut, Menu, Package, Wallet, Leaf, Truck, CheckCircle2, AlertTriangle, Star, Clock, Check, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { getUserNotificationsAction, NotificationItem } from "@/app/actions/notification";
+import { useAuthModal } from "@/app/AuthModalContext";
 
 export function DashboardHeader({
   currentUser,
@@ -17,6 +18,7 @@ export function DashboardHeader({
   setIsSidebarOpen: (v: boolean) => void;
   onUnreadCountChange?: (count: number) => void;
 }) {
+  const { setShowAuthModal } = useAuthModal();
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -306,49 +308,59 @@ export function DashboardHeader({
 
         <div className="w-[1px] h-6 bg-gray-200 mx-1 hidden sm:block"></div>
 
-        {/* User Dropdown Profile */}
-        <div className="flex items-center gap-3 group relative cursor-pointer">
-          <div className="w-10 h-10 rounded-full bg-emerald-100 border-2 border-emerald-500 flex items-center justify-center text-emerald-800 font-bold text-sm overflow-hidden shrink-0">
-            {currentUser?.name?.charAt(0).toUpperCase() || "C"}
-          </div>
-          <div className="hidden lg:block text-left">
-            <div className="text-xs font-bold text-[#183A2D] truncate max-w-[100px] capitalize">
-              {currentUser?.name || "Member"}
+        {/* User Dropdown Profile or Login Button */}
+        {!currentUser?.isLoggedIn ? (
+          <button
+            type="button"
+            onClick={() => setShowAuthModal(true)}
+            className="flex items-center gap-1.5 bg-[#183A2D] hover:bg-[#112a20] text-white px-4 py-2 rounded-full text-xs font-bold transition-all shadow-md hover:shadow-lg font-ui cursor-pointer"
+          >
+            Đăng nhập
+          </button>
+        ) : (
+          <div className="flex items-center gap-3 group relative cursor-pointer">
+            <div className="w-10 h-10 rounded-full bg-emerald-100 border-2 border-emerald-500 flex items-center justify-center text-emerald-800 font-bold text-sm overflow-hidden shrink-0">
+              {currentUser?.name?.charAt(0).toUpperCase() || "C"}
             </div>
-            <div className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
-              <Award size={10} /> Trustworthy
+            <div className="hidden lg:block text-left">
+              <div className="text-xs font-bold text-[#183A2D] truncate max-w-[100px] capitalize">
+                {currentUser?.name || "Member"}
+              </div>
+              <div className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+                <Award size={10} /> Trustworthy
+              </div>
             </div>
-          </div>
 
-          {/* Dropdown Menu */}
-          <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all transform origin-top-right scale-95 group-hover:scale-100 font-ui py-2 z-50">
-            <div className="px-4 py-2 border-b border-gray-100 sm:hidden">
-              <div className="text-xs font-bold text-[#183A2D] capitalize">{currentUser?.name || "Member"}</div>
-              <div className="text-[10px] text-emerald-600 font-bold">Trustworthy</div>
+            {/* Dropdown Menu */}
+            <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all transform origin-top-right scale-95 group-hover:scale-100 font-ui py-2 z-50">
+              <div className="px-4 py-2 border-b border-gray-100 sm:hidden">
+                <div className="text-xs font-bold text-[#183A2D] capitalize">{currentUser?.name || "Member"}</div>
+                <div className="text-[10px] text-emerald-600 font-bold">Trustworthy</div>
+              </div>
+              <Link href="/my-closet/profile" prefetch={true} className="block px-4 py-2.5 text-xs font-medium text-gray-700 hover:bg-stone-50 hover:text-[#183A2D]">
+                Xem hồ sơ
+              </Link>
+              <Link href="/my-closet/notifications" prefetch={true} className="block px-4 py-2.5 text-xs font-medium text-gray-700 hover:bg-stone-50 hover:text-[#183A2D]">
+                Trung tâm thông báo
+              </Link>
+              <Link href="/my-closet/create" prefetch={true} className="block sm:hidden px-4 py-2.5 text-xs font-medium text-emerald-600 hover:bg-stone-50 hover:text-emerald-700">
+                + Thêm đồ mới
+              </Link>
+              <div className="h-[1px] bg-gray-100 my-1"></div>
+              <button
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  setCurrentUser(null);
+                  window.location.href = "/";
+                }}
+                className="w-full text-left px-4 py-2.5 text-xs font-medium text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer"
+              >
+                <LogOut size={14} />
+                Đăng xuất
+              </button>
             </div>
-            <Link href="/my-closet/profile" prefetch={true} className="block px-4 py-2.5 text-xs font-medium text-gray-700 hover:bg-stone-50 hover:text-[#183A2D]">
-              Xem hồ sơ
-            </Link>
-            <Link href="/my-closet/notifications" prefetch={true} className="block px-4 py-2.5 text-xs font-medium text-gray-700 hover:bg-stone-50 hover:text-[#183A2D]">
-              Trung tâm thông báo
-            </Link>
-            <Link href="/my-closet/create" prefetch={true} className="block sm:hidden px-4 py-2.5 text-xs font-medium text-emerald-600 hover:bg-stone-50 hover:text-emerald-700">
-              + Thêm đồ mới
-            </Link>
-            <div className="h-[1px] bg-gray-100 my-1"></div>
-            <button 
-              onClick={async () => {
-                await supabase.auth.signOut();
-                setCurrentUser(null);
-                window.location.href = "/";
-              }}
-              className="w-full text-left px-4 py-2.5 text-xs font-medium text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer"
-            >
-              <LogOut size={14} />
-              Đăng xuất
-            </button>
           </div>
-        </div>
+        )}
       </div>
     </header>
   );

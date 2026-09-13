@@ -10,6 +10,7 @@ import Image from "next/image";
 import { Heart, Shirt, Info, MapPin, BadgePercent, ShieldAlert, Camera, Feather, Quote, ArrowLeft, Leaf } from "lucide-react"; 
 import { createProductAction } from "./actions";
 import { toast } from "sonner";
+import { useAuthModal } from "@/app/AuthModalContext";
 const PLACEHOLDER_IMG = "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600";
 const PAPER_BG = "https://www.transparenttextures.com/patterns/cream-paper.png";
 
@@ -75,6 +76,7 @@ async function getCroppedImageBlob(imageSrc: string, cropPixels: any, maxSize = 
 
 export default function CreateProductListingPage() {
   const router = useRouter();
+  const { currentUser, setShowAuthModal } = useAuthModal();
   
   const [product, setProduct] = useState<ProductSpecifications>({
     name: "", category: "Dạ hội & Sự kiện", size: "M", targetHeight: "", targetWeight: "",
@@ -90,6 +92,22 @@ export default function CreateProductListingPage() {
     isRental: true, rentalPrice: 150000, depositPercent: 200000, 
     isSale: false, salePrice: 850000, isRecycle: false, greenPoints: 100,
   });
+
+  // Khôi phục bản nháp từ sessionStorage (hỗ trợ luồng khách vãng lai điền form trước rồi mới đăng nhập)
+  useEffect(() => {
+    try {
+      const savedDraft = sessionStorage.getItem("cloop_draft_product");
+      if (savedDraft) {
+        const parsed = JSON.parse(savedDraft);
+        if (parsed.product) setProduct((prev) => ({ ...prev, ...parsed.product }));
+        if (parsed.listings) setListings((prev) => ({ ...prev, ...parsed.listings }));
+        if (parsed.hasStory !== undefined) setHasStory(parsed.hasStory);
+        if (parsed.storyText) setStoryText(parsed.storyText);
+      }
+    } catch (e) {
+      console.warn("Failed to load draft product from sessionStorage:", e);
+    }
+  }, []);
 
   const [images, setImages] = useState<ImageItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -253,6 +271,21 @@ export default function CreateProductListingPage() {
       return;
     }
 
+    // 🛡️ GUEST CREATOR UX: Nếu khách vãng lai chưa đăng nhập
+    if (!currentUser?.isLoggedIn) {
+      try {
+        sessionStorage.setItem(
+          "cloop_draft_product",
+          JSON.stringify({ product, listings, hasStory, storyText })
+        );
+      } catch {}
+      toast.info("Đăng nhập để cất món đồ xinh xắn này vào tủ đồ CLOOP của bạn nhé!", {
+        duration: 5000,
+      });
+      setShowAuthModal(true);
+      return;
+    }
+
     submittingRef.current = true;
     setIsSubmitting(true);
     try {
@@ -306,6 +339,9 @@ export default function CreateProductListingPage() {
         return;
       }
 
+      try {
+        sessionStorage.removeItem("cloop_draft_product");
+      } catch {}
       toast.success("Đã thêm món đồ vào tủ CLOOP thành công!");
       router.push("/my-closet/items");
 

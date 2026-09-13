@@ -10,10 +10,13 @@ export interface TierCriteria {
   minOwnerReviews: number; // Số đánh giá từ chủ đồ
   minAverageRating: number; // Điểm đánh giá trung bình tối thiểu (sao)
   minDistinctLenders: number; // Số chủ đồ khác nhau đã giao dịch (chống thông đồng cày đơn)
-  minDaysSinceFirstOrder?: number; // Khoảng cách thời gian (14 ngày đối với Level 1)
+  minDaysObservationPeriod?: number; // Thời gian quan sát tín nhiệm từ đơn đầu tiên (14 ngày đối với Level 1)
+  minDaysSinceFirstOrder?: number; // Backward-compatibility alias
   depositDiscountRate: number; // 0.0, 0.10, 0.20, 0.30
   depositRate: number; // 1.0, 0.90, 0.80, 0.70
   maxCoveragePerOrder: number; // Giới hạn quỹ bảo lãnh tối đa trên mỗi đơn (VNĐ)
+  maxActiveGuaranteePerUser: number; // Hạn mức bảo lãnh đang mở tối đa theo từng tài khoản (VNĐ)
+  maxConcurrentDiscountedOrders: number; // Số đơn giảm cọc tối đa đồng thời theo tài khoản
   fundThresholdRequired: number; // Ngưỡng số dư quỹ bảo chứng khả dụng tối thiểu để mở quyền lợi (VNĐ)
 }
 
@@ -29,6 +32,8 @@ export const CONSERVATIVE_TIER_RULES: Record<TrustTier, TierCriteria> = {
     depositDiscountRate: 0.0,
     depositRate: 1.0,
     maxCoveragePerOrder: 0,
+    maxActiveGuaranteePerUser: 0,
+    maxConcurrentDiscountedOrders: 0,
     fundThresholdRequired: 0,
   },
   LEVEL_1_VERIFIED: {
@@ -39,11 +44,14 @@ export const CONSERVATIVE_TIER_RULES: Record<TrustTier, TierCriteria> = {
     minOwnerReviews: 3,
     minAverageRating: 4.0,
     minDistinctLenders: 2,
+    minDaysObservationPeriod: 14,
     minDaysSinceFirstOrder: 14,
     depositDiscountRate: 0.10, // 10%
     depositRate: 0.90,
-    maxCoveragePerOrder: 200000, // Trần 200.000đ
-    fundThresholdRequired: 5000000, // Quỹ từ 5 triệu VNĐ
+    maxCoveragePerOrder: 200000, // Trần 200.000đ/đơn
+    maxActiveGuaranteePerUser: 500000, // Trần 500.000đ nợ bảo lãnh mở toàn tài khoản
+    maxConcurrentDiscountedOrders: 2, // Tối đa 2 đơn giảm cọc đồng thời
+    fundThresholdRequired: 5000000, // Quỹ khả dụng từ 5 triệu VNĐ
   },
   LEVEL_2_TRUSTED: {
     tier: "LEVEL_2_TRUSTED",
@@ -53,10 +61,14 @@ export const CONSERVATIVE_TIER_RULES: Record<TrustTier, TierCriteria> = {
     minOwnerReviews: 8,
     minAverageRating: 4.0,
     minDistinctLenders: 3,
+    minDaysObservationPeriod: 14,
+    minDaysSinceFirstOrder: 14,
     depositDiscountRate: 0.20, // 20%
     depositRate: 0.80,
-    maxCoveragePerOrder: 500000, // Trần 500.000đ
-    fundThresholdRequired: 15000000, // Quỹ từ 15 triệu VNĐ
+    maxCoveragePerOrder: 500000, // Trần 500.000đ/đơn
+    maxActiveGuaranteePerUser: 1500000, // Trần 1.500.000đ nợ bảo lãnh mở toàn tài khoản
+    maxConcurrentDiscountedOrders: 4, // Tối đa 4 đơn giảm cọc đồng thời
+    fundThresholdRequired: 15000000, // Quỹ khả dụng từ 15 triệu VNĐ
   },
   LEVEL_3_VIP: {
     tier: "LEVEL_3_VIP",
@@ -66,10 +78,14 @@ export const CONSERVATIVE_TIER_RULES: Record<TrustTier, TierCriteria> = {
     minOwnerReviews: 12,
     minAverageRating: 4.5,
     minDistinctLenders: 5,
+    minDaysObservationPeriod: 14,
+    minDaysSinceFirstOrder: 14,
     depositDiscountRate: 0.30, // 30% - tuyệt đối không có 0 đồng!
     depositRate: 0.70,
-    maxCoveragePerOrder: 1000000, // Trần 1.000.000đ
-    fundThresholdRequired: 30000000, // Quỹ từ 30 triệu VNĐ
+    maxCoveragePerOrder: 1000000, // Trần 1.000.000đ/đơn
+    maxActiveGuaranteePerUser: 3000000, // Trần 3.000.000đ nợ bảo lãnh mở toàn tài khoản
+    maxConcurrentDiscountedOrders: 6, // Tối đa 6 đơn giảm cọc đồng thời
+    fundThresholdRequired: 30000000, // Quỹ khả dụng từ 30 triệu VNĐ
   },
 };
 
@@ -187,13 +203,19 @@ export interface TrustScoreBreakdown {
     averageRating: number;
     distinctLenders: number;
     daysSinceFirstOrder?: number;
+    daysSinceFirstCompletedOrder?: number;
     disputeCount: number;
     disputePenalty: number;
     cancelCount: number;
     cancelPenalty: number;
+    fraudConfirmedDisputeCount: number;
+    seriousLateReturnCount: number;
+    intentionalCancellationCount: number;
+    openDisputeCount: number;
   };
   eligibility: {
     isEligible: boolean;
+    isDiscountFrozen?: boolean;
     unmetCriteria: string[];
     studentVoucherEligible: boolean;
   };
@@ -251,13 +273,19 @@ export async function calculateUserTrustScore(userId: string): Promise<TrustScor
         averageRating: 0,
         distinctLenders: 0,
         daysSinceFirstOrder: 0,
+        daysSinceFirstCompletedOrder: 0,
         disputeCount: 0,
         disputePenalty: 0,
         cancelCount: 0,
         cancelPenalty: 0,
+        fraudConfirmedDisputeCount: 0,
+        seriousLateReturnCount: 0,
+        intentionalCancellationCount: 0,
+        openDisputeCount: 0,
       },
       eligibility: {
         isEligible: false,
+        isDiscountFrozen: false,
         unmetCriteria: ["Tài khoản không tồn tại"],
         studentVoucherEligible: false,
       },
@@ -276,12 +304,12 @@ export async function calculateUserTrustScore(userId: string): Promise<TrustScor
     completedRentals.map((r) => r.ownerId).filter((id): id is string => Boolean(id))
   ).size;
 
-  // Days since first completed rental
-  let daysSinceFirstOrder = 0;
+  // Days since first completed rental (Thời gian quan sát tín nhiệm)
+  let daysSinceFirstCompletedOrder = 0;
   if (completedRentals.length > 0) {
     const sortedRentals = [...completedRentals].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
     const firstDate = sortedRentals[0].createdAt;
-    daysSinceFirstOrder = Math.max(0, Math.floor((Date.now() - firstDate.getTime()) / (1000 * 60 * 60 * 24)));
+    daysSinceFirstCompletedOrder = Math.max(0, Math.floor((Date.now() - firstDate.getTime()) / (1000 * 60 * 60 * 24)));
   }
 
   // Reviews Received
@@ -292,7 +320,15 @@ export async function calculateUserTrustScore(userId: string): Promise<TrustScor
     : 0;
   const fiveStarReviewsCount = ownerReviews.filter((rev) => rev.rating >= 4.0).length;
 
-  // 3. Penalties (Risk Signals)
+  // 3. Penalties (Phân tách lỗi đã xác nhận vs khiếu nại đang mở)
+  const openDisputeCount = user.rentalHistory.reduce(
+    (acc, r) => acc + (r.disputes?.filter((d) => d.status === "PENDING_REVIEW" || d.status === "DISPUTED").length || 0),
+    0
+  );
+  const fraudConfirmedDisputeCount = user.rentalHistory.reduce(
+    (acc, r) => acc + (r.disputes?.filter((d) => d.status === "APPROVED_DEDUCTION").length || 0),
+    0
+  );
   const disputeCount = user.rentalHistory.reduce((acc, r) => acc + (r.disputes?.length || 0), 0);
   const cancelCount = user.rentalHistory.filter((r) => r.status === "CANCELLED").length;
 
@@ -302,22 +338,22 @@ export async function calculateUserTrustScore(userId: string): Promise<TrustScor
     completedOrdersCount,
     totalRentalSpend,
     distinctLendersCount,
-    daysSinceFirstOrder,
+    daysSinceFirstCompletedOrder,
+    daysSinceFirstOrder: daysSinceFirstCompletedOrder,
     ownerReviewsCount,
     averageRating,
     fiveStarReviewsCount,
     disputeCount,
     cancelCount,
+    fraudConfirmedDisputeCount,
+    seriousLateReturnCount: 0,
+    intentionalCancellationCount: 0,
+    openDisputeCount,
     hasStudentEmailProof: false,
   });
 }
 
-/**
- * 🧮 HÀM TÍNH TOÁN PURE FUNCTION (DÙNG CHO CẢ RUNTIME VÀ UNIT TEST)
- * Ràng buộc điều kiện đa yếu tố: Không chỉ nhìn điểm số mà bắt buộc thỏa mãn đồng thời:
- * Số đơn, tổng chi tiêu tiền thuê, đánh giá chủ đồ >= 4★, số chủ đồ khác nhau, không tranh chấp.
- */
-export function calculateUserTrustScoreFromData(data: {
+export interface TrustScoreInput {
   email?: string | null;
   isVerified?: boolean | null;
   completedOrders?: number;
@@ -329,10 +365,24 @@ export function calculateUserTrustScoreFromData(data: {
   ownerReviewsCount?: number;
   distinctLendersCount?: number;
   daysSinceFirstOrder?: number;
-  disputeCount?: number;
-  cancelCount?: number;
+  daysSinceFirstCompletedOrder?: number;
+  disputeCount?: number; // legacy fallback: xem như vi phạm nếu fraudConfirmedDisputeCount không truyền
+  cancelCount?: number;  // tổng số lần hủy đơn (bao gồm lỗi khách quan từ phía chủ đồ/hệ thống)
+  fraudConfirmedDisputeCount?: number; // Tranh chấp đã xác định lỗi vi phạm (bùng đồ, rách hỏng nặng) -> phạt hạ Level 0
+  seriousLateReturnCount?: number;     // Trả trễ hạn nghiêm trọng (> 2 ngày) -> phạt hạ Level 0
+  intentionalCancellationCount?: number; // Hủy đơn cố ý hoặc spam đơn ảo -> phạt hạ Level 0
+  openDisputeCount?: number;           // Khiếu nại đang mở chờ xử lý -> tạm khóa quyền giảm cọc, không xóa điểm vĩnh viễn
   hasStudentEmailProof?: boolean;
-}): TrustScoreBreakdown {
+}
+
+/**
+ * 🧮 HÀM TÍNH TOÁN PURE FUNCTION (DÙNG CHO CẢ RUNTIME VÀ UNIT TEST)
+ * Ràng buộc điều kiện đa yếu tố chuẩn mực:
+ * 1. Phân biệt Lỗi Đã Xác Định (Fault-Confirmed) vs Hủy Đơn Khách Quan (Lender/System fault).
+ * 2. Thời gian quan sát tín nhiệm 14 ngày (daysSinceFirstCompletedOrder >= 14).
+ * 3. Khiếu nại đang mở (openDisputeCount > 0): Tạm khóa ưu đãi giảm cọc mà không trừ điểm oan hoặc hạ cấp vĩnh viễn.
+ */
+export function calculateUserTrustScoreFromData(data: TrustScoreInput): TrustScoreBreakdown {
   // 1. Account Proof Signals
   const emailVerified = Boolean(data.email && data.email.includes("@"));
   const emailPoints = emailVerified ? 10 : 0;
@@ -356,12 +406,19 @@ export function calculateUserTrustScoreFromData(data: {
   const reviews = data.fiveStarReviewsCount ?? data.ownerReviewsCount ?? (data.rating && data.rating >= 4.0 ? orders : 0);
   const reviewPoints = Math.min(20, reviews * 2.5);
 
-  // 3. Penalties (Risk Signals)
-  const disputeCount = data.disputeCount || 0;
-  const disputePenalty = disputeCount * 25;
+  // 3. Penalties & Granular Fault Signals
+  const fraudConfirmed = data.fraudConfirmedDisputeCount !== undefined
+    ? data.fraudConfirmedDisputeCount
+    : (data.disputeCount || 0); // fallback nếu test cũ chỉ truyền disputeCount
+  const seriousLate = data.seriousLateReturnCount || 0;
+  const intentionalCancel = data.intentionalCancellationCount !== undefined
+    ? data.intentionalCancellationCount
+    : (data.fraudConfirmedDisputeCount !== undefined ? 0 : (data.cancelCount || 0));
+  const openDisputes = data.openDisputeCount || 0;
 
-  const cancelCount = data.cancelCount || 0;
-  const cancelPenalty = cancelCount * 10;
+  // Điểm trừ: Vi phạm nặng trừ 25đ/vụ, hủy cố ý trừ 10đ/lần, khiếu nại đang mở tạm giữ 5đ
+  const disputePenalty = (fraudConfirmed + seriousLate) * 25 + openDisputes * 5;
+  const cancelPenalty = intentionalCancel * 10;
 
   // Điểm cơ bản ban đầu là 10 (tài khoản đã đăng ký hợp lệ)
   const rawScore = 10 + emailPoints + phonePoints + studentPoints + orderPoints + spendPoints + reviewPoints - disputePenalty - cancelPenalty;
@@ -372,15 +429,23 @@ export function calculateUserTrustScoreFromData(data: {
   const distinctLenders = data.distinctLendersCount !== undefined
     ? data.distinctLendersCount
     : (orders >= 2 ? Math.min(orders, 5) : orders);
-  const daysSinceFirst = data.daysSinceFirstOrder ?? 14;
+  const observationDays = data.daysSinceFirstCompletedOrder ?? data.daysSinceFirstOrder ?? 14;
 
   function evaluateTierEligibility(tier: TrustTier): { eligible: boolean; unmetReasons: string[] } {
     const rule = CONSERVATIVE_TIER_RULES[tier];
     const reasons: string[] = [];
 
-    if (disputeCount > 0) {
-      reasons.push(`Tài khoản có ${disputeCount} tranh chấp vi phạm (yêu cầu 0 tranh chấp)`);
+    // Kiểm tra lỗi đã xác định (Fault-confirmed)
+    if (fraudConfirmed > 0) {
+      reasons.push(`Tài khoản có ${fraudConfirmed} vi phạm/tranh chấp đã xác định lỗi (yêu cầu 0 vi phạm)`);
     }
+    if (seriousLate > 0) {
+      reasons.push(`Tài khoản có ${seriousLate} lần trả đồ trễ hạn nghiêm trọng (yêu cầu 0 lần)`);
+    }
+    if (intentionalCancel > 0) {
+      reasons.push(`Tài khoản có ${intentionalCancel} lần hủy đơn cố ý (yêu cầu 0 lần)`);
+    }
+
     if (orders < rule.minCompletedOrders) {
       reasons.push(`Số đơn hoàn tất (${orders}) chưa đạt tối thiểu (${rule.minCompletedOrders} đơn)`);
     }
@@ -396,8 +461,9 @@ export function calculateUserTrustScoreFromData(data: {
     if (distinctLenders < rule.minDistinctLenders) {
       reasons.push(`Số chủ đồ khác nhau đã giao dịch (${distinctLenders}) chưa đạt yêu cầu (${rule.minDistinctLenders} chủ đồ)`);
     }
-    if (rule.minDaysSinceFirstOrder && daysSinceFirst < rule.minDaysSinceFirstOrder) {
-      reasons.push(`Thời gian từ đơn đầu tiên (${daysSinceFirst} ngày) chưa đủ ${rule.minDaysSinceFirstOrder} ngày bảo chứng`);
+    const minObsPeriod = rule.minDaysObservationPeriod ?? rule.minDaysSinceFirstOrder;
+    if (minObsPeriod && observationDays < minObsPeriod) {
+      reasons.push(`Thời gian quan sát tín nhiệm từ đơn hoàn tất đầu tiên (${observationDays} ngày) chưa đủ ${minObsPeriod} ngày`);
     }
 
     return {
@@ -453,6 +519,12 @@ export function calculateUserTrustScoreFromData(data: {
     finalTier = "LEVEL_0_NEW";
   }
 
+  // Nếu tài khoản có tranh chấp đang mở, tạm đóng băng ưu đãi giảm cọc
+  const isDiscountFrozen = openDisputes > 0;
+  if (isDiscountFrozen) {
+    unmetCriteria.push(`Tài khoản hiện có ${openDisputes} khiếu nại tranh chấp đang chờ giải quyết: Tạm khóa ưu đãi bảo lãnh giảm cọc.`);
+  }
+
   return {
     score: finalScore,
     tier: finalTier,
@@ -472,14 +544,20 @@ export function calculateUserTrustScoreFromData(data: {
       totalRentalSpend: totalSpend,
       averageRating: avgRating,
       distinctLenders,
-      daysSinceFirstOrder: daysSinceFirst,
-      disputeCount,
+      daysSinceFirstOrder: observationDays,
+      daysSinceFirstCompletedOrder: observationDays,
+      disputeCount: data.disputeCount || (fraudConfirmed + openDisputes),
       disputePenalty,
-      cancelCount,
+      cancelCount: data.cancelCount || intentionalCancel,
       cancelPenalty,
+      fraudConfirmedDisputeCount: fraudConfirmed,
+      seriousLateReturnCount: seriousLate,
+      intentionalCancellationCount: intentionalCancel,
+      openDisputeCount: openDisputes,
     },
     eligibility: {
-      isEligible: finalTier !== "LEVEL_0_NEW",
+      isEligible: finalTier !== "LEVEL_0_NEW" && !isDiscountFrozen,
+      isDiscountFrozen,
       unmetCriteria,
       studentVoucherEligible: isStudent,
     },
@@ -651,8 +729,12 @@ export function evaluateFastTrackEligibility(params: {
 
 export interface ReserveFundStatus {
   openingReserveFundBalance: number; // Số dư đầu tháng của Quỹ bảo chứng (VNĐ)
-  currentReserveFundBalance: number; // Số dư khả dụng hiện tại (VNĐ)
-  committedClaims: number; // Tổng các khoản bồi thường đã chi + bảo lãnh cam kết trong tháng
+  currentReserveFundBalance: number; // Số dư sổ sách/khả dụng hiện tại (VNĐ)
+  committedClaims?: number; // legacy field: tổng đã chi + cam kết
+  paidClaims?: number; // Các khoản bồi thường đã chi trả trong tháng (VNĐ)
+  pendingClaims?: number; // Các yêu cầu bồi thường đang chờ thẩm định/xử lý (VNĐ)
+  committedActiveGuarantees?: number; // Tổng số tiền bảo lãnh đang lưu hành trên các đơn thuê chưa hoàn tất (VNĐ)
+  lockedFunds?: number; // Tiền quỹ đang bị phong tỏa/giữ chỗ (VNĐ)
 }
 
 export const DEFAULT_RESERVE_FUND_STATUS: ReserveFundStatus = {
@@ -660,6 +742,24 @@ export const DEFAULT_RESERVE_FUND_STATUS: ReserveFundStatus = {
   currentReserveFundBalance: 50000000,
   committedClaims: 0,
 };
+
+/**
+ * 🧮 TÍNH QUỸ DỰ PHÒNG KHẢ DỤNG (AVAILABLE RESERVE)
+ * availableReserve = currentReserveFundBalance - (paidClaims + pendingClaims + committedActiveGuarantees + lockedFunds)
+ */
+export function calculateAvailableReserve(status: ReserveFundStatus): number {
+  const paid = status.paidClaims ?? status.committedClaims ?? 0;
+  const pending = status.pendingClaims ?? 0;
+  const committedGuarantees = status.committedActiveGuarantees ?? 0;
+  const locked = status.lockedFunds ?? 0;
+  return Math.max(0, status.currentReserveFundBalance - (paid + pending + committedGuarantees + locked));
+}
+
+export interface UserGuaranteeStatus {
+  currentActiveGuarantees?: number; // Tổng số tiền sàn đang bảo lãnh mở cho tài khoản này (VNĐ)
+  activeDiscountedOrdersCount?: number; // Số đơn đang được hưởng giảm cọc đồng thời
+  hasOpenDispute?: boolean; // Tài khoản đang có tranh chấp chờ xử lý
+}
 
 export interface DynamicDepositResult {
   finalDeposit: number;
@@ -670,14 +770,22 @@ export interface DynamicDepositResult {
   nextTierGoal: string;
   circuitBreakerTriggered?: boolean;
   effectiveCoverageCap?: number;
+  platformLiabilityLimit: number; // Trách nhiệm bồi thường tối đa minh bạch = min(baseDeposit, finalDeposit + approvedGuarantee)
+  availableReserve: number; // Quỹ bảo chứng khả dụng thực tế
 }
 
 /**
  * TÍNH TIỀN CỌC ĐỘNG BẢO TOÀN NGUỒN VỐN (FUND-CAPACITY CONSTRAINED GUARANTEE)
- * 1. Circuit Breaker: Trần bảo lãnh/bồi thường tối đa trong tháng là 30% số dư đầu kỳ (bảo toàn 70% đệm vốn).
- * 2. Ngưỡng số dư quỹ: < 5M cọc 100% toàn sàn; >= 5M mở Level 1; >= 15M mở Level 2; >= 30M mở Level 3.
- * 3. Bảo lãnh có hạn mức trần: Level 1 (200k), Level 2 (500k), Level 3 (1M).
- * 4. Tuyệt đối không có cọc 0đ trong thanh toán nội địa VietQR.
+ * 1. Circuit Breaker: Trần bảo lãnh/bồi thường tối đa trong tháng là 30% số dư đầu kỳ hoặc availableReserve <= 0.
+ * 2. Ngưỡng số dư quỹ: Tính theo Quỹ Dự Phòng Khả Dụng (availableReserve):
+ *    < 5M cọc 100% toàn sàn; >= 5M mở Level 1; >= 15M mở Level 2; >= 30M mở Level 3.
+ * 3. Hạn mức rủi ro theo từng tài khoản (Per-Account Exposure Limit):
+ *    - Level 1: Tối đa 500k bảo lãnh mở, tối đa 2 đơn giảm cọc đồng thời.
+ *    - Level 2: Tối đa 1.5M bảo lãnh mở, tối đa 4 đơn giảm cọc đồng thời.
+ *    - Level 3: Tối đa 3M bảo lãnh mở, tối đa 6 đơn giảm cọc đồng thời.
+ * 4. Tạm khóa ưu đãi giảm cọc khi tài khoản đang có khiếu nại tranh chấp chờ xử lý (openDisputeFreeze).
+ * 5. Giới hạn trách nhiệm bồi thường minh bạch: platformLiabilityLimit = min(baseDeposit, finalDeposit + approvedGuarantee).
+ * 6. Tuyệt đối không có cọc 0đ trong thanh toán nội địa VietQR.
  */
 export function calculateDynamicDeposit({
   baseDeposit,
@@ -686,6 +794,7 @@ export function calculateDynamicDeposit({
   isRental = true,
   fastTrackActive = false,
   fundStatus = DEFAULT_RESERVE_FUND_STATUS,
+  userGuaranteeStatus,
 }: {
   baseDeposit: number;
   itemValue: number;
@@ -693,7 +802,10 @@ export function calculateDynamicDeposit({
   isRental?: boolean;
   fastTrackActive?: boolean;
   fundStatus?: ReserveFundStatus;
+  userGuaranteeStatus?: UserGuaranteeStatus;
 }): DynamicDepositResult {
+  const availableReserve = calculateAvailableReserve(fundStatus);
+
   if (!isRental) {
     return {
       finalDeposit: 0,
@@ -702,6 +814,8 @@ export function calculateDynamicDeposit({
       discountPercent: 0,
       explanation: "Đơn mua đứt tuần hoàn không áp dụng tiền cọc.",
       nextTierGoal: "",
+      platformLiabilityLimit: 0,
+      availableReserve,
     };
   }
 
@@ -714,61 +828,111 @@ export function calculateDynamicDeposit({
       discountPercent: 0,
       explanation: "Chế độ Fast-Track: Thu đủ 100% tiền cọc bảo chứng qua Cổng thanh toán PayOS để mở khóa thuê trang phục giá trị cao ngay lập tức.",
       nextTierGoal: "Trả đồ đúng hạn đơn này để tích lũy điểm tín nhiệm và hưởng ưu đãi giảm cọc ở lần thuê kế tiếp!",
+      platformLiabilityLimit: baseDeposit,
+      availableReserve,
     };
   }
 
   // 1. CIRCUIT BREAKER CHECK (NGẮT MẠCH TỰ ĐỘNG BẢO VỆ NGUỒN VỐN SÀN)
+  // Tổng các khoản bồi thường đã chi + đang khiếu nại + bảo lãnh đang cam kết
+  const totalMonthCommitments =
+    (fundStatus.paidClaims ?? fundStatus.committedClaims ?? 0) +
+    (fundStatus.pendingClaims ?? 0) +
+    (fundStatus.committedActiveGuarantees ?? 0);
   const monthlyClaimCeiling = Math.round(fundStatus.openingReserveFundBalance * 0.30);
-  const remainingMonthQuota = Math.max(0, monthlyClaimCeiling - fundStatus.committedClaims);
+  const remainingMonthQuota = Math.max(0, monthlyClaimCeiling - totalMonthCommitments);
 
-  if (fundStatus.committedClaims >= monthlyClaimCeiling || fundStatus.currentReserveFundBalance <= 0) {
+  if (totalMonthCommitments >= monthlyClaimCeiling || availableReserve <= 0) {
     return {
       finalDeposit: baseDeposit,
       originalDeposit: baseDeposit,
       discountAmount: 0,
       discountPercent: 0,
       circuitBreakerTriggered: true,
-      explanation: "Cơ chế Circuit Breaker tự động kích hoạt bảo toàn Quỹ Rủi Ro (đã chạm trần bồi thường 30% tháng): Tạm thời áp dụng cọc 100% cho mọi giao dịch mới.",
+      explanation: "Cơ chế Circuit Breaker tự động kích hoạt bảo toàn Quỹ Rủi Ro (đã chạm trần bồi thường 30% tháng hoặc quỹ khả dụng cạn): Tạm thời áp dụng cọc 100% cho mọi giao dịch mới.",
       nextTierGoal: "Hạn mức bảo lãnh ưu đãi sẽ tự động mở lại vào chu kỳ đầu tháng tiếp theo khi quỹ được trích lập mới.",
+      platformLiabilityLimit: baseDeposit,
+      availableReserve,
     };
   }
 
-  // 2. FUND THRESHOLD CHECK (ĐIỀU KIỆN SỐ DƯ QUỸ KHẢ DỤNG)
-  let effectiveTier: TrustTier = trustTier;
-  const currentFund = fundStatus.currentReserveFundBalance;
+  // 2. KHÓA TẠM THỜI NẾU TÀI KHOẢN ĐANG CÓ TRANH CHẤP CHỜ XỬ LÝ (OPEN DISPUTE FREEZE)
+  if (userGuaranteeStatus?.hasOpenDispute) {
+    return {
+      finalDeposit: baseDeposit,
+      originalDeposit: baseDeposit,
+      discountAmount: 0,
+      discountPercent: 0,
+      explanation: "Tài khoản hiện có khiếu nại tranh chấp đang chờ xử lý: Quyền lợi giảm cọc tạm thời bị đóng băng trong thời gian thụ lý.",
+      nextTierGoal: "Sau khi khiếu nại được giải quyết minh bạch, quyền lợi giảm cọc sẽ tự động khôi phục theo thứ hạng hiện tại.",
+      platformLiabilityLimit: baseDeposit,
+      availableReserve,
+    };
+  }
 
-  if (currentFund < CONSERVATIVE_TIER_RULES.LEVEL_1_VERIFIED.fundThresholdRequired) {
+  // 3. FUND THRESHOLD CHECK (ĐIỀU KIỆN SỐ DƯ QUỸ KHẢ DỤNG: AVAILABLE RESERVE)
+  let effectiveTier: TrustTier = trustTier;
+
+  if (availableReserve < CONSERVATIVE_TIER_RULES.LEVEL_1_VERIFIED.fundThresholdRequired) {
     // Quỹ khả dụng dưới 5 triệu: Cọc 100% toàn sàn bảo toàn vốn
     effectiveTier = "LEVEL_0_NEW";
-  } else if (effectiveTier === "LEVEL_3_VIP" && currentFund < CONSERVATIVE_TIER_RULES.LEVEL_3_VIP.fundThresholdRequired) {
-    effectiveTier = currentFund >= CONSERVATIVE_TIER_RULES.LEVEL_2_TRUSTED.fundThresholdRequired ? "LEVEL_2_TRUSTED" : "LEVEL_1_VERIFIED";
-  } else if (effectiveTier === "LEVEL_2_TRUSTED" && currentFund < CONSERVATIVE_TIER_RULES.LEVEL_2_TRUSTED.fundThresholdRequired) {
+  } else if (effectiveTier === "LEVEL_3_VIP" && availableReserve < CONSERVATIVE_TIER_RULES.LEVEL_3_VIP.fundThresholdRequired) {
+    effectiveTier = availableReserve >= CONSERVATIVE_TIER_RULES.LEVEL_2_TRUSTED.fundThresholdRequired ? "LEVEL_2_TRUSTED" : "LEVEL_1_VERIFIED";
+  } else if (effectiveTier === "LEVEL_2_TRUSTED" && availableReserve < CONSERVATIVE_TIER_RULES.LEVEL_2_TRUSTED.fundThresholdRequired) {
     effectiveTier = "LEVEL_1_VERIFIED";
   }
 
   const tierRule = CONSERVATIVE_TIER_RULES[effectiveTier];
+
+  // 4. PER-ACCOUNT EXPOSURE LIMIT CHECK (HẠN MỨC RỦI RO THEO TỪNG TÀI KHOẢN)
+  const userActiveGuarantee = userGuaranteeStatus?.currentActiveGuarantees ?? 0;
+  const userActiveOrders = userGuaranteeStatus?.activeDiscountedOrdersCount ?? 0;
+  const remainingUserQuota = Math.max(0, tierRule.maxActiveGuaranteePerUser - userActiveGuarantee);
+
+  if (
+    effectiveTier !== "LEVEL_0_NEW" &&
+    (userActiveOrders >= tierRule.maxConcurrentDiscountedOrders || remainingUserQuota <= 0)
+  ) {
+    return {
+      finalDeposit: baseDeposit,
+      originalDeposit: baseDeposit,
+      discountAmount: 0,
+      discountPercent: 0,
+      explanation: `Tài khoản đã chạm trần hạn mức rủi ro của ${tierRule.label} (tối đa ${tierRule.maxActiveGuaranteePerUser.toLocaleString("vi-VN")}đ bảo lãnh hoặc ${tierRule.maxConcurrentDiscountedOrders} đơn đồng thời): Đơn tiếp theo áp dụng mức cọc tiêu chuẩn 100%.`,
+      nextTierGoal: "Hoàn tất và trả đồ các đơn đang thuê để giải phóng hạn mức bảo lãnh tài khoản của bạn!",
+      platformLiabilityLimit: baseDeposit,
+      availableReserve,
+    };
+  }
+
   const requestedGuarantee = Math.round(baseDeposit * tierRule.depositDiscountRate);
 
-  // Bảo lãnh phê duyệt bị chặn bởi:
-  // 1. Tỷ lệ giảm theo hạng
+  // Bảo lãnh phê duyệt bị chặn bởi 4 phòng tuyến:
+  // 1. Tỷ lệ giảm theo hạng (depositDiscountRate)
   // 2. Hạn mức bảo lãnh tối đa trên 1 đơn (maxCoveragePerOrder)
   // 3. Hạn ngạch còn lại của tháng theo Circuit Breaker (remainingMonthQuota)
+  // 4. Hạn mức nợ bảo lãnh khả dụng còn lại của tài khoản (remainingUserQuota)
   const approvedGuarantee = Math.min(
     requestedGuarantee,
     tierRule.maxCoveragePerOrder,
-    remainingMonthQuota
+    remainingMonthQuota,
+    remainingUserQuota
   );
 
   const finalDeposit = Math.max(0, baseDeposit - approvedGuarantee);
   const discountAmount = approvedGuarantee;
   const discountPercent = baseDeposit > 0 ? Math.round((discountAmount / baseDeposit) * 100) : 0;
 
+  // GIỚI HẠN TRÁCH NHIỆM BỒI THƯỜNG MINH BẠCH (LIMIT OF LIABILITY)
+  // Trách nhiệm tối đa của sàn = Tiền cọc thực tế đã thu + Khoản bảo lãnh được duyệt của đơn
+  const platformLiabilityLimit = Math.min(baseDeposit, finalDeposit + approvedGuarantee);
+
   let explanation = "";
   let nextTierGoal = "";
 
   if (effectiveTier === "LEVEL_0_NEW") {
-    if (trustTier !== "LEVEL_0_NEW" && currentFund < CONSERVATIVE_TIER_RULES.LEVEL_1_VERIFIED.fundThresholdRequired) {
-      explanation = "Quỹ Dự phòng Rủi ro đang trong giai đoạn tích lũy vốn ban đầu (< 5.000.000đ): Áp dụng cọc tiêu chuẩn 100% để bảo đảm an toàn thanh khoản sàn.";
+    if (trustTier !== "LEVEL_0_NEW" && availableReserve < CONSERVATIVE_TIER_RULES.LEVEL_1_VERIFIED.fundThresholdRequired) {
+      explanation = "Quỹ Dự phòng Khả dụng đang trong giai đoạn tích lũy vốn ban đầu (< 5.000.000đ): Áp dụng cọc tiêu chuẩn 100% để bảo đảm an toàn thanh khoản sàn.";
     } else {
       explanation = "Mức cọc tiêu chuẩn 100% cho thành viên mới để đảm bảo an toàn giao dịch 2 chiều.";
     }
@@ -793,5 +957,7 @@ export function calculateDynamicDeposit({
     nextTierGoal,
     circuitBreakerTriggered: false,
     effectiveCoverageCap: tierRule.maxCoveragePerOrder,
+    platformLiabilityLimit,
+    availableReserve,
   };
 }

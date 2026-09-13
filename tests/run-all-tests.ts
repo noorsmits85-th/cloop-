@@ -205,6 +205,113 @@ test('Disputes immediately revoke tier eligibility back to LEVEL_0_NEW', () => {
   assert.equal(res.eligibility.isEligible, false);
 });
 
+test('Legitimate cancellation (lender/system fault) does NOT penalize or demote good user', () => {
+  const res = calculateUserTrustScoreFromData({
+    email: 'user@cloop.vn',
+    isVerified: true,
+    completedOrders: 5,
+    totalRentalSpend: 2000000,
+    fiveStarReviewsCount: 5,
+    distinctLendersCount: 3,
+    daysSinceFirstCompletedOrder: 20,
+    fraudConfirmedDisputeCount: 0,
+    intentionalCancellationCount: 0,
+    cancelCount: 2, // 2 đơn bị chủ shop hủy do hết đồ
+    openDisputeCount: 0,
+  });
+  assert.equal(res.tier, 'LEVEL_1_VERIFIED');
+  assert.equal(res.eligibility.isEligible, true);
+  assert.equal(res.eligibility.isDiscountFrozen, false);
+});
+
+test('Confirmed fraud immediately demotes to LEVEL_0_NEW', () => {
+  const res = calculateUserTrustScoreFromData({
+    email: 'fraudster@cloop.vn',
+    isVerified: true,
+    completedOrders: 10,
+    totalRentalSpend: 5000000,
+    fiveStarReviewsCount: 10,
+    distinctLendersCount: 4,
+    daysSinceFirstCompletedOrder: 30,
+    fraudConfirmedDisputeCount: 1, // Đã xác định bùng đồ / rách hỏng nặng
+    intentionalCancellationCount: 0,
+    openDisputeCount: 0,
+  });
+  assert.equal(res.tier, 'LEVEL_0_NEW');
+  assert.equal(res.eligibility.isEligible, false);
+});
+
+test('Serious late return (> 2 days) immediately demotes to LEVEL_0_NEW', () => {
+  const res = calculateUserTrustScoreFromData({
+    email: 'lateuser@cloop.vn',
+    isVerified: true,
+    completedOrders: 8,
+    totalRentalSpend: 4000000,
+    fiveStarReviewsCount: 8,
+    distinctLendersCount: 3,
+    daysSinceFirstCompletedOrder: 30,
+    seriousLateReturnCount: 1,
+    fraudConfirmedDisputeCount: 0,
+    intentionalCancellationCount: 0,
+  });
+  assert.equal(res.tier, 'LEVEL_0_NEW');
+  assert.equal(res.eligibility.isEligible, false);
+});
+
+test('Pending open dispute temporarily freezes deposit discount without wiping earned tier', () => {
+  const res = calculateUserTrustScoreFromData({
+    email: 'disputinguser@cloop.vn',
+    isVerified: true,
+    completedOrders: 5,
+    totalRentalSpend: 2000000,
+    fiveStarReviewsCount: 5,
+    distinctLendersCount: 3,
+    daysSinceFirstCompletedOrder: 20,
+    fraudConfirmedDisputeCount: 0,
+    intentionalCancellationCount: 0,
+    openDisputeCount: 1, // Đang mở khiếu nại chờ admin xác minh
+  });
+  // Giữ nguyên tier tín nhiệm cơ bản (không xóa điểm oan)
+  assert.equal(res.tier, 'LEVEL_1_VERIFIED');
+  // Nhưng tạm đóng băng quyền lợi giảm cọc
+  assert.equal(res.eligibility.isDiscountFrozen, true);
+  assert.equal(res.eligibility.isEligible, false);
+});
+
+test('14-day observation period: completed 3 orders in 3 days stays LEVEL_0_NEW', () => {
+  const res = calculateUserTrustScoreFromData({
+    email: 'fastfarmer@cloop.vn',
+    isVerified: true,
+    completedOrders: 3,
+    totalRentalSpend: 1200000,
+    fiveStarReviewsCount: 3,
+    distinctLendersCount: 2,
+    daysSinceFirstCompletedOrder: 3, // Mới chỉ 3 ngày từ đơn đầu tiên -> chưa đủ 14 ngày
+    fraudConfirmedDisputeCount: 0,
+    intentionalCancellationCount: 0,
+    openDisputeCount: 0,
+  });
+  assert.equal(res.tier, 'LEVEL_0_NEW');
+  assert.equal(res.eligibility.isEligible, false);
+});
+
+test('14-day observation period: completed 3 orders after 14 days unlocks LEVEL_1_VERIFIED', () => {
+  const res = calculateUserTrustScoreFromData({
+    email: 'patientuser@cloop.vn',
+    isVerified: true,
+    completedOrders: 3,
+    totalRentalSpend: 1200000,
+    fiveStarReviewsCount: 3,
+    distinctLendersCount: 2,
+    daysSinceFirstCompletedOrder: 14, // Đủ 14 ngày quan sát tín nhiệm
+    fraudConfirmedDisputeCount: 0,
+    intentionalCancellationCount: 0,
+    openDisputeCount: 0,
+  });
+  assert.equal(res.tier, 'LEVEL_1_VERIFIED');
+  assert.equal(res.eligibility.isEligible, true);
+});
+
 console.log('\n--- 3. Dynamic Deposit Calculation (Conservative & Fund-Driven) ---');
 test('LEVEL_0_NEW pays 100% deposit', () => {
   const calc = calculateDynamicDeposit({
@@ -340,6 +447,95 @@ test('Fast-Track forces 100% deposit regardless of trust tier', () => {
   });
   assert.equal(calc.finalDeposit, 1000000);
   assert.equal(calc.discountAmount, 0);
+});
+
+test('Account-level exposure cap: Level 1 capped at 500,000 VND total active guarantee', () => {
+  const calc = calculateDynamicDeposit({
+    baseDeposit: 1500000,
+    itemValue: 2000000,
+    trustTier: 'LEVEL_1_VERIFIED',
+    userGuaranteeStatus: {
+      currentActiveGuarantees: 400000, // Đã có 400k bảo lãnh đang mở (trần Level 1 là 500k)
+      activeDiscountedOrdersCount: 1,
+    },
+  });
+  // Đáng lẽ giảm 10% của 1.5M = 150k (nhỏ hơn trần đơn 200k), nhưng hạn mức tài khoản chỉ còn 100k
+  assert.equal(calc.discountAmount, 100000);
+  assert.equal(calc.finalDeposit, 1400000);
+});
+
+test('Account-level exposure cap: Level 1 forces 100% deposit when active guarantee reaches 500k ceiling', () => {
+  const calc = calculateDynamicDeposit({
+    baseDeposit: 1000000,
+    itemValue: 1500000,
+    trustTier: 'LEVEL_1_VERIFIED',
+    userGuaranteeStatus: {
+      currentActiveGuarantees: 500000, // Đã chạm trần 500.000đ
+      activeDiscountedOrdersCount: 1,
+    },
+  });
+  assert.equal(calc.finalDeposit, 1000000);
+  assert.equal(calc.discountAmount, 0);
+});
+
+test('Account-level concurrent orders cap: Level 1 forces 100% deposit on 3rd concurrent order', () => {
+  const calc = calculateDynamicDeposit({
+    baseDeposit: 1000000,
+    itemValue: 1500000,
+    trustTier: 'LEVEL_1_VERIFIED',
+    userGuaranteeStatus: {
+      currentActiveGuarantees: 200000,
+      activeDiscountedOrdersCount: 2, // Đã đạt tối đa 2 đơn giảm cọc đồng thời
+    },
+  });
+  assert.equal(calc.finalDeposit, 1000000);
+  assert.equal(calc.discountAmount, 0);
+});
+
+test('Open dispute on account freezes deposit discount in dynamic deposit calculation', () => {
+  const calc = calculateDynamicDeposit({
+    baseDeposit: 1000000,
+    itemValue: 1500000,
+    trustTier: 'LEVEL_2_TRUSTED',
+    userGuaranteeStatus: {
+      hasOpenDispute: true,
+      currentActiveGuarantees: 0,
+      activeDiscountedOrdersCount: 0,
+    },
+  });
+  assert.equal(calc.finalDeposit, 1000000);
+  assert.equal(calc.discountAmount, 0);
+  assert.ok(calc.explanation.includes('đóng băng'));
+});
+
+test('Quỹ dự phòng khả dụng (availableReserve): pending claims & committed guarantees deplete reserve and gate tiers', () => {
+  const calc = calculateDynamicDeposit({
+    baseDeposit: 1000000,
+    itemValue: 2000000,
+    trustTier: 'LEVEL_2_TRUSTED',
+    fundStatus: {
+      openingReserveFundBalance: 50000000,
+      currentReserveFundBalance: 20000000, // Sổ sách 20 triệu
+      paidClaims: 1000000,
+      pendingClaims: 3000000,
+      committedActiveGuarantees: 8000000, // 20M - (1M + 3M + 8M) = 8M khả dụng (< 15M của Level 2)
+    },
+  });
+  // Giáng xuống Level 1 (giảm 10% = 100k thay vì 20%)
+  assert.equal(calc.discountAmount, 100000);
+  assert.equal(calc.finalDeposit, 900000);
+  assert.equal(calc.availableReserve, 8000000);
+});
+
+test('Transparent platform liability limit invariant', () => {
+  const calc = calculateDynamicDeposit({
+    baseDeposit: 1000000,
+    itemValue: 1500000,
+    trustTier: 'LEVEL_1_VERIFIED',
+  });
+  // finalDeposit (900k) + approvedGuarantee (100k) = 1.000.000đ = platformLiabilityLimit
+  assert.equal(calc.platformLiabilityLimit, 1000000);
+  assert.equal(calc.platformLiabilityLimit, calc.finalDeposit + calc.discountAmount);
 });
 
 console.log('\n--- 4. Fast-Track Ceilings & Security Constraints ---');
