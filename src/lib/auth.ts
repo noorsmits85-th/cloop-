@@ -140,19 +140,16 @@ export async function requireAdmin() {
  * Chuyển hướng về trang chủ nếu không phải Admin.
  */
 export async function requireAdminOrRedirect() {
+  let user = null;
   try {
-    const user = await requireUser();
+    user = await requireUser();
+  } catch {
+    user = null;
+  }
 
-    if (!user || user.role !== "ADMIN") {
-      redirect("/");
-    }
-
-    return { authUser: user, profile: user };
-  } catch (error) {
-    // Nếu có lỗi do redirect (NEXT_REDIRECT) thì throw tiếp
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) {
-      throw error;
-    }
+  if (!user || user.role !== "ADMIN") {
     redirect("/");
   }
+
+  return { authUser: user, profile: user };
 }

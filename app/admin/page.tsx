@@ -13,8 +13,13 @@ export default async function AdminPage() {
     redirect('/login');
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
+  const user = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { id: session.user.id },
+        { email: session.user.email }
+      ]
+    },
     select: { id: true, role: true, name: true, cloopCoins: true }
   });
 
@@ -171,14 +176,24 @@ export default async function AdminPage() {
     };
   });
 
+  const safeTopUps = (recentTopUps || []).map((t) => ({
+    ...t,
+    createdAt: t.createdAt ? new Date(t.createdAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : ''
+  }));
+
+  const safeWithdrawals = (pendingWithdrawals || []).map((w) => ({
+    ...w,
+    createdAt: w.createdAt ? new Date(w.createdAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : ''
+  }));
+
   return (
     <div className="min-h-screen bg-[#FAF9F5] pb-20 pt-8 px-4 sm:px-8 text-stone-800 font-sans">
       <AdminDashboardClient 
         currentAdmin={{ name: user.name || session.user.email, coins: user.cloopCoins }} 
         metrics={metrics}
         recentRentals={formattedOrders}
-        recentTopUps={recentTopUps}
-        pendingWithdrawals={pendingWithdrawals}
+        recentTopUps={safeTopUps}
+        pendingWithdrawals={safeWithdrawals}
       />
     </div>
   );
