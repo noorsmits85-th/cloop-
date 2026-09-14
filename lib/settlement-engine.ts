@@ -299,7 +299,10 @@ export async function settleCompletedRentalOrder(
     return executeSettlement(options.customPrismaTx);
   }
 
-  return (defaultPrisma as any).$transaction(executeSettlement);
+  return (defaultPrisma as any).$transaction(executeSettlement, {
+    maxWait: 15000,
+    timeout: 30000,
+  });
 }
 
 /**
@@ -579,5 +582,8 @@ export async function settleDisputedRentalOrder(
     return executeDisputeSettlement(options.customPrismaTx);
   }
 
-  return (defaultPrisma as any).$transaction(executeDisputeSettlement);
+  return (defaultPrisma as any).$transaction(executeDisputeSettlement, {
+    maxWait: 15000,
+    timeout: 30000,
+  });
 }
