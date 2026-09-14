@@ -13,7 +13,6 @@ interface RentalBookingBoxProps {
   listingType?: "RENT" | "SELL"; 
   depositPercent?: number; 
   ownerName?: string;    
-  ownerPhone?: string;   
   ownerAddress?: string; 
 }
 
@@ -25,7 +24,6 @@ export default function RentalBookingBox({
   listingType = "RENT", 
   depositPercent = 0,
   ownerName,
-  ownerPhone,
   ownerAddress
 }: RentalBookingBoxProps) {
   const router = useRouter();

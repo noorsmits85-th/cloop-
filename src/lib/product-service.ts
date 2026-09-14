@@ -216,7 +216,6 @@ export const getProductDetail = cache(async (id: string) => {
     ownerId: product.user?.id,
     userId: product.userId,
     ownerRealName: product.user?.name || "Chủ tủ đồ CLOOP",
-    ownerRealPhone: "098.765.4321",
     ownerAvatar: product.user?.avatar,
     hasActiveRentals: product.rentalHistory.some((r: any) => ["BORROWER_RECEIVED"].includes(r.status)),
     rentalCount: product.rentalHistory ? product.rentalHistory.length : 0,

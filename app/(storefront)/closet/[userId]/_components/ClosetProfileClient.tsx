@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   MapPin, Star, ShieldCheck, ArrowLeft, Shirt, Settings, 
   Calendar, Leaf, Heart, Share2, Plus, BookOpen,
-  X, Camera, Save, Loader2, Fingerprint 
+  X, Camera, Save, Loader2, Tag 
 } from "lucide-react";
 import ReviewSection from "./ReviewSection";
 import { 
@@ -243,8 +243,8 @@ export default function ClosetProfileClient({
             <div className="space-y-1">
               <div className="flex items-center gap-2.5 flex-wrap justify-center md:justify-start">
                 <h1 className="text-3xl sm:text-4xl font-bold text-[#183A2D] font-heading">{ownerInfo.name || "Thành viên CLOOP"}</h1>
-                <span className="text-[11px] font-mono font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/80 flex items-center gap-1 shadow-2xs" title="Mã định danh Clooper ID độc bản duy nhất">
-                  <Fingerprint size={12} className="text-emerald-700" /> #{clooperCode.replace("CLOOP-", "")}
+                <span className="text-[11px] font-mono font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/80 flex items-center gap-1.5 shadow-2xs" title="Mã thành viên CLOOP">
+                  <Tag size={11} className="text-emerald-700" /> #{clooperCode.replace("CLOOP-", "")}
                 </span>
                 {isCurrentUser && (
                   <button

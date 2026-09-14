@@ -436,7 +436,6 @@ export default function ProductDetailClient({
                 listingType={transactionMode} 
                 depositPercent={product.depositAmount ?? product.depositPercent ?? 0} 
                 ownerName={product.ownerRealName || product.user?.name}
-                ownerPhone={product.ownerRealPhone}
                 ownerAddress={product.province || product.address}
               />
             </div>

@@ -19,7 +19,7 @@ import {
   Lock,
   Copy,
   Check,
-  Fingerprint,
+  Tag,
   Phone,
   Smartphone,
   ShieldAlert,
@@ -342,10 +342,10 @@ export function ProfileClient({
               <button
                 type="button"
                 onClick={handleCopyClooperCode}
-                className="text-[11px] font-mono font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-200/80 flex items-center gap-1 cursor-pointer transition-colors"
-                title="Mã định danh độc bản duy nhất của bạn trên hệ thống CLOOP. Nhấn để chép."
+                className="text-[11px] font-mono font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-200/80 flex items-center gap-1.5 cursor-pointer transition-colors"
+                title="Mã thành viên CLOOP của bạn. Nhấn để sao chép."
               >
-                <Fingerprint size={12} className="text-emerald-700" /> #{clooperCode.replace("CLOOP-", "")}
+                <Tag size={11} className="text-emerald-700" /> #{clooperCode.replace("CLOOP-", "")}
               </button>
             </div>
             
@@ -413,11 +413,11 @@ export function ProfileClient({
               />
             </div>
 
-            {/* Unique Clooper ID (Độc bản, Hệ thống cấp) */}
+            {/* Unique Clooper ID (Mã thành viên hệ thống cấp) */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
-                  <Fingerprint size={13} className="text-emerald-700" /> Mã Ký Hiệu Clooper (Độc Bản):
+                  <Tag size={13} className="text-emerald-700" /> Mã Thành Viên CLOOP (Member Code):
                 </label>
                 <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
                   Hệ thống cấp

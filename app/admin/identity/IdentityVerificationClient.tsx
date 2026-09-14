@@ -15,7 +15,7 @@ import {
   Lock,
   Loader2,
   RefreshCw,
-  Fingerprint
+  Hash
 } from "lucide-react";
 import { maskPhoneNumber, getVietnamCarrier } from "@/lib/validations/phone";
 import { adminVerifyUserPhoneAction } from "@/app/actions/phone-verification";
@@ -205,7 +205,7 @@ export default function IdentityVerificationClient({ initialUsers }: { initialUs
                           )}
                         </div>
                         <div className="text-[10.5px] text-stone-400 font-mono mt-0.5 flex items-center gap-1">
-                          <Fingerprint size={10} /> #{clooperCode.replace("CLOOP-", "")} • {u.email}
+                          <Hash size={10} /> #{clooperCode.replace("CLOOP-", "")} • {u.email}
                         </div>
                       </td>
 
