@@ -139,9 +139,9 @@ export default function DepositVaultAdmin() {
               <tbody className="divide-y font-medium text-slate-600">
                 {transactions.map((tx) => (
                   <tr key={tx.id} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="py-3.5 font-semibold text-slate-900">{tx.productName}</td>
-                    <td className="py-3.5">{tx.renterName}</td>
-                    <td className="py-3.5 text-center font-mono font-bold text-slate-950">+{tx.amount.toLocaleString()}đ</td>
+                    <td className="py-3.5 font-semibold text-slate-900">{tx.productName || tx.item || "Trang phục CLOOP"}</td>
+                    <td className="py-3.5">{tx.renterName || "Khách thuê CLOOP"}</td>
+                    <td className="py-3.5 text-center font-mono font-bold text-slate-950">+{(tx.amount ?? tx.deposit ?? 0).toLocaleString()}đ</td>
                     <td className="py-3.5 text-center">
                       <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
                         tx.status === "active" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-400"
@@ -149,7 +149,7 @@ export default function DepositVaultAdmin() {
                         {tx.status === "active" ? "Đang tạm giữ" : "Đã hoàn trả"}
                       </span>
                     </td>
-                    <td className="py-3.5 text-right font-mono text-slate-400">{tx.date}</td>
+                    <td className="py-3.5 text-right font-mono text-slate-400">{tx.date || "Gần đây"}</td>
                   </tr>
                 ))}
               </tbody>

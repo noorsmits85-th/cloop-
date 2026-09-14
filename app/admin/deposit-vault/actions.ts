@@ -26,6 +26,7 @@ export async function getDepositVaultMetricsAction() {
         id: true,
         end_date: true,
         status: true,
+        renter_name: true,
         product: { select: { title: true } },
         invoice: {
           select: {
@@ -57,10 +58,14 @@ export async function getDepositVaultMetricsAction() {
 
       return {
         id: rent.id,
-        item: rent.product?.title || "San pham CLOOP",
+        item: rent.product?.title || "Sản phẩm CLOOP",
+        productName: rent.product?.title || "Sản phẩm CLOOP",
+        renterName: rent.renter_name || "Khách thuê CLOOP",
         deposit: depositAmount,
-        status: "HOLDING",
+        amount: depositAmount,
+        status: "active",
         expectedReturn: expectedReturnDate,
+        date: expectedReturnDate ? new Date(expectedReturnDate).toLocaleDateString("vi-VN") : "Hôm nay",
         isOverdue: today > expectedReturnDate,
         invoiceAmount: rent.invoice?.amount || 0,
         rentalFee: rent.invoice?.rentalFee || 0,
@@ -73,9 +78,13 @@ export async function getDepositVaultMetricsAction() {
       formattedTx.push({
         id: "CLP-2026-DH88",
         item: "Đầm Dạ Hội Lụa Satin Cao Cấp",
+        productName: "Đầm Dạ Hội Lụa Satin Cao Cấp",
+        renterName: "Thu Trang (Khách thuê)",
         deposit: 1000000,
-        status: "HOLDING",
+        amount: 1000000,
+        status: "active",
         expectedReturn: demoReturnDate,
+        date: new Date(demoReturnDate).toLocaleDateString("vi-VN"),
         isOverdue: false,
         invoiceAmount: 1375000,
         rentalFee: 350000,

@@ -1,15 +1,32 @@
 import React from "react";
 import AccountingClient from "./AccountingClient";
 import { prisma } from "@/src/lib/prisma";
+import { requireAdminOrRedirect } from "@/src/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminAccountingPage() {
+  await requireAdminOrRedirect();
+
   const periods = await prisma.accountingPeriod.findMany({
     orderBy: {
       periodStart: 'desc'
     }
   });
+
+  const serializedPeriods = periods.map(p => ({
+    id: p.id,
+    month: p.month,
+    year: p.year,
+    status: p.status,
+    periodStart: p.periodStart.toISOString(),
+    nextPeriodStart: p.nextPeriodStart ? p.nextPeriodStart.toISOString() : null,
+    closedAt: p.closedAt ? p.closedAt.toISOString() : null,
+    revenueTotal: p.revenueTotal ?? 0,
+    expenseTotal: p.expenseTotal ?? 0,
+    netProfit: p.netProfit ?? 0,
+    metadata: p.metadata,
+  }));
 
   return (
     <div className="p-8 max-w-7xl mx-auto bg-stone-50 min-h-screen font-sans">
@@ -18,7 +35,7 @@ export default async function AdminAccountingPage() {
         <p className="text-stone-500 mt-2">Chốt sổ kỳ kế toán theo Thông tư 99/2025/TT-BTC để ghi nhận Lợi nhuận gộp và Tình hình tài chính nền tảng.</p>
       </div>
 
-      <AccountingClient initialPeriods={periods} />
+      <AccountingClient initialPeriods={serializedPeriods} />
     </div>
   );
 }

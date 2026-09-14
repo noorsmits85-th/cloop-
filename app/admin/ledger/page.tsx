@@ -1,10 +1,13 @@
 import React from "react";
 import LedgerClient, { InvoiceData } from "./LedgerClient";
 import { prisma } from "@/src/lib/prisma";
+import { requireAdminOrRedirect } from "@/src/lib/auth";
 
 export const dynamic = "force-dynamic"; // Tắt cache, luôn lấy dữ liệu mới nhất từ Sổ cái
 
 export default async function AdminLedgerPage() {
+  await requireAdminOrRedirect();
+
   // 1. Fetch dữ liệu thực tế từ Database song song (Giảm từ 6 truy vấn tuần tự xuống 1 lần round-trip)
   const [invoices, ledgerStats] = await Promise.all([
     prisma.invoice.findMany({

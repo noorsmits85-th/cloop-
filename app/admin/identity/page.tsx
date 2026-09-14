@@ -8,63 +8,70 @@ import { UserCheck, ArrowUpRight } from 'lucide-react';
 export const dynamic = "force-dynamic";
 
 export default async function AdminIdentityPage() {
-  const supabase = await createClient();
-  const { data: { session } } = await supabase.auth.getSession();
+  // 1. Tận dụng lớp bảo mật Admin của layout, truy vấn dữ liệu song song (0ms blocking)
+  const [rawUsers, rentalsWithPhone, kycTopUps] = await Promise.all([
+    prisma.user.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isVerified: true,
+        completedOrders: true,
+        createdAt: true,
+      },
+    }),
+    prisma.rentalHistory.findMany({
+      where: {
+        OR: [
+          { renter_phone: { not: null } },
+          { owner_phone: { not: null } },
+        ],
+      },
+      select: {
+        renterId: true,
+        ownerId: true,
+        renter_phone: true,
+        owner_phone: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.coinTopUp.findMany({
+      where: { packageCode: { in: ["KYC_1K", "KYC_2K"] }, status: "PAID" },
+      select: {
+        userId: true,
+        orderCode: true,
+        paidAt: true,
+        rawPayload: true,
+      },
+      orderBy: { paidAt: 'desc' },
+    }),
+  ]);
 
-  if (!session?.user?.email) {
-    redirect('/login');
-  }
-
-  const currentUser = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { id: true, role: true }
+  // Tạo Map lookup số điện thoại và KYC Topup O(1)
+  const phoneMap = new Map<string, string>();
+  rentalsWithPhone.forEach((r) => {
+    if (r.renterId && r.renter_phone && !phoneMap.has(r.renterId)) {
+      phoneMap.set(r.renterId, r.renter_phone);
+    }
+    if (r.ownerId && r.owner_phone && !phoneMap.has(r.ownerId)) {
+      phoneMap.set(r.ownerId, r.owner_phone);
+    }
   });
 
-  if (!currentUser || currentUser.role !== 'ADMIN') {
-    redirect('/');
-  }
-
-  const rawUsers = await prisma.user.findMany({
-    orderBy: { createdAt: 'desc' },
-    take: 100,
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      isVerified: true,
-      completedOrders: true,
-      createdAt: true,
-      rentalHistory: {
-        select: {
-          renter_phone: true,
-          owner_phone: true,
-        },
-        take: 3,
-        orderBy: { createdAt: 'desc' },
-      },
-      coinTopUps: {
-        where: { packageCode: { in: ["KYC_1K", "KYC_2K"] }, status: "PAID" },
-        take: 1,
-        orderBy: { paidAt: 'desc' },
-        select: {
-          orderCode: true,
-          amountVnd: true,
-          paidAt: true,
-          rawPayload: true,
-        },
-      },
-    },
+  const kycMap = new Map<string, typeof kycTopUps[0]>();
+  kycTopUps.forEach((k) => {
+    if (!kycMap.has(k.userId)) {
+      kycMap.set(k.userId, k);
+    }
   });
 
   const formattedUsers: AdminUserItem[] = rawUsers.map((u) => {
-    const phone = u.rentalHistory.find((r) => r.renter_phone || r.owner_phone)?.renter_phone ||
-                  u.rentalHistory.find((r) => r.owner_phone)?.owner_phone ||
-                  undefined;
-
-    const kycTopUp = u.coinTopUps?.[0];
+    const kycTopUp = kycMap.get(u.id);
     const kycPhone = (kycTopUp?.rawPayload as any)?.phone;
-    const finalPhone = kycPhone || phone || undefined;
+    const finalPhone = kycPhone || phoneMap.get(u.id) || undefined;
 
     return {
       id: u.id,

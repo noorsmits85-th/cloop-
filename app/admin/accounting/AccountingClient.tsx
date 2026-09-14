@@ -130,18 +130,18 @@ export default function AccountingClient({ initialPeriods }: { initialPeriods: a
                       </div>
                       <div>
                         <p className="font-bold text-stone-900">Tháng {period.month}/{period.year}</p>
-                        <p className="text-xs text-stone-500">Chốt lúc: {new Date(period.closedAt).toLocaleString('vi-VN')}</p>
+                        <p className="text-xs text-stone-500">Chốt lúc: {period.closedAt ? new Date(period.closedAt).toLocaleString('vi-VN') : 'N/A'}</p>
                       </div>
                     </div>
                   </td>
                   <td className="p-4 text-right font-mono font-medium text-stone-700">
-                    {period.revenueTotal.toLocaleString()}đ
+                    {(period.revenueTotal ?? 0).toLocaleString()}đ
                   </td>
                   <td className="p-4 text-right font-mono font-medium text-stone-700">
-                    {period.expenseTotal.toLocaleString()}đ
+                    {(period.expenseTotal ?? 0).toLocaleString()}đ
                   </td>
                   <td className="p-4 text-right font-mono font-bold text-emerald-600">
-                    {period.netProfit.toLocaleString()}đ
+                    {(period.netProfit ?? 0).toLocaleString()}đ
                   </td>
                   <td className="p-4 text-center">
                     <span className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold tracking-wide">

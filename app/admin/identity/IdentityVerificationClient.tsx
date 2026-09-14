@@ -75,9 +75,12 @@ export default function IdentityVerificationClient({ initialUsers }: { initialUs
     }
   };
 
+  const phoneVerifiedCount = users.filter(u => u.isVerified && Boolean(u.phone)).length;
+  const pendingPhoneCount = users.length - phoneVerifiedCount;
+
   const filteredUsers = users.filter(u => {
-    if (filterStatus === "VERIFIED" && !u.isVerified) return false;
-    if (filterStatus === "UNVERIFIED" && u.isVerified) return false;
+    if (filterStatus === "VERIFIED" && (!u.isVerified || !u.phone)) return false;
+    if (filterStatus === "UNVERIFIED" && (u.isVerified && Boolean(u.phone))) return false;
 
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
@@ -88,9 +91,6 @@ export default function IdentityVerificationClient({ initialUsers }: { initialUs
     return nameMatch || emailMatch || phoneMatch || idMatch;
   });
 
-  const verifiedCount = users.filter(u => u.isVerified).length;
-  const unverifiedCount = users.length - verifiedCount;
-
   return (
     <div className="space-y-6">
       {/* 📊 KPI CARDS */}
@@ -100,23 +100,23 @@ export default function IdentityVerificationClient({ initialUsers }: { initialUs
             <UserCheck size={14} className="text-emerald-700" /> Tổng Số Thành Viên
           </span>
           <div className="text-3xl font-extrabold font-heading text-stone-900">{users.length}</div>
-          <p className="text-[11px] text-stone-400">Tài khoản đã ghi nhận trong hệ thống</p>
+          <p className="text-[11px] text-stone-400">Tài khoản người dùng thực tế đăng ký hệ thống</p>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-2xs space-y-1">
           <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
             <CheckCircle2 size={14} className="text-emerald-600" /> Đã Xác Thực SĐT Chính Chủ
           </span>
-          <div className="text-3xl font-extrabold font-heading text-emerald-800">{verifiedCount}</div>
-          <p className="text-[11px] text-stone-400">Được hưởng điểm tín nhiệm và liên lạc GHN an toàn</p>
+          <div className="text-3xl font-extrabold font-heading text-emerald-800">{phoneVerifiedCount}</div>
+          <p className="text-[11px] text-stone-400">Đã liên kết số điện thoại & sẵn sàng vận chuyển GHN</p>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-2xs space-y-1">
           <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700 flex items-center gap-1.5">
-            <ShieldAlert size={14} className="text-amber-600" /> Chưa Xác Thực SĐT
+            <ShieldAlert size={14} className="text-amber-600" /> Chưa Liên Kết SĐT / Cần Định Danh
           </span>
-          <div className="text-3xl font-extrabold font-heading text-amber-800">{unverifiedCount}</div>
-          <p className="text-[11px] text-stone-400">Bị khóa cọc 100% qua Két Escrow, không được hưởng chiết khấu</p>
+          <div className="text-3xl font-extrabold font-heading text-amber-800">{pendingPhoneCount}</div>
+          <p className="text-[11px] text-stone-400">Chưa khai báo SĐT, áp dụng đặt cọc Két Escrow 100%</p>
         </div>
       </div>
 
@@ -148,13 +148,13 @@ export default function IdentityVerificationClient({ initialUsers }: { initialUs
               onClick={() => setFilterStatus("VERIFIED")}
               className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${filterStatus === "VERIFIED" ? "bg-white text-emerald-800 shadow-2xs" : "text-stone-500 hover:text-stone-900"}`}
             >
-              Đã xác thực ({verifiedCount})
+              Đã có SĐT ({phoneVerifiedCount})
             </button>
             <button
               onClick={() => setFilterStatus("UNVERIFIED")}
               className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${filterStatus === "UNVERIFIED" ? "bg-white text-amber-800 shadow-2xs" : "text-stone-500 hover:text-stone-900"}`}
             >
-              Chưa xác thực ({unverifiedCount})
+              Chưa có SĐT ({pendingPhoneCount})
             </button>
           </div>
         </div>
@@ -229,10 +229,10 @@ export default function IdentityVerificationClient({ initialUsers }: { initialUs
 
                       {/* Status & Audit Trail */}
                       <td className="py-3.5 px-4 text-center">
-                        {u.isVerified ? (
+                        {u.isVerified && u.phone ? (
                           <div className="space-y-0.5">
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                              <CheckCircle2 size={11} className="text-emerald-600" /> ĐÃ ĐỊNH DANH
+                              <CheckCircle2 size={11} className="text-emerald-600" /> ĐÃ XÁC THỰC SĐT
                             </span>
                             {u.kycOrderCode ? (
                               <div className="text-[10px] text-stone-500 font-mono">
@@ -244,8 +244,15 @@ export default function IdentityVerificationClient({ initialUsers }: { initialUs
                                 )}
                               </div>
                             ) : (
-                              <span className="block text-[9px] text-stone-400 font-mono">Admin phê duyệt</span>
+                              <span className="block text-[9px] text-emerald-700 font-mono">SĐT đã kích hoạt</span>
                             )}
+                          </div>
+                        ) : u.isVerified && !u.phone ? (
+                          <div className="space-y-0.5">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
+                              <UserCheck size={11} className="text-blue-600" /> ĐÃ DUYỆT TÀI KHOẢN
+                            </span>
+                            <span className="block text-[9px] text-amber-700 font-mono">Chưa liên kết SĐT</span>
                           </div>
                         ) : (
                           <div className="space-y-0.5">
@@ -289,7 +296,7 @@ export default function IdentityVerificationClient({ initialUsers }: { initialUs
                           ) : (
                             <>
                               <CheckCircle2 size={12} />
-                              <span>Duyệt SĐT</span>
+                              <span>Duyệt TK</span>
                             </>
                           )}
                         </button>

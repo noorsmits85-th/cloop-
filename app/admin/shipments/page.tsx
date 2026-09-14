@@ -1,9 +1,12 @@
 import ShipmentQueueClient from "./ShipmentQueueClient";
 import { prisma } from "@/src/lib/prisma";
+import { requireAdminOrRedirect } from "@/src/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminShipmentsPage() {
+  await requireAdminOrRedirect();
+
   const shipments = await prisma.shipment.findMany({
     where: {
       status: {
@@ -42,11 +45,11 @@ export default async function AdminShipmentsPage() {
     actualShippingFee: shipment.actualShippingFee,
     createdAt: shipment.createdAt.toISOString(),
     rental: {
-      renter_name: shipment.rental.renter_name,
-      renter_phone: shipment.rental.renter_phone,
-      owner_name: shipment.rental.owner_name,
-      owner_phone: shipment.rental.owner_phone,
-      product: shipment.rental.product,
+      renter_name: shipment.rental?.renter_name || "Khách thuê",
+      renter_phone: shipment.rental?.renter_phone || "",
+      owner_name: shipment.rental?.owner_name || "Chủ tủ",
+      owner_phone: shipment.rental?.owner_phone || "",
+      product: shipment.rental?.product || null,
     },
   }));
 
