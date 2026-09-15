@@ -83,17 +83,25 @@ type ExtendedPrismaClient = ReturnType<typeof createExtendedClient>;
 function getSanitizedDatabaseUrl() {
   let url = process.env.DATABASE_URL || "";
   if (!url) return undefined;
-  // Bẻ khóa triệt để connection_limit=1 bị set cứng từ Vercel Env thành connection_limit=15
-  url = url.replace(/connection_limit=\d+/g, "connection_limit=15");
+  // ⚡ TỐI ƯU HÓA POOLING SERVERLESS TRÊN VERCEL + SUPABASE:
+  // Supabase PostgreSQL chỉ cho phép tối đa 60 kết nối.
+  // Đặt connection_limit=3 cho phép đến 20 container serverless chạy đồng thời mà không bao giờ vượt trần 60 kết nối.
+  url = url.replace(/connection_limit=\d+/g, "connection_limit=3");
   if (!url.includes("connection_limit=")) {
     const separator = url.includes("?") ? "&" : "?";
-    url = `${url}${separator}connection_limit=15`;
+    url = `${url}${separator}connection_limit=3`;
   }
   if (url.includes("pool_timeout=")) {
-    url = url.replace(/pool_timeout=\d+/g, "pool_timeout=30");
+    url = url.replace(/pool_timeout=\d+/g, "pool_timeout=10");
   } else {
     const separator = url.includes("?") ? "&" : "?";
-    url = `${url}${separator}pool_timeout=30`;
+    url = `${url}${separator}pool_timeout=10`;
+  }
+  if (url.includes("connect_timeout=")) {
+    url = url.replace(/connect_timeout=\d+/g, "connect_timeout=10");
+  } else {
+    const separator = url.includes("?") ? "&" : "?";
+    url = `${url}${separator}connect_timeout=10`;
   }
   return url;
 }
