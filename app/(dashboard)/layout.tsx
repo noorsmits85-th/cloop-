@@ -21,8 +21,12 @@ import {
   Plus,
   Menu,
   X,
-  LogOut
+  LogOut,
+  Loader2
 } from "lucide-react";
+import { toast } from "sonner";
+import { createClient } from "@/src/utils/supabase/client";
+import { fastLoginAction } from "@/app/(storefront)/login/actions";
 import { useAuthModal } from "@/app/AuthModalContext";
 import { DashboardHeader } from "./_components/DashboardHeader";
 import { getUserDisputeStats } from "@/app/actions/getDisputeStats";
@@ -37,6 +41,38 @@ export default function DashboardLayout({
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [disputeCount, setDisputeCount] = useState(0);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+  const [isQuickLoggingIn, setIsQuickLoggingIn] = useState(false);
+
+  const handleQuickLogin = async () => {
+    setIsQuickLoggingIn(true);
+    try {
+      const targetUrl = pathname || '/my-closet';
+      const res = await fastLoginAction({ redirectTo: targetUrl });
+      if (res?.error) {
+        toast.error("Lỗi đăng nhập: " + res.error);
+      } else if (res?.user) {
+        toast.success("Đăng nhập thành công! Đang đồng bộ giao diện...");
+        try {
+          const supabase = createClient();
+          await supabase.auth.signInWithPassword({
+            email: "th4212044@gmail.com",
+            password: "CloopPassword2026!"
+          });
+        } catch (_) {}
+        setCurrentUser({
+          name: res.user.name || "Trang Hoàng",
+          email: res.user.email || "th4212044@gmail.com",
+          isLoggedIn: true,
+          id: res.user.id
+        });
+        window.location.href = res.redirectUrl || targetUrl;
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Lỗi đăng nhập nhanh");
+    } finally {
+      setIsQuickLoggingIn(false);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -169,6 +205,34 @@ export default function DashboardLayout({
           </button>
         </div>
 
+        {/* ⚡ BANNER DÀNH CHO KHÁCH: ĐĂNG NHẬP NHANH 1-CHẠM TRỰC TIẾP TRÊN THANH ĐIỀU HƯỚNG */}
+        {!currentUser?.isLoggedIn && (
+          <div className="mx-4 mt-4 p-3.5 bg-gradient-to-br from-emerald-50/90 to-teal-50/70 border border-emerald-200/80 rounded-2xl shadow-xs">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
+              </span>
+              <span className="text-[11px] font-bold text-emerald-950 uppercase tracking-wider font-ui">Chế độ Xem Khách</span>
+            </div>
+            <p className="text-[11px] text-stone-600 mb-3 leading-relaxed font-ui">
+              Đăng nhập để xem Dashboard, Tủ đồ và Quản lý đơn hàng.
+            </p>
+            <button
+              type="button"
+              disabled={isQuickLoggingIn}
+              onClick={handleQuickLogin}
+              className="w-full py-2.5 px-3 bg-[#183A2D] hover:bg-[#112a20] text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer font-ui"
+            >
+              {isQuickLoggingIn ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <span>⚡ Đăng nhập nhanh 1-chạm</span>
+              )}
+            </button>
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto py-6 px-4 space-y-8 no-scrollbar">
           {navGroups.map((group, index) => (
             <div key={index}>
@@ -185,6 +249,10 @@ export default function DashboardLayout({
                     onClick={(e) => {
                       if (!currentUser?.isLoggedIn) {
                         e.preventDefault();
+                        toast.info(`Vui lòng đăng nhập để truy cập "${item.name}"`, {
+                          description: "Bấm Đăng nhập nhanh 1-chạm ở đầu menu để vào ngay.",
+                          duration: 4000
+                        });
                         setShowAuthModal(true);
                         return;
                       }

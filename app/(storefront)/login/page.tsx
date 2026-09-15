@@ -31,13 +31,59 @@ export default function LoginPage() {
     }
   }, []);
 
-  // ⚡ NẾU ĐÃ ĐĂNG NHẬP SẴN -> TỰ ĐỘNG CHUYỂN TIẾP NGAY LẬP TỨC
+  // ⚡ XÁC THỰC PHIÊN ĐĂNG NHẬP & CHỐNG VÒNG LẶP CHUYỂN HƯỚNG (BOUNCE LOOP GUARD)
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        window.location.href = nextUrl || '/';
+    let isCancelled = false;
+
+    async function checkExistingSession() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session || isCancelled) return;
+
+        // Xác thực token thực tế từ Supabase server để tránh token rác trong localStorage
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError || !user) {
+          // Token không còn hợp lệ -> Xóa sạch để ngăn chặn văng/lặp vô tận
+          await supabase.auth.signOut();
+          return;
+        }
+
+        const targetUrl = nextUrl || '/my-closet';
+
+        // 🛡️ CHỐNG VÒNG LẶP (BOUNCE GUARD): Nếu vừa bị redirect dội về /login trong 5 giây qua
+        const lastBounceKey = 'cloop_last_auth_bounce';
+        const lastBounce = sessionStorage.getItem(lastBounceKey);
+        const now = Date.now();
+
+        if (lastBounce) {
+          const { url, time, count } = JSON.parse(lastBounce);
+          if (url === targetUrl && now - time < 5000 && count >= 2) {
+            console.warn("⚠️ [Auth Loop Detected]: Ngắt chuyển hướng tự động để bảo vệ người dùng.");
+            sessionStorage.removeItem(lastBounceKey);
+            await supabase.auth.signOut();
+            setMessage({
+              type: 'error',
+              text: 'Phiên làm việc đã hết hạn hoặc cookie không đồng bộ. Vui lòng bấm Đăng nhập nhanh 1-chạm bên dưới.'
+            });
+            return;
+          }
+        }
+
+        // Ghi nhận lịch sử redirect để theo dõi vòng lặp
+        const currentCount = lastBounce ? (JSON.parse(lastBounce).count || 1) + 1 : 1;
+        sessionStorage.setItem(lastBounceKey, JSON.stringify({ url: targetUrl, time: now, count: currentCount }));
+
+        window.location.href = targetUrl;
+      } catch (err) {
+        console.error("Lỗi kiểm tra session đăng nhập:", err);
       }
-    });
+    }
+
+    checkExistingSession();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [nextUrl]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -301,10 +347,17 @@ export default function LoginPage() {
                       setLoading(true);
                       setMessage(null);
                       try {
-                        const res = await fastLoginAction({ redirectTo: nextUrl || '/' });
+                        const targetUrl = nextUrl || '/my-closet';
+                        const res = await fastLoginAction({ redirectTo: targetUrl });
                         if (res?.error) {
                           setMessage({ type: 'error', text: translateAuthError(res.error) });
                         } else if (res?.redirectUrl) {
+                          try {
+                            await supabase.auth.signInWithPassword({
+                              email: "th4212044@gmail.com",
+                              password: "CloopPassword2026!"
+                            });
+                          } catch (_) {}
                           window.location.href = res.redirectUrl;
                         }
                       } catch (err: any) {
@@ -313,7 +366,7 @@ export default function LoginPage() {
                         setLoading(false);
                       }
                     }}
-                    className="w-full py-2.5 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="w-full py-2.5 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                   >
                     <span>⚡ Đăng nhập nhanh 1-chạm (Tài khoản mẫu Pilot)</span>
                   </button>

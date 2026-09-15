@@ -30,7 +30,7 @@ export default async function MyClosetOverviewPage() {
   }
 
   if (!userAuth) {
-    redirect("/login");
+    redirect("/login?redirectTo=/my-closet");
   }
 
   const userId = userAuth.id;

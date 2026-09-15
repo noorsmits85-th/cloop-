@@ -11,15 +11,15 @@ export default async function EditProductPage({
 }: {
   params: Promise<{ id: string }> | { id: string };
 }) {
+  const resolvedParams = await params;
+  const productId = resolvedParams.id;
+
   let user;
   try {
     user = await requireUser();
   } catch (err) {
-    redirect("/login");
+    redirect(`/login?redirectTo=/shop/${productId}/edit`);
   }
-
-  const resolvedParams = await params;
-  const productId = resolvedParams.id;
 
   const res = await getProductForEditAction(productId);
   if (!res.success || !res.product) {

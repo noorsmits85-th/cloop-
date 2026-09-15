@@ -20,7 +20,7 @@ export default async function WalletPage({
   }
 
   if (!userAuth) {
-    redirect("/login");
+    redirect("/login?redirectTo=/my-closet/wallet");
   }
 
   const userId = userAuth.id;

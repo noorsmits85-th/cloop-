@@ -26,7 +26,7 @@ export default async function EcoPage() {
   }
 
   if (!userAuth) {
-    redirect("/login?next=/my-closet/eco");
+    redirect("/login?redirectTo=/my-closet/eco");
   }
 
   const userId = userAuth.id;

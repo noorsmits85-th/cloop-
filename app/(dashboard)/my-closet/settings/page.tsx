@@ -15,7 +15,7 @@ export default async function SettingsPage() {
   }
 
   if (!userAuth) {
-    redirect("/login?next=/my-closet/settings");
+    redirect("/login?redirectTo=/my-closet/settings");
   }
 
   const userId = userAuth.id;

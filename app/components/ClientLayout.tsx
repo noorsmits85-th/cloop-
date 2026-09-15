@@ -668,6 +668,52 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                     authMode === 'forgot' ? (otpCooldown > 0 ? `Đang gửi mã... (${otpCooldown}s)` : 'Gửi mã OTP khôi phục') : 
                     'Đổi mật khẩu'}
                 </button>
+
+                {authMode === 'login' && (
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      disabled={isLoading}
+                      onClick={async () => {
+                        setIsLoading(true);
+                        setAuthModalError(null);
+                        try {
+                          const redirectParam = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('redirectTo') || undefined : undefined;
+                          const res = await fastLoginAction({ redirectTo: redirectParam });
+                          if (res.error) {
+                            setAuthModalError(translateAuthError(res.error));
+                          } else if (res.user) {
+                            try {
+                              await supabase.auth.signInWithPassword({
+                                email: "th4212044@gmail.com",
+                                password: "CloopPassword2026!"
+                              });
+                            } catch (_) {}
+                            setCurrentUser({
+                              name: res.user.name || "Trang Hoàng",
+                              email: res.user.email || "th4212044@gmail.com",
+                              isLoggedIn: true,
+                              id: res.user.id
+                            });
+                            setShowAuthModal(false);
+                            if (res.redirectUrl && res.redirectUrl !== '/') {
+                              window.location.href = res.redirectUrl;
+                            } else {
+                              router.refresh();
+                            }
+                          }
+                        } catch (err: any) {
+                          setAuthModalError(err?.message || "Lỗi đăng nhập nhanh");
+                        } finally {
+                          setIsLoading(false);
+                        }
+                      }}
+                      className="w-full py-2.5 px-3 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 text-emerald-800 dark:text-emerald-200 border border-emerald-200/80 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                    >
+                      <span>⚡ Đăng nhập nhanh 1-chạm (Tài khoản Pilot)</span>
+                    </button>
+                  </div>
+                )}
               </form> 
 
               <div className="flex flex-col gap-2 mt-4 text-[11px] font-medium text-gray-500">

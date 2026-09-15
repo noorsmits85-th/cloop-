@@ -3,7 +3,7 @@ import { requireUser } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { redirect } from "next/navigation";
 import { OrdersClient } from "../_components/OrdersClient";
- 
+
 export const dynamic = "force-dynamic";
 
 export default async function MyClosetOrdersPage() {
@@ -11,7 +11,7 @@ export default async function MyClosetOrdersPage() {
   try {
     userAuth = await requireUser();
   } catch (error) {
-    redirect("/login");
+    redirect("/login?redirectTo=/my-closet/orders");
   }
 
   const userId = userAuth.id;

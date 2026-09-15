@@ -1,4 +1,4 @@
-﻿import { Suspense } from "react";
+import { Suspense } from "react";
 import { getUserNotificationsAction } from "@/app/actions/notification";
 import { NotificationsClient } from "./NotificationsClient";
 import { requireUser } from "@/src/lib/auth";
@@ -10,7 +10,7 @@ export default async function NotificationsPage() {
   try {
     await requireUser();
   } catch (error) {
-    redirect("/login");
+    redirect("/login?redirectTo=/my-closet/notifications");
   }
 
   const res = await getUserNotificationsAction();

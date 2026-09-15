@@ -14,7 +14,7 @@ export default async function ArchivePage() {
   } catch (error) {}
 
   if (!userAuth) {
-    redirect("/login");
+    redirect("/login?redirectTo=/my-closet/archive");
   }
 
   const initialFetch = await fetchArchivedListings();

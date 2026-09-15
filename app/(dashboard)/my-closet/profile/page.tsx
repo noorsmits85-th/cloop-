@@ -18,7 +18,7 @@ export default async function ProfilePage() {
   }
 
   if (!userAuth) {
-    redirect("/login?next=/my-closet/profile");
+    redirect("/login?redirectTo=/my-closet/profile");
   }
 
   const userId = userAuth.id;

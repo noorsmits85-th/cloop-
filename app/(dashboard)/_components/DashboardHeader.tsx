@@ -6,6 +6,8 @@ import { Search, Bell, Plus, Award, LogOut, Menu, Package, Wallet, Leaf, Truck, 
 import { supabase } from "@/lib/supabase";
 import { getUserNotificationsAction, NotificationItem } from "@/app/actions/notification";
 import { useAuthModal } from "@/app/AuthModalContext";
+import { toast } from "sonner";
+import { fastLoginAction } from "@/app/(storefront)/login/actions";
 
 export function DashboardHeader({
   currentUser,
@@ -23,6 +25,36 @@ export function DashboardHeader({
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoadingNotifs, setIsLoadingNotifs] = useState(false);
+  const [isQuickLoggingIn, setIsQuickLoggingIn] = useState(false);
+
+  const handleQuickLogin = async () => {
+    setIsQuickLoggingIn(true);
+    try {
+      const res = await fastLoginAction({ redirectTo: window.location.pathname || '/my-closet' });
+      if (res?.error) {
+        toast.error("Lỗi đăng nhập: " + res.error);
+      } else if (res?.user) {
+        toast.success("Đăng nhập thành công!");
+        try {
+          await supabase.auth.signInWithPassword({
+            email: "th4212044@gmail.com",
+            password: "CloopPassword2026!"
+          });
+        } catch (_) {}
+        setCurrentUser({
+          name: res.user.name || "Trang Hoàng",
+          email: res.user.email || "th4212044@gmail.com",
+          isLoggedIn: true,
+          id: res.user.id
+        });
+        window.location.href = res.redirectUrl || '/my-closet';
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Lỗi đăng nhập nhanh");
+    } finally {
+      setIsQuickLoggingIn(false);
+    }
+  };
   const notifRef = useRef<HTMLDivElement>(null);
 
   // ⚡ TẢI THÔNG BÁO THỰC TẾ TỪ SERVER VÀ ĐỒNG BỘ TRẠNG THÁI ĐÃ ĐỌC PERSISTENT
@@ -316,13 +348,23 @@ export function DashboardHeader({
 
         {/* User Dropdown Profile or Login Button */}
         {!currentUser?.isLoggedIn ? (
-          <button
-            type="button"
-            onClick={() => setShowAuthModal(true)}
-            className="flex items-center gap-1.5 bg-[#183A2D] hover:bg-[#112a20] text-white px-4 py-2 rounded-full text-xs font-bold transition-all shadow-md hover:shadow-lg font-ui cursor-pointer"
-          >
-            Đăng nhập
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={isQuickLoggingIn}
+              onClick={handleQuickLogin}
+              className="flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 px-3.5 py-2 rounded-full text-xs font-bold transition-all shadow-xs font-ui cursor-pointer"
+            >
+              {isQuickLoggingIn ? <Loader2 size={13} className="animate-spin" /> : <span>⚡ Đăng nhập nhanh</span>}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowAuthModal(true)}
+              className="flex items-center gap-1.5 bg-[#183A2D] hover:bg-[#112a20] text-white px-4 py-2 rounded-full text-xs font-bold transition-all shadow-md hover:shadow-lg font-ui cursor-pointer"
+            >
+              Đăng nhập
+            </button>
+          </div>
         ) : (
           <div className="flex items-center gap-3 group relative cursor-pointer">
             <div className="w-10 h-10 rounded-full bg-emerald-100 border-2 border-emerald-500 flex items-center justify-center text-emerald-800 font-bold text-sm overflow-hidden shrink-0">
