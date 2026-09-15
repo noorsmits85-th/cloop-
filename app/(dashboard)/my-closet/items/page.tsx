@@ -13,7 +13,7 @@ export default async function MyClosetItemsPage() {
   try {
     userAuth = await requireUser();
   } catch (error) {
-    redirect("/login");
+    redirect("/login?redirectTo=/my-closet/items");
   }
 
   const userId = userAuth.id;
@@ -120,7 +120,7 @@ export default async function MyClosetItemsPage() {
           </p>
         </div>
 
-        <ItemsClient initialItems={formattedItems} />
+        <ItemsClient initialItems={formattedItems} userId={userId} />
       </div>
     </div>
   );

@@ -97,7 +97,7 @@ function HeaderNavbar({ darkMode, setDarkMode, handleFeatureRequirement, current
                 </div>
               )}
 
-              <Link href="/my-closet" className="text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full border whitespace-nowrap bg-white text-[#183A2D] border-[#E9E2D8] hover:bg-[#FAF8F3]">
+              <Link href="/my-closet/items" className="text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full border whitespace-nowrap bg-white text-[#183A2D] border-[#E9E2D8] hover:bg-[#FAF8F3]">
                 Tủ đồ của tôi
               </Link>
               <button 
@@ -158,7 +158,7 @@ function MobileBottomNavbar({ darkMode, currentUser, handleFeatureRequirement }:
           <span className="text-[9px] font-ui uppercase tracking-widest mt-6">Đăng bán</span>
         </Link>
         {currentUser ? (
-          <Link href="/my-closet" className={getNavClass("/my-closet")}>
+          <Link href="/my-closet/items" className={getNavClass("/my-closet")}>
             <Shirt size={22} strokeWidth={pathname.startsWith("/my-closet") ? 2.5 : 2} />
             <span className="text-[9px] font-ui uppercase tracking-widest mt-0.5">Tủ đồ</span>
           </Link>

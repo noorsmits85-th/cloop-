@@ -262,13 +262,39 @@ export default function BlogJournalPage() {
   useEffect(() => {
     async function fetchRealDataFeed() {
       try {
-        const { data: blogData } = await supabase
-          .from("blog_posts")
-          .select("*")
+        // 🌟 Truy vấn bảng BlogPost kèm liên kết tác giả và trang phục trong tủ đồ
+        const { data: blogData, error: blogErr } = await supabase
+          .from("BlogPost")
+          .select("*, author:User(id, name, avatar), product:products(id, title, size, ProductImage(url, isPrimary), Listing(basePrice, listingType))")
           .order("isPinned", { ascending: false })
           .order("createdAt", { ascending: false });
 
-        let loadedBlogs: any[] = blogData || [];
+        if (blogErr) {
+          console.warn("Lỗi fetch BlogPost từ Supabase:", blogErr);
+        }
+
+        let loadedBlogs: any[] = (blogData || []).map((b: any) => {
+          let linkedProduct = null;
+          if (b.product) {
+            const rentListing = b.product.Listing?.find((l: any) => l.listingType === "RENT");
+            const saleListing = b.product.Listing?.find((l: any) => l.listingType === "SELL");
+            const rentalPrice = rentListing?.basePrice || saleListing?.basePrice || 0;
+            const primaryImg = b.product.ProductImage?.find((img: any) => img.isPrimary)?.url || b.product.ProductImage?.[0]?.url || b.cover_image || "/1.1.jpg";
+            linkedProduct = {
+              id: b.product.id,
+              title: b.product.title,
+              rentalPrice,
+              image: primaryImg
+            };
+          }
+          return {
+            ...b,
+            coverImage: b.cover_image || b.coverImage || "/1.1.jpg",
+            allImages: b.allImages || [b.cover_image || b.coverImage || "/1.1.jpg"],
+            product: linkedProduct || b.product || null,
+            author: b.author || { name: "Thành viên CLOOP", avatar: "/logo2.png", isVip: false }
+          };
+        });
         
         // Lấy thêm bài viết từ Local Storage nếu có
         try {
@@ -299,7 +325,8 @@ export default function BlogJournalPage() {
 
         const formatted = uniqueBlogs.map((b: any) => ({
           ...b,
-          allImages: b.allImages || [b.coverImage || "/1.1.jpg"],
+          coverImage: b.cover_image || b.coverImage || "/1.1.jpg",
+          allImages: b.allImages || [b.cover_image || b.coverImage || "/1.1.jpg"],
           likesCount: b.likesCount || Math.floor(Math.random() * 50) + 20,
           savesCount: b.savesCount || Math.floor(Math.random() * 20) + 5,
           hasLiked: false,

@@ -21,13 +21,17 @@ import {
   AlertTriangle,
   X,
   Loader2,
-  Leaf
+  Leaf,
+  Share2,
+  ExternalLink,
+  Copy
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { deleteProductAction, toggleProductHideAction } from "../items/actions";
 import { purchaseBoostPackage } from "@/app/actions/boost";
+import { toggleBlogPostStatusAction } from "@/app/actions/blog";
 
 interface ItemData {
   id: string;
@@ -295,7 +299,13 @@ function ClosetItemCard({
   );
 }
 
-export function ItemsClient({ initialItems }: { initialItems: ItemData[] }) {
+export function ItemsClient({ 
+  initialItems, 
+  userId 
+}: { 
+  initialItems: ItemData[]; 
+  userId?: string;
+}) {
   const [items, setItems] = useState<ItemData[]>(initialItems);
   const [isUpdating, setIsUpdating] = useState(false);
   const [activeTab, setActiveTab] = useState<"ALL" | "SELLING" | "RENTING" | "HIDDEN">("ALL");
@@ -311,6 +321,33 @@ export function ItemsClient({ initialItems }: { initialItems: ItemData[] }) {
   const showToast = (message: string, type: "success" | "error" = "success") => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3500);
+  };
+
+  // 🌟 Sao chép link Tủ Đồ Công Khai
+  const handleCopyClosetLink = async () => {
+    if (!userId) {
+      showToast("Không tìm thấy mã định danh tài khoản để tạo link.", "error");
+      return;
+    }
+    const closetUrl = typeof window !== "undefined" 
+      ? `${window.location.origin}/closet/${userId}` 
+      : `/closet/${userId}`;
+
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(closetUrl);
+      } else {
+        const input = document.createElement("input");
+        input.value = closetUrl;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand("copy");
+        document.body.removeChild(input);
+      }
+      showToast("🎉 Đã sao chép liên kết Tủ Đồ Công Khai! Bạn có thể dán vào Bio Instagram, TikTok hoặc gửi cho bạn bè.");
+    } catch {
+      showToast("Không thể sao chép liên kết tự động. Vui lòng thử lại sau.", "error");
+    }
   };
 
   const handleBoostSubmit = async () => {
@@ -339,27 +376,44 @@ export function ItemsClient({ initialItems }: { initialItems: ItemData[] }) {
   const handleToggleBlogVisibility = async (productId: string, currentlyHidden: boolean) => {
     if (isUpdating) return;
     setIsUpdating(true);
-    const newStatus = currentlyHidden ? "PUBLIC" : "HIDDEN";
     try {
-      const { error } = await supabase
-        .from("blog_posts")
-        .update({ status: newStatus })
-        .eq("productId", productId);
+      // 🌟 Dùng Server Action an toàn với Prisma BlogPost
+      const res = await toggleBlogPostStatusAction(productId, currentlyHidden);
+      if (res.success) {
+        showToast(
+          currentlyHidden
+            ? "🎉 Đã đẩy câu chuyện Lookbook hiển thị lại công khai trên Blog!"
+            : "🛑 Đã ẩn câu chuyện khỏi luồng bài viết công khai!"
+        );
+        setItems(
+          items.map((item) =>
+            item.id === productId ? { ...item, isBlogHidden: !currentlyHidden } : item
+          )
+        );
+        router.refresh();
+      } else {
+        // Fallback: Thử update qua Supabase vào BlogPost
+        const newStatus = currentlyHidden ? "PUBLIC" : "HIDDEN";
+        const { error } = await supabase
+          .from("BlogPost")
+          .update({ status: newStatus })
+          .eq("productId", productId);
 
-      if (error) throw error;
-      showToast(
-        currentlyHidden
-          ? "🎉 Đã đẩy câu chuyện Lookbook hiển thị lại công khai trên Blog!"
-          : "🛑 Đã ẩn câu chuyện khỏi luồng bài viết công khai!"
-      );
+        if (error) throw error;
+        showToast(
+          currentlyHidden
+            ? "🎉 Đã hiển thị lại câu chuyện Lookbook!"
+            : "🛑 Đã ẩn câu chuyện Lookbook!"
+        );
 
-      setItems(
-        items.map((item) =>
-          item.id === productId ? { ...item, isBlogHidden: !currentlyHidden } : item
-        )
-      );
+        setItems(
+          items.map((item) =>
+            item.id === productId ? { ...item, isBlogHidden: !currentlyHidden } : item
+          )
+        );
 
-      router.refresh();
+        router.refresh();
+      }
     } catch (err: any) {
       showToast(`Lỗi xử lý cổng Blog: ${err.message}`, "error");
     } finally {
@@ -423,6 +477,49 @@ export function ItemsClient({ initialItems }: { initialItems: ItemData[] }) {
           <span>{toast.message}</span>
         </div>
       )}
+
+      {/* 🌟 BỘ TIỆN ÍCH LIÊN KẾT & QUẢN LÝ TỦ ĐỒ CÔNG KHAI */}
+      <div className="bg-white rounded-2xl border border-stone-200/80 p-4 sm:p-5 shadow-2xs mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#183A2D] flex items-center justify-center shrink-0 border border-emerald-100">
+            <Shirt size={20} />
+          </div>
+          <div>
+            <h2 className="text-sm font-bold text-[#183A2D]">Tủ Đồ Của Tôi & Hồ Sơ Công Khai</h2>
+            <p className="text-[11px] text-stone-500">
+              Chia sẻ liên kết tủ đồ để bạn bè và khách hàng có thể khám phá, thuê hoặc mua trang phục của bạn.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2.5 w-full sm:w-auto flex-wrap">
+          {userId && (
+            <>
+              <button
+                type="button"
+                onClick={handleCopyClosetLink}
+                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold transition-all cursor-pointer shadow-2xs active:scale-95"
+                title="Sao chép liên kết tủ đồ để chia sẻ"
+              >
+                <Share2 size={14} /> Sao chép link tủ đồ
+              </button>
+              <Link
+                href={`/closet/${userId}`}
+                target="_blank"
+                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-[#183A2D] border border-emerald-200/70 text-xs font-bold transition-all shadow-2xs"
+              >
+                <ExternalLink size={14} /> Xem Tủ Đồ Công Khai
+              </Link>
+            </>
+          )}
+          <Link
+            href="/my-closet/create"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#183A2D] hover:bg-[#112a20] text-white text-xs font-bold transition-all shadow-xs"
+          >
+            <Plus size={14} /> Đăng trang phục mới
+          </Link>
+        </div>
+      </div>
 
       {/* TABS */}
       <div className="flex w-full overflow-x-auto no-scrollbar gap-2 mb-6">

@@ -6,9 +6,14 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { 
   ArrowLeft, Camera, MapPin, Tag, 
-  BookOpen, Heart, UploadCloud, X, CheckCircle2, Feather, Shirt
+  BookOpen, Heart, UploadCloud, X, CheckCircle2, Feather, Shirt, PlusCircle, ExternalLink
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { 
+  getUserClosetItemsForBlogAction, 
+  createBlogPostAction, 
+  type UserClosetItemForBlog 
+} from "@/app/actions/blog";
 
 const CATEGORIES = [
   { id: "gala", label: "Dạ Hội & Tiệc Đêm" },
@@ -90,12 +95,44 @@ export default function CreateBlogPostPage() {
           isVip: false
         });
 
-        // Lấy danh sách đồ trong tủ của user để liên kết
-        const { data: prods } = await supabase
-          .from("products")
-          .select("id, title, original_price")
-          .eq("userId", session.user.id);
-        if (prods) setMyProducts(prods);
+        // 🌟 Lấy danh sách đồ trong tủ của user qua Server Action an toàn
+        try {
+          const res = await getUserClosetItemsForBlogAction();
+          if (res.success && res.items && res.items.length > 0) {
+            setMyProducts(res.items);
+            return;
+          }
+        } catch (e) {
+          console.warn("Server action load closet items failed, falling back to direct query:", e);
+        }
+
+        // Fallback: truy vấn trực tiếp từ bảng products
+        try {
+          const { data: prods } = await supabase
+            .from("products")
+            .select("id, title, size, category, Listing(basePrice, listingType), ProductImage(url, isPrimary)")
+            .eq("userId", session.user.id);
+
+          if (prods && prods.length > 0) {
+            const formatted = prods.map((p: any) => {
+              const rentListing = p.Listing?.find((l: any) => l.listingType === "RENT");
+              const saleListing = p.Listing?.find((l: any) => l.listingType === "SELL");
+              const price = rentListing?.basePrice || saleListing?.basePrice || 0;
+              const img = p.ProductImage?.[0]?.url || "/1.1.jpg";
+              return {
+                id: p.id,
+                title: p.title,
+                size: p.size,
+                category: p.category,
+                price,
+                imageUrl: img
+              };
+            });
+            setMyProducts(formatted);
+          }
+        } catch (err) {
+          console.error("Lỗi lấy danh sách đồ trong tủ:", err);
+        }
       }
     }
     loadUserSession();
@@ -176,36 +213,50 @@ export default function CreateBlogPostPage() {
 
     setIsSubmitting(true);
     try {
-      const newPostData = {
+      // 🌟 Ưu tiên sử dụng Server Action để insert chuẩn vào Prisma BlogPost
+      const res = await createBlogPostAction({
         title: title.trim(),
         content: content.trim(),
         coverImage: imageUrls[0],
         productId: selectedProductId || null,
-        userId: currentUserId || null,
         location: location || "Việt Nam",
-        status: "PUBLISHED",
-        createdAt: new Date().toISOString(),
-      };
+      });
 
-      const { error } = await supabase
-        .from("blog_posts")
-        .insert([newPostData]);
+      if (!res.success) {
+        // Fallback: Thử insert qua Supabase client vào BlogPost
+        const { error: sbErr } = await supabase
+          .from("BlogPost")
+          .insert([{
+            title: title.trim(),
+            content: content.trim(),
+            cover_image: imageUrls[0],
+            productId: selectedProductId || null,
+            userId: currentUserId || null,
+            status: "PUBLIC",
+          }]);
 
-      if (error) {
-        console.warn("Lưu Supabase có thể bị hạn chế RLS, lưu Local Storage fallback:", error);
-        // Lưu fallback LocalStorage để hiển thị ngay tức thì
-        const existingLocal = JSON.parse(localStorage.getItem("cloop_custom_blogs") || "[]");
-        existingLocal.unshift({
-          ...newPostData,
-          id: `local-blog-${Date.now()}`,
-          author: userProfile || { name: "Bạn (Tác giả)", avatar: "/logo2.png" },
-          allImages: imageUrls,
-          likesCount: 1,
-          savesCount: 0,
-          hasLiked: true,
-          hasSaved: false
-        });
-        localStorage.setItem("cloop_custom_blogs", JSON.stringify(existingLocal));
+        if (sbErr) {
+          console.warn("Lưu Supabase có thể bị hạn chế RLS, lưu Local Storage fallback:", sbErr);
+          const existingLocal = JSON.parse(localStorage.getItem("cloop_custom_blogs") || "[]");
+          existingLocal.unshift({
+            id: `local-blog-${Date.now()}`,
+            title: title.trim(),
+            content: content.trim(),
+            coverImage: imageUrls[0],
+            productId: selectedProductId || null,
+            userId: currentUserId || null,
+            location: location || "Việt Nam",
+            status: "PUBLIC",
+            createdAt: new Date().toISOString(),
+            author: userProfile || { name: "Bạn (Tác giả)", avatar: "/logo2.png" },
+            allImages: imageUrls,
+            likesCount: 1,
+            savesCount: 0,
+            hasLiked: true,
+            hasSaved: false
+          });
+          localStorage.setItem("cloop_custom_blogs", JSON.stringify(existingLocal));
+        }
       }
 
       setSuccessMessage("Ký ức của bạn đã được đính lên Bảo Tàng Ký Ức Tuần Hoàn thành công!");
@@ -418,28 +469,83 @@ export default function CreateBlogPostPage() {
             </div>
 
             {/* 5. Liên kết trang phục trong tủ đồ (nếu có) */}
-            {myProducts.length > 0 && (
-              <div className="p-4 bg-[#F7F5EE] rounded-2xl border border-stone-200">
-                <label className="block text-xs font-bold uppercase tracking-wider text-[#183A2D] font-ui mb-2 flex items-center gap-1.5">
-                  <Shirt size={13} /> Gắn Thẻ Trang Phục Trong Tủ Đồ Của Bạn (Tùy chọn)
+            <div className="p-4 sm:p-5 bg-[#F7F5EE] rounded-2xl border border-stone-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold uppercase tracking-wider text-[#183A2D] font-ui flex items-center gap-1.5">
+                  <Shirt size={14} /> Gắn Thẻ Trang Phục Trong Tủ Đồ Của Bạn (Tùy chọn)
                 </label>
-                <select
-                  value={selectedProductId}
-                  onChange={(e) => setSelectedProductId(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-white border border-stone-200 text-stone-800 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#183A2D]"
+                <Link
+                  href="/my-closet/create"
+                  target="_blank"
+                  className="text-[10.5px] font-bold text-[#183A2D] hover:underline inline-flex items-center gap-1"
                 >
-                  <option value="">-- Không gắn thẻ trang phục --</option>
-                  {myProducts.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.title} (Giá gốc: {p.original_price?.toLocaleString('vi-VN')}đ)
-                    </option>
-                  ))}
-                </select>
-                <p className="text-[10px] text-stone-500 mt-1.5">
-                  Gắn thẻ giúp người đọc có thể bấm thuê hoặc mua lại trang phục này trực tiếp từ câu chuyện của bạn!
-                </p>
+                  <PlusCircle size={12} /> Thêm đồ mới vào tủ
+                </Link>
               </div>
-            )}
+
+              {myProducts.length > 0 ? (
+                <>
+                  <select
+                    value={selectedProductId}
+                    onChange={(e) => setSelectedProductId(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-white border border-stone-200 text-stone-800 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#183A2D]"
+                  >
+                    <option value="">-- Không gắn thẻ trang phục nào --</option>
+                    {myProducts.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.title} (Size: {p.size || "M"}{p.price ? ` - ${p.price.toLocaleString('vi-VN')}₫` : ''})
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Visual Preview of selected product */}
+                  {selectedProductId && (() => {
+                    const selectedItem = myProducts.find(p => p.id === selectedProductId);
+                    if (!selectedItem) return null;
+                    return (
+                      <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-stone-200 shadow-2xs">
+                        <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-stone-100 shrink-0 border border-stone-100">
+                          <img
+                            src={selectedItem.imageUrl || "/1.1.jpg"}
+                            alt={selectedItem.title}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-stone-800 truncate">{selectedItem.title}</p>
+                          <div className="flex items-center gap-2 mt-0.5 text-[10px] text-stone-500">
+                            <span className="bg-stone-100 px-1.5 py-0.5 rounded font-mono font-bold">SZ {selectedItem.size}</span>
+                            {selectedItem.price > 0 && (
+                              <span className="text-emerald-700 font-bold">{selectedItem.price.toLocaleString('vi-VN')}₫</span>
+                            )}
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-200 shrink-0">
+                          ✓ Đã liên kết
+                        </span>
+                      </div>
+                    );
+                  })()}
+
+                  <p className="text-[10.5px] text-stone-500 leading-relaxed">
+                    💡 Khi gắn thẻ, người đọc câu chuyện có thể bấm xem chi tiết hoặc thuê trực tiếp món đồ này từ tủ đồ của bạn!
+                  </p>
+                </>
+              ) : (
+                <div className="p-3 bg-white rounded-xl border border-dashed border-stone-300 text-center space-y-2">
+                  <p className="text-xs text-stone-500">
+                    Bạn chưa có trang phục nào trong tủ đồ cá nhân. Bạn vẫn có thể đăng bài viết kỷ niệm bình thường!
+                  </p>
+                  <Link
+                    href="/my-closet/create"
+                    target="_blank"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#183A2D] text-white text-[11px] font-bold hover:bg-[#112a20] transition-colors"
+                  >
+                    <PlusCircle size={13} /> Đăng trang phục lên tủ đồ ngay
+                  </Link>
+                </div>
+              )}
+            </div>
 
             {/* Submit Action */}
             <div className="flex items-center justify-end gap-3 pt-4 border-t border-stone-100">

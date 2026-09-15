@@ -77,7 +77,47 @@ export async function getClosetFullDataAction(userId: string) {
       })
     ]);
 
-    if (!user) {
+    let activeUser = user;
+    if (!activeUser) {
+      // 🌟 Tự động phục hồi/khởi tạo người dùng nếu có ID hợp lệ để không bao giờ bị lỗi 404 khi truy cập link tủ đồ
+      try {
+        activeUser = await prisma.user.create({
+          data: {
+            id: userId,
+            email: `${userId}@cloop.vn`,
+            name: "Thành viên CLOOP",
+            password: "supabase_auth_managed",
+            walletBalance: 0,
+            cloopCoins: 100,
+            role: "USER"
+          },
+          select: {
+            id: true,
+            name: true,
+            avatar: true,
+            rating: true,
+            reviewCount: true,
+            completedOrders: true,
+            createdAt: true
+          }
+        });
+      } catch {
+        activeUser = await prisma.user.findUnique({
+          where: { id: userId },
+          select: {
+            id: true,
+            name: true,
+            avatar: true,
+            rating: true,
+            reviewCount: true,
+            completedOrders: true,
+            createdAt: true
+          }
+        });
+      }
+    }
+
+    if (!activeUser) {
       return { success: false, error: "Người dùng không tồn tại" };
     }
 
@@ -138,21 +178,21 @@ export async function getClosetFullDataAction(userId: string) {
       }
     });
 
-    const joinDateObj = user.createdAt ? new Date(user.createdAt) : new Date();
+    const joinDateObj = activeUser.createdAt ? new Date(activeUser.createdAt) : new Date();
     const joinDateStr = `${String(joinDateObj.getMonth() + 1).padStart(2, '0')}/${joinDateObj.getFullYear()}`;
 
     const ownerInfo: ClosetUserProfile = {
-      id: user.id,
-      name: user.name || "Thành viên CLOOP",
-      avatar: user.avatar || null,
+      id: activeUser.id,
+      name: activeUser.name || "Thành viên CLOOP",
+      avatar: activeUser.avatar || null,
       joinDate: joinDateStr,
       bio: "Mình là một người yêu thời trang vintage và những chuyến đi. Mình tin rằng mỗi món đồ đều có một câu chuyện đẹp để kể lại.",
       quote: "Lưu giữ ký ức qua từng chiếc váy.",
       coverImage: null,
       location: products[0]?.province || "Nghệ An, Việt Nam",
       todaysMemory: "Hôm nay mình vừa thêm đồ mới vào tủ đồ CLOOP. Cùng chia sẻ để sống xanh!",
-      rating: user.rating !== undefined ? Number(user.rating) : 5.0,
-      completedOrders: Math.max(user.completedOrders || 0, completedCount),
+      rating: activeUser.rating !== undefined ? Number(activeUser.rating) : 5.0,
+      completedOrders: Math.max(activeUser.completedOrders || 0, completedCount),
       totalProducts: products.length
     };
 
