@@ -352,12 +352,6 @@ export default function LoginPage() {
                         if (res?.error) {
                           setMessage({ type: 'error', text: translateAuthError(res.error) });
                         } else if (res?.redirectUrl) {
-                          try {
-                            await supabase.auth.signInWithPassword({
-                              email: "th4212044@gmail.com",
-                              password: "CloopPassword2026!"
-                            });
-                          } catch (_) {}
                           window.location.href = res.redirectUrl;
                         }
                       } catch (err: any) {

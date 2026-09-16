@@ -52,15 +52,8 @@ export default function DashboardLayout({
         toast.error("Lỗi đăng nhập: " + res.error);
       } else if (res?.user) {
         toast.success("Đăng nhập thành công! Đang đồng bộ giao diện...");
-        try {
-          const supabase = createClient();
-          await supabase.auth.signInWithPassword({
-            email: "th4212044@gmail.com",
-            password: "CloopPassword2026!"
-          });
-        } catch (_) {}
         setCurrentUser({
-          name: res.user.name || "Trang Hoàng",
+          name: res.user.name || "Trang",
           email: res.user.email || "th4212044@gmail.com",
           isLoggedIn: true,
           id: res.user.id

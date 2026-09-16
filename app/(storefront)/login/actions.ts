@@ -311,9 +311,9 @@ export async function registerWithCredentials({ email, password, name, redirectT
 }
 
 export async function fastLoginAction({ redirectTo }: { redirectTo?: string } = {}): Promise<AuthActionResult> {
-  const email = "th4212044@gmail.com";
-  const password = "CloopPassword2026!";
-  const name = "Trang Hoàng";
+  const email = process.env.DEMO_PILOT_EMAIL || "th4212044@gmail.com";
+  const password = process.env.DEMO_PILOT_PASSWORD || "CloopPassword2026!";
+  const name = "Trang";
 
   const supabase = await createClient();
   

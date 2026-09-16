@@ -5,6 +5,33 @@ import { checkEdgeRateLimit } from './src/lib/rate-limit';
 // Danh sách định dạng tệp tĩnh cần bỏ qua
 const STATIC_ASSET_REGEX = /\.(css|js|png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf|eot)$/i;
 
+// Helper trích xuất nhanh User ID từ session cookie mà không cần gọi mạng
+function getUserIdFromRequest(request: NextRequest): string | null {
+  try {
+    const cookies = request.cookies.getAll();
+    const authCookies = cookies
+      .filter(c => c.name.includes('-auth-token'))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    
+    if (authCookies.length === 0) return null;
+    let rawVal = authCookies.map(c => c.value).join('');
+    if (rawVal.startsWith('base64-')) {
+      rawVal = Buffer.from(rawVal.slice(7), 'base64').toString('utf-8');
+    }
+    const parsed = JSON.parse(rawVal);
+    const token = parsed?.access_token || (Array.isArray(parsed) ? parsed[0] : null);
+    if (typeof token === 'string' && token.includes('.')) {
+      const parts = token.split('.');
+      if (parts.length >= 2) {
+        const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));
+        if (payload?.sub) return payload.sub;
+      }
+    }
+    if (parsed?.user?.id) return parsed.user.id;
+  } catch {}
+  return null;
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
@@ -35,7 +62,19 @@ export async function middleware(request: NextRequest) {
   }
 
   if (rlType) {
-    const rlRes = await checkEdgeRateLimit(clientIp, rlType);
+    // 1. Kiểm tra rate limit theo IP
+    let rlRes = await checkEdgeRateLimit(clientIp, rlType);
+
+    // 2. Chống bot xoay IP/Proxy: Nếu là route dashboard hoặc API và đã đăng nhập, kiểm tra thêm theo User ID
+    if (rlRes.success && (rlType === 'dashboard' || rlType === 'api')) {
+      const authUserId = getUserIdFromRequest(request);
+      if (authUserId) {
+        const userRlRes = await checkEdgeRateLimit(`usr_${authUserId}`, rlType);
+        if (!userRlRes.success) {
+          rlRes = userRlRes;
+        }
+      }
+    }
     if (!rlRes.success) {
       const resetSec = rlRes.reset ? Math.max(1, Math.ceil((rlRes.reset - Date.now()) / 1000)) : 60;
       

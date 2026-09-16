@@ -683,14 +683,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                           if (res.error) {
                             setAuthModalError(translateAuthError(res.error));
                           } else if (res.user) {
-                            try {
-                              await supabase.auth.signInWithPassword({
-                                email: "th4212044@gmail.com",
-                                password: "CloopPassword2026!"
-                              });
-                            } catch (_) {}
                             setCurrentUser({
-                              name: res.user.name || "Trang Hoàng",
+                              name: res.user.name || "Trang",
                               email: res.user.email || "th4212044@gmail.com",
                               isLoggedIn: true,
                               id: res.user.id
