@@ -75,6 +75,12 @@ export default function DashboardLayout({
   };
 
   useEffect(() => {
+    // 🛡️ CHỈ TẢI DISPUTE NẾU USER ĐÃ ĐĂNG NHẬP
+    if (!currentUser?.isLoggedIn) {
+      setDisputeCount(0);
+      return;
+    }
+
     let isMounted = true;
     async function loadDisputeStats() {
       try {
@@ -91,11 +97,11 @@ export default function DashboardLayout({
 
     loadDisputeStats();
 
-    // 🔔 Đồng bộ badge khiếu nại (có throttle để tránh spam server khi focus liên tục)
+    // 🔔 Đồng bộ badge khiếu nại (có throttle 5 phút để tránh spam server khi tab focus liên tục)
     let lastFetch = Date.now();
     const handleThrottledSync = () => {
       const now = Date.now();
-      if (now - lastFetch > 30000) {
+      if (now - lastFetch > 300000) {
         lastFetch = now;
         loadDisputeStats();
       }
@@ -114,7 +120,7 @@ export default function DashboardLayout({
       window.removeEventListener("dispute-updated", handleImmediateSync);
       window.removeEventListener("focus", handleThrottledSync);
     };
-  }, []);
+  }, [currentUser?.isLoggedIn]);
 
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
 

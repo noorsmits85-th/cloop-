@@ -86,9 +86,16 @@ export function DashboardHeader({
   };
 
   useEffect(() => {
+    // 🛡️ CHỈ TẢI VÀ SUBSCRIBE REALTIME NẾU ĐÃ ĐĂNG NHẬP (Tiết kiệm 100% quota cho khách & bot)
+    if (!currentUser?.isLoggedIn) {
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
+
     loadNotifications();
 
-    // 🔔 Supabase Realtime Channel: Tự động làm mới khi có đơn hàng hoặc biến động số dư
+    // 🔔 Supabase Realtime Channel: Chỉ mở cho user thật đã đăng nhập
     const channel = supabase
       .channel("header_notifications_sync")
       .on(
@@ -109,9 +116,10 @@ export function DashboardHeader({
       .subscribe();
 
     let lastFetch = Date.now();
+    // 🛡️ TĂNG THROTTLE FOCUS TỪ 30s LÊN 5 PHÚT (300.000ms) ĐỂ CHỐNG SPAM TAB
     const handleThrottledFocus = () => {
       const now = Date.now();
-      if (now - lastFetch > 30000) {
+      if (now - lastFetch > 300000) {
         lastFetch = now;
         loadNotifications();
       }
@@ -130,7 +138,7 @@ export function DashboardHeader({
       window.removeEventListener("notifications-updated", handleSync);
       window.removeEventListener("focus", handleThrottledFocus);
     };
-  }, []);
+  }, [currentUser?.isLoggedIn]);
 
   // Đóng notification khi click ra ngoài
   useEffect(() => {
