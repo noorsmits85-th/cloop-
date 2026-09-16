@@ -14,7 +14,7 @@ export const searchRateLimit = redis
   ? new Ratelimit({
       redis: redis,
       limiter: Ratelimit.slidingWindow(5, "1 s"),
-      analytics: true,
+      analytics: false,
     })
   : null;
 
@@ -23,7 +23,7 @@ export const visualSearchRateLimit = redis
   ? new Ratelimit({
       redis: redis,
       limiter: Ratelimit.slidingWindow(10, "1 m"),
-      analytics: true,
+      analytics: false,
     })
   : null;
 
@@ -32,7 +32,7 @@ export const checkoutRateLimit = redis
   ? new Ratelimit({
       redis: redis,
       limiter: Ratelimit.slidingWindow(1, "3 s"),
-      analytics: true,
+      analytics: false,
     })
   : null;
 
@@ -41,7 +41,7 @@ export const authRateLimit = redis
   ? new Ratelimit({
       redis: redis,
       limiter: Ratelimit.slidingWindow(15, "1 m"),
-      analytics: true,
+      analytics: false,
     })
   : null;
 
@@ -50,7 +50,7 @@ export const dashboardRateLimit = redis
   ? new Ratelimit({
       redis: redis,
       limiter: Ratelimit.slidingWindow(45, "1 m"),
-      analytics: true,
+      analytics: false,
     })
   : null;
 
@@ -59,7 +59,7 @@ export const shopRateLimit = redis
   ? new Ratelimit({
       redis: redis,
       limiter: Ratelimit.slidingWindow(60, "1 m"),
-      analytics: true,
+      analytics: false,
     })
   : null;
 
@@ -68,7 +68,7 @@ export const apiRateLimit = redis
   ? new Ratelimit({
       redis: redis,
       limiter: Ratelimit.slidingWindow(30, "1 m"),
-      analytics: true,
+      analytics: false,
     })
   : null;
 
