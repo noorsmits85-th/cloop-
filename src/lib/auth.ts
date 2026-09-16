@@ -30,6 +30,9 @@ export const requireUser = cache(async () => {
     let profile = await prisma.user.findUnique({
       where: { id: user.id },
       select: {
+        id: true,
+        name: true,
+        avatar: true,
         role: true,
         walletBalance: true,
         cloopCoins: true,
@@ -50,6 +53,9 @@ export const requireUser = cache(async () => {
           role: "USER"
         },
         select: {
+          id: true,
+          name: true,
+          avatar: true,
           role: true,
           walletBalance: true,
           cloopCoins: true,
@@ -58,24 +64,35 @@ export const requireUser = cache(async () => {
       });
     }
 
+    const effectiveName = profile.name || name;
+    const effectiveAvatar = profile.avatar || user.user_metadata?.avatar_url || user.user_metadata?.avatar || null;
+
     return {
       id: user.id,
       email: email,
-      name: name,
+      name: effectiveName,
       role: profile.role,
       isVerified: profile.isVerified === true,
-      avatar: user.user_metadata?.avatar_url || null,
+      avatar: effectiveAvatar,
       walletBalance: profile.walletBalance,
       cloopCoins: profile.cloopCoins,
-      metadata: user.user_metadata || {},
+      metadata: {
+        ...(user.user_metadata || {}),
+        name: effectiveName,
+        avatar: effectiveAvatar,
+        avatar_url: effectiveAvatar,
+      },
     };
   } catch (syncErr) {
     try {
       if (user.email) {
         const profile = await prisma.user.update({
           where: { email: user.email },
-          data: { id: user.id, name },
+          data: { id: user.id },
           select: {
+            id: true,
+            name: true,
+            avatar: true,
             role: true,
             walletBalance: true,
             cloopCoins: true,
@@ -83,16 +100,24 @@ export const requireUser = cache(async () => {
           }
         });
 
+        const effectiveName = profile.name || name;
+        const effectiveAvatar = profile.avatar || user.user_metadata?.avatar_url || user.user_metadata?.avatar || null;
+
         return {
           id: user.id,
           email: email,
-          name: name,
+          name: effectiveName,
           role: profile.role,
           isVerified: profile.isVerified === true,
-          avatar: user.user_metadata?.avatar_url || null,
+          avatar: effectiveAvatar,
           walletBalance: profile.walletBalance,
           cloopCoins: profile.cloopCoins,
-          metadata: user.user_metadata || {},
+          metadata: {
+            ...(user.user_metadata || {}),
+            name: effectiveName,
+            avatar: effectiveAvatar,
+            avatar_url: effectiveAvatar,
+          },
         };
       }
     } catch (_) {}

@@ -361,9 +361,17 @@ export async function fastLoginAction({ redirectTo }: { redirectTo?: string } = 
 
   try {
     const { prisma } = await import('@/src/lib/prisma');
+    const existing = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, name: true, avatar: true }
+    });
+
     await prisma.user.upsert({
       where: { id: userId },
-      update: { name, email },
+      update: {
+        email,
+        ...(existing?.name ? {} : { name }),
+      },
       create: {
         id: userId,
         email,

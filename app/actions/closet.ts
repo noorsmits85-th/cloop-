@@ -41,7 +41,7 @@ export interface ClosetMemory {
 
 export async function getClosetFullDataAction(userId: string) {
   try {
-    const [user, products, completedCount, blogPosts] = await Promise.all([
+    const [user, products, completedCount, blogPosts, authMetaRows] = await Promise.all([
       prisma.user.findUnique({
         where: { id: userId },
         select: {
@@ -74,8 +74,14 @@ export async function getClosetFullDataAction(userId: string) {
         where: { userId, status: "PUBLIC" },
         orderBy: { createdAt: "desc" },
         take: 8
-      })
+      }),
+      prisma.$queryRawUnsafe<any[]>(
+        `SELECT raw_user_meta_data FROM auth.users WHERE id = $1::uuid;`,
+        userId
+      ).catch(() => [])
     ]);
+
+    const authMeta = authMetaRows?.[0]?.raw_user_meta_data || {};
 
     let activeUser = user;
     if (!activeUser) {
@@ -183,14 +189,14 @@ export async function getClosetFullDataAction(userId: string) {
 
     const ownerInfo: ClosetUserProfile = {
       id: activeUser.id,
-      name: activeUser.name || "Thành viên CLOOP",
-      avatar: activeUser.avatar || null,
+      name: activeUser.name || authMeta.name || "Thành viên CLOOP",
+      avatar: activeUser.avatar || authMeta.avatar_url || authMeta.avatar || null,
       joinDate: joinDateStr,
-      bio: "Mình là một người yêu thời trang vintage và những chuyến đi. Mình tin rằng mỗi món đồ đều có một câu chuyện đẹp để kể lại.",
-      quote: "Lưu giữ ký ức qua từng chiếc váy.",
-      coverImage: null,
-      location: products[0]?.province || "Nghệ An, Việt Nam",
-      todaysMemory: "Hôm nay mình vừa thêm đồ mới vào tủ đồ CLOOP. Cùng chia sẻ để sống xanh!",
+      bio: authMeta.bio || "Mình là một người yêu thời trang vintage và những chuyến đi. Mình tin rằng mỗi món đồ đều có một câu chuyện đẹp để kể lại.",
+      quote: authMeta.quote || "Lưu giữ ký ức qua từng chiếc váy.",
+      coverImage: authMeta.coverImage || null,
+      location: authMeta.location || products[0]?.province || "Nghệ An, Việt Nam",
+      todaysMemory: authMeta.todaysMemory || "Hôm nay mình vừa thêm đồ mới vào tủ đồ CLOOP. Cùng chia sẻ để sống xanh!",
       rating: activeUser.rating !== undefined ? Number(activeUser.rating) : 5.0,
       completedOrders: Math.max(activeUser.completedOrders || 0, completedCount),
       totalProducts: products.length
@@ -249,6 +255,31 @@ export async function updateClosetProfileAction(data: {
       }
     });
 
+    // 2. Cập nhật trực tiếp raw_user_meta_data trong auth.users để đồng bộ tức thì
+    try {
+      const metaPayload: Record<string, any> = {};
+      if (data.name) {
+        metaPayload.name = data.name;
+        metaPayload.full_name = data.name;
+      }
+      if (data.location) metaPayload.location = data.location;
+      if (data.quote) metaPayload.quote = data.quote;
+      if (data.bio) metaPayload.bio = data.bio;
+      if (data.todaysMemory) metaPayload.todaysMemory = data.todaysMemory;
+      if (data.avatar !== undefined) {
+        metaPayload.avatar = data.avatar;
+        metaPayload.avatar_url = data.avatar;
+      }
+
+      await prisma.$executeRawUnsafe(
+        `UPDATE auth.users SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || $1::jsonb WHERE id = $2::uuid;`,
+        JSON.stringify(metaPayload),
+        data.userId
+      );
+    } catch (dbMetaErr) {
+      console.warn("Direct auth.users metadata update fallback in closet:", dbMetaErr);
+    }
+
     try {
       const { createClient } = await import("@/src/utils/supabase/server");
       const supabase = await createClient();
@@ -268,6 +299,8 @@ export async function updateClosetProfileAction(data: {
 
     revalidatePath(`/closet/${data.userId}`);
     revalidatePath(`/my-closet/profile`);
+    revalidatePath(`/my-closet`);
+    revalidatePath(`/`, "layout");
     return { success: true };
   } catch (err: any) {
     console.error("Lỗi updateClosetProfileAction:", err);

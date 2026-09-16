@@ -4,6 +4,7 @@ import { calculateUserTrustScore } from "@/lib/trust-engine";
 import { ProfileClient } from "../_components/ProfileClient";
 import ReviewSection from "@/app/(storefront)/closet/[userId]/_components/ReviewSection";
 import { getScrubbedReviewsAction } from "@/app/(dashboard)/my-closet/orders/actions";
+import { prisma } from "@/src/lib/prisma";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +23,24 @@ export default async function ProfilePage() {
   }
 
   const userId = userAuth.id;
-  const meta = (userAuth as any).metadata || {};
+
+  const [trustBreakdown, reviewsRes, authMetaRows] = await Promise.all([
+    calculateUserTrustScore(userId).catch((err) => {
+      console.warn("calculateUserTrustScore error fallback:", err);
+      return undefined;
+    }),
+    getScrubbedReviewsAction(userId, userId).catch((err) => {
+      console.warn("getScrubbedReviewsAction error fallback:", err);
+      return { success: true, reviews: [] };
+    }),
+    prisma.$queryRawUnsafe<any[]>(
+      `SELECT raw_user_meta_data FROM auth.users WHERE id = $1::uuid;`,
+      userId
+    ).catch(() => [])
+  ]);
+
+  const rawMeta = authMetaRows?.[0]?.raw_user_meta_data || {};
+  const meta = { ...rawMeta, ...((userAuth as any).metadata || {}) };
 
   const userProfile = {
     id: userId,
@@ -38,17 +56,6 @@ export default async function ProfilePage() {
     avatar: userAuth.avatar || meta.avatar_url || meta.avatar || "",
     coverImage: meta.coverImage || "",
   };
-
-  const [trustBreakdown, reviewsRes] = await Promise.all([
-    calculateUserTrustScore(userId).catch((err) => {
-      console.warn("calculateUserTrustScore error fallback:", err);
-      return undefined;
-    }),
-    getScrubbedReviewsAction(userId, userId).catch((err) => {
-      console.warn("getScrubbedReviewsAction error fallback:", err);
-      return { success: true, reviews: [] };
-    }),
-  ]);
 
   return (
     <div className="min-h-screen bg-[#FAF9F5] py-8 px-4 sm:px-8 text-stone-800 antialiased">

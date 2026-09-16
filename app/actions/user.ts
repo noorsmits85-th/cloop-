@@ -33,11 +33,37 @@ export async function updateUserProfileWithValidation(input: ProfileUpdateInput)
       where: { id: userAuth.id },
       data: {
         ...(validated.name && { name: validated.name }),
-        ...(validated.avatar && { avatar: validated.avatar }),
+        ...(validated.avatar !== undefined && { avatar: validated.avatar }),
       },
     });
 
-    // 2. Cập nhật user_metadata trong Supabase qua Server Session
+    // 2. Cập nhật trực tiếp raw_user_meta_data trong auth.users để đồng bộ tức thì
+    try {
+      const metaPayload: Record<string, any> = {
+        name: validated.name,
+        full_name: validated.name,
+      };
+      if (validated.username) metaPayload.username = validated.username;
+      if (validated.location) metaPayload.location = validated.location;
+      if (validated.quote) metaPayload.quote = validated.quote;
+      if (validated.bio) metaPayload.bio = validated.bio;
+      if (validated.todaysMemory) metaPayload.todaysMemory = validated.todaysMemory;
+      if (validated.avatar) {
+        metaPayload.avatar = validated.avatar;
+        metaPayload.avatar_url = validated.avatar;
+      }
+      if (validated.coverImage) metaPayload.coverImage = validated.coverImage;
+
+      await prisma.$executeRawUnsafe(
+        `UPDATE auth.users SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || $1::jsonb WHERE id = $2::uuid;`,
+        JSON.stringify(metaPayload),
+        userAuth.id
+      );
+    } catch (dbMetaErr) {
+      console.warn("Direct auth.users metadata update fallback:", dbMetaErr);
+    }
+
+    // Cập nhật session metadata trong Supabase
     try {
       const supabase = await createClient();
       await supabase.auth.updateUser({
@@ -62,6 +88,7 @@ export async function updateUserProfileWithValidation(input: ProfileUpdateInput)
       revalidatePath("/my-closet/profile");
       revalidatePath(`/closet/${userAuth.id}`);
       revalidatePath("/my-closet");
+      revalidatePath("/", "layout");
     } catch (e) {
       console.error("Cache purge failed:", e);
     }

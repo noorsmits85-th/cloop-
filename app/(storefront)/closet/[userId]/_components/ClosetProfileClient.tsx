@@ -271,9 +271,14 @@ export default function ClosetProfileClient({
 
             <div className="flex items-center gap-3 pt-2">
               {isCurrentUser ? (
-                <button onClick={handleOpenEditModal} className="bg-[#183A2D] hover:bg-[#234F3E] text-white text-xs font-bold px-6 py-3.5 rounded-full transition-all flex items-center gap-2 shadow-sm cursor-pointer">
-                  <Settings size={14} /> CHỈNH SỬA HỒ SƠ
-                </button>
+                <div className="flex items-center gap-2">
+                  <button onClick={handleOpenEditModal} className="bg-[#183A2D] hover:bg-[#234F3E] text-white text-xs font-bold px-5 py-3 rounded-full transition-all flex items-center gap-2 shadow-sm cursor-pointer">
+                    <Settings size={14} /> CHỈNH SỬA HỒ SƠ
+                  </button>
+                  <Link href="/my-closet/profile" className="bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 text-xs font-semibold px-4 py-3 rounded-full transition-all flex items-center gap-1.5 shadow-3xs" title="Đến trang quản lý hồ sơ & eKYC">
+                    Hồ sơ & Uy tín ↗
+                  </Link>
+                </div>
               ) : (
                 <button 
                   onClick={() => {
@@ -562,6 +567,12 @@ export default function ClosetProfileClient({
               </div>
 
               <div className="p-6 space-y-6">
+                <div className="bg-emerald-50/80 border border-emerald-200/60 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-emerald-900">
+                  <span>Dữ liệu này được đồng bộ tức thì với trang <strong>Hồ sơ & Uy tín</strong>.</span>
+                  <Link href="/my-closet/profile" className="font-bold underline text-emerald-800 hover:text-emerald-950 flex items-center gap-0.5 whitespace-nowrap">
+                    Mở quản lý đầy đủ ↗
+                  </Link>
+                </div>
                 
                 <div className="flex flex-col items-center justify-center p-4 bg-[#F5F2EB]/60 rounded-2xl border border-stone-200">
                   <label className="text-xs font-bold text-stone-700 mb-2">Ảnh Đại Diện (Avatar)</label>

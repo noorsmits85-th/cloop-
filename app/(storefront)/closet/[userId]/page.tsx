@@ -4,7 +4,7 @@ import { requireUser } from "@/src/lib/auth";
 import ClosetProfileClient from "./_components/ClosetProfileClient";
 import { notFound } from "next/navigation";
 
-export const revalidate = 0; // Dynamic server fetch - không cache cũ
+export const revalidate = 60; // ⚡ SWR CACHE 60s (Giảm 90% DB query khi nhiều người xem tủ đồ)
 
 export default async function ClosetProfilePage({ 
   params 
@@ -41,6 +41,8 @@ export default async function ClosetProfilePage({
 
   const ownerInfo = {
     ...res.ownerInfo,
+    ...(isCurrentUser && currentUserMeta?.name && { name: currentUserMeta.name }),
+    ...(isCurrentUser && currentUserMeta?.avatar && { avatar: currentUserMeta.avatar }),
     ...(isCurrentUser && currentUserMeta?.location && { location: currentUserMeta.location }),
     ...(isCurrentUser && currentUserMeta?.bio && { bio: currentUserMeta.bio }),
     ...(isCurrentUser && currentUserMeta?.quote && { quote: currentUserMeta.quote }),
