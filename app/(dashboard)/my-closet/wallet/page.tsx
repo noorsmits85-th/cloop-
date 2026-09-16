@@ -50,7 +50,8 @@ export default async function WalletPage({
 
     const [
       claimsRes,
-      userProductsRes,
+      productCountRes,
+      weeklyProductCountRes,
       fiveStarRes,
       ledgerRes,
       withdrawRes,
@@ -60,9 +61,11 @@ export default async function WalletPage({
         where: { userId },
         select: { questCode: true }
       }),
-      prisma.product.findMany({
-        where: { userId, isDeleted: false },
-        select: { createdAt: true }
+      prisma.product.count({
+        where: { userId, isDeleted: false }
+      }),
+      prisma.product.count({
+        where: { userId, isDeleted: false, createdAt: { gte: oneWeekAgo } }
       }),
       prisma.review.count({
         where: { revieweeId: userId, rating: { gte: 5 } }
@@ -117,10 +120,8 @@ export default async function WalletPage({
 
     const meta = (userAuth as any).metadata || {};
     if (claimsRes.status === "fulfilled") claims = claimsRes.value || [];
-    if (userProductsRes.status === "fulfilled" && Array.isArray(userProductsRes.value)) {
-      productCount = userProductsRes.value.length;
-      weeklyProductCount = userProductsRes.value.filter((p: any) => new Date(p.createdAt) >= oneWeekAgo).length;
-    }
+    if (productCountRes.status === "fulfilled") productCount = productCountRes.value || 0;
+    if (weeklyProductCountRes.status === "fulfilled") weeklyProductCount = weeklyProductCountRes.value || 0;
     if (fiveStarRes.status === "fulfilled") fiveStarCount = fiveStarRes.value || 0;
     if (ledgerRes.status === "fulfilled") coinLedger = ledgerRes.value || [];
     if (withdrawRes.status === "fulfilled") realWithdrawals = withdrawRes.value || [];

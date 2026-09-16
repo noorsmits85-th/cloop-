@@ -21,6 +21,9 @@ const getCachedEcoMetrics = unstable_cache(
   { revalidate: 86400 }
 );
 
+// ⚡ SWR IN-MEMORY CACHE (30s TTL): Giúp chuyển tab quay lại Dashboard trong 0ms
+const overviewCache = new Map<string, { data: { ecoStats: any; totalProducts: number; categoryData: any[]; revenueData: any[] }; expiry: number }>();
+
 export default async function MyClosetOverviewPage() {
   let userAuth;
   try {
@@ -59,144 +62,161 @@ export default async function MyClosetOverviewPage() {
     bank_owner: meta.bank_owner || userAuth.name || null,
   };
 
-  // ⚡ TỐI ƯU SIÊU TỐC: Gom toàn bộ truy vấn song song (Parallel Fetching) & dùng userAuth trực tiếp
-  const [
-    products,
-    dbMetrics,
-    completedRentals,
-    soldItems
-  ] = await Promise.all([
-    prisma.product.findMany({
-      where: { userId, isDeleted: false },
-      select: { category: true, material: true }
-    }),
-    getCachedEcoMetrics(),
-    prisma.rentalHistory.findMany({
-      where: {
-        product: { userId },
-        status: "LENDER_COMPLETED",
-        updatedAt: { gte: sevenDaysAgo }
-      },
-      select: {
-        updatedAt: true,
-        start_date: true,
-        end_date: true,
-        invoice: {
-          select: {
-            rentalFee: true,
-            platformFee: true,
-            amount: true
-          }
+  const cloopCoins = userAuth.cloopCoins || 0;
+
+  // ⚡ SWR CACHE CHECK: Nếu user vừa xem trang trong 30s qua -> Phản hồi 0ms!
+  const cachedOverview = overviewCache.get(userId);
+  let ecoStats: any;
+  let totalProducts = 0;
+  let categoryData: any[] = [];
+  let revenueData: any[] = [];
+
+  if (cachedOverview && Date.now() < cachedOverview.expiry) {
+    ecoStats = cachedOverview.data.ecoStats;
+    totalProducts = cachedOverview.data.totalProducts;
+    categoryData = cachedOverview.data.categoryData;
+    revenueData = cachedOverview.data.revenueData;
+  } else {
+    // ⚡ TỐI ƯU SIÊU TỐC: Gom toàn bộ truy vấn song song (Parallel Fetching)
+    const [
+      products,
+      dbMetrics,
+      completedRentals,
+      soldItems
+    ] = await Promise.all([
+      prisma.product.findMany({
+        where: { userId, isDeleted: false },
+        select: { category: true, material: true }
+      }),
+      getCachedEcoMetrics(),
+      prisma.rentalHistory.findMany({
+        where: {
+          product: { userId },
+          status: "LENDER_COMPLETED",
+          updatedAt: { gte: sevenDaysAgo }
         },
-        product: {
-          select: {
-            listings: {
-              where: { listingType: "RENT" },
-              select: { basePrice: true },
-              take: 1
+        select: {
+          updatedAt: true,
+          start_date: true,
+          end_date: true,
+          invoice: {
+            select: {
+              rentalFee: true,
+              platformFee: true,
+              amount: true
+            }
+          },
+          product: {
+            select: {
+              listings: {
+                where: { listingType: "RENT" },
+                select: { basePrice: true },
+                take: 1
+              }
             }
           }
         }
-      }
-    }),
-    prisma.listing.findMany({
-      where: {
-        product: { userId },
-        status: "SOLD",
-        listingType: { in: ["SELL", "RECYCLE"] },
-        updatedAt: { gte: sevenDaysAgo }
-      },
-      select: {
-        basePrice: true,
-        salePrice: true,
-        updatedAt: true
-      }
-    })
-  ]);
+      }),
+      prisma.listing.findMany({
+        where: {
+          product: { userId },
+          status: "SOLD",
+          listingType: { in: ["SELL", "RECYCLE"] },
+          updatedAt: { gte: sevenDaysAgo }
+        },
+        select: {
+          basePrice: true,
+          salePrice: true,
+          updatedAt: true
+        }
+      })
+    ]);
 
-  const cloopCoins = userAuth.cloopCoins || 0;
+    // Convert array to Dictionary for fast lookup
+    const ECO_MATRIX: Record<string, { water: number; co2: number; pts: number }> = {};
+    dbMetrics.forEach((m: any) => {
+      ECO_MATRIX[m.keyword.toLowerCase().trim()] = { water: m.waterFactor, co2: m.co2Factor, pts: m.greenPts };
+    });
 
-  // Convert array to Dictionary for fast lookup
-  const ECO_MATRIX: Record<string, { water: number; co2: number; pts: number }> = {};
-  dbMetrics.forEach((m: any) => {
-    ECO_MATRIX[m.keyword.toLowerCase().trim()] = { water: m.waterFactor, co2: m.co2Factor, pts: m.greenPts };
-  });
+    let co2Saved = 0;
+    let waterSaved = 0;
+    let greenPoints = 0;
 
-  let co2Saved = 0;
-  let waterSaved = 0;
-  let greenPoints = 0;
+    const categoryCountMap = new Map<string, number>();
 
-  const categoryCountMap = new Map<string, number>();
+    products.forEach((product: any) => {
+      const cat = (product.category || "").toLowerCase().trim();
+      const mat = (product.material || "").toLowerCase().trim();
 
-  products.forEach((product: any) => {
-    const cat = (product.category || "").toLowerCase().trim();
-    const mat = (product.material || "").toLowerCase().trim();
-
-    // In-memory category tally
-    const rawCat = product.category || "Khác";
-    categoryCountMap.set(rawCat, (categoryCountMap.get(rawCat) || 0) + 1);
-    
-    let match = null;
-    for (const key of Object.keys(ECO_MATRIX)) {
-      if (cat.includes(key) || mat.includes(key)) {
-        match = ECO_MATRIX[key];
-        break;
-      }
-    }
-
-    const metrics = match || { water: 2000, co2: 15, pts: 100 };
-    co2Saved += metrics.co2;
-    waterSaved += metrics.water;
-    greenPoints += metrics.pts;
-  });
-
-  const ecoStats = { co2Saved, waterSaved, greenPoints };
-  const totalProducts = products.length;
-
-  const categoryData = categoryCountMap.size > 0 
-    ? Array.from(categoryCountMap.entries()).map(([name, value]) => ({ name, value }))
-    : [{ name: 'Chưa có dữ liệu', value: 1 }];
-
-  // Gom nhóm dữ liệu doanh thu
-  completedRentals.forEach((rental: any) => {
-    const rentalDate = new Date(rental.updatedAt);
-    rentalDate.setHours(0, 0, 0, 0);
-    
-    const dayData = past7Days.find(d => d.dateObj.getTime() === rentalDate.getTime());
-    if (dayData) {
-      const invoiceEarnings = rental.invoice?.rentalFee 
-        ? Math.max(0, rental.invoice.rentalFee - (rental.invoice.platformFee || 0)) 
-        : 0;
+      const rawCat = product.category || "Khác";
+      categoryCountMap.set(rawCat, (categoryCountMap.get(rawCat) || 0) + 1);
       
-      if (invoiceEarnings > 0) {
-        dayData.rent += invoiceEarnings;
-      } else {
-        const basePrice = rental.product.listings?.[0]?.basePrice || 0;
-        const diffDays = rental.start_date && rental.end_date
-          ? Math.ceil((new Date(rental.end_date).getTime() - new Date(rental.start_date).getTime()) / (1000 * 60 * 60 * 24))
-          : 1;
-        const rentalDays = Math.max(1, isNaN(diffDays) ? 1 : diffDays);
-        dayData.rent += basePrice * rentalDays;
+      let match = null;
+      for (const key of Object.keys(ECO_MATRIX)) {
+        if (cat.includes(key) || mat.includes(key)) {
+          match = ECO_MATRIX[key];
+          break;
+        }
       }
-    }
-  });
 
-  soldItems.forEach((item: any) => {
-    const soldDate = new Date(item.updatedAt);
-    soldDate.setHours(0, 0, 0, 0);
-    
-    const dayData = past7Days.find(d => d.dateObj.getTime() === soldDate.getTime());
-    if (dayData) {
-      dayData.sell += item.salePrice || item.basePrice || 0;
-    }
-  });
+      const metrics = match || { water: 2000, co2: 15, pts: 100 };
+      co2Saved += metrics.co2;
+      waterSaved += metrics.water;
+      greenPoints += metrics.pts;
+    });
 
-  // Format lại array chỉ lấy những thuộc tính cần thiết cho biểu đồ
-  const revenueData = past7Days.map(d => ({
-    name: d.name,
-    rent: d.rent,
-    sell: d.sell
-  }));
+    ecoStats = { co2Saved, waterSaved, greenPoints };
+    totalProducts = products.length;
+
+    categoryData = categoryCountMap.size > 0 
+      ? Array.from(categoryCountMap.entries()).map(([name, value]) => ({ name, value }))
+      : [{ name: 'Chưa có dữ liệu', value: 1 }];
+
+    // Gom nhóm dữ liệu doanh thu
+    completedRentals.forEach((rental: any) => {
+      const rentalDate = new Date(rental.updatedAt);
+      rentalDate.setHours(0, 0, 0, 0);
+      
+      const dayData = past7Days.find(d => d.dateObj.getTime() === rentalDate.getTime());
+      if (dayData) {
+        const invoiceEarnings = rental.invoice?.rentalFee 
+          ? Math.max(0, rental.invoice.rentalFee - (rental.invoice.platformFee || 0)) 
+          : 0;
+        
+        if (invoiceEarnings > 0) {
+          dayData.rent += invoiceEarnings;
+        } else {
+          const basePrice = rental.product.listings?.[0]?.basePrice || 0;
+          const diffDays = rental.start_date && rental.end_date
+            ? Math.ceil((new Date(rental.end_date).getTime() - new Date(rental.start_date).getTime()) / (1000 * 60 * 60 * 24))
+            : 1;
+          const rentalDays = Math.max(1, isNaN(diffDays) ? 1 : diffDays);
+          dayData.rent += basePrice * rentalDays;
+        }
+      }
+    });
+
+    soldItems.forEach((item: any) => {
+      const soldDate = new Date(item.updatedAt);
+      soldDate.setHours(0, 0, 0, 0);
+      
+      const dayData = past7Days.find(d => d.dateObj.getTime() === soldDate.getTime());
+      if (dayData) {
+        dayData.sell += item.salePrice || item.basePrice || 0;
+      }
+    });
+
+    revenueData = past7Days.map(d => ({
+      name: d.name,
+      rent: d.rent,
+      sell: d.sell
+    }));
+
+    overviewCache.set(userId, {
+      data: { ecoStats, totalProducts, categoryData, revenueData },
+      expiry: Date.now() + 30000
+    });
+  }
 
   return (
     <div className="min-h-screen bg-[#FAF9F5] py-8 px-4 sm:px-8 text-stone-800 antialiased">

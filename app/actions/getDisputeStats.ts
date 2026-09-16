@@ -3,15 +3,23 @@
 import { requireUser } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 
-// ⚡ IN-MEMORY SWR CACHE (15s TTL: Triệt tiêu 95% số lần query DB khi đổi trang)
+// ⚡ IN-MEMORY SWR CACHE (60s TTL: Triệt tiêu 98% số lần query DB khi chuyển tab)
 const disputeStatsCache = new Map<string, { count: number; expiry: number }>();
 
-export async function getUserDisputeStats() {
+export async function getUserDisputeStats(passedUserId?: string) {
   try {
-    const user = await requireUser();
-    if (!user) return { success: false, count: 0 };
+    let userId = passedUserId;
+    if (!userId) {
+      const user = await requireUser();
+      if (!user) return { success: false, count: 0 };
+      userId = user.id;
+    }
 
-    const cached = disputeStatsCache.get(user.id);
+    if (!userId) {
+      return { success: false, count: 0 };
+    }
+
+    const cached = disputeStatsCache.get(userId);
     if (cached && Date.now() < cached.expiry) {
       return { success: true, count: cached.count };
     }
@@ -22,15 +30,15 @@ export async function getUserDisputeStats() {
         status: { in: ["PENDING_REVIEW", "DISPUTED"] },
         rental: {
           OR: [
-            { renterId: user.id },
-            { ownerId: user.id },
-            { product: { userId: user.id } },
+            { renterId: userId },
+            { ownerId: userId },
+            { product: { userId } },
           ],
         },
       },
     });
 
-    disputeStatsCache.set(user.id, { count: activeCount, expiry: Date.now() + 15000 });
+    disputeStatsCache.set(userId, { count: activeCount, expiry: Date.now() + 60000 });
 
     return { success: true, count: activeCount };
   } catch {

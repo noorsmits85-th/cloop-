@@ -7,13 +7,14 @@ import { redirect } from "next/navigation";
 export const dynamic = "force-dynamic";
 
 export default async function NotificationsPage() {
+  let userAuth: any;
   try {
-    await requireUser();
+    userAuth = await requireUser();
   } catch (error) {
     redirect("/login?redirectTo=/my-closet/notifications");
   }
 
-  const res = await getUserNotificationsAction();
+  const res = await getUserNotificationsAction(userAuth?.id);
   const notifications = res.success ? res.notifications : [];
   const unreadCount = res.success ? res.unreadCount : 0;
 

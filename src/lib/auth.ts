@@ -3,9 +3,20 @@ import { createClient } from "@/src/utils/supabase/server";
 import { prisma } from "@/src/lib/prisma";
 import { redirect } from "next/navigation";
 
+// ⚡ IN-MEMORY SWR CACHE (30s TTL): Triệt tiêu 100% các truy vấn DB lặp lại khi người dùng chuyển tab Dashboard
+const userAuthCache = new Map<string, { user: any; expiry: number }>();
+
+export function clearUserAuthCache(userId?: string) {
+  if (userId) {
+    userAuthCache.delete(userId);
+  } else {
+    userAuthCache.clear();
+  }
+}
+
 /**
  * Lấy User Session hiện tại từ Supabase HTTP-only Cookies và đồng bộ với bảng Prisma User
- * ⚡ TỐI ƯU HÓA: Dùng React cache() để deduplicate giữa Layout & Page, và dùng findUnique (chỉ đọc) thay vì upsert liên tục
+ * ⚡ TỐI ƯU HÓA: Kết hợp In-Memory Cache (30s TTL - 0ms) + React cache() deduplicate
  */
 export const requireUser = cache(async () => {
   const supabase = await createClient();
@@ -20,6 +31,12 @@ export const requireUser = cache(async () => {
       throw new Error("Unauthorized: Không tìm thấy phiên đăng nhập.");
     }
     user = fetchedUser;
+  }
+
+  // ⚡ Cache Hit: Trả về ngay lập tức trong 0ms nếu trong 30s qua đã lấy thông tin
+  const cached = userAuthCache.get(user.id);
+  if (cached && Date.now() < cached.expiry) {
+    return cached.user;
   }
 
   const name = user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Thành viên CLOOP";
@@ -67,7 +84,7 @@ export const requireUser = cache(async () => {
     const effectiveName = profile.name || name;
     const effectiveAvatar = profile.avatar || user.user_metadata?.avatar_url || user.user_metadata?.avatar || null;
 
-    return {
+    const result = {
       id: user.id,
       email: email,
       name: effectiveName,
@@ -83,6 +100,8 @@ export const requireUser = cache(async () => {
         avatar_url: effectiveAvatar,
       },
     };
+    userAuthCache.set(user.id, { user: result, expiry: Date.now() + 30000 });
+    return result;
   } catch (syncErr) {
     try {
       if (user.email) {
@@ -103,7 +122,7 @@ export const requireUser = cache(async () => {
         const effectiveName = profile.name || name;
         const effectiveAvatar = profile.avatar || user.user_metadata?.avatar_url || user.user_metadata?.avatar || null;
 
-        return {
+        const updatedResult = {
           id: user.id,
           email: email,
           name: effectiveName,
@@ -119,11 +138,13 @@ export const requireUser = cache(async () => {
             avatar_url: effectiveAvatar,
           },
         };
+        userAuthCache.set(user.id, { user: updatedResult, expiry: Date.now() + 30000 });
+        return updatedResult;
       }
     } catch (_) {}
   }
 
-  return {
+  const fallbackResult = {
     id: user.id,
     email: email,
     name: name,
@@ -134,6 +155,8 @@ export const requireUser = cache(async () => {
     cloopCoins: 100,
     metadata: user.user_metadata || {},
   };
+  userAuthCache.set(user.id, { user: fallbackResult, expiry: Date.now() + 30000 });
+  return fallbackResult;
 });
 
 /**

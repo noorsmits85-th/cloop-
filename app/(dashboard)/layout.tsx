@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
 import {
   LayoutDashboard,
@@ -36,6 +36,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const router = useRouter();
   const pathname = usePathname();
   const { currentUser, setCurrentUser, setShowAuthModal } = useAuthModal();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -77,7 +78,7 @@ export default function DashboardLayout({
     let isMounted = true;
     async function loadDisputeStats() {
       try {
-        const disputeRes = await getUserDisputeStats();
+        const disputeRes = await getUserDisputeStats(currentUser?.id);
         if (!isMounted) return;
 
         if (disputeRes.success && typeof disputeRes.count === "number") {
@@ -113,13 +114,22 @@ export default function DashboardLayout({
       window.removeEventListener("dispute-updated", handleImmediateSync);
       window.removeEventListener("focus", handleThrottledSync);
     };
-  }, [currentUser?.isLoggedIn]);
+  }, [currentUser?.isLoggedIn, currentUser?.id]);
 
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
 
   useEffect(() => {
     setNavigatingTo(null);
   }, [pathname]);
+
+  useEffect(() => {
+    if (navigatingTo) {
+      const timer = setTimeout(() => {
+        setNavigatingTo(null);
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [navigatingTo]);
 
   const currentPath = navigatingTo || pathname;
 
@@ -244,6 +254,11 @@ export default function DashboardLayout({
                     key={i}
                     href={item.path}
                     prefetch={true}
+                    onMouseEnter={() => {
+                      if (currentUser?.isLoggedIn && item.path !== pathname) {
+                        router.prefetch(item.path);
+                      }
+                    }}
                     className={getNavClass(item.path)}
                     onClick={(e) => {
                       if (!currentUser?.isLoggedIn) {
@@ -263,12 +278,15 @@ export default function DashboardLayout({
                   >
                     {item.icon}
                     <span className="flex-1">{item.name}</span>
-                    {item.path === "/my-closet/orders" && disputeCount > 0 && (
+                    {navigatingTo === item.path && (
+                      <Loader2 size={13} className="animate-spin text-emerald-300" />
+                    )}
+                    {item.path === "/my-closet/orders" && disputeCount > 0 && navigatingTo !== item.path && (
                       <span className="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs">
                         {disputeCount}
                       </span>
                     )}
-                    {item.path === "/my-closet/notifications" && unreadNotifCount > 0 && (
+                    {item.path === "/my-closet/notifications" && unreadNotifCount > 0 && navigatingTo !== item.path && (
                       <span className="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs">
                         {unreadNotifCount > 9 ? "9+" : unreadNotifCount}
                       </span>
@@ -288,6 +306,13 @@ export default function DashboardLayout({
         </div>
       </aside>
 
+      {/* 🚀 TOP PROGRESS BAR: Phản hồi tức thì 0ms khi người dùng bấm chuyển tab */}
+      {navigatingTo && (
+        <div className="fixed top-0 left-0 right-0 z-[9999] h-[3.5px] bg-emerald-100/60 pointer-events-none">
+          <div className="h-full bg-gradient-to-r from-[#183A2D] via-[#2E7D32] to-[#4ADE80] w-full animate-pulse shadow-xs"></div>
+        </div>
+      )}
+
       {/* Main Content Wrapper - Bị đẩy sang phải bởi Sidebar */}
       <div className="md:pl-64 flex flex-col min-h-screen w-full">
         {/* Top Header - Component tách riêng */}
@@ -298,8 +323,8 @@ export default function DashboardLayout({
           onUnreadCountChange={setUnreadNotifCount}
         />
 
-        {/* Dashboard Content - Cứ để cuộn tự nhiên theo window */}
-        <main className="flex-1 p-4 md:p-8">
+        {/* Dashboard Content - Làm mờ nhẹ khi chuyển trang để tạo cảm giác phản hồi tức thì */}
+        <main className={`flex-1 p-4 md:p-8 transition-opacity duration-150 ${navigatingTo ? "opacity-60 pointer-events-none" : "opacity-100"}`}>
           <div className="max-w-[1200px] w-full mx-auto pb-24 md:pb-8">
             {children}
           </div>

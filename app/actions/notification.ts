@@ -67,17 +67,21 @@ function formatDateTimeVN(dateInput: Date | string | number): { formatted: strin
   return { formatted, relative };
 }
 
-export async function getUserNotificationsAction(): Promise<{
+export async function getUserNotificationsAction(passedUserId?: string): Promise<{
   success: boolean;
   notifications: NotificationItem[];
   unreadCount: number;
   error?: string;
 }> {
   try {
-    const supabase = await createClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    const user = session?.user;
-    const userId = user?.id;
+    let userId = passedUserId;
+    let userCreatedAt: string | undefined;
+    if (!userId) {
+      const supabase = await createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      userId = session?.user?.id;
+      userCreatedAt = session?.user?.created_at;
+    }
 
     // ⚡ Cache hit check siêu tốc (0ms, không tốn network roundtrip)
     if (userId) {
@@ -404,7 +408,7 @@ export async function getUserNotificationsAction(): Promise<{
 
     // ===== E. NẾU USER CHƯA CÓ HOẠT ĐỘNG: CHỈ HIỂN THỊ THÔNG BÁO CHÀO MỪNG & THIẾT LẬP THỰC SỰ =====
     if (notifList.length === 0) {
-      const accountCreatedDate = user?.created_at ? new Date(user.created_at) : new Date();
+      const accountCreatedDate = userCreatedAt ? new Date(userCreatedAt) : new Date();
       const { formatted, relative } = formatDateTimeVN(accountCreatedDate);
 
       // Thông báo chào mừng thành viên mới
@@ -462,7 +466,7 @@ export async function getUserNotificationsAction(): Promise<{
     };
 
     if (userId) {
-      notifCache.set(userId, { data: result, expiry: Date.now() + 10000 }); // 10s cache
+      notifCache.set(userId, { data: result, expiry: Date.now() + 30000 }); // 30s SWR cache
     }
 
     return result;

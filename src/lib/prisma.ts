@@ -84,12 +84,12 @@ function getSanitizedDatabaseUrl() {
   let url = process.env.DATABASE_URL || "";
   if (!url) return undefined;
   // ⚡ TỐI ƯU HÓA POOLING SERVERLESS TRÊN VERCEL + SUPABASE:
-  // Supabase PostgreSQL chỉ cho phép tối đa 60 kết nối.
-  // Đặt connection_limit=3 cho phép đến 20 container serverless chạy đồng thời mà không bao giờ vượt trần 60 kết nối.
-  url = url.replace(/connection_limit=\d+/g, "connection_limit=3");
+  // Supabase PostgreSQL sử dụng Supavisor Pooler (Port 6543) hỗ trợ hàng trăm kết nối client đồng thời.
+  // Đặt connection_limit=6 cho phép các câu lệnh Promise.all song song trong trang chạy mượt mà không bị nghẽn hàng đợi.
+  url = url.replace(/connection_limit=\d+/g, "connection_limit=6");
   if (!url.includes("connection_limit=")) {
     const separator = url.includes("?") ? "&" : "?";
-    url = `${url}${separator}connection_limit=3`;
+    url = `${url}${separator}connection_limit=6`;
   }
   if (url.includes("pool_timeout=")) {
     url = url.replace(/pool_timeout=\d+/g, "pool_timeout=10");
