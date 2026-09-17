@@ -122,7 +122,7 @@ export default function CheckoutClient({
       } else {
         setManualCheckMsg({
           type: "info",
-          text: "Cổng PayOS chưa ghi nhận giao dịch thành công. Vui lòng đảm bảo bạn đã chuyển đúng số tiền và nội dung CK, hoặc đợi 30s - 1 phút nếu ngân hàng đang xử lý."
+          text: "Hệ thống chưa ghi nhận tiền về tài khoản. Vui lòng đảm bảo bạn đã chuyển đúng số tiền và nội dung chuyển khoản, hoặc đợi từ 30 giây đến 1 phút nếu ngân hàng đang xử lý."
         });
       }
     } catch (e: any) {
@@ -132,7 +132,7 @@ export default function CheckoutClient({
     }
   };
 
-  // ⚡ Tự động quét giao dịch PayOS theo thời gian thực (In-App Realtime Settlement)
+  // ⚡ Tự động quét giao dịch chuyển khoản theo thời gian thực (giãn cách 3.5s để tiết kiệm tài nguyên máy chủ)
   useEffect(() => {
     if (!showPaymentModal || !paymentData?.orderCode || isPaidSuccess) return;
 
@@ -150,7 +150,7 @@ export default function CheckoutClient({
       } catch (e) {
         console.error("Polling payment status error:", e);
       }
-    }, 2000);
+    }, 3500);
 
     return () => clearInterval(interval);
   }, [showPaymentModal, paymentData, isPaidSuccess, router]);
@@ -806,21 +806,21 @@ export default function CheckoutClient({
               <div className="flex justify-between items-center text-amber-950">
                 <div className="space-y-0.5">
                   <p className="font-bold flex items-center gap-1.5 text-xs">
-                    <ShieldCheck size={14} className="text-emerald-700" /> Tiền cọc Bảo Chứng (Escrow):
+                    <ShieldCheck size={14} className="text-emerald-700" /> Tiền cọc bảo chứng (Hoàn lại 100%):
                   </p>
-                  <span className="text-[10px] text-amber-800 block">Tự động hoàn cọc 100% khi trả đồ an toàn</span>
+                  <span className="text-[10px] text-amber-800 block">Tự động hoàn trả 100% tiền cọc khi trả đồ an toàn</span>
                 </div>
                 <span className="font-bold font-mono text-sm text-amber-900 shrink-0">+{actualDeposit.toLocaleString('vi-VN')}đ</span>
               </div>
               <div className="pt-1.5 border-t border-amber-200/60 flex items-center justify-between text-[10px]">
                 <span className="text-emerald-800 font-medium flex items-center gap-1">
                   <ShieldCheck size={12} className="text-emerald-700" />
-                  {fastTrackMode ? "Chế độ Fast-Track Trust kích hoạt" : "Cơ chế Niềm tin Lũy tiến (Progressive Trust)"}
+                  {fastTrackMode ? "Đã kích hoạt Bảo chứng nhanh" : "Cơ chế Tích lũy uy tín thành viên"}
                 </span>
-                <span className="text-stone-500">Mục tiêu: Cọc 0đ - 50%</span>
+                <span className="text-stone-500">Mục tiêu: Miễn cọc 0đ - 50%</span>
               </div>
               <p className="text-[9.5px] text-stone-500 italic leading-snug">
-                Trả đồ đúng hạn ở đơn này để tích lũy Trust Score và tự động mở khóa ưu đãi giảm cọc cho các đơn tiếp theo!
+                Trả đồ đúng hạn ở đơn này để nâng cao điểm tín nhiệm và tự động mở khóa ưu đãi giảm tiền cọc cho các đơn tiếp theo!
               </p>
             </div>
           )}
@@ -830,7 +830,7 @@ export default function CheckoutClient({
               <div className="flex items-center gap-1.5">
                 <span className="block font-medium">Cước vận chuyển 2 chiều GHN:</span>
                 <span className="text-[9px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200/60 font-ui">
-                  Block 5K
+                  Đồng giá 5.000đ
                 </span>
               </div>
               <span className="text-[9.5px] text-stone-400 block">San sẻ 50/50: Khách trả chiều đi • Chiều trả đồ 0đ</span>
@@ -840,20 +840,20 @@ export default function CheckoutClient({
             </span>
           </div>
 
-          {/* Phân tách biểu phí: Phí dịch vụ 0% Founding 100 */}
+          {/* Phân tách biểu phí: Phí dịch vụ 0% Thành viên sáng lập */}
           <div className="flex justify-between items-center py-0.5">
             <span>Phí dịch vụ tuần hoàn (CLOOP):</span>
             <div className="flex items-center gap-1.5">
               <span className="text-stone-400 line-through font-mono text-[11px]">12%</span>
               <span className="font-bold text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded text-[9.5px] font-ui">
-                0% (FOUNDING 100)
+                0% (Thành viên sáng lập)
               </span>
             </div>
           </div>
 
           {/* Phân tách biểu phí: Phí cổng thanh toán / Ngân hàng */}
           <div className="flex justify-between items-center py-0.5">
-            <span>Phí cổng thanh toán VietQR (ACB):</span>
+            <span>Phí cổng thanh toán chuyển khoản (ACB):</span>
             <span className="font-bold text-emerald-800 text-[11px] font-ui">
               0đ (CLOOP Trợ giá)
             </span>
@@ -863,7 +863,7 @@ export default function CheckoutClient({
           <div className="pt-3.5 border-t border-stone-200 flex justify-between items-baseline">
             <div>
               <span className="text-xs uppercase font-bold text-stone-500 tracking-wider">Tổng thanh toán:</span>
-              <p className="text-[10px] text-stone-400">Bao gồm cọc hoàn lại & phí ship</p>
+              <p className="text-[10px] text-stone-400">Bao gồm tiền cọc hoàn lại & phí vận chuyển</p>
             </div>
             <span className="font-heading text-2xl font-black text-[#183A2D] font-mono">
               {totalAmount.toLocaleString('vi-VN')}đ
@@ -877,7 +877,7 @@ export default function CheckoutClient({
             <ShieldCheck size={13} className="text-emerald-800" /> Cam Kết Bảo Chứng CLOOP
           </p>
           <p className="text-stone-500 leading-relaxed font-light text-[10.5px]">
-            Tiền của bạn được giữ an toàn tại Két Escrow và chỉ giải ngân cho chủ tủ khi bạn đã nhận đúng mẫu, đúng size và hoàn tất thời gian trải nghiệm.
+            Tiền của bạn được giữ an toàn tại Két bảo chứng CLOOP và chỉ giải ngân cho chủ tủ khi bạn đã nhận đúng mẫu, đúng kích cỡ và hoàn tất thời gian trải nghiệm.
           </p>
         </div>
 
@@ -1369,7 +1369,7 @@ export default function CheckoutClient({
           </div>
         )}
 
-        {/* ⚡ FAST-TRACK TRUST (WHALE BYPASS CHO KHÁCH HÀNG VIP MỚI) */}
+        {/* ⚡ BẢO CHỨNG NHANH CHO THÀNH VIÊN MỚI */}
         {isRental && (
           <div className={`p-4 rounded-xl border transition-all text-xs font-body ${fastTrackMode ? 'bg-emerald-50/90 border-emerald-300' : 'bg-stone-50/90 border-stone-200'}`}>
             <label className="flex items-start gap-3 cursor-pointer">
@@ -1385,23 +1385,23 @@ export default function CheckoutClient({
               <div className="space-y-1">
                 <div className="font-bold text-[#183A2D] flex items-center gap-1.5 font-ui">
                   <ShieldCheck size={14} className="text-emerald-700" />
-                  Kích hoạt Fast-Track Trust (Vượt trần hạn mức cho thành viên mới)
+                  Kích hoạt Bảo chứng nhanh (Mở rộng hạn mức thuê đồ cho thành viên mới)
                 </div>
                 <p className="text-stone-500 text-[11px] leading-relaxed">
-                  Cho phép bạn thuê ngay trang phục giá trị cao mà không bị giới hạn bởi hạn mức Exposure ban đầu, bằng cơ chế cọc bảo chứng 100% minh bạch qua VietQR Escrow.
+                  Cho phép bạn thuê ngay trang phục giá trị cao mà không bị giới hạn bởi hạn mức ban đầu, với cơ chế tiền cọc được giữ an toàn 100% và hoàn lại ngay sau khi hoàn tất trải nghiệm.
                 </p>
               </div>
             </label>
             {requiresFastTrackWarning && !fastTrackMode && (
               <div className="mt-2.5 p-2 bg-amber-100/70 border border-amber-300 rounded-lg text-amber-900 text-[11px] font-medium flex items-center gap-1.5">
                 <AlertCircle size={14} className="shrink-0 text-amber-700" />
-                <span>Món đồ vượt hạn mức tài sản tạm thời. Vui lòng tick chọn ô trên để tiếp tục thuê!</span>
+                <span>Trang phục có giá trị vượt hạn mức ban đầu. Vui lòng đánh dấu chọn vào ô trên để tiếp tục thuê đồ!</span>
               </div>
             )}
           </div>
         )}
 
-        {/* NÚT BẤM THANH TOÁN VIETQR PAYOS */}
+        {/* NÚT BẤM THANH TOÁN CHUYỂN KHOẢN */}
         <div className="pt-2 mt-auto">
           <button
             type="button"
@@ -1411,17 +1411,17 @@ export default function CheckoutClient({
           >
             {isProcessingPayment ? (
               <>
-                <Loader2 size={16} className="animate-spin" /> Đang Tạo Mã VietQR PayOS...
+                <Loader2 size={16} className="animate-spin" /> Đang tạo mã chuyển khoản an toàn...
               </>
             ) : (
               <>
-                Xác Nhận & Thanh Toán VietQR ({totalAmount.toLocaleString('vi-VN')}đ) ➔
+                Xác Nhận & Thanh Toán ({totalAmount.toLocaleString('vi-VN')}đ) ➔
               </>
             )}
           </button>
 
           <p className="text-center text-[10.5px] text-stone-400 mt-2.5 font-ui">
-            Chuyển khoản an toàn 24/7 qua mã VietQR Ngân hàng ACB • Hộ chiếu số bảo chứng
+            Chuyển khoản an toàn 24/7 qua mã QR Ngân hàng ACB • Bảo chứng hoàn tiền tự động
           </p>
         </div>
 
@@ -1552,7 +1552,7 @@ export default function CheckoutClient({
                   THANH TOÁN THÀNH CÔNG!
                 </h3>
                 <p className="text-xs text-stone-600 leading-relaxed max-w-xs mx-auto">
-                  Hệ thống CLOOP đã xác nhận giao dịch <strong>#{paymentData.orderCode}</strong>. Tiền cọc đã được lưu an toàn tại Két Escrow.
+                  Hệ thống CLOOP đã xác nhận giao dịch <strong>#{paymentData.orderCode}</strong>. Tiền cọc đã được lưu giữ an toàn tại Két bảo chứng CLOOP.
                 </p>
                 <div className="pt-2 flex items-center justify-center gap-2 text-xs font-bold text-emerald-800 font-ui animate-pulse">
                   <Loader2 size={14} className="animate-spin" />
@@ -1563,33 +1563,33 @@ export default function CheckoutClient({
               <div className="space-y-4">
                 <div className="text-center space-y-1">
                   <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-widest bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/60 font-ui inline-block">
-                    KÉT ESCROW TỰ ĐỘNG KHÓA QUỸ
+                    KÉT BẢO CHỨNG TỰ ĐỘNG KHÓA TIỀN CỌC
                   </span>
                   <h3 className="font-heading text-xl font-bold text-[#0A2517] pt-1">
-                    Quét Mã VietQR Chuyển Khoản
+                    Quét Mã QR Chuyển Khoản
                   </h3>
                   <p className="text-[11px] text-stone-500 font-ui">
-                    Mở app ngân hàng bất kỳ để quét mã QR thanh toán tức thì
+                    Mở ứng dụng ngân hàng bất kỳ để quét mã QR thanh toán tức thì
                   </p>
                 </div>
 
-                {/* Khung Mã QR Chuẩn VietQR */}
+                {/* Khung Mã QR Thanh Toán */}
                 <div className="flex flex-col items-center justify-center bg-[#FAF9F5] p-4 rounded-2xl border border-[#E9E2D8]">
                   <div className="relative w-56 h-56 bg-white p-2 rounded-xl border border-stone-200 shadow-xs flex items-center justify-center">                    {paymentData.bin && paymentData.accountNumber ? (
                       <img
                         src={`https://api.vietqr.io/image/${paymentData.bin}-${paymentData.accountNumber}-compact2.jpg?amount=${paymentData.amount}&addInfo=${encodeURIComponent(paymentData.description)}&accountName=${encodeURIComponent(paymentData.accountName || 'CLOOP')}`}
-                        alt="Ma VietQR Thanh toan"
+                        alt="Ma QR Thanh toan"
                         className="w-full h-full object-contain"
                       />
                     ) : paymentData.qrCode ? (
                       <img
                         src={`https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent(paymentData.qrCode)}`}
-                        alt="Ma VietQR Thanh toan"
+                        alt="Ma QR Thanh toan"
                         className="w-full h-full object-contain"
                       />
                     ) : (
                       <div className="text-xs text-stone-500 text-center px-4">
-                        Dang cho PayOS tra ve ma QR an toan...
+                        Đang tạo mã QR thanh toán an toàn...
                       </div>
                     )}
                   </div>
@@ -1667,7 +1667,7 @@ export default function CheckoutClient({
                   >
                     {isManualChecking ? (
                       <>
-                        <Loader2 size={14} className="animate-spin" /> Đang kiểm tra giao dịch PayOS...
+                        <Loader2 size={14} className="animate-spin" /> Đang kiểm tra trạng thái chuyển khoản...
                       </>
                     ) : (
                       <>
@@ -1691,7 +1691,7 @@ export default function CheckoutClient({
                       rel="noopener noreferrer"
                       className="w-full py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl font-ui text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
-                      <ExternalLink size={13} /> Mở trang xác nhận trên PayOS
+                      <ExternalLink size={13} /> Mở trang xác nhận thanh toán ngân hàng
                     </a>
                   )}
 

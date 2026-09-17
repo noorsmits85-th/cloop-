@@ -23,7 +23,7 @@ export default function HowItWorksTabs() {
       icon: Calendar,
       title: "Chọn Món Đồ & Ngày Thuê",
       desc: "Khám phá hàng nghìn thiết kế độc quyền từ tủ đồ của cộng đồng với chi phí chỉ bằng 10% giá mua mới.",
-      highlight: "Két Escrow bảo chứng 100% tiền cọc an toàn"
+      highlight: "Két bảo chứng giữ 100% tiền cọc an toàn"
     },
     {
       step: "02",
@@ -53,7 +53,7 @@ export default function HowItWorksTabs() {
       step: "02",
       icon: ShieldCheck,
       title: "Bảo Chứng Cọc 100%",
-      desc: "Khách thuê đặt cọc 100% giá trị qua Két Escrow trước khi bạn gửi đồ, đảm bảo tài sản luôn an toàn.",
+      desc: "Khách thuê đặt cọc 100% giá trị qua quỹ bảo chứng trước khi bạn gửi đồ, đảm bảo tài sản luôn an toàn.",
       highlight: "Hợp đồng điện tử minh bạch từng đơn"
     },
     {

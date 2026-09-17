@@ -621,17 +621,17 @@ export function ProfileClient({
             ></div>
           </div>
           <div className="grid grid-cols-4 gap-2 mt-2 text-center text-[10px] font-bold text-stone-400">
-            <span className={currentTier === "LEVEL_0_NEW" ? "text-emerald-800 font-extrabold" : ""}>Level 0 (Mới)</span>
-            <span className={currentTier === "LEVEL_1_VERIFIED" ? "text-emerald-800 font-extrabold" : ""}>Level 1 (Xác thực)</span>
-            <span className={currentTier === "LEVEL_2_TRUSTED" ? "text-emerald-800 font-extrabold" : ""}>Level 2 (Khách quen)</span>
-            <span className={currentTier === "LEVEL_3_VIP" ? "text-amber-800 font-extrabold" : ""}>Level 3 (VIP Club)</span>
+            <span className={currentTier === "LEVEL_0_NEW" ? "text-emerald-800 font-extrabold" : ""}>Hạng 0 (Mới)</span>
+            <span className={currentTier === "LEVEL_1_VERIFIED" ? "text-emerald-800 font-extrabold" : ""}>Hạng 1 (Xác thực)</span>
+            <span className={currentTier === "LEVEL_2_TRUSTED" ? "text-emerald-800 font-extrabold" : ""}>Hạng 2 (Khách quen)</span>
+            <span className={currentTier === "LEVEL_3_VIP" ? "text-amber-800 font-extrabold" : ""}>Hạng 3 (Thân thiết)</span>
           </div>
         </div>
 
-        {/* Thẻ Chỉ Số Quản Trị Rủi Ro (Exposure Limit & Deposit Rate) */}
+        {/* Thẻ Chỉ Số Quản Trị Rủi Ro */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
           <div className="bg-[#FAF9F5] p-4 rounded-2xl border border-[#E9E2D8] space-y-1">
-            <span className="text-[10px] uppercase font-bold text-stone-400 tracking-wider">Hạn mức rủi ro tài sản (Exposure Limit)</span>
+            <span className="text-[10px] uppercase font-bold text-stone-400 tracking-wider">Hạn mức bảo lãnh thuê đồ</span>
             <div className="text-xl sm:text-2xl font-mono font-bold text-[#183A2D]">
               {tierConfig.exposureLimit.toLocaleString('vi-VN')}đ
             </div>

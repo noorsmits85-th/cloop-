@@ -26,7 +26,7 @@ export default function SignatureCircularFlow() {
       badge: "VÒNG ĐỜI #1 • KHỞI ĐẦU",
       tagline: "Trải nghiệm đồ thiết kế với 10% chi phí",
       title: "Trải Nghiệm Đồ Thiết Kế Với 10% Chi Phí",
-      desc: "Chiếc đầm dạ hội bắt đầu hành trình từ tủ đồ của một nhà sáng tạo. Khách thuê nhận đồ sạch thơm chuẩn spa và được bảo chứng 100% qua Két Escrow.",
+      desc: "Chiếc đầm dạ hội bắt đầu hành trình từ tủ đồ của một nhà sáng tạo. Khách thuê nhận đồ sạch thơm chuẩn spa và được bảo chứng 100% qua Két bảo chứng an toàn CLOOP.",
       img: "/step1_phone.jpg",
       garmentDetail: "Đầm Lụa Sequin Prom • CLP-8821",
       lifecycleStory: "Xuất phát từ tủ đồ @olivia.style tại Hà Nội",

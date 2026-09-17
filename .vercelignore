@@ -1,0 +1,30 @@
+﻿# Word Documents & Reports (Giam dung luong Vercel)
+*.docx
+*.md
+!README.md
+
+# Non-production directories
+docs/
+scripts/
+tests/
+scratch/
+
+# Database migration & debug scripts
+*.sql
+*.py
+check_*.js
+exec_*.js
+kill_*.js
+seed_*.js
+fast_migrate.*
+fix_*.js
+fix_*.py
+run_*.js
+update_*.js
+cleanup.js
+refactor-dashboard.js
+mass_replace.js
+
+# Cache & Build logs
+*.log
+tsconfig.tsbuildinfo

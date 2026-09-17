@@ -271,8 +271,8 @@ export default async function MyClosetOverviewPage() {
               <Sprout size={18} />
             </div>
             <div className="space-y-0.5 relative z-20">
-              <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Điểm Green Pts</div>
-              <div className="text-2xl font-mono font-black text-[#183A2D]">{ecoStats.greenPoints.toLocaleString()} Pts</div>
+              <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Điểm Tích Lũy Xanh</div>
+              <div className="text-2xl font-mono font-black text-[#183A2D]">{ecoStats.greenPoints.toLocaleString()} Điểm</div>
               <p className="text-[11px] text-gray-500 font-medium">Định danh người dùng xanh</p>
             </div>
           </div>

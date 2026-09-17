@@ -305,7 +305,7 @@ export function OrdersClient({
     try {
       const res = await completeOrderAction(orderId);
       if (res.success) {
-        toast.success("🎉 Đã hoàn tất đơn hàng!", { description: "Két Escrow đã hoàn trả 100% tiền cọc và mở đồ cho thuê tiếp." });
+        toast.success("🎉 Đã hoàn tất đơn hàng!", { description: "Hệ thống đã hoàn trả 100% tiền cọc an toàn và mở đồ cho thuê tiếp." });
         router.refresh();
       } else {
         toast.error("Lỗi hoàn tất", { description: res.error });

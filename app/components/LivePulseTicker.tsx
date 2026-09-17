@@ -20,7 +20,7 @@ const PULSE_EVENTS: PulseItem[] = [
   {
     id: "escrow-vault",
     icon: <ShieldCheck className="w-3.5 h-3.5 text-teal-300" />,
-    text: "Bảo chứng an toàn 100% qua Két Escrow giữ cọc và thanh toán VietQR tự động",
+    text: "Bảo chứng an toàn 100% giữ cọc và thanh toán chuyển khoản tự động",
     tag: "KÉT BẢO CHỨNG"
   },
   {

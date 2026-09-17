@@ -362,7 +362,7 @@ export default function LoginPage() {
                     }}
                     className="w-full py-2.5 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                   >
-                    <span>⚡ Đăng nhập nhanh 1-chạm (Tài khoản mẫu Pilot)</span>
+                    <span>⚡ Đăng nhập nhanh 1-chạm (Tài khoản trải nghiệm)</span>
                   </button>
                 </div>
               </div>

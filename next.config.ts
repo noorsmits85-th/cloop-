@@ -18,14 +18,20 @@ const nextConfig: NextConfig = {
       "node_modules/webpack",
       "node_modules/terser",
       "scripts/**",
+      "tests/**",
+      "scratch/**",
+      "docs/**",
       "prisma/seed.ts",
       ".git/**",
       "**/*.md",
       "**/*.docx",
+      "**/*.sql",
+      "**/*.py",
     ],
   },
-  // 📸 VÁ LỖI HÌNH ẢNH: Mở khóa ranh giới bảo mật cho Cloudinary, Supabase, Google Storage, Unsplash
+  // 📸 GIẢI PHÓNG 100% QUOTA IMAGE OPTIMIZATION VERCEL (Xóa bỏ cảnh báo đỏ 1.000 ảnh/tháng)
   images: {
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: "https",

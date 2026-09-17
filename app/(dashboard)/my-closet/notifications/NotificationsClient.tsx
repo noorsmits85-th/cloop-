@@ -130,7 +130,7 @@ export function NotificationsClient({
             Thông Báo & Lịch Sử Hoạt Động
           </h1>
           <p className="text-xs text-stone-500 font-medium">
-            Theo dõi chi tiết ngày giờ, trạng thái đơn thuê, dòng tiền Escrow và điểm thưởng ESG.
+            Theo dõi chi tiết ngày giờ, trạng thái đơn thuê, dòng tiền bảo chứng cọc và điểm thưởng xanh.
           </p>
         </div>
 
@@ -272,9 +272,9 @@ export function NotificationsClient({
               {activeTab === "ORDER"
                 ? "Bạn chưa có đơn thuê hoặc cho thuê nào. Khi có khách thuê trang phục của bạn hoặc bạn đặt thuê đồ, tiến trình vận chuyển sẽ hiển thị tại đây."
                 : activeTab === "WALLET"
-                ? "Lịch sử nhận tiền thuê, hoàn cọc ký quỹ Escrow và rút tiền về tài khoản ngân hàng sẽ được cập nhật tự động khi phát sinh giao dịch."
+                ? "Lịch sử nhận tiền thuê, hoàn cọc ký quỹ an toàn và rút tiền về tài khoản ngân hàng sẽ được cập nhật tự động khi phát sinh giao dịch."
                 : activeTab === "COIN"
-                ? "Điểm Lá Xanh ESG nhận được từ các nhiệm vụ tuần hoàn hoặc nạp thêm sẽ được hiển thị chi tiết tại đây."
+                ? "Điểm Lá Xanh nhận được từ các nhiệm vụ tuần hoàn hoặc nạp thêm sẽ được hiển thị chi tiết tại đây."
                 : "Mọi hoạt động mới nhất về đơn thuê, dòng tiền và điểm thưởng cá nhân của bạn sẽ được hiển thị đầy đủ tại đây."}
             </p>
             {activeTab === "ORDER" && (

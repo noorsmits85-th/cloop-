@@ -333,7 +333,7 @@ export function WalletClient({
                 <CreditCard size={15} /> Ví Tiền Mặt (VNĐ)
               </span>
               <span className="text-[10px] bg-white/10 backdrop-blur-md px-2.5 py-0.5 rounded-full text-emerald-200 border border-white/10 flex items-center gap-1 font-mono font-medium">
-                <ShieldCheck size={12} /> Ký Quỹ Escrow
+                <ShieldCheck size={12} /> Ký Quỹ Bảo Chứng
               </span>
             </div>
 

@@ -40,7 +40,7 @@ export default function MarketingLoopShowcase() {
     {
       step: "04",
       title: "Thu Hồi & Nhả Cọc",
-      meta: "+50 Green Pts",
+      meta: "+50 Điểm Xanh",
       img: "/hero_warm.jpg",
       caption: "Shipper nhận lại tận nơi"
     }
@@ -50,7 +50,7 @@ export default function MarketingLoopShowcase() {
     {
       step: "01",
       title: "Đăng Tủ 30 Giây",
-      meta: "AI Auto-Fill",
+      meta: "AI Tự Động Điền",
       img: "/vintage_coat.jpg",
       caption: "Tự điền thông số & giá thuê"
     },
@@ -177,7 +177,7 @@ export default function MarketingLoopShowcase() {
           <div className="flex items-center gap-2.5 p-3 bg-white rounded-xl border border-stone-200/80 text-left shadow-2xs">
             <ShieldCheck size={18} strokeWidth={1.5} className="text-emerald-800 shrink-0" />
             <div className="leading-tight">
-              <p className="text-xs font-bold text-[#183A2D]">Két Cọc Escrow</p>
+              <p className="text-xs font-bold text-[#183A2D]">Bảo Chứng An Toàn</p>
               <p className="text-[10px] text-stone-500 font-light">Hoàn cọc 100% khi trả đồ</p>
             </div>
           </div>
@@ -185,7 +185,7 @@ export default function MarketingLoopShowcase() {
           <div className="flex items-center gap-2.5 p-3 bg-white rounded-xl border border-stone-200/80 text-left shadow-2xs">
             <Lock size={18} strokeWidth={1.5} className="text-emerald-800 shrink-0" />
             <div className="leading-tight">
-              <p className="text-xs font-bold text-[#183A2D]">Định Danh Bank-KYC</p>
+              <p className="text-xs font-bold text-[#183A2D]">Định Danh Tài Khoản</p>
               <p className="text-[10px] text-stone-500 font-light">Rút tiền về STK chính chủ</p>
             </div>
           </div>
@@ -193,7 +193,7 @@ export default function MarketingLoopShowcase() {
           <div className="flex items-center gap-2.5 p-3 bg-white rounded-xl border border-stone-200/80 text-left shadow-2xs">
             <Leaf size={18} strokeWidth={1.5} className="text-emerald-800 shrink-0" />
             <div className="leading-tight">
-              <p className="text-xs font-bold text-[#183A2D]">Điểm Green Pts</p>
+              <p className="text-xs font-bold text-[#183A2D]">Điểm Tích Lũy Xanh</p>
               <p className="text-[10px] text-stone-500 font-light">Giảm đến 50% tiền cọc</p>
             </div>
           </div>
