@@ -202,7 +202,7 @@ export default function MarketingLoopShowcase() {
             <Award size={18} strokeWidth={1.5} className="text-emerald-800 shrink-0" />
             <div className="leading-tight">
               <p className="text-xs font-bold text-[#183A2D]">Đánh Giá 2 Chiều</p>
-              <p className="text-[10px] text-stone-500 font-light">Minh bạch chuẩn Airbnb</p>
+              <p className="text-[10px] text-stone-500 font-light">Minh bạch & An tâm</p>
             </div>
           </div>
         </div>
