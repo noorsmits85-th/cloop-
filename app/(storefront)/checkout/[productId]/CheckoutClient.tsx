@@ -827,13 +827,8 @@ export default function CheckoutClient({
 
           <div className="flex justify-between items-center py-0.5">
             <div>
-              <div className="flex items-center gap-1.5">
-                <span className="block font-medium">Cước vận chuyển 2 chiều GHN:</span>
-                <span className="text-[9px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200/60 font-ui">
-                  Đồng giá 5.000đ
-                </span>
-              </div>
-              <span className="text-[9.5px] text-stone-400 block">San sẻ 50/50: Khách trả chiều đi • Chiều trả đồ 0đ</span>
+              <span className="block font-medium">Phí vận chuyển:</span>
+              <span className="text-[9.5px] text-stone-400 block">Giao tận nơi • Miễn phí chiều gửi trả</span>
             </div>
             <span className="font-bold font-mono text-stone-800">
               {isLoadingShipping ? "Đang tính..." : selectedQuote ? (shippingFee === 0 ? "0đ (Trực tiếp)" : `+${shippingFee.toLocaleString('vi-VN')}đ`) : "Chưa chọn địa chỉ"}
@@ -1315,7 +1310,7 @@ export default function CheckoutClient({
                               {isGHN ? (
                                 <span className="inline-flex items-center gap-1 text-[9.5px] font-medium text-emerald-700 font-mono mt-0.5">
                                   <CheckCircle2 size={10} className="text-emerald-600" />
-                                  {sq.quote.deliverySource === "GHN_GATEWAY" ? "GHN Phản hồi trực tiếp" : "Tuyến chuẩn GHN"}
+                                  Giao hàng tận nơi
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center gap-1 text-[9.5px] font-medium text-stone-500 font-mono mt-0.5">

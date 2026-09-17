@@ -206,9 +206,7 @@ export async function getShippingQuotes(
     {
       provider: "GHN",
       serviceId: "standard",
-      name: isRental 
-        ? `Giao Tiêu Chuẩn GHN (San sẻ 50/50: Chiều đi - ${dynamicResult.zoneLabel})`
-        : `Giao Tiêu Chuẩn GHN (${dynamicResult.zoneLabel})`,
+      name: "Giao Hàng Tiêu Chuẩn (Tận nơi)",
       fee: dynamicResult.fee,
       originalFee: dynamicResult.originalFee,
       discount: dynamicResult.originalFee - dynamicResult.fee,
@@ -216,14 +214,12 @@ export async function getShippingQuotes(
       expectedDeliveryDate,
       expectedDeliveryRange,
       deliverySource: "ESTIMATED",
-      packagingNote: isRental 
-        ? `Cần đồ nhanh (1-2 ngày). Cước chiều đi (${dynamicResult.fee.toLocaleString('vi-VN')}đ - Block 5K). Chiều trả đồ về miễn phí 0đ` 
-        : "Giao nhận tiêu chuẩn GHN bưu tá đến lấy tận nơi"
+      packagingNote: "Giao nhanh 1–2 ngày tận nơi. Miễn phí chiều gửi trả đồ."
     },
     {
       provider: "DIRECT",
       serviceId: "direct_pickup",
-      name: "Tự Giao Nhận Trực Tiếp (Hẹn gặp linh hoạt)",
+      name: "Tự Giao Nhận Trực Tiếp",
       fee: 0,
       originalFee: 0,
       discount: 0,
@@ -231,7 +227,7 @@ export async function getShippingQuotes(
       expectedDeliveryDate: "Trong ngày",
       expectedDeliveryRange: "Trong ngày",
       deliverySource: "ESTIMATED",
-      packagingNote: "Hai bên tự hẹn gặp trao đổi và gửi trả đồ trực tiếp (Miễn phí 0đ)"
+      packagingNote: "Hai bên hẹn gặp trao đổi và bàn giao trực tiếp (Miễn phí)"
     }
   ];
 

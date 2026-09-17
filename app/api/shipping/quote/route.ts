@@ -195,7 +195,7 @@ export async function POST(req: Request) {
             {
               provider: "GHN",
               serviceId: "standard",
-              name: isRental ? "Giao Tiêu Chuẩn GHN (San sẻ 50/50: Chiều đi)" : "Giao Tiêu Chuẩn GHN (1 Chiều)",
+              name: "Giao Hàng Tiêu Chuẩn (Tận nơi)",
               fee: normalizedFee,
               originalFee: normalizedFee + 10000,
               discount: 10000,
@@ -205,14 +205,12 @@ export async function POST(req: Request) {
               expectedDeliveryISODate,
               leadtimeTimestamp,
               deliverySource: "GHN_GATEWAY",
-              packagingNote: isRental 
-                ? `Cần đồ nhanh (1-2 ngày). Cước chiều đi (${normalizedFee.toLocaleString('vi-VN')}đ). Chiều trả về miễn phí 0đ` 
-                : "Bưu tá GHN đến lấy và giao nhanh tận nơi"
+              packagingNote: "Giao nhanh 1–2 ngày tận nơi. Miễn phí chiều gửi trả đồ."
             },
             {
               provider: "DIRECT",
               serviceId: "direct_pickup",
-              name: "Tự Giao Nhận Trực Tiếp (Hẹn gặp linh hoạt)",
+              name: "Tự Giao Nhận Trực Tiếp",
               fee: 0,
               originalFee: 0,
               discount: 0,
@@ -220,7 +218,7 @@ export async function POST(req: Request) {
               expectedDeliveryDate: "Trong ngày",
               expectedDeliveryRange: "Trong ngày",
               deliverySource: "GHN_GATEWAY",
-              packagingNote: "Hai bên tự hẹn gặp trao đổi và gửi trả đồ trực tiếp (Miễn phí 0đ)"
+              packagingNote: "Hai bên hẹn gặp trao đổi và bàn giao trực tiếp (Miễn phí)"
             }
           ];
         }
