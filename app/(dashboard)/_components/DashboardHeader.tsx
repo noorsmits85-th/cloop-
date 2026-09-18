@@ -7,7 +7,6 @@ import { supabase } from "@/lib/supabase";
 import { getUserNotificationsAction, NotificationItem } from "@/app/actions/notification";
 import { useAuthModal } from "@/app/AuthModalContext";
 import { toast } from "sonner";
-import { fastLoginAction } from "@/app/(storefront)/login/actions";
 
 export function DashboardHeader({
   currentUser,
@@ -25,30 +24,6 @@ export function DashboardHeader({
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoadingNotifs, setIsLoadingNotifs] = useState(false);
-  const [isQuickLoggingIn, setIsQuickLoggingIn] = useState(false);
-
-  const handleQuickLogin = async () => {
-    setIsQuickLoggingIn(true);
-    try {
-      const res = await fastLoginAction({ redirectTo: window.location.pathname || '/my-closet' });
-      if (res?.error) {
-        toast.error("Lỗi đăng nhập: " + res.error);
-      } else if (res?.user) {
-        toast.success("Đăng nhập thành công!");
-        setCurrentUser({
-          name: res.user.name || "Trang",
-          email: res.user.email || "th4212044@gmail.com",
-          isLoggedIn: true,
-          id: res.user.id
-        });
-        window.location.href = res.redirectUrl || '/my-closet';
-      }
-    } catch (err: any) {
-      toast.error(err?.message || "Lỗi đăng nhập nhanh");
-    } finally {
-      setIsQuickLoggingIn(false);
-    }
-  };
   const notifRef = useRef<HTMLDivElement>(null);
 
   // ⚡ TẢI THÔNG BÁO THỰC TẾ TỪ SERVER VÀ ĐỒNG BỘ TRẠNG THÁI ĐÃ ĐỌC PERSISTENT
@@ -350,23 +325,13 @@ export function DashboardHeader({
 
         {/* User Dropdown Profile or Login Button */}
         {!currentUser?.isLoggedIn ? (
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              disabled={isQuickLoggingIn}
-              onClick={handleQuickLogin}
-              className="flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 px-3.5 py-2 rounded-full text-xs font-bold transition-all shadow-xs font-ui cursor-pointer"
-            >
-              {isQuickLoggingIn ? <Loader2 size={13} className="animate-spin" /> : <span>⚡ Đăng nhập nhanh</span>}
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowAuthModal(true)}
-              className="flex items-center gap-1.5 bg-[#183A2D] hover:bg-[#112a20] text-white px-4 py-2 rounded-full text-xs font-bold transition-all shadow-md hover:shadow-lg font-ui cursor-pointer"
-            >
-              Đăng nhập
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setShowAuthModal(true)}
+            className="flex items-center gap-1.5 bg-[#183A2D] hover:bg-[#112a20] text-white px-4 py-2 rounded-full text-xs font-bold transition-all shadow-md hover:shadow-lg font-ui cursor-pointer"
+          >
+            Đăng nhập
+          </button>
         ) : (
           <div className="flex items-center gap-3 group relative cursor-pointer">
             <div className="w-10 h-10 rounded-full bg-emerald-100 border-2 border-emerald-500 flex items-center justify-center text-emerald-800 font-bold text-sm overflow-hidden shrink-0">
@@ -377,7 +342,7 @@ export function DashboardHeader({
                 {currentUser?.name || "Member"}
               </div>
               <div className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
-                <Award size={10} /> Trustworthy
+                <Award size={10} /> Thành viên uy tín
               </div>
             </div>
 
@@ -385,7 +350,7 @@ export function DashboardHeader({
             <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all transform origin-top-right scale-95 group-hover:scale-100 font-ui py-2 z-50">
               <div className="px-4 py-2 border-b border-gray-100 sm:hidden">
                 <div className="text-xs font-bold text-[#183A2D] capitalize">{currentUser?.name || "Member"}</div>
-                <div className="text-[10px] text-emerald-600 font-bold">Trustworthy</div>
+                <div className="text-[10px] text-emerald-600 font-bold">Thành viên uy tín</div>
               </div>
               <Link href="/my-closet/profile" prefetch={true} className="block px-4 py-2.5 text-xs font-medium text-gray-700 hover:bg-stone-50 hover:text-[#183A2D]">
                 Xem hồ sơ

@@ -1,14 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { login, loginWithOtp, verifyOtp, signup, resetPasswordForEmail, verifyRecoveryOtp, fastLoginAction, translateAuthError } from './actions';
-import { Mail, Lock, KeyRound, ArrowRight, Loader2, User } from 'lucide-react';
+import { login, loginWithOtp, verifyOtp, signup, resetPasswordForEmail, verifyRecoveryOtp, translateAuthError } from './actions';
+import { Mail, Lock, KeyRound, ArrowRight, Loader2, User, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/src/utils/supabase/client';
 
 export default function LoginPage() {
   const [mode, setMode] = useState<'LOGIN' | 'OTP_REQUEST' | 'OTP_VERIFY' | 'FORGOT_PASSWORD' | 'FORGOT_PASSWORD_OTP' | 'SIGNUP'>('LOGIN');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
 
   const nextUrl = typeof window !== 'undefined' 
@@ -63,7 +64,7 @@ export default function LoginPage() {
             await supabase.auth.signOut();
             setMessage({
               type: 'error',
-              text: 'Phiên làm việc đã hết hạn hoặc cookie không đồng bộ. Vui lòng bấm Đăng nhập nhanh 1-chạm bên dưới.'
+              text: 'Phiên làm việc đã hết hạn hoặc cookie không đồng bộ. Vui lòng đăng nhập lại tài khoản.'
             });
             return;
           }
@@ -215,12 +216,21 @@ export default function LoginPage() {
                   <input
                     id="password"
                     name="password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     autoComplete="current-password"
                     required
-                    className="focus:ring-[#183A2D] focus:border-[#183A2D] block w-full pl-10 sm:text-sm border-slate-300 rounded-xl py-3 border bg-slate-50"
+                    className="focus:ring-[#183A2D] focus:border-[#183A2D] block w-full pl-10 pr-10 sm:text-sm border-slate-300 rounded-xl py-3 border bg-slate-50 transition-colors"
                     placeholder="••••••••"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                    tabIndex={-1}
+                    title={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
                 </div>
               </div>
             )}
@@ -261,11 +271,20 @@ export default function LoginPage() {
                   <input
                     id="newPassword"
                     name="newPassword"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     required
-                    className="focus:ring-[#183A2D] focus:border-[#183A2D] block w-full pl-10 sm:text-sm border-slate-300 rounded-xl py-3 border bg-slate-50"
+                    className="focus:ring-[#183A2D] focus:border-[#183A2D] block w-full pl-10 pr-10 sm:text-sm border-slate-300 rounded-xl py-3 border bg-slate-50 transition-colors"
                     placeholder="••••••••"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                    tabIndex={-1}
+                    title={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
                 </div>
               </div>
             )}
@@ -335,34 +354,6 @@ export default function LoginPage() {
                       <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                     </svg>
                     <span>Facebook</span>
-                  </button>
-                </div>
-
-                {/* Nút đăng nhập nhanh 1 chạm cho môi trường Test/Dev */}
-                <div className="pt-1">
-                  <button
-                    type="button"
-                    disabled={loading}
-                    onClick={async () => {
-                      setLoading(true);
-                      setMessage(null);
-                      try {
-                        const targetUrl = nextUrl || '/my-closet';
-                        const res = await fastLoginAction({ redirectTo: targetUrl });
-                        if (res?.error) {
-                          setMessage({ type: 'error', text: translateAuthError(res.error) });
-                        } else if (res?.redirectUrl) {
-                          window.location.href = res.redirectUrl;
-                        }
-                      } catch (err: any) {
-                        setMessage({ type: 'error', text: err?.message || 'Lỗi đăng nhập nhanh' });
-                      } finally {
-                        setLoading(false);
-                      }
-                    }}
-                    className="w-full py-2.5 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-                  >
-                    <span>⚡ Đăng nhập nhanh 1-chạm (Tài khoản trải nghiệm)</span>
                   </button>
                 </div>
               </div>

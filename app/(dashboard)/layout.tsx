@@ -25,8 +25,6 @@ import {
   Loader2
 } from "lucide-react";
 import { toast } from "sonner";
-import { createClient } from "@/src/utils/supabase/client";
-import { fastLoginAction } from "@/app/(storefront)/login/actions";
 import { useAuthModal } from "@/app/AuthModalContext";
 import { DashboardHeader } from "./_components/DashboardHeader";
 import { getUserDisputeStats } from "@/app/actions/getDisputeStats";
@@ -42,31 +40,6 @@ export default function DashboardLayout({
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [disputeCount, setDisputeCount] = useState(0);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
-  const [isQuickLoggingIn, setIsQuickLoggingIn] = useState(false);
-
-  const handleQuickLogin = async () => {
-    setIsQuickLoggingIn(true);
-    try {
-      const targetUrl = pathname || '/my-closet';
-      const res = await fastLoginAction({ redirectTo: targetUrl });
-      if (res?.error) {
-        toast.error("Lỗi đăng nhập: " + res.error);
-      } else if (res?.user) {
-        toast.success("Đăng nhập thành công! Đang đồng bộ giao diện...");
-        setCurrentUser({
-          name: res.user.name || "Trang",
-          email: res.user.email || "th4212044@gmail.com",
-          isLoggedIn: true,
-          id: res.user.id
-        });
-        window.location.href = res.redirectUrl || targetUrl;
-      }
-    } catch (err: any) {
-      toast.error(err?.message || "Lỗi đăng nhập nhanh");
-    } finally {
-      setIsQuickLoggingIn(false);
-    }
-  };
 
   useEffect(() => {
     // 🛡️ CHỈ TẢI DISPUTE NẾU USER ĐÃ ĐĂNG NHẬP
@@ -214,7 +187,7 @@ export default function DashboardLayout({
           </button>
         </div>
 
-        {/* ⚡ BANNER DÀNH CHO KHÁCH: ĐĂNG NHẬP NHANH 1-CHẠM TRỰC TIẾP TRÊN THANH ĐIỀU HƯỚNG */}
+        {/* BANNER DÀNH CHO KHÁCH: ĐĂNG NHẬP TRỰC TIẾP TRÊN THANH ĐIỀU HƯỚNG */}
         {!currentUser?.isLoggedIn && (
           <div className="mx-4 mt-4 p-3.5 bg-gradient-to-br from-emerald-50/90 to-teal-50/70 border border-emerald-200/80 rounded-2xl shadow-xs">
             <div className="flex items-center gap-2 mb-1.5">
@@ -229,15 +202,10 @@ export default function DashboardLayout({
             </p>
             <button
               type="button"
-              disabled={isQuickLoggingIn}
-              onClick={handleQuickLogin}
+              onClick={() => setShowAuthModal(true)}
               className="w-full py-2.5 px-3 bg-[#183A2D] hover:bg-[#112a20] text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer font-ui"
             >
-              {isQuickLoggingIn ? (
-                <Loader2 size={14} className="animate-spin" />
-              ) : (
-                <span>⚡ Đăng nhập nhanh 1-chạm</span>
-              )}
+              <span>Đăng nhập tài khoản</span>
             </button>
           </div>
         )}
@@ -264,7 +232,7 @@ export default function DashboardLayout({
                       if (!currentUser?.isLoggedIn) {
                         e.preventDefault();
                         toast.info(`Vui lòng đăng nhập để truy cập "${item.name}"`, {
-                          description: "Bấm Đăng nhập nhanh 1-chạm ở đầu menu để vào ngay.",
+                          description: "Vui lòng đăng nhập tài khoản để tiếp tục trải nghiệm.",
                           duration: 4000
                         });
                         setShowAuthModal(true);

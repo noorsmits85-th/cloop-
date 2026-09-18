@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { X, Shield } from 'lucide-react';
+import { X, Shield, Eye, EyeOff } from 'lucide-react';
 import { createClient } from '@/src/utils/supabase/client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { loginWithCredentials, registerWithCredentials } from '@/app/(storefront)/login/actions';
@@ -23,6 +23,7 @@ export default function AuthModal({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
@@ -170,7 +171,25 @@ export default function AuthModal({
           {(mode === 'LOGIN' || mode === 'SIGNUP') && (
             <div className="space-y-1">
               <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Mật khẩu bảo mật</label>
-              <input type="password" name="password" autoComplete="current-password" required placeholder="••••••••" className={`w-full px-4 py-2.5 border rounded-xl text-xs font-medium outline-none transition-colors ${darkMode ? "bg-[#0F1720] border-[#2B3946] text-white focus:border-emerald-500" : "bg-[#F4F1EA] border-[#E9E2D8] text-[#183A2D] focus:border-[#183A2D] focus:bg-white"}`} />
+              <div className="relative">
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  name="password" 
+                  autoComplete="current-password" 
+                  required 
+                  placeholder="••••••••" 
+                  className={`w-full pl-4 pr-10 py-2.5 border rounded-xl text-xs font-medium outline-none transition-colors ${darkMode ? "bg-[#0F1720] border-[#2B3946] text-white focus:border-emerald-500" : "bg-[#F4F1EA] border-[#E9E2D8] text-[#183A2D] focus:border-[#183A2D] focus:bg-white"}`} 
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition cursor-pointer p-1"
+                  tabIndex={-1}
+                  title={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
           )}
 

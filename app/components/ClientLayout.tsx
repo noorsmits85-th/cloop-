@@ -7,10 +7,10 @@ import Link from "next/link";
 import { usePathname, useSearchParams, useRouter } from "next/navigation"; 
 import { 
   Search, ShoppingBag, Sun, Moon, Shirt, Users, Leaf, Star, X, Shield, BookOpen,
-  Home, PlusCircle, User, Loader2, AlertCircle, CheckCircle2
+  Home, PlusCircle, User, Loader2, AlertCircle, CheckCircle2, Eye, EyeOff
 } from "lucide-react";
 import { createClient } from "@/src/utils/supabase/client"; 
-import { loginWithCredentials, registerWithCredentials, fastLoginAction } from "@/app/(storefront)/login/actions";
+import { loginWithCredentials, registerWithCredentials } from "@/app/(storefront)/login/actions";
 import { translateAuthError } from "@/src/utils/authErrors";
 import "../globals.css";
 import AiStylistChat from "./AiStylistChat"; 
@@ -198,10 +198,12 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot' | 'forgot_otp'>('login');
   const [authModalError, setAuthModalError] = useState<string | null>(null);
   const [authModalSuccess, setAuthModalSuccess] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const switchAuthMode = (mode: 'login' | 'register' | 'forgot' | 'forgot_otp') => {
     setAuthModalError(null);
     setAuthModalSuccess(null);
+    setShowPassword(false);
     setAuthMode(mode);
   };
 
@@ -652,7 +654,24 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                 {authMode !== 'forgot' && (
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{authMode === 'forgot_otp' ? 'Mật khẩu mới' : 'Mật khẩu bảo mật'}</label>
-                    <input type="password" name="password" required placeholder="••••••••" className={`w-full px-4 py-2.5 border rounded-xl text-xs font-medium outline-none ${darkMode ? "bg-[#0F1720] border-[#2B3946] text-white" : "bg-[#FAF8F3] border-[#E9E2D8] text-[#183A2D]"}`} />
+                    <div className="relative">
+                      <input 
+                        type={showPassword ? "text" : "password"} 
+                        name="password" 
+                        required 
+                        placeholder="••••••••" 
+                        className={`w-full pl-4 pr-10 py-2.5 border rounded-xl text-xs font-medium outline-none transition-colors ${darkMode ? "bg-[#0F1720] border-[#2B3946] text-white focus:border-emerald-500" : "bg-[#FAF8F3] border-[#E9E2D8] text-[#183A2D] focus:border-[#183A2D]"}`} 
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition cursor-pointer p-1"
+                        tabIndex={-1}
+                        title={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                      >
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -668,46 +687,6 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                     authMode === 'forgot' ? (otpCooldown > 0 ? `Đang gửi mã... (${otpCooldown}s)` : 'Gửi mã OTP khôi phục') : 
                     'Đổi mật khẩu'}
                 </button>
-
-                {authMode === 'login' && (
-                  <div className="pt-2">
-                    <button
-                      type="button"
-                      disabled={isLoading}
-                      onClick={async () => {
-                        setIsLoading(true);
-                        setAuthModalError(null);
-                        try {
-                          const redirectParam = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('redirectTo') || undefined : undefined;
-                          const res = await fastLoginAction({ redirectTo: redirectParam });
-                          if (res.error) {
-                            setAuthModalError(translateAuthError(res.error));
-                          } else if (res.user) {
-                            setCurrentUser({
-                              name: res.user.name || "Trang",
-                              email: res.user.email || "th4212044@gmail.com",
-                              isLoggedIn: true,
-                              id: res.user.id
-                            });
-                            setShowAuthModal(false);
-                            if (res.redirectUrl && res.redirectUrl !== '/') {
-                              window.location.href = res.redirectUrl;
-                            } else {
-                              router.refresh();
-                            }
-                          }
-                        } catch (err: any) {
-                          setAuthModalError(err?.message || "Lỗi đăng nhập nhanh");
-                        } finally {
-                          setIsLoading(false);
-                        }
-                      }}
-                      className="w-full py-2.5 px-3 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 text-emerald-800 dark:text-emerald-200 border border-emerald-200/80 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-                    >
-                      <span>⚡ Đăng nhập nhanh 1-chạm (Tài khoản trải nghiệm)</span>
-                    </button>
-                  </div>
-                )}
               </form> 
 
               <div className="flex flex-col gap-2 mt-4 text-[11px] font-medium text-gray-500">
