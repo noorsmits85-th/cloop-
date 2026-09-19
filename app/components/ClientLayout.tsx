@@ -366,26 +366,35 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
       <AnimatePresence>
         {showAuthModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4">
             <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }} 
-              animate={{ opacity: 1, scale: 1 }} 
-              exit={{ opacity: 0, scale: 0.95 }} 
-              className={`p-8 rounded-[2.5rem] max-w-[420px] w-full text-center shadow-2xl relative space-y-5 mx-auto border ${darkMode ? "bg-[#18222B] border-[#2B3946]" : "bg-white border-[#E9E2D8]"}`}
+              initial={{ opacity: 0, y: 20, scale: 0.98 }} 
+              animate={{ opacity: 1, y: 0, scale: 1 }} 
+              exit={{ opacity: 0, y: 20, scale: 0.98 }} 
+              transition={{ duration: 0.22, ease: "easeOut" }}
+              className={`w-full max-w-[430px] rounded-t-[32px] sm:rounded-[36px] max-h-[90vh] overflow-y-auto overscroll-contain p-6 pt-3 pb-8 sm:p-8 text-center shadow-2xl relative space-y-4 mx-auto border-t sm:border border-stone-200 no-scrollbar ${darkMode ? "bg-[#18222B] border-[#2B3946]" : "bg-[#FAF9F5] border-[#E9E2D8]"}`}
             >
-              <button type="button" onClick={() => setShowAuthModal(false)} className="absolute top-6 right-6 text-gray-400 hover:text-[#183A2D] transition">
-                <X size={18} />
+              {/* Thanh kéo gạt dành cho mobile */}
+              <div className="w-12 h-1 bg-stone-300 rounded-full mx-auto mb-2 block sm:hidden" />
+
+              <button 
+                type="button" 
+                onClick={() => setShowAuthModal(false)} 
+                className="absolute top-4 right-4 sm:top-5 sm:right-5 w-8 h-8 rounded-full bg-stone-200/70 hover:bg-stone-300 active:scale-95 text-stone-700 flex items-center justify-center transition cursor-pointer z-10"
+                title="Đóng"
+              >
+                <X size={16} />
               </button>
               
-              <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center mb-2 mx-auto border border-emerald-200">
-                <Shield size={20} className="animate-pulse" />
+              <div className="w-11 h-11 rounded-full bg-emerald-50 text-emerald-800 flex items-center justify-center mb-1 mx-auto border border-emerald-200/80">
+                <Shield size={18} />
               </div>
               
               <div className="text-center space-y-1">
-                <h3 className="font-heading text-2xl font-bold uppercase tracking-wide">
+                <h3 className="font-heading text-xl font-bold uppercase tracking-wide text-[#183A2D]">
                   {authMode === 'login' ? 'Đăng nhập CLOOP' : authMode === 'register' ? 'Kích hoạt ID Xanh' : authMode === 'forgot' ? 'Quên mật khẩu' : 'Nhập mã khôi phục'}
                 </h3>
-                <p className="text-[11px] text-gray-400">
+                <p className="text-xs text-stone-500 font-normal leading-relaxed max-w-xs mx-auto">
                   {authMode === 'login' ? 'Chào mừng bạn quay trở lại với thời trang tuần hoàn.' : authMode === 'register' ? 'Đăng ký tài khoản bảo mật để đồng bộ hóa và quản lý kệ đồ cá nhân.' : authMode === 'forgot' ? 'Nhập email để nhận mã OTP khôi phục mật khẩu.' : `Mã bảo mật đã được gửi tới ${resetEmail}. Nhập mã và mật khẩu mới.`}
                 </p>
               </div>
@@ -547,14 +556,33 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                 {authMode === 'register' && (
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Biệt danh công khai</label>
-                    <input type="text" name="username" required placeholder="Ví dụ: abc..." className={`w-full px-4 py-2.5 border rounded-xl text-xs font-medium outline-none ${darkMode ? "bg-[#0F1720] border-[#2B3946] text-white" : "bg-[#FAF8F3] border-[#E9E2D8] text-[#183A2D]"}`} />
+                    <input 
+                      type="text" 
+                      name="username" 
+                      required 
+                      autoCapitalize="words"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      placeholder="Ví dụ: Hoàng Yến..." 
+                      className={`w-full px-4 py-2.5 border rounded-xl text-xs font-medium outline-none ${darkMode ? "bg-[#0F1720] border-[#2B3946] text-white" : "bg-[#FAF8F3] border-[#E9E2D8] text-[#183A2D]"}`} 
+                    />
                   </div>
                 )}
 
                 {authMode !== 'forgot_otp' && (
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Địa chỉ Email</label>
-                    <input type="email" name="email" required placeholder="member@cloop.vn" className={`w-full px-4 py-2.5 border rounded-xl text-xs font-medium outline-none ${darkMode ? "bg-[#0F1720] border-[#2B3946] text-white" : "bg-[#FAF8F3] border-[#E9E2D8] text-[#183A2D]"}`} />
+                    <input 
+                      type="email" 
+                      name="email" 
+                      required 
+                      autoComplete="off"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      placeholder="member@cloop.vn" 
+                      className={`w-full px-4 py-2.5 border rounded-xl text-xs font-medium outline-none ${darkMode ? "bg-[#0F1720] border-[#2B3946] text-white" : "bg-[#FAF8F3] border-[#E9E2D8] text-[#183A2D]"}`} 
+                    />
                   </div>
                 )}
 
@@ -596,6 +624,10 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                         type={showPassword ? "text" : "password"} 
                         name="password" 
                         required 
+                        autoComplete="off"
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                        spellCheck={false}
                         placeholder="••••••••" 
                         className={`w-full pl-4 pr-10 py-2.5 border rounded-xl text-xs font-medium outline-none transition-colors ${darkMode ? "bg-[#0F1720] border-[#2B3946] text-white focus:border-emerald-500" : "bg-[#FAF8F3] border-[#E9E2D8] text-[#183A2D] focus:border-[#183A2D]"}`} 
                       />
@@ -615,7 +647,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                 <button 
                   disabled={isLoading || (authMode === 'forgot' && otpCooldown > 0)} 
                   type="submit" 
-                  className="w-full font-body flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest bg-[#183A2D] text-white py-3.5 rounded-full shadow-md text-center hover:bg-[#254F3B] transition mt-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="w-full font-body flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest bg-[#183A2D] text-white py-3.5 rounded-full shadow-md text-center hover:bg-[#254F3B] transition mt-2 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {isLoading && <Loader2 size={16} className="animate-spin" />}
                   {isLoading ? 'Đang xử lý...' : 
@@ -629,15 +661,15 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
               <div className="flex flex-col gap-2 mt-4 text-[11px] font-medium text-gray-500">
                 {authMode === 'login' && (
                   <>
-                    <button onClick={() => switchAuthMode('forgot')} className="hover:text-[#183A2D] transition hover:underline">Quên mật khẩu?</button>
-                    <button onClick={() => switchAuthMode('register')} className="hover:text-[#183A2D] transition hover:underline">Chưa có ID Xanh? Tạo ngay</button>
+                    <button onClick={() => switchAuthMode('forgot')} className="hover:text-[#183A2D] transition hover:underline cursor-pointer">Quên mật khẩu?</button>
+                    <button onClick={() => switchAuthMode('register')} className="hover:text-[#183A2D] transition hover:underline cursor-pointer">Chưa có ID Xanh? Tạo ngay</button>
                   </>
                 )}
                 {authMode === 'register' && (
-                  <button onClick={() => switchAuthMode('login')} className="hover:text-[#183A2D] transition hover:underline">Đã có ID Xanh? Đăng nhập</button>
+                  <button onClick={() => switchAuthMode('login')} className="hover:text-[#183A2D] transition hover:underline cursor-pointer">Đã có ID Xanh? Đăng nhập</button>
                 )}
                 {(authMode === 'forgot' || authMode === 'forgot_otp') && (
-                  <button onClick={() => switchAuthMode('login')} className="hover:text-[#183A2D] transition hover:underline">Quay lại đăng nhập</button>
+                  <button onClick={() => switchAuthMode('login')} className="hover:text-[#183A2D] transition hover:underline cursor-pointer">Quay lại đăng nhập</button>
                 )}
                 {authMode === 'forgot_otp' && (
                   <button 
@@ -657,11 +689,21 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                         setIsLoading(false);
                       }
                     }} 
-                    className="hover:text-[#183A2D] transition hover:underline mt-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:no-underline"
+                    className="hover:text-[#183A2D] transition hover:underline mt-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:no-underline cursor-pointer"
                   >
                     {otpCooldown > 0 ? `Chưa nhận được mã? Gửi lại (${otpCooldown}s)` : 'Chưa nhận được mã? Gửi lại'}
                   </button>
                 )}
+
+                <div className="pt-2 border-t border-stone-200/60">
+                  <button
+                    type="button"
+                    onClick={() => setShowAuthModal(false)}
+                    className="text-stone-400 hover:text-stone-700 text-[11px] font-semibold py-1 transition cursor-pointer"
+                  >
+                    Để sau • Tiếp tục xem trang phục
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>

@@ -983,44 +983,25 @@ export default function MobileAppClient({
             ======================================================== */}
         <div className="sticky top-0 z-40 bg-[#FBF9F5]/95 backdrop-blur-md pt-3.5 pb-2.5 px-4 border-b border-stone-200/60 transition-colors">
           
-          {/* Tiêu đề & Logo chuẩn nhận diện CLOOP */}
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2.5">
-              <div className="relative w-9 h-9 flex items-center justify-center shrink-0">
+          {/* Tiêu đề & Logo chuẩn nhận diện CLOOP: Thoáng đãng, tinh tế, sang trọng */}
+          <div className="flex items-center justify-between mb-2.5 pt-0.5">
+            <div className="flex items-center gap-2">
+              <div className="relative w-8 h-8 flex items-center justify-center shrink-0">
                 <Image 
                   src="/loogo.png" 
                   alt="CLOOP Brand Logo" 
-                  width={38} 
-                  height={38} 
+                  width={32} 
+                  height={32} 
                   className="mix-blend-multiply drop-shadow-xs" 
                 />
               </div>
-              <div className="flex flex-col">
-                <div className="flex items-center gap-2">
-                  <span className="font-brand-title text-[20px] font-extrabold tracking-[0.14em] text-[#183A2D] leading-none pl-0.5">
-                    CLOOP
-                  </span>
-                  <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-full bg-emerald-100/80 text-emerald-900 border border-emerald-200/60">
-                    {activeTab === "shop" ? "Sàn đồ" : activeTab === "orders" ? "Đơn hàng" : activeTab === "closet" ? "Tủ cá nhân" : "Tuần hoàn"}
-                  </span>
-                </div>
-                <span className="text-[7.5px] font-extrabold tracking-[0.28em] uppercase text-[#226343] mt-1 pl-0.5 font-sans">
-                  FASHION IN A LOOP
-                </span>
-              </div>
+              <span className="font-brand-title text-[22px] font-black tracking-[0.14em] text-[#183A2D] leading-none">
+                CLOOP
+              </span>
             </div>
 
-            {/* Nút Menu tính năng (khoảng cách an toàn pr-20 tránh đè capsule Zalo) */}
-            <div className="flex items-center pr-20 sm:pr-0">
-              <button 
-                type="button" 
-                onClick={() => setIsDrawerMenuOpen(true)}
-                className="w-8 h-8 rounded-full bg-white border border-stone-200 flex items-center justify-center text-stone-700 shadow-2xs active:scale-95 transition cursor-pointer hover:border-emerald-700"
-                title="Menu tính năng"
-              >
-                <Menu size={16} />
-              </button>
-            </div>
+            {/* Khoảng trống bên phải thoáng đãng cho capsule của Zalo (... | X), hoàn toàn không bị lúm nhúm */}
+            <div className="w-24 shrink-0" />
           </div>
 
           {/* Ô TÌM KIẾM TRONG APP (HIỂN THỊ Ở TAB KHÁM PHÁ & SÀN ĐỒ) */}
