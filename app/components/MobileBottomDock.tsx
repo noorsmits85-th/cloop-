@@ -32,8 +32,8 @@ export default function MobileBottomDock() {
     }
   };
 
-  // Ẩn thanh dock trên một số màn hình full-screen chuyên biệt nếu cần (vd: camera scan full)
-  if (pathname.startsWith("/admin")) {
+  // Ẩn thanh dock trên một số màn hình full-screen chuyên biệt nếu cần (vd: camera scan full, app mode)
+  if (pathname?.startsWith("/admin") || pathname?.startsWith("/app")) {
     return null;
   }
 

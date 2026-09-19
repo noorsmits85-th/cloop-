@@ -17,6 +17,7 @@ export interface SavedShippingAddress {
   recipientName: string;
   phone: string;
   addressDetail: string;
+  note?: string;
   province: { id: string | number; name: string };
   district: { id: string | number; name: string };
   ward: { id: string | number; name: string };
@@ -54,6 +55,7 @@ export default function CheckoutClient({
   const [recipientName, setRecipientName] = useState("");
   const [phone, setPhone] = useState("");
   const [addressDetail, setAddressDetail] = useState("");
+  const [addressNote, setAddressNote] = useState("");
   const [customerRating, setCustomerRating] = useState<number>(5.0);
   const [customerReviewCount, setCustomerReviewCount] = useState<number>(0);
 
@@ -208,6 +210,7 @@ export default function CheckoutClient({
     if (saved.recipientName) setRecipientName(saved.recipientName);
     if (saved.phone) setPhone(saved.phone);
     if (saved.addressDetail) setAddressDetail(saved.addressDetail);
+    setAddressNote(saved.note || "");
     setSelectedProvince(saved.province);
     setSelectedDistrict(saved.district);
     setSelectedWard(saved.ward);
@@ -235,6 +238,7 @@ export default function CheckoutClient({
     const addr = customValues?.addressDetail !== undefined ? customValues.addressDetail : addressDetail;
     const rName = customValues?.recipientName !== undefined ? customValues.recipientName : recipientName;
     const ph = customValues?.phone !== undefined ? customValues.phone : phone;
+    const nt = customValues?.note !== undefined ? customValues.note : addressNote;
 
     if (!prov || !dist || !wd || !addr.trim() || !ph.trim()) return null;
 
@@ -243,6 +247,7 @@ export default function CheckoutClient({
       recipientName: rName.trim(),
       phone: ph.trim(),
       addressDetail: addr.trim(),
+      note: nt?.trim() || "",
       province: { id: prov.id, name: prov.name },
       district: { id: dist.id, name: dist.name },
       ward: { id: wd.id, name: wd.name },
@@ -311,6 +316,7 @@ export default function CheckoutClient({
     setSelectedDistrict(null);
     setSelectedWard(null);
     setAddressDetail("");
+    setAddressNote("");
     setShippingQuotes([]);
     setSelectedQuote(null);
   };
@@ -383,6 +389,14 @@ export default function CheckoutClient({
           applySavedAddress(saved);
           return;
         }
+      }
+
+      // Fallback nạp từ trạm gửi đã lưu trong hồ sơ cá nhân nếu chưa từng đặt hàng
+      const rawPickup = localStorage.getItem("cloop_saved_pickup_location");
+      if (rawPickup) {
+        const parsedPickup = JSON.parse(rawPickup);
+        if (parsedPickup.address && !addressDetail) setAddressDetail(parsedPickup.address);
+        if (parsedPickup.note && !addressNote) setAddressNote(parsedPickup.note);
       }
     } catch (e) {
       console.error("Lỗi đọc địa chỉ đã lưu:", e);
@@ -596,7 +610,7 @@ export default function CheckoutClient({
         productId,
         userId,
         shippingToken: selectedQuote.token,
-        buyerAddress: `${addressDetail}, ${fullToProvinceStr}`,
+        buyerAddress: `${addressDetail}${addressNote.trim() ? ` (Ghi chú: ${addressNote.trim()})` : ""}, ${fullToProvinceStr}`,
         buyerPhone: phoneClean,
         startDate: startDate,
         packageDays: selectedTier?.days || 3,
@@ -1106,9 +1120,16 @@ export default function CheckoutClient({
                   </div>
                   <div className="flex items-start gap-1.5 text-xs text-stone-700 font-ui leading-relaxed">
                     <MapPin size={14} className="text-emerald-700 shrink-0 mt-0.5" />
-                    <span className="font-medium text-stone-800">
-                      {addressDetail || activeSavedAddress.addressDetail}, {selectedWard?.name || activeSavedAddress.ward.name}, {selectedDistrict?.name || activeSavedAddress.district.name}, {selectedProvince?.name || activeSavedAddress.province.name}
-                    </span>
+                    <div>
+                      <span className="font-medium text-stone-800">
+                        {addressDetail || activeSavedAddress.addressDetail}, {selectedWard?.name || activeSavedAddress.ward.name}, {selectedDistrict?.name || activeSavedAddress.district.name}, {selectedProvince?.name || activeSavedAddress.province.name}
+                      </span>
+                      {(addressNote || activeSavedAddress.note) && (
+                        <p className="text-[11px] text-stone-500 italic mt-0.5">
+                          Ghi chú: {addressNote || activeSavedAddress.note}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -1129,10 +1150,10 @@ export default function CheckoutClient({
                       setIsEditingAddress(true);
                       ensureDistrictsAndWardsLoaded();
                     }}
-                    className="px-3 py-1.5 text-xs font-bold text-stone-700 bg-white hover:bg-stone-100 border border-stone-200 rounded-xl transition-colors inline-flex items-center gap-1.5 cursor-pointer shadow-2xs font-ui"
+                    className="px-3 py-1.5 text-xs font-bold text-stone-700 bg-white hover:bg-stone-50 border border-stone-200 rounded-xl transition-colors inline-flex items-center gap-1.5 cursor-pointer shadow-2xs font-ui"
                   >
-                    <Edit3 size={12} className="text-stone-600" />
-                    <span>Chỉnh sửa</span>
+                    <Edit3 size={12} className="text-stone-500" />
+                    <span>Sửa</span>
                   </button>
                 </div>
               </div>
@@ -1188,12 +1209,19 @@ export default function CheckoutClient({
                 <select
                   value={selectedProvince?.id || ""}
                   onChange={(e) => {
-                    const p = provinces.find((x) => String(x.ProvinceID) === String(e.target.value));
-                    setSelectedProvince(p ? { id: p.ProvinceID, name: p.ProvinceName } : null);
+                    const id = e.target.value;
+                    const prov = provinces.find((p) => String(p.ProvinceID) === String(id));
+                    if (prov) {
+                      handleSelectProvince(prov.ProvinceID, prov.ProvinceName);
+                    } else {
+                      setSelectedProvince(null);
+                      setDistricts([]);
+                      setWards([]);
+                    }
                   }}
-                  className="w-full px-3 py-2 border border-stone-200 rounded-xl font-ui text-xs focus:outline-none focus:border-[#183A2D] bg-white text-[#183A2D]"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-xl font-ui text-xs focus:outline-none focus:border-[#183A2D] bg-white text-[#183A2D] cursor-pointer"
                 >
-                  <option value="">-- Tỉnh / Thành phố --</option>
+                  <option value="">-- Chọn Tỉnh / TP --</option>
                   {provinces.map((p) => (
                     <option key={p.ProvinceID} value={p.ProvinceID}>{p.ProvinceName}</option>
                   ))}
@@ -1202,13 +1230,19 @@ export default function CheckoutClient({
                 <select
                   value={selectedDistrict?.id || ""}
                   onChange={(e) => {
-                    const d = districts.find((x) => String(x.DistrictID) === String(e.target.value));
-                    setSelectedDistrict(d ? { id: d.DistrictID, name: d.DistrictName } : null);
+                    const id = e.target.value;
+                    const dist = districts.find((d) => String(d.DistrictID) === String(id));
+                    if (dist) {
+                      handleSelectDistrict(dist.DistrictID, dist.DistrictName);
+                    } else {
+                      setSelectedDistrict(null);
+                      setWards([]);
+                    }
                   }}
                   disabled={!selectedProvince}
-                  className="w-full px-3 py-2 border border-stone-200 rounded-xl font-ui text-xs focus:outline-none focus:border-[#183A2D] bg-white text-[#183A2D] disabled:opacity-50 disabled:bg-stone-100"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-xl font-ui text-xs focus:outline-none focus:border-[#183A2D] bg-white text-[#183A2D] cursor-pointer disabled:opacity-50"
                 >
-                  <option value="">-- Quận / Huyện --</option>
+                  <option value="">-- Chọn Quận / Huyện --</option>
                   {districts.map((d) => (
                     <option key={d.DistrictID} value={d.DistrictID}>{d.DistrictName}</option>
                   ))}
@@ -1217,13 +1251,18 @@ export default function CheckoutClient({
                 <select
                   value={selectedWard?.id || ""}
                   onChange={(e) => {
-                    const w = wards.find((x) => String(x.WardCode) === String(e.target.value));
-                    setSelectedWard(w ? { id: w.WardCode, name: w.WardName } : null);
+                    const code = e.target.value;
+                    const wd = wards.find((w) => String(w.WardCode) === String(code));
+                    if (wd) {
+                      handleSelectWard(wd.WardCode, wd.WardName);
+                    } else {
+                      setSelectedWard(null);
+                    }
                   }}
                   disabled={!selectedDistrict}
-                  className="w-full px-3 py-2 border border-stone-200 rounded-xl font-ui text-xs focus:outline-none focus:border-[#183A2D] bg-white text-[#183A2D] disabled:opacity-50 disabled:bg-stone-100"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-xl font-ui text-xs focus:outline-none focus:border-[#183A2D] bg-white text-[#183A2D] cursor-pointer disabled:opacity-50"
                 >
-                  <option value="">-- Phường / Xã --</option>
+                  <option value="">-- Chọn Phường / Xã --</option>
                   {wards.map((w) => (
                     <option key={w.WardCode} value={w.WardCode}>{w.WardName}</option>
                   ))}
@@ -1240,6 +1279,20 @@ export default function CheckoutClient({
                   placeholder="Ví dụ: 124 Lê Lợi, Chung cư Hope Residences..."
                   value={addressDetail}
                   onChange={(e) => setAddressDetail(e.target.value)}
+                  className="w-full px-3 py-2 border border-stone-200 rounded-xl font-ui text-xs focus:outline-none focus:border-[#183A2D] bg-white text-[#183A2D]"
+                />
+              </div>
+
+              {/* Ghi chú địa chỉ cụ thể */}
+              <div>
+                <label className="block text-[11px] font-bold text-stone-600 mb-1 font-ui">
+                  Ghi chú địa chỉ (Điểm mốc, toà nhà, số tầng, gọi trước 15p...)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ví dụ: Tầng 3, phòng 302, gần cây xăng, gọi trước khi giao..."
+                  value={addressNote}
+                  onChange={(e) => setAddressNote(e.target.value)}
                   className="w-full px-3 py-2 border border-stone-200 rounded-xl font-ui text-xs focus:outline-none focus:border-[#183A2D] bg-white text-[#183A2D]"
                 />
               </div>
@@ -1493,7 +1546,12 @@ export default function CheckoutClient({
                     </div>
                     <div className="text-xs text-stone-600 font-ui mt-1.5 leading-relaxed flex items-start gap-1.5">
                       <MapPin size={13} className="text-emerald-700 shrink-0 mt-0.5" />
-                      <span>{addr.addressDetail}, {addr.ward?.name}, {addr.district?.name}, {addr.province?.name}</span>
+                      <div>
+                        <span>{addr.addressDetail}, {addr.ward?.name}, {addr.district?.name}, {addr.province?.name}</span>
+                        {addr.note && (
+                          <p className="text-[11px] text-stone-500 italic mt-0.5">Ghi chú: {addr.note}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );

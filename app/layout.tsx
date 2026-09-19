@@ -72,6 +72,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html 
       lang="vi" 
+      suppressHydrationWarning
       className={`${fraunces.variable} ${beVietnamPro.variable} ${dancingScript.variable} ${caveat.variable} ${cormorant.variable}`}
     >
       <head>
@@ -81,8 +82,23 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="CLOOP" />
         <link rel="apple-touch-icon" href="/app-icon.jpg" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if (typeof window !== 'undefined') {
+                window.addEventListener('error', function(e) {
+                  if (e && e.message && (e.message.includes('zaloJSV2') || e.message.includes('zalo') || e.message.includes('releasePointerCapture'))) {
+                    e.stopImmediatePropagation();
+                    e.preventDefault();
+                    return true;
+                  }
+                }, true);
+              }
+            `,
+          }}
+        />
       </head>
-      <body className="font-body text-gray-800 antialiased">
+      <body className="font-body text-gray-800 antialiased" suppressHydrationWarning>
         <Toaster position="top-right" richColors theme="light" closeButton />
         <SmoothScroll>
           <AuthModalProvider initialUser={initialUser}>

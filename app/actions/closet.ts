@@ -348,3 +348,161 @@ export async function getClosetProducts(userId: string, page: number = 1, take: 
     hasMore: skip + products.length < totalCount
   };
 }
+
+export async function getMyClosetMobileDataAction() {
+  try {
+    const { createClient } = await import("@/src/utils/supabase/server");
+    const supabase = await createClient();
+    const { data: { user }, error } = await supabase.auth.getUser();
+
+    if (error || !user) {
+      return { success: true, isLoggedIn: false };
+    }
+
+    const userId = user.id;
+
+    const [dbUser, products, rentalsAsOwner, rentalsAsRenter, authMetaRows] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          avatar: true,
+          rating: true,
+          reviewCount: true,
+          completedOrders: true,
+          cloopCoins: true,
+          walletBalance: true,
+          createdAt: true
+        }
+      }),
+      prisma.product.findMany({
+        where: { userId, isDeleted: false },
+        orderBy: { createdAt: "desc" },
+        include: {
+          images: {
+            select: { url: true, isPrimary: true },
+            orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }]
+          },
+          listings: {
+            where: { isDeleted: false }
+          }
+        }
+      }),
+      prisma.rentalHistory.findMany({
+        where: { product: { userId } },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        include: {
+          product: {
+            select: { id: true, title: true, images: { take: 1, select: { url: true } } }
+          },
+          invoice: true
+        }
+      }),
+      prisma.rentalHistory.findMany({
+        where: { renterId: userId },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        include: {
+          product: {
+            select: { id: true, title: true, images: { take: 1, select: { url: true } } }
+          },
+          invoice: true
+        }
+      }),
+      prisma.$queryRawUnsafe<any[]>(
+        `SELECT raw_user_meta_data FROM auth.users WHERE id = $1::uuid;`,
+        userId
+      ).catch(() => [])
+    ]);
+
+    const authMeta = authMetaRows?.[0]?.raw_user_meta_data || {};
+
+    let co2Saved = 0;
+    let waterSaved = 0;
+    products.forEach((p) => {
+      const rentListing = p.listings.find(l => l.listingType === "RENT");
+      const basePrice = rentListing?.basePrice ? Number(rentListing.basePrice) : 250000;
+      co2Saved += Math.round((basePrice / 50000) * 5.8 * 10) / 10;
+      waterSaved += Math.round((basePrice / 50000) * 2000);
+    });
+
+    const formattedProducts = products.map((p) => {
+      const rentListing = p.listings.find(l => l.listingType === "RENT");
+      const sellListing = p.listings.find(l => l.listingType === "SELL" || l.listingType === "RECYCLE");
+      const primaryImg = p.images[0]?.url || "/1.1.jpg";
+
+      return {
+        id: p.id,
+        title: p.title,
+        image: primaryImg,
+        category: p.category || "Dạ hội & Tiệc",
+        occasion: p.occasion || "Tiệc cưới",
+        size: p.size || "M",
+        material: p.material || "Lụa",
+        condition: p.condition || "GOOD",
+        rentalPrice: rentListing ? Number(rentListing.basePrice) : 0,
+        salePrice: sellListing ? Number(sellListing.basePrice) : 0,
+        deposit: rentListing ? Number(rentListing.depositAmount || 0) : 0,
+        status: p.status || "ON_MARKET",
+        createdAt: p.createdAt.toISOString()
+      };
+    });
+
+    return {
+      success: true,
+      isLoggedIn: true,
+      user: {
+        id: userId,
+        name: dbUser?.name || authMeta.name || authMeta.full_name || user.email?.split("@")[0] || "Thành viên CLOOP",
+        email: dbUser?.email || user.email || "",
+        avatar: dbUser?.avatar || authMeta.avatar || authMeta.avatar_url || null,
+        bio: authMeta.bio || "Thành viên cộng đồng thời trang tuần hoàn CLOOP.",
+        quote: authMeta.quote || "Lưu giữ ký ức qua từng chiếc váy.",
+        location: authMeta.location || "Hà Nội, Việt Nam",
+        phone: authMeta.phone || "",
+        pickupAddress: authMeta.pickup_address || authMeta.location || "",
+        cloopCoins: dbUser?.cloopCoins ?? 120,
+        walletBalance: dbUser?.walletBalance ?? 0,
+        rating: Number(dbUser?.rating ?? 5.0),
+        completedOrders: dbUser?.completedOrders ?? 0,
+        joinDate: dbUser?.createdAt ? new Date(dbUser.createdAt).toLocaleDateString("vi-VN") : "2026"
+      },
+      stats: {
+        totalItems: products.length,
+        co2Saved: co2Saved || (products.length * 5.8),
+        waterSaved: waterSaved || (products.length * 2000),
+        greenPoints: dbUser?.cloopCoins ?? 120
+      },
+      myProducts: formattedProducts,
+      ordersAsLender: rentalsAsOwner.map(r => ({
+        id: r.id,
+        status: r.status,
+        startDate: r.start_date ? new Date(r.start_date).toLocaleDateString("vi-VN") : "",
+        endDate: r.end_date ? new Date(r.end_date).toLocaleDateString("vi-VN") : "",
+        productTitle: r.product?.title || "Trang phục tiệc",
+        productImage: r.product?.images?.[0]?.url || "/1.1.jpg",
+        amount: r.invoice?.amount || r.invoice?.rentalFee || 0,
+        depositAmount: r.invoice?.depositAmount || 0,
+        createdAt: r.createdAt ? new Date(r.createdAt).toLocaleDateString("vi-VN") : ""
+      })),
+      ordersAsRenter: rentalsAsRenter.map(r => ({
+        id: r.id,
+        status: r.status,
+        startDate: r.start_date ? new Date(r.start_date).toLocaleDateString("vi-VN") : "",
+        endDate: r.end_date ? new Date(r.end_date).toLocaleDateString("vi-VN") : "",
+        productTitle: r.product?.title || "Trang phục tiệc",
+        productImage: r.product?.images?.[0]?.url || "/1.1.jpg",
+        amount: r.invoice?.amount || r.invoice?.rentalFee || 0,
+        depositAmount: r.invoice?.depositAmount || 0,
+        createdAt: r.createdAt ? new Date(r.createdAt).toLocaleDateString("vi-VN") : ""
+      }))
+    };
+  } catch (error: any) {
+    console.error("Lỗi getMyClosetMobileDataAction:", error);
+    return { success: false, error: error.message || "Lỗi nạp dữ liệu cá nhân" };
+  }
+}
+

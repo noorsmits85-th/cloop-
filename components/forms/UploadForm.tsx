@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { uploadProductSchema, UploadProductInput } from "@/lib/validations/product";
@@ -13,6 +13,18 @@ export default function UploadForm() {
   const router = useRouter();
   const [images, setImages] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // 📍 TÍCH HỢP ĐỊA CHỈ CHUẨN API GHN & LƯU CỤC BỘ
+  const [ghnProvinces, setGhnProvinces] = useState<any[]>([]);
+  const [ghnDistricts, setGhnDistricts] = useState<any[]>([]);
+  const [ghnWards, setGhnWards] = useState<any[]>([]);
+  const [selectedProvinceId, setSelectedProvinceId] = useState<number | "">("");
+  const [selectedDistrictId, setSelectedDistrictId] = useState<number | "">("");
+  const [selectedWardCode, setSelectedWardCode] = useState<string>("");
+  const [specificAddress, setSpecificAddress] = useState<string>("");
+  const [addressNote, setAddressNote] = useState<string>("");
+  const [isLoadingDistricts, setIsLoadingDistricts] = useState<boolean>(false);
+  const [isLoadingWards, setIsLoadingWards] = useState<boolean>(false);
 
   const {
     register,
@@ -31,6 +43,75 @@ export default function UploadForm() {
     }
   });
 
+  // 1. Tải danh sách Tỉnh/Thành phố từ API GHN
+  useEffect(() => {
+    fetch("/api/shipping/address?type=province")
+      .then(res => res.json())
+      .then(data => {
+        if (data?.data && Array.isArray(data.data)) {
+          setGhnProvinces(data.data);
+        }
+      })
+      .catch(err => console.error("Lỗi nạp tỉnh GHN:", err));
+  }, []);
+
+  // 2. Tải danh sách Quận/Huyện khi đổi Tỉnh
+  useEffect(() => {
+    if (!selectedProvinceId) {
+      setGhnDistricts([]);
+      setGhnWards([]);
+      setSelectedDistrictId("");
+      setSelectedWardCode("");
+      return;
+    }
+    setIsLoadingDistricts(true);
+    fetch(`/api/shipping/address?type=district&province_id=${selectedProvinceId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data?.data && Array.isArray(data.data)) {
+          setGhnDistricts(data.data);
+        }
+      })
+      .catch(err => console.error("Lỗi nạp huyện GHN:", err))
+      .finally(() => setIsLoadingDistricts(false));
+  }, [selectedProvinceId]);
+
+  // 3. Tải danh sách Phường/Xã khi đổi Huyện
+  useEffect(() => {
+    if (!selectedDistrictId) {
+      setGhnWards([]);
+      setSelectedWardCode("");
+      return;
+    }
+    setIsLoadingWards(true);
+    fetch(`/api/shipping/address?type=ward&district_id=${selectedDistrictId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data?.data && Array.isArray(data.data)) {
+          setGhnWards(data.data);
+        }
+      })
+      .catch(err => console.error("Lỗi nạp xã GHN:", err))
+      .finally(() => setIsLoadingWards(false));
+  }, [selectedDistrictId]);
+
+  // 4. Khôi phục trạm gửi đã lưu từ localStorage
+  useEffect(() => {
+    try {
+      const savedLoc = typeof window !== "undefined" ? localStorage.getItem("cloop_saved_pickup_location") : null;
+      if (savedLoc) {
+        const parsed = JSON.parse(savedLoc);
+        if (parsed.provinceId) setSelectedProvinceId(parsed.provinceId);
+        if (parsed.districtId) setSelectedDistrictId(parsed.districtId);
+        if (parsed.wardCode) setSelectedWardCode(parsed.wardCode);
+        if (parsed.province) setValue("province", parsed.province);
+        if (parsed.ward) setValue("ward", parsed.ward);
+        if (parsed.address) setSpecificAddress(parsed.address);
+        if (parsed.note) setAddressNote(parsed.note);
+      }
+    } catch (_) {}
+  }, [setValue]);
+
   const isRental = watch("isRental");
   const isSale = watch("isSale");
 
@@ -41,6 +122,27 @@ export default function UploadForm() {
     }
     
     setIsSubmitting(true);
+
+    const prov = ghnProvinces.find(p => p.ProvinceID === selectedProvinceId);
+    const dist = ghnDistricts.find(d => d.DistrictID === selectedDistrictId);
+    const ward = ghnWards.find(w => w.WardCode === selectedWardCode);
+
+    const full = [specificAddress.trim(), ward?.WardName || data.ward, dist?.DistrictName, prov?.ProvinceName || data.province].filter(Boolean).join(", ") + (addressNote.trim() ? ` (Ghi chú: ${addressNote.trim()})` : "");
+
+    // Lưu trữ trạm gửi vào localStorage
+    try {
+      localStorage.setItem("cloop_saved_pickup_location", JSON.stringify({
+        province: prov?.ProvinceName || data.province,
+        district: dist?.DistrictName || "",
+        ward: ward?.WardName || data.ward,
+        address: specificAddress.trim(),
+        note: addressNote.trim(),
+        provinceId: selectedProvinceId,
+        districtId: selectedDistrictId,
+        wardCode: selectedWardCode,
+        fullAddress: full
+      }));
+    } catch (_) {}
     
     // Convert form data to match the Server Action format
     const productPayload = {
@@ -50,8 +152,10 @@ export default function UploadForm() {
       material: data.material,
       color: data.color || "",
       condition: data.condition,
-      province: data.province,
-      ward: data.ward,
+      province: prov?.ProvinceName || data.province,
+      district: dist?.DistrictName || "",
+      ward: ward?.WardName || data.ward,
+      address: addressNote.trim() ? `${specificAddress.trim()} (Ghi chú: ${addressNote.trim()})` : specificAddress.trim(),
       occasion: data.occasion || "",
     };
 
@@ -208,17 +312,124 @@ export default function UploadForm() {
 
         {/* LOGISTIC */}
         <div className="space-y-5 border-t border-stone-100 pt-8">
-          <h2 className="text-sm font-bold text-[#183A2D] uppercase tracking-wider">Giao nhận</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <h2 className="text-sm font-bold text-[#183A2D] uppercase tracking-wider">Trạm gửi &amp; Giao nhận</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tỉnh / Thành phố</label>
-              <input {...register("province")} className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none" placeholder="Hà Nội, TP.HCM..." />
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tỉnh / Thành phố *</label>
+              {ghnProvinces.length > 0 ? (
+                <select
+                  value={selectedProvinceId}
+                  onChange={(e) => {
+                    const val = e.target.value ? Number(e.target.value) : "";
+                    setSelectedProvinceId(val);
+                    setSelectedDistrictId("");
+                    setSelectedWardCode("");
+                    const prov = ghnProvinces.find(p => p.ProvinceID === val);
+                    setValue("province", prov?.ProvinceName || "");
+                    setValue("ward", "");
+                  }}
+                  className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none cursor-pointer"
+                >
+                  <option value="">-- Chọn Tỉnh / Thành phố --</option>
+                  {ghnProvinces.map((prov) => (
+                    <option key={prov.ProvinceID} value={prov.ProvinceID}>
+                      {prov.ProvinceName}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  {...register("province")}
+                  className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none"
+                  placeholder="Hà Nội, TP.HCM..."
+                />
+              )}
               {errors.province && <p className="text-red-500 text-xs">{errors.province.message}</p>}
             </div>
+
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Quận / Phường</label>
-              <input {...register("ward")} className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none" placeholder="Quận 1..." />
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Quận / Huyện *</label>
+              {ghnDistricts.length > 0 ? (
+                <select
+                  disabled={!selectedProvinceId || isLoadingDistricts}
+                  value={selectedDistrictId}
+                  onChange={(e) => {
+                    const val = e.target.value ? Number(e.target.value) : "";
+                    setSelectedDistrictId(val);
+                    setSelectedWardCode("");
+                    setValue("ward", "");
+                  }}
+                  className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none disabled:opacity-50 cursor-pointer"
+                >
+                  <option value="">-- Chọn Quận / Huyện --</option>
+                  {ghnDistricts.map((dist) => (
+                    <option key={dist.DistrictID} value={dist.DistrictID}>
+                      {dist.DistrictName}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  placeholder="Quận / Huyện..."
+                  className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none"
+                />
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Phường / Xã *</label>
+              {ghnWards.length > 0 ? (
+                <select
+                  disabled={!selectedDistrictId || isLoadingWards}
+                  value={selectedWardCode}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSelectedWardCode(val);
+                    const ward = ghnWards.find(w => w.WardCode === val);
+                    setValue("ward", ward?.WardName || "");
+                  }}
+                  className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none disabled:opacity-50 cursor-pointer"
+                >
+                  <option value="">-- Chọn Phường / Xã --</option>
+                  {ghnWards.map((ward) => (
+                    <option key={ward.WardCode} value={ward.WardCode}>
+                      {ward.WardName}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  {...register("ward")}
+                  className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none"
+                  placeholder="Quận 1, Phường Bến Nghé..."
+                />
+              )}
               {errors.ward && <p className="text-red-500 text-xs">{errors.ward.message}</p>}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Địa chỉ cụ thể (Tên đường, số nhà, thôn/xóm)</label>
+              <input
+                type="text"
+                value={specificAddress}
+                onChange={(e) => setSpecificAddress(e.target.value)}
+                className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none"
+                placeholder="VD: Số 123 Phố Huế..."
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Ghi chú địa chỉ (Điểm mốc, toà nhà, số tầng, gọi trước 15p...)</label>
+              <input
+                type="text"
+                value={addressNote}
+                onChange={(e) => setAddressNote(e.target.value)}
+                className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none"
+                placeholder="VD: Cạnh cây xăng, gọi trước 15p..."
+              />
             </div>
           </div>
         </div>

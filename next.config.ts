@@ -4,10 +4,11 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
+  allowedDevOrigins: ["192.168.1.8", "192.168.1.8:3000", "localhost:3000", "127.0.0.1:3000", "192.168.1.5:3000"],
   experimental: {
     serverActions: {
       bodySizeLimit: "50mb",
-      allowedOrigins: ["192.168.1.5:3000", "localhost:3000", "cloop-sable.vercel.app", "*.vercel.app"],
+      allowedOrigins: ["192.168.1.8:3000", "192.168.1.8", "localhost:3000", "127.0.0.1:3000", "192.168.1.5:3000", "cloop-sable.vercel.app", "*.vercel.app"],
     },
   },
   // ⚡ GIẢM KÍCH THƯỚC SERVERLESS FUNCTIONS VERCEL: Loại bỏ các file không dùng khỏi bundle
@@ -69,6 +70,11 @@ const nextConfig: NextConfig = {
   },
   // 🛡️ BẢO MẬT HTTP HEADERS BỌC THÉP CHUẨN OWASP / A+ SECURITY RATING (REQ-026)
   async headers() {
+    // ⚡ Trong môi trường development (chạy HTTP qua LAN/localhost), tắt HSTS & upgrade-insecure-requests để điện thoại tải CSS/JS bình thường
+    if (process.env.NODE_ENV === "development") {
+      return [];
+    }
+
     const cspDirectives = `
       default-src 'self';
       script-src 'self' 'unsafe-inline' 'unsafe-eval' https://res.cloudinary.com https://challenges.cloudflare.com https://cdn.jsdelivr.net https://vercel.live;

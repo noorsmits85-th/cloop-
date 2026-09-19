@@ -84,6 +84,13 @@ export async function createProductAction({
     if (validData.condition === "99") conditionEnum = ItemCondition.EXCELLENT;
     if (validData.condition === "NEW") conditionEnum = ItemCondition.NEW_WITH_TAGS;
 
+    const fullAddress = [
+      product.address,
+      product.ward || validData.ward,
+      product.district,
+      validData.province
+    ].filter(Boolean).join(", ") || `${validData.ward}, ${validData.province}`;
+
     const newProductId = await prisma.$transaction(async (tx) => {
       const newProduct = await tx.product.create({
         data: {
@@ -94,7 +101,7 @@ export async function createProductAction({
           color: validData.color || null,
           condition: conditionEnum,
           province: validData.province,
-          specificAddress: `${validData.ward}, ${validData.province}`,
+          specificAddress: fullAddress,
           category: "DRESSES",
           gender: GenderCategory.UNISEX,
           userId: user.id,
@@ -142,6 +149,22 @@ export async function createProductAction({
 
       return newProduct.id;
     });
+
+    // 📱 TỰ ĐỘNG ĐỒNG BỘ SĐT & TRẠM GỬI VÀO METADATA TÀI KHOẢN
+    if (product.ownerPhone || product.address) {
+      try {
+        const metaPayload: Record<string, any> = {};
+        if (product.ownerPhone) metaPayload.phone = product.ownerPhone;
+        if (fullAddress) metaPayload.pickup_address = fullAddress;
+        await prisma.$executeRawUnsafe(
+          `UPDATE auth.users SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || $1::jsonb WHERE id = $2::uuid;`,
+          JSON.stringify(metaPayload),
+          user.id
+        );
+      } catch (metaErr) {
+        console.warn("Lưu metadata phone/pickup_address không bắt buộc:", metaErr);
+      }
+    }
 
     await clearShopMemoryCache();
     try {
@@ -285,6 +308,7 @@ const fetchShopProductsCached = unstable_cache(
             name: true,
             avatar: true,
             rating: true,
+            completedOrders: true,
             isVerified: true
           }
         }
@@ -298,8 +322,10 @@ const fetchShopProductsCached = unstable_cache(
       const rentListing = p.listings.find((l) => l.listingType === "RENT");
       const sellListing = p.listings.find((l) => l.listingType === "SELL" || (l.listingType as any) === "SALE");
 
-      const rentPrice = rentListing?.basePrice || 0;
-      const sellPrice = sellListing?.basePrice || 0;
+      const rentPrice = rentListing?.basePrice ? Number(rentListing.basePrice) : 0;
+      const sellPrice = sellListing?.basePrice ? Number(sellListing.basePrice) : 0;
+      const depositAmount = rentListing?.deposit ? Number(rentListing.deposit) : 0;
+      const minDays = rentListing?.minDays || 3;
 
       let primaryImg = p.images[0]?.url || "/1.1.jpg";
       if (primaryImg.includes("photo-1548624149-19d45e4ab558")) primaryImg = "/vintage_coat.jpg";
@@ -322,21 +348,29 @@ const fetchShopProductsCached = unstable_cache(
       return {
         id: p.id,
         title: p.title,
+        description: p.description || "",
         image: primaryImg,
         images: p.images.map((img) => img.url),
         type: listingTypeRaw === "RENT" ? "Thuê" : "Mua sắm",
         listingTypeRaw,
         price: priceNumber,
+        rentalPrice: rentPrice,
+        salePrice: sellPrice,
+        deposit: depositAmount,
+        minDays,
         priceDisplay: displayPrice,
         location: p.province || "Hà Nội",
-        rating: "5.0",
-        condition: p.condition === "EXCELLENT" ? "Mới 98%" : "Mới 95%",
-        storeRetailPrice: rentPrice > 0 ? rentPrice * 8 : (sellPrice > 0 ? sellPrice * 2 : 500000),
-        occasion: p.occasion || "Sự kiện",
+        specificAddress: p.specificAddress || p.province || "Hà Nội",
+        rating: p.user?.rating ? Number(p.user.rating).toFixed(1) : "5.0",
+        completedOrders: p.user?.completedOrders || 0,
+        condition: p.condition === "EXCELLENT" ? "Mới 98%" : (p.condition === "NEW_WITH_TAGS" ? "Mới 100%" : "Mới 95%"),
+        occasion: p.occasion || "Dạo phố",
         ownerName: p.user?.name || "Thành viên CLOOP",
+        ownerAvatar: p.user?.avatar || null,
         userId: p.userId || "anonymous",
         size: p.size || "M",
         material: p.material || "Lụa",
+        color: p.color || "",
         createdAt: p.createdAt.toISOString(),
         isBoosted: Boolean(p.isHighlighted)
       };

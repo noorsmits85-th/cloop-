@@ -186,6 +186,85 @@ export function ProfileClient({
     coverImage: userProfile?.coverImage || "",
   });
 
+  // 📍 TÍCH HỢP ĐỊA CHỈ CHUẨN API GHN & LƯU CỤC BỘ
+  const [ghnProvinces, setGhnProvinces] = useState<any[]>([]);
+  const [ghnDistricts, setGhnDistricts] = useState<any[]>([]);
+  const [ghnWards, setGhnWards] = useState<any[]>([]);
+  const [selectedProvinceId, setSelectedProvinceId] = useState<number | "">("");
+  const [selectedDistrictId, setSelectedDistrictId] = useState<number | "">("");
+  const [selectedWardCode, setSelectedWardCode] = useState<string>("");
+  const [specificAddressDetail, setSpecificAddressDetail] = useState<string>("");
+  const [addressNote, setAddressNote] = useState<string>("");
+  const [isLoadingDistricts, setIsLoadingDistricts] = useState<boolean>(false);
+  const [isLoadingWards, setIsLoadingWards] = useState<boolean>(false);
+
+  // 1. Tải Tỉnh/Thành phố từ API GHN
+  React.useEffect(() => {
+    fetch("/api/shipping/address?type=province")
+      .then(res => res.json())
+      .then(data => {
+        if (data?.data && Array.isArray(data.data)) {
+          setGhnProvinces(data.data);
+        }
+      })
+      .catch(err => console.error("Lỗi nạp tỉnh GHN:", err));
+  }, []);
+
+  // 2. Tải Quận/Huyện khi đổi Tỉnh
+  React.useEffect(() => {
+    if (!selectedProvinceId) {
+      setGhnDistricts([]);
+      setGhnWards([]);
+      setSelectedDistrictId("");
+      setSelectedWardCode("");
+      return;
+    }
+    setIsLoadingDistricts(true);
+    fetch(`/api/shipping/address?type=district&province_id=${selectedProvinceId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data?.data && Array.isArray(data.data)) {
+          setGhnDistricts(data.data);
+        }
+      })
+      .catch(err => console.error("Lỗi nạp huyện GHN:", err))
+      .finally(() => setIsLoadingDistricts(false));
+  }, [selectedProvinceId]);
+
+  // 3. Tải Phường/Xã khi đổi Huyện
+  React.useEffect(() => {
+    if (!selectedDistrictId) {
+      setGhnWards([]);
+      setSelectedWardCode("");
+      return;
+    }
+    setIsLoadingWards(true);
+    fetch(`/api/shipping/address?type=ward&district_id=${selectedDistrictId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data?.data && Array.isArray(data.data)) {
+          setGhnWards(data.data);
+        }
+      })
+      .catch(err => console.error("Lỗi nạp xã GHN:", err))
+      .finally(() => setIsLoadingWards(false));
+  }, [selectedDistrictId]);
+
+  // 4. Khôi phục từ localStorage
+  React.useEffect(() => {
+    try {
+      const savedLoc = typeof window !== "undefined" ? localStorage.getItem("cloop_saved_pickup_location") : null;
+      if (savedLoc) {
+        const parsed = JSON.parse(savedLoc);
+        if (parsed.provinceId) setSelectedProvinceId(parsed.provinceId);
+        if (parsed.districtId) setSelectedDistrictId(parsed.districtId);
+        if (parsed.wardCode) setSelectedWardCode(parsed.wardCode);
+        if (parsed.address) setSpecificAddressDetail(parsed.address);
+        if (parsed.note) setAddressNote(parsed.note);
+      }
+    } catch (_) {}
+  }, []);
+
   const handleCopyClooperCode = () => {
     if (typeof window !== "undefined") {
       navigator.clipboard.writeText(clooperCode);
@@ -246,11 +325,42 @@ export function ProfileClient({
     setSaveSuccess(false);
 
     try {
+      const prov = ghnProvinces.find(p => p.ProvinceID === selectedProvinceId);
+      const dist = ghnDistricts.find(d => d.DistrictID === selectedDistrictId);
+      const ward = ghnWards.find(w => w.WardCode === selectedWardCode);
+
+      const parts = [];
+      if (specificAddressDetail.trim()) parts.push(specificAddressDetail.trim());
+      if (ward?.WardName) parts.push(ward.WardName);
+      if (dist?.DistrictName) parts.push(dist.DistrictName);
+      if (prov?.ProvinceName) parts.push(prov.ProvinceName);
+
+      let fullLocation = parts.length > 0 ? parts.join(", ") : formData.location;
+      if (addressNote.trim()) {
+        fullLocation += ` (Ghi chú: ${addressNote.trim()})`;
+      }
+
+      // Lưu trữ cấu trúc vào LocalStorage để đồng bộ toàn bộ app
+      try {
+        localStorage.setItem("cloop_saved_pickup_location", JSON.stringify({
+          province: prov?.ProvinceName || formData.location,
+          district: dist?.DistrictName || "",
+          ward: ward?.WardName || "",
+          address: specificAddressDetail.trim(),
+          note: addressNote.trim(),
+          phone: currentPhone || userProfile?.phone || "",
+          provinceId: selectedProvinceId,
+          districtId: selectedDistrictId,
+          wardCode: selectedWardCode,
+          fullAddress: fullLocation
+        }));
+      } catch (_) {}
+
       // Xác thực và lưu qua Server Action
       const res = await updateUserProfileWithValidation({
         name: formData.name,
         username: formData.username,
-        location: formData.location,
+        location: fullLocation,
         quote: formData.quote,
         bio: formData.bio,
         todaysMemory: formData.todaysMemory,
@@ -262,6 +372,7 @@ export function ProfileClient({
         throw new Error(res.error);
       }
 
+      setFormData(prev => ({ ...prev, location: fullLocation }));
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err: unknown) {
@@ -475,49 +586,94 @@ export function ProfileClient({
               </div>
             </div>
 
-            {/* Location (Standardized 34 Provinces dropdown + Privacy Notice) */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-stone-700 uppercase tracking-wider flex items-center gap-1">
-                  <MapPin size={13} className="text-emerald-700" /> Tỉnh / Thành phố:
-                </label>
-                <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60 flex items-center gap-1">
-                  <ShieldCheck size={10} /> 34 Tỉnh thành chuẩn
-                </span>
-              </div>
-              <select
-                value={normalizeProvince(formData.location)}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-stone-200 focus:border-[#183A2D] focus:ring-1 focus:ring-[#183A2D] outline-none text-xs sm:text-sm font-medium bg-white text-stone-800 cursor-pointer"
-              >
-                <optgroup label="── MIỀN BẮC ──">
-                  {VIETNAM_34_PROVINCES.filter(p => p.region === "NORTH").map(p => (
-                    <option key={p.id} value={p.name}>
-                      {p.name} {p.mergerNote ? `(${p.mergerNote})` : ""}
-                    </option>
-                  ))}
-                </optgroup>
-                <optgroup label="── MIỀN TRUNG & TÂY NGUYÊN ──">
-                  {VIETNAM_34_PROVINCES.filter(p => p.region === "CENTRAL").map(p => (
-                    <option key={p.id} value={p.name}>
-                      {p.name} {p.mergerNote ? `(${p.mergerNote})` : ""}
-                    </option>
-                  ))}
-                </optgroup>
-                <optgroup label="── MIỀN NAM ──">
-                  {VIETNAM_34_PROVINCES.filter(p => p.region === "SOUTH").map(p => (
-                    <option key={p.id} value={p.name}>
-                      {p.name} {p.mergerNote ? `(${p.mergerNote})` : ""}
-                    </option>
-                  ))}
-                </optgroup>
-              </select>
+            {/* Địa chỉ giao nhận chuẩn hóa */}
+            <div className="space-y-3 sm:col-span-2">
+              <label className="text-xs font-bold text-stone-700 uppercase tracking-wider flex items-center gap-1">
+                <MapPin size={13} className="text-emerald-700" /> Địa chỉ giao nhận &amp; tủ đồ:
+              </label>
 
-              {/* Privacy Notice Reassurance (Privacy by Design - Luật 91/2025/QH15) */}
-              <div className="p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200/70 text-[11px] text-emerald-950 leading-relaxed flex items-start gap-2">
-                <ShieldCheck size={14} className="text-emerald-700 shrink-0 mt-0.5" />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <span className="font-bold text-emerald-900">Bảo mật địa chỉ riêng tư (Privacy by Design):</span> Hệ thống chỉ lưu và hiển thị cấp Tỉnh/Thành để tính cước vận chuyển (GHN/GHTK) và gợi ý kết nối. Địa chỉ nhà riêng, xóm/phường của bạn tuyệt đối không công khai trên hồ sơ.
+                  <label className="block text-[11px] font-bold text-stone-600 mb-1">Tỉnh / Thành phố</label>
+                  <select
+                    value={selectedProvinceId}
+                    onChange={(e) => {
+                      const val = e.target.value ? Number(e.target.value) : "";
+                      setSelectedProvinceId(val);
+                      setSelectedDistrictId("");
+                      setSelectedWardCode("");
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl border border-stone-200 focus:border-[#183A2D] focus:ring-1 focus:ring-[#183A2D] outline-none text-xs sm:text-sm font-medium bg-white text-stone-800 cursor-pointer"
+                  >
+                    <option value="">-- Chọn Tỉnh / Thành phố --</option>
+                    {ghnProvinces.map((prov) => (
+                      <option key={prov.ProvinceID} value={prov.ProvinceID}>
+                        {prov.ProvinceName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-stone-600 mb-1">Quận / Huyện</label>
+                  <select
+                    disabled={!selectedProvinceId || isLoadingDistricts}
+                    value={selectedDistrictId}
+                    onChange={(e) => {
+                      const val = e.target.value ? Number(e.target.value) : "";
+                      setSelectedDistrictId(val);
+                      setSelectedWardCode("");
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl border border-stone-200 focus:border-[#183A2D] focus:ring-1 focus:ring-[#183A2D] outline-none text-xs sm:text-sm font-medium bg-white text-stone-800 disabled:opacity-50 cursor-pointer"
+                  >
+                    <option value="">-- Chọn Quận / Huyện --</option>
+                    {ghnDistricts.map((dist) => (
+                      <option key={dist.DistrictID} value={dist.DistrictID}>
+                        {dist.DistrictName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-stone-600 mb-1">Phường / Xã</label>
+                  <select
+                    disabled={!selectedDistrictId || isLoadingWards}
+                    value={selectedWardCode}
+                    onChange={(e) => setSelectedWardCode(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-stone-200 focus:border-[#183A2D] focus:ring-1 focus:ring-[#183A2D] outline-none text-xs sm:text-sm font-medium bg-white text-stone-800 disabled:opacity-50 cursor-pointer"
+                  >
+                    <option value="">-- Chọn Phường / Xã --</option>
+                    {ghnWards.map((ward) => (
+                      <option key={ward.WardCode} value={ward.WardCode}>
+                        {ward.WardName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-stone-600 mb-1">Địa chỉ cụ thể (Số nhà, tên đường, thôn/xóm)</label>
+                  <input
+                    type="text"
+                    value={specificAddressDetail}
+                    onChange={(e) => setSpecificAddressDetail(e.target.value)}
+                    placeholder="VD: Số 12, Khối 5..."
+                    className="w-full px-3 py-2.5 rounded-xl border border-stone-200 focus:border-[#183A2D] focus:ring-1 focus:ring-[#183A2D] outline-none text-xs sm:text-sm font-medium bg-white text-stone-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-stone-600 mb-1">Ghi chú địa chỉ (Điểm mốc, toà nhà, số tầng, gọi trước 15p...)</label>
+                  <input
+                    type="text"
+                    value={addressNote}
+                    onChange={(e) => setAddressNote(e.target.value)}
+                    placeholder="VD: Chung cư Sky City, tầng 8, cổng sau..."
+                    className="w-full px-3 py-2.5 rounded-xl border border-stone-200 focus:border-[#183A2D] focus:ring-1 focus:ring-[#183A2D] outline-none text-xs sm:text-sm font-medium bg-white text-stone-800"
+                  />
                 </div>
               </div>
             </div>
