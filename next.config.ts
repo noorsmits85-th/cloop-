@@ -87,7 +87,7 @@ const nextConfig: NextConfig = {
       object-src 'none';
       base-uri 'self';
       form-action 'self' https://*.payos.vn;
-      frame-ancestors 'self' https://zalo.me https://*.zalo.me https://*.zadn.vn https://*.zaloplatforms.com;
+      frame-ancestors *;
       upgrade-insecure-requests;
     `.replace(/\s{2,}/g, ' ').trim();
 
@@ -100,7 +100,6 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
           { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=(), browsing-topics=()" },
-          { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
           { key: "X-XSS-Protection", value: "1; mode=block" },
         ],
       },
