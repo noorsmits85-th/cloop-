@@ -45,7 +45,20 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // ⚡ 1.1 PHÒNG THỦ CỔNG VÀO: Edge Rate Limiting với Fail-Open
+  // 📱 1.1 ĐIỀU HƯỚNG BẢO ĐẢM TRẢI NGHIỆM APP DUY NHẤT (Chống lộn xộn bản web cũ):
+  const userAgent = request.headers.get('user-agent') || '';
+  const isMobileOrZalo = /Android|iPhone|iPad|iPod|Zalo|MiniApp|Mobile/i.test(userAgent);
+  const isWebOldRoute = pathname === '/' || pathname === '/ai-stylist' || pathname === '/blog';
+
+  if ((isMobileOrZalo && isWebOldRoute) || (pathname === '/' && !request.nextUrl.searchParams.has('desktop'))) {
+    const appUrl = new URL('/app', request.url);
+    if (search && !search.includes('desktop')) {
+      appUrl.search = search;
+    }
+    return NextResponse.redirect(appUrl);
+  }
+
+  // ⚡ 1.2 PHÒNG THỦ CỔNG VÀO: Edge Rate Limiting với Fail-Open
   const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
                    request.headers.get('x-real-ip') ||
                    '127.0.0.1';

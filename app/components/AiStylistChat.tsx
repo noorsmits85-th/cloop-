@@ -147,60 +147,92 @@ function decodeCatalogChunk(chunk: string): ProductMini[] {
   }
 }
 
-function ProductCardMini({ product }: { product: ProductMini }) {
+function ProductCardMini({ 
+  product, 
+  onSelect 
+}: { 
+  product: ProductMini; 
+  onSelect?: (productId: string) => void;
+}) {
   const listingLabel = product.listingType === "SELL" ? "Mua" : "Thuê";
+
+  const cardContent = (
+    <div className="flex gap-2.5 items-center">
+      <div className="relative h-13 w-11 shrink-0 overflow-hidden rounded-lg bg-stone-100 border border-stone-200">
+        <Image 
+          src={product.image} 
+          alt={product.title} 
+          fill 
+          unoptimized 
+          className="object-cover object-top transition-transform duration-300 group-hover:scale-105" 
+          sizes="45px" 
+        />
+        <span className="absolute left-0.5 top-0.5 rounded bg-[#183A2D] px-1 py-0.2 text-[6px] font-bold uppercase text-white">
+          {listingLabel}
+        </span>
+      </div>
+
+      <div className="flex min-w-0 flex-1 flex-col justify-between py-0.5 space-y-0.5">
+        <h4 className="text-[10.5px] font-heading font-bold text-[#142A1E] line-clamp-1 group-hover:text-emerald-800 transition-colors leading-tight">
+          {product.title}
+        </h4>
+
+        <div className="flex items-center gap-1.5 text-[9.5px]">
+          <span className="font-mono font-extrabold text-[#235C3A]">
+            {product.priceText}
+          </span>
+          {product.size && (
+            <span className="text-[8px] text-stone-500 font-medium">
+              • Size {product.size}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between gap-1 pt-0.5 border-t border-stone-100">
+          <span className="flex min-w-0 items-center gap-0.5 truncate text-[8px] font-medium text-stone-500">
+            <MapPin size={8} className="shrink-0 text-emerald-700" /> {product.province || "Toàn quốc"}
+          </span>
+          <span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-[#183A2D] group-hover:bg-emerald-900 px-1.5 py-0.5 text-[7px] font-bold uppercase tracking-wider text-white transition-colors">
+            Xem <ArrowRight size={6.5} />
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (onSelect) {
+    return (
+      <button
+        type="button"
+        onClick={() => onSelect(product.id)}
+        className="my-1.5 block w-full rounded-xl border border-stone-200/90 bg-white p-2 shadow-2xs transition-all hover:border-[#183A2D] hover:shadow-xs group text-left cursor-pointer"
+      >
+        {cardContent}
+      </button>
+    );
+  }
 
   return (
     <Link
       href={`/product/${product.id}`}
       className="my-1.5 block w-full rounded-xl border border-stone-200/90 bg-white p-2 shadow-2xs transition-all hover:border-[#183A2D] hover:shadow-xs group text-left"
     >
-      <div className="flex gap-2.5 items-center">
-        <div className="relative h-13 w-11 shrink-0 overflow-hidden rounded-lg bg-stone-100 border border-stone-200">
-          <Image 
-            src={product.image} 
-            alt={product.title} 
-            fill 
-            unoptimized 
-            className="object-cover object-top transition-transform duration-300 group-hover:scale-105" 
-            sizes="45px" 
-          />
-          <span className="absolute left-0.5 top-0.5 rounded bg-[#183A2D] px-1 py-0.2 text-[6px] font-bold uppercase text-white">
-            {listingLabel}
-          </span>
-        </div>
-
-        <div className="flex min-w-0 flex-1 flex-col justify-between py-0.5 space-y-0.5">
-          <h4 className="text-[10.5px] font-heading font-bold text-[#142A1E] line-clamp-1 group-hover:text-emerald-800 transition-colors leading-tight">
-            {product.title}
-          </h4>
-
-          <div className="flex items-center gap-1.5 text-[9.5px]">
-            <span className="font-mono font-extrabold text-[#235C3A]">
-              {product.priceText}
-            </span>
-            {product.size && (
-              <span className="text-[8px] text-stone-500 font-medium">
-                • Size {product.size}
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center justify-between gap-1 pt-0.5 border-t border-stone-100">
-            <span className="flex min-w-0 items-center gap-0.5 truncate text-[8px] font-medium text-stone-500">
-              <MapPin size={8} className="shrink-0 text-emerald-700" /> {product.province || "Toàn quốc"}
-            </span>
-            <span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-[#183A2D] group-hover:bg-emerald-900 px-1.5 py-0.5 text-[7px] font-bold uppercase tracking-wider text-white transition-colors">
-              Xem <ArrowRight size={6.5} />
-            </span>
-          </div>
-        </div>
-      </div>
+      {cardContent}
     </Link>
   );
 }
 
-function MessageContent({ text, subNote, products }: { text: string; subNote?: string; products: Record<string, ProductMini> }) {
+function MessageContent({ 
+  text, 
+  subNote, 
+  products, 
+  onSelectProduct 
+}: { 
+  text: string; 
+  subNote?: string; 
+  products: Record<string, ProductMini>;
+  onSelectProduct?: (productId: string) => void;
+}) {
   const nodes = useMemo(() => {
     const parts: Array<{ type: "text"; value: string } | { type: "product"; value: string }> = [];
     const regex = /\[PRODUCT:([^\]]+)\]/g;
@@ -227,7 +259,13 @@ function MessageContent({ text, subNote, products }: { text: string; subNote?: s
       {nodes.map((part, index) => {
         if (part.type === "product") {
           const product = products[part.value];
-          return product ? <ProductCardMini key={`${part.value}-${index}`} product={product} /> : null;
+          return product ? (
+            <ProductCardMini 
+              key={`${part.value}-${index}`} 
+              product={product} 
+              onSelect={onSelectProduct}
+            />
+          ) : null;
         }
 
         return (
@@ -246,8 +284,25 @@ function MessageContent({ text, subNote, products }: { text: string; subNote?: s
   );
 }
 
-export default function AiStylistChat({ darkMode }: { darkMode?: boolean } = {}) {
-  const [showChat, setShowChat] = useState(false);
+export default function AiStylistChat({ 
+  darkMode,
+  onSelectProduct,
+  isMobileApp = false,
+  isOpen,
+  onOpenChange
+}: { 
+  darkMode?: boolean;
+  onSelectProduct?: (productId: string) => void;
+  isMobileApp?: boolean;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+} = {}) {
+  const [internalShowChat, setInternalShowChat] = useState(false);
+  const showChat = isOpen !== undefined ? isOpen : internalShowChat;
+  const setShowChat = (val: boolean) => {
+    if (onOpenChange) onOpenChange(val);
+    setInternalShowChat(val);
+  };
   const [activeTab, setActiveTab] = useState<"stylist" | "cskh">("stylist");
   const [chatInput, setChatInput] = useState("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -430,15 +485,23 @@ export default function AiStylistChat({ darkMode }: { darkMode?: boolean } = {})
   };
 
   return (
-    <div className="fixed bottom-14 right-3 z-[9999] isolate flex flex-col items-end gap-1.5 font-body md:bottom-6 md:right-6 pointer-events-auto">
+    <div className={
+      isMobileApp 
+        ? "relative isolate flex flex-col items-end gap-1.5 font-body pointer-events-auto" 
+        : "fixed bottom-20 right-3.5 z-40 md:bottom-6 md:right-6 isolate flex flex-col items-end gap-1.5 font-body pointer-events-auto"
+    }>
       <AnimatePresence>
         {showChat && (
           <motion.div
-            initial={{ opacity: 0, y: 12, scale: 0.97 }}
+            initial={{ opacity: 0, y: 10, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 12, scale: 0.97 }}
+            exit={{ opacity: 0, y: 10, scale: 0.96 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="flex h-[460px] max-h-[75vh] w-[320px] sm:w-[350px] flex-col overflow-hidden rounded-2xl border border-stone-300/90 bg-[#FAF8F3] text-[#142A1E] shadow-[0_16px_48px_rgba(0,0,0,0.35)] relative z-[9999]"
+            className={
+              isMobileApp
+                ? "absolute bottom-13 right-0 flex h-[480px] max-h-[72vh] w-[calc(100vw-28px)] max-w-[345px] sm:max-w-[360px] flex-col overflow-hidden rounded-2xl border border-stone-300/90 bg-[#FAF8F3] text-[#142A1E] shadow-[0_16px_48px_rgba(0,0,0,0.35)] z-50 mb-1"
+                : "flex h-[460px] max-h-[75vh] w-[320px] sm:w-[350px] flex-col overflow-hidden rounded-2xl border border-stone-300/90 bg-[#FAF8F3] text-[#142A1E] shadow-[0_16px_48px_rgba(0,0,0,0.35)] relative z-[9999]"
+            }
           >
             {/* 👑 REFINED FOREST GREEN HEADER */}
             <div className="bg-[#122D20] p-2.5 px-3 text-white border-b border-[#1C4431] shadow-2xs">
@@ -525,6 +588,7 @@ export default function AiStylistChat({ darkMode }: { darkMode?: boolean } = {})
                                     text={message.text} 
                                     subNote={message.subNote} 
                                     products={productsById} 
+                                    onSelectProduct={onSelectProduct}
                                   />
                                 ) : null}
 
@@ -687,18 +751,19 @@ export default function AiStylistChat({ darkMode }: { darkMode?: boolean } = {})
         )}
       </AnimatePresence>
 
-      {/* 🚀 CHỈ ICON THỜI TRANG ĐỘC BẢN CLOOP CHATBOT */}
+      {/* 🚀 NÚT CHATBOT CLOOP GỌN NHỎ CHUẨN TIKTOK ASSISTANT */}
       <motion.button
         type="button"
         onClick={() => setShowChat(!showChat)}
-        whileHover={{ scale: 1.1, rotate: [0, -5, 5, 0] }}
+        whileHover={{ scale: 1.08 }}
         whileTap={{ scale: 0.92 }}
-        className="relative flex items-center justify-center w-12 h-12 sm:w-13 sm:h-13 rounded-full bg-gradient-to-br from-[#1B4733] to-[#0A1F15] text-white shadow-[0_8px_25px_rgba(10,31,22,0.45)] hover:shadow-[0_12px_32px_rgba(34,197,94,0.35)] border border-[#A3E39F]/40 transition-all duration-300 cursor-pointer group"
-        title="Trợ lý Chat CLOOP"
+        className="relative flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gradient-to-br from-[#183A2D] to-[#0A1F15] text-white shadow-[0_4px_16px_rgba(10,31,22,0.38)] border border-[#A3E39F]/50 transition-all duration-200 cursor-pointer group"
+        title="Trợ lý AI Stylist CLOOP"
       >
-        <span className="absolute -inset-0.5 rounded-full bg-emerald-400/20 animate-ping pointer-events-none" />
-        <CloopChatBotIcon className="w-7 h-7 sm:w-8 sm:h-8 transition-transform duration-300 group-hover:scale-105" />
-        <span className="absolute top-0 right-0 w-3 h-3 rounded-full bg-emerald-400 border-2 border-[#122D20] shadow-xs" />
+        <CloopChatBotIcon className="w-5.5 h-5.5 transition-transform duration-200 group-hover:scale-105" />
+        <span className="absolute -top-1 -right-1 px-1 py-0.2 rounded-full bg-emerald-400 text-[#0A2517] text-[7.5px] font-extrabold shadow-2xs font-ui tracking-tight">
+          AI
+        </span>
       </motion.button>
     </div>
   );

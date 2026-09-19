@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import AiStylistChat from "@/app/components/AiStylistChat";
 import { 
   Search, ShoppingBag, Compass, User, 
   MoreHorizontal, X, Star, Heart,
@@ -118,12 +118,31 @@ export default function MobileAppClient({
   const [orderSubTab, setOrderSubTab] = useState<"renter" | "lender" | "cart">("renter");
   const [isRefreshingCloset, setIsRefreshingCloset] = useState(false);
   const [isDrawerMenuOpen, setIsDrawerMenuOpen] = useState(false);
+  const [isBlogModalOpen, setIsBlogModalOpen] = useState(false);
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
 
   // 👗 MODAL CHI TIẾT SẢN PHẨM TRONG APP
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   const [activeDetailImgIndex, setActiveDetailImgIndex] = useState(0);
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [addedToCartToast, setAddedToCartToast] = useState(false);
+
+  // 🤖 XỬ LÝ CHỌN SẢN PHẨM TỪ AI STYLIST CHAT KHÔNG BỊ ĐIỀU HƯỚNG RA WEB
+  const handleSelectProductFromAi = (productId: string) => {
+    const found = products.find(p => p.id === productId);
+    if (found) {
+      setSelectedProduct(found);
+    } else {
+      fetch(`/api/products/${productId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data?.product) {
+            setSelectedProduct(data.product);
+          }
+        })
+        .catch(() => {});
+    }
+  };
 
   // 🛍️ MODAL / VIEW TỦ ĐỒ CHỦ TỦ IN-APP (TIKTOK / SHOPEE CREATOR SHOP)
   const [viewingClosetOwner, setViewingClosetOwner] = useState<{
@@ -991,20 +1010,12 @@ export default function MobileAppClient({
               </div>
             </div>
 
-            {/* Cụm nút tính năng: AI Stylist & Drawer Menu (không bị đè bởi nút của Zalo) */}
-            <div className="flex items-center gap-2">
-              <Link 
-                href="/ai-stylist" 
-                className="px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 flex items-center gap-1 text-emerald-800 text-xs font-bold shadow-3xs active:scale-95 transition-transform"
-                title="Trợ lý AI Stylist"
-              >
-                <Sparkles size={13} className="text-emerald-700" />
-                <span className="text-[10px] uppercase font-ui tracking-wider">AI Stylist</span>
-              </Link>
+            {/* Nút Menu tính năng (khoảng cách an toàn pr-20 tránh đè capsule Zalo) */}
+            <div className="flex items-center pr-20 sm:pr-0">
               <button 
                 type="button" 
                 onClick={() => setIsDrawerMenuOpen(true)}
-                className="w-8 h-8 rounded-full bg-white border border-stone-200 flex items-center justify-center text-stone-700 shadow-2xs active:scale-95 transition cursor-pointer"
+                className="w-8 h-8 rounded-full bg-white border border-stone-200 flex items-center justify-center text-stone-700 shadow-2xs active:scale-95 transition cursor-pointer hover:border-emerald-700"
                 title="Menu tính năng"
               >
                 <Menu size={16} />
@@ -2418,6 +2429,18 @@ export default function MobileAppClient({
         </nav>
 
         {/* ========================================================
+            💬 7.5. TRỢ LÝ AI STYLIST NỔI GỌN NHẸ (CHUẨN TIKTOK ASSISTANT)
+            ======================================================== */}
+        <div className="fixed bottom-20 left-0 right-0 w-full sm:max-w-[430px] mx-auto pointer-events-none z-40 flex justify-end px-3.5">
+          <div className="pointer-events-auto">
+            <AiStylistChat 
+              isMobileApp={true}
+              onSelectProduct={handleSelectProductFromAi}
+            />
+          </div>
+        </div>
+
+        {/* ========================================================
             📋 8. MENU 3 GẠCH QUICK DRAWER (PHÂN 4 NHÓM CHUẨN WEB)
             ======================================================== */}
         {isDrawerMenuOpen && (
@@ -2458,14 +2481,17 @@ export default function MobileAppClient({
                     <span>Sàn đồ tuần hoàn (Thuê &amp; Mua)</span>
                     <ChevronRight size={14} className="text-stone-400" />
                   </button>
-                  <Link
-                    href="/blog"
-                    onClick={() => setIsDrawerMenuOpen(false)}
-                    className="w-full p-2.5 flex items-center justify-between hover:text-emerald-800 transition"
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsDrawerMenuOpen(false);
+                      setIsBlogModalOpen(true);
+                    }}
+                    className="w-full p-2.5 flex items-center justify-between hover:text-emerald-800 transition cursor-pointer text-left"
                   >
-                    <span>Blog thời trang tuần hoàn</span>
+                    <span>Cẩm nang phong cách tuần hoàn</span>
                     <ChevronRight size={14} className="text-stone-400" />
-                  </Link>
+                  </button>
                 </div>
               </div>
 
@@ -2535,14 +2561,17 @@ export default function MobileAppClient({
                     <span>Hồ sơ cá nhân &amp; Điểm giao nhận</span>
                     <ChevronRight size={14} className="text-stone-400" />
                   </button>
-                  <Link
-                    href="/"
-                    onClick={() => setIsDrawerMenuOpen(false)}
-                    className="w-full p-2.5 flex items-center justify-between hover:text-stone-900 transition text-stone-600"
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsDrawerMenuOpen(false);
+                      setIsHelpModalOpen(true);
+                    }}
+                    className="w-full p-2.5 flex items-center justify-between hover:text-emerald-800 transition cursor-pointer text-left"
                   >
-                    <span>Quay về trang web CLOOP</span>
+                    <span>Trung tâm trợ giúp &amp; CSKH 24/7</span>
                     <ChevronRight size={14} className="text-stone-400" />
-                  </Link>
+                  </button>
                 </div>
               </div>
 
@@ -4171,6 +4200,155 @@ export default function MobileAppClient({
 
               </div>
 
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================
+            📖 8.6. MODAL CẨM NANG & XU HƯỚNG TUẦN HOÀN IN-APP
+            ======================================================== */}
+        {isBlogModalOpen && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200 mobile-app-root font-sans">
+            <div className="w-full max-w-[430px] max-h-[88vh] bg-[#FBF9F5] rounded-t-[32px] sm:rounded-[36px] overflow-y-auto shadow-2xl relative animate-in slide-in-from-bottom duration-300 flex flex-col no-scrollbar">
+              <div className="sticky top-0 z-20 bg-[#0A2517] text-white px-4 py-3 flex items-center justify-between border-b border-emerald-900/40 shrink-0">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                  <span className="font-bold text-sm tracking-wide">Cẩm Nang Thời Trang Tuần Hoàn</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsBlogModalOpen(false)}
+                  className="w-7 h-7 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition cursor-pointer"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+
+              <div className="p-4 space-y-4">
+                <div className="bg-white rounded-2xl p-4 border border-stone-200/80 shadow-2xs space-y-2">
+                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full uppercase">
+                    Xu hướng 2026
+                  </span>
+                  <h3 className="font-heading font-black text-sm text-[#0A2517]">
+                    Chia sẻ tủ đồ: Mặc mới mỗi tuần, chi tiêu thông minh
+                  </h3>
+                  <p className="text-xs text-stone-600 leading-relaxed">
+                    Thay vì bỏ ra hàng triệu đồng cho một chiếc đầm chỉ mặc 1 lần đi tiệc, mô hình kinh tế tuần hoàn tại CLOOP giúp bạn trải nghiệm đồ hiệu với chi phí chỉ bằng 10-15% giá mua, đồng thời giảm 86% lượng phát thải carbon thời trang.
+                  </p>
+                </div>
+
+                <div className="bg-white rounded-2xl p-4 border border-stone-200/80 shadow-2xs space-y-2">
+                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full uppercase">
+                    Bí quyết chọn size
+                  </span>
+                  <h3 className="font-heading font-black text-sm text-[#0A2517]">
+                    Cách đo 3 vòng chuẩn xác để thuê đầm vừa in
+                  </h3>
+                  <p className="text-xs text-stone-600 leading-relaxed">
+                    Nhắn tin trực tiếp với chủ tủ hoặc hỏi AI Stylist của CLOOP để được tư vấn chính xác độ co giãn và form dáng từng chiếc đầm trước khi đặt cọc.
+                  </p>
+                </div>
+
+                <div className="bg-white rounded-2xl p-4 border border-stone-200/80 shadow-2xs space-y-2">
+                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full uppercase">
+                    Chính sách vệ sinh
+                  </span>
+                  <h3 className="font-heading font-black text-sm text-[#0A2517]">
+                    Quy trình giặt hấp &amp; bảo quản chuẩn 5 sao
+                  </h3>
+                  <p className="text-xs text-stone-600 leading-relaxed">
+                    Tất cả trang phục giao dịch qua CLOOP đều được hấp tiệt trùng và kiểm định nguyên vẹn tag mác trước khi bàn giao tới tay người thuê tiếp theo.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================
+            🛡️ 8.7. MODAL TRUNG TÂM TRỢ GIÚP & CSKH IN-APP
+            ======================================================== */}
+        {isHelpModalOpen && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200 mobile-app-root font-sans">
+            <div className="w-full max-w-[430px] max-h-[88vh] bg-[#FBF9F5] rounded-t-[32px] sm:rounded-[36px] overflow-y-auto shadow-2xl relative animate-in slide-in-from-bottom duration-300 flex flex-col no-scrollbar">
+              <div className="sticky top-0 z-20 bg-[#0A2517] text-white px-4 py-3 flex items-center justify-between border-b border-emerald-900/40 shrink-0">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                  <span className="font-bold text-sm tracking-wide">Trung Tâm Trợ Giúp &amp; CSKH</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsHelpModalOpen(false)}
+                  className="w-7 h-7 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition cursor-pointer"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+
+              <div className="p-4 space-y-4">
+                {/* CSKH 24/7 Hotline */}
+                <div className="bg-white rounded-2xl p-4 border border-stone-200/80 shadow-2xs space-y-3">
+                  <h4 className="font-heading font-bold text-xs uppercase tracking-wider text-emerald-800">
+                    Kênh Hỗ Trợ Nhanh
+                  </h4>
+                  <div className="space-y-2">
+                    <a
+                      href="tel:0987654321"
+                      className="flex items-center justify-between p-2.5 rounded-xl border border-stone-200 bg-[#FAF9F5] hover:border-emerald-700 transition"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-xs">
+                          📞
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-stone-800">Hotline Khẩn Cấp</p>
+                          <p className="text-[11px] font-mono text-emerald-700 font-bold">098.765.4321</p>
+                        </div>
+                      </div>
+                      <span className="text-xs text-emerald-700 font-bold">Gọi ngay</span>
+                    </a>
+
+                    <a
+                      href="https://zalo.me"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-between p-2.5 rounded-xl border border-stone-200 bg-[#FAF9F5] hover:border-blue-600 transition"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-800 flex items-center justify-center font-bold text-xs">
+                          💬
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-stone-800">Zalo Hỗ Trợ 24/7</p>
+                          <p className="text-[11px] text-stone-500">Phản hồi dưới 3 phút</p>
+                        </div>
+                      </div>
+                      <span className="text-xs text-blue-600 font-bold">Chat Zalo</span>
+                    </a>
+                  </div>
+                </div>
+
+                {/* FAQ */}
+                <div className="bg-white rounded-2xl p-4 border border-stone-200/80 shadow-2xs space-y-2.5 text-xs text-stone-700">
+                  <h4 className="font-heading font-bold text-xs uppercase tracking-wider text-emerald-800">
+                    Câu Hỏi Thường Gặp
+                  </h4>
+                  <div className="space-y-2">
+                    <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-100">
+                      <p className="font-bold text-stone-800 mb-1">1. Tiền cọc được hoàn lại khi nào?</p>
+                      <p className="text-stone-500 leading-relaxed text-[11px]">
+                        100% tiền cọc sẽ được hoàn tự động về Ví Thu Nhập CLOOP ngay khi chủ tủ nhận lại đồ và bấm xác nhận hoàn tất.
+                      </p>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-100">
+                      <p className="font-bold text-stone-800 mb-1">2. Nếu trang phục không vừa thì sao?</p>
+                      <p className="text-stone-500 leading-relaxed text-[11px]">
+                        CLOOP hỗ trợ đổi size hoặc hoàn 100% chi phí thuê trong vòng 24H kể từ lúc nhận trang phục nếu không vừa form.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
