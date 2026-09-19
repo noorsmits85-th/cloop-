@@ -39,6 +39,7 @@ export async function middleware(request: NextRequest) {
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api/cron') ||
+    pathname.startsWith('/api/zalo-webhook') ||
     pathname === '/favicon.ico' ||
     STATIC_ASSET_REGEX.test(pathname)
   ) {
