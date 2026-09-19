@@ -87,7 +87,7 @@ const nextConfig: NextConfig = {
       object-src 'none';
       base-uri 'self';
       form-action 'self' https://*.payos.vn;
-      frame-ancestors 'none';
+      frame-ancestors 'self' https://zalo.me https://*.zalo.me https://*.zadn.vn https://*.zaloplatforms.com;
       upgrade-insecure-requests;
     `.replace(/\s{2,}/g, ' ').trim();
 
@@ -96,7 +96,6 @@ const nextConfig: NextConfig = {
         source: "/(.*)",
         headers: [
           { key: "Content-Security-Policy", value: cspDirectives },
-          { key: "X-Frame-Options", value: "DENY" },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
