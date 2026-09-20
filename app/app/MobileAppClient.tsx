@@ -240,7 +240,7 @@ export default function MobileAppClient({
   const [checkoutRenterAddress, setCheckoutRenterAddress] = useState<string>("");
   const [checkoutRenterNote, setCheckoutRenterNote] = useState<string>("");
   const [saveRenterInfo, setSaveRenterInfo] = useState<boolean>(true);
-  const [isBookingSubmitting, setIsBookingSubmitting] = useState<boolean>(false);
+  const [isSubmittingBooking, setIsSubmittingBooking] = useState<boolean>(false);
   const [bookingError, setBookingError] = useState<string>("");
   const [bookingSuccessData, setBookingSuccessData] = useState<any | null>(null);
   const [isTransferConfirmed, setIsTransferConfirmed] = useState<boolean>(false);
@@ -1062,14 +1062,14 @@ export default function MobileAppClient({
               </span>
             </div>
 
-            {/* 🌿 NÚT CHUYỂN ĐỔI NGÔN NGỮ ĐƠN GỌN GÀNG (ICON LÁ CON + VIE / ENG) */}
+            {/* 🇻🇳 🇬🇧 NÚT CHUYỂN ĐỔI NGÔN NGỮ ĐƠN GỌN GÀNG (LÁ CỜ QUỐC KỲ + VIE / ENG) */}
             <button
               type="button"
               onClick={() => toggleLang(lang === "vi" ? "en" : "vi")}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/95 hover:bg-emerald-50/90 active:scale-95 border border-emerald-800/20 shadow-2xs transition-all cursor-pointer select-none shrink-0"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/95 hover:bg-stone-100 active:scale-95 border border-stone-200 shadow-2xs transition-all cursor-pointer select-none shrink-0"
               title={lang === "vi" ? "Chuyển sang English" : "Chuyển sang Tiếng Việt"}
             >
-              <Leaf size={13} className="text-emerald-700 shrink-0 fill-emerald-600/20" />
+              <span className="text-[14px] leading-none select-none">{lang === "vi" ? "🇻🇳" : "🇬🇧"}</span>
               <span className="text-[11px] font-bold text-[#0A2517] tracking-tight">
                 {lang === "vi" ? "Vie" : "Eng"}
               </span>
