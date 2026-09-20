@@ -405,14 +405,16 @@ export default function MobileAppClient({
       .then(data => {
         if (data.options && data.options.length > 0) {
           const standardOption = data.options.find((o: any) => o.quote?.serviceId === "standard") || data.options[0];
-          const fee = Number(standardOption.quote?.fee) || 0;
+          const rawFee = Number(standardOption.quote?.fee) || 0;
+          // 🛡️ Đồng bộ 100% chuẩn Web (Block 5K: làm tròn nhịp 5.000đ)
+          const fee = rawFee > 0 ? Math.ceil(rawFee / 5000) * 5000 : 0;
           setCheckoutShippingFee(fee);
         } else {
-          setCheckoutShippingFee(35000);
+          setCheckoutShippingFee(null);
         }
       })
       .catch(() => {
-        setCheckoutShippingFee(35000);
+        setCheckoutShippingFee(null);
       })
       .finally(() => {
         setIsLoadingCheckoutShipping(false);
@@ -712,6 +714,42 @@ export default function MobileAppClient({
     }
   };
 
+  // 🏷️ HÀM TÍNH PHÍ GÓI THUÊ ĐỒNG BỘ 100% VỚI WEB VÀ PRISMA DATABASE
+  const calculatePackageRentalFee = (product: any, days: number) => {
+    if (!product) return 0;
+    if (product.listingTypeRaw === "SELL") {
+      return Number(product.salePrice || product.price || 0);
+    }
+    const base = Number(product.rentalPrice || product.price || 0);
+    
+    // Nếu sản phẩm có pricing_tiers từ DB (customized)
+    const tiers = product.pricingTiers || product.pricing_tiers;
+    if (Array.isArray(tiers) && tiers.length > 0) {
+      const match = tiers.find((t: any) => Number(t.days) === Number(days));
+      if (match?.price) return Number(match.price);
+    }
+
+    // Quy chuẩn web chuẩn mực (áp dụng chiết khấu khối lượng):
+    // 1 ngày: basePrice
+    // 3 ngày: roundToThousand(basePrice * 3 * 0.85) - Giảm 15%
+    // 7 ngày: roundToThousand(basePrice * 7 * 0.70) - Giảm 30%
+    if (days === 1) return base;
+    if (days === 3) return Math.round(base * 3 * 0.85 / 1000) * 1000;
+    if (days === 7) return Math.round(base * 7 * 0.70 / 1000) * 1000;
+
+    const factor = days >= 7 ? 0.7 : days >= 3 ? 0.85 : 1;
+    return Math.round(base * days * factor / 1000) * 1000;
+  };
+
+  const calculatedRentalFee = useMemo(() => {
+    return calculatePackageRentalFee(checkoutProduct, checkoutDays);
+  }, [checkoutProduct, checkoutDays]);
+
+  const calculatedDeposit = useMemo(() => {
+    if (!checkoutProduct || checkoutProduct.listingTypeRaw === "SELL") return 0;
+    return Number(checkoutProduct.deposit || 0);
+  }, [checkoutProduct]);
+
   // 🗓️ TÍNH TOÁN NGÀY TRẢ ĐỒ DỰ KIẾN THEO SỐ NGÀY THUÊ
   const checkoutEndDate = useMemo(() => {
     if (!checkoutStartDate) return "";
@@ -726,7 +764,8 @@ export default function MobileAppClient({
     setBookingError("");
     setBookingSuccessData(null);
     setIsTransferConfirmed(false);
-    setCheckoutDays(product.minDays || 3);
+    // Mặc định chọn gói 3 ngày (gói phổ biến nhất trên web)
+    setCheckoutDays(3);
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     setCheckoutStartDate(tomorrow.toISOString().slice(0, 10));
@@ -783,15 +822,18 @@ export default function MobileAppClient({
         setBookingError("Vui lòng điền số nhà, tên đường chi tiết");
         return;
       }
+      if (checkoutShippingFee === null) {
+        setBookingError("Hệ thống đang tính cước GHN, vui lòng đợi trong giây lát hoặc chọn lại địa chỉ.");
+        return;
+      }
     }
 
     setIsSubmittingBooking(true);
 
     const isRental = checkoutProduct.listingTypeRaw !== "SELL";
-    const unitPrice = isRental ? (checkoutProduct.rentalPrice || checkoutProduct.price || 0) : (checkoutProduct.salePrice || checkoutProduct.price || 0);
-    const subTotal = isRental ? unitPrice * checkoutDays : unitPrice;
-    const deposit = isRental ? (checkoutProduct.deposit > 0 ? checkoutProduct.deposit : unitPrice * 3) : 0;
-    const effectiveShipping = checkoutShippingMode === "CLOOP_BOOK" ? (checkoutShippingFee !== null ? checkoutShippingFee : 35000) : 0;
+    const subTotal = calculatedRentalFee;
+    const deposit = calculatedDeposit;
+    const effectiveShipping = checkoutShippingMode === "CLOOP_BOOK" ? (checkoutShippingFee || 0) : 0;
     const totalAmount = subTotal + deposit + effectiveShipping;
 
     const prov = ghnProvinces.find(p => String(p.ProvinceID) === String(checkoutProvinceId));
@@ -823,7 +865,7 @@ export default function MobileAppClient({
     } catch (_) {}
 
     try {
-      const res = await createBookingAction({
+      const res = await createBooking({
         productId: checkoutProduct.id,
         startDate: checkoutStartDate,
         endDate: checkoutEndDate,
@@ -833,6 +875,7 @@ export default function MobileAppClient({
         ownerPhone: "",
         isRental,
         shippingMode: checkoutShippingMode,
+        shippingFee: effectiveShipping,
       });
 
       if (res.success && res.rentalId) {
@@ -843,8 +886,8 @@ export default function MobileAppClient({
           rentalId: res.rentalId,
           orderCode: res.rentalId.slice(-6).toUpperCase(),
           totalAmount: res.totalAmount || totalAmount,
-          depositAmount: res.depositAmount || deposit,
-          rentalFee: subTotal,
+          depositAmount: res.depositAmount ?? deposit,
+          rentalFee: res.rentalFee || subTotal,
           shippingFee: effectiveShipping,
           startDate: checkoutStartDate,
           endDate: checkoutEndDate,
@@ -4141,45 +4184,81 @@ export default function MobileAppClient({
                       </div>
                     </div>
 
-                    {/* 1. CHỌN THỜI GIAN THUÊ (NẾU LÀ ĐỒ THUÊ) */}
+                    {/* 1. CHỌN GÓI THUÊ TRẢI NGHIỆM (ĐỒNG BỘ 100% CHUẨN WEB) */}
                     {checkoutProduct.listingTypeRaw !== "SELL" && (
                       <div className="p-3.5 rounded-2xl bg-white border border-stone-200/90 space-y-2.5">
-                        <label className="block text-xs font-bold text-[#0A2517]">
-                          Thời gian thuê trang phục
-                        </label>
+                        <div className="flex justify-between items-center">
+                          <label className="block text-xs font-bold text-[#0A2517]">
+                            1. Gói thuê trải nghiệm
+                          </label>
+                          <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
+                            Tiết kiệm đến 30%
+                          </span>
+                        </div>
 
-                        <div className="grid grid-cols-2 gap-2">
+                        {/* 3 Thẻ Gói Thuê Đồng Bộ Web (1 Ngày, 3 Ngày, 7 Ngày) */}
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {[
+                            { days: 1, name: "1 Ngày", sub: "Hỏa tốc", discount: null },
+                            { days: 3, name: "3 Ngày", sub: "Cuối tuần", discount: "-15%" },
+                            { days: 7, name: "7 Ngày", sub: "Nghỉ dưỡng", discount: "-30%" },
+                          ].map((pkg) => {
+                            const isSelected = checkoutDays === pkg.days;
+                            const pkgPrice = calculatePackageRentalFee(checkoutProduct, pkg.days);
+
+                            return (
+                              <button
+                                key={pkg.days}
+                                type="button"
+                                onClick={() => setCheckoutDays(pkg.days)}
+                                className={`relative p-2 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
+                                  isSelected
+                                    ? "bg-[#0A2517] text-white border-[#0A2517] shadow-xs"
+                                    : "bg-stone-50 text-stone-700 border-stone-200 hover:border-stone-300"
+                                }`}
+                              >
+                                {pkg.discount && (
+                                  <span className={`absolute -top-1.5 -right-1 text-[8.5px] font-black px-1.5 py-0.2 rounded-full font-mono ${
+                                    isSelected ? "bg-amber-400 text-stone-900" : "bg-emerald-100 text-emerald-800"
+                                  }`}>
+                                    {pkg.discount}
+                                  </span>
+                                )}
+                                <div>
+                                  <span className="text-xs font-bold block leading-tight">{pkg.name}</span>
+                                  <span className={`text-[9px] block ${isSelected ? "text-emerald-200" : "text-stone-400"}`}>
+                                    {pkg.sub}
+                                  </span>
+                                </div>
+                                <span className={`text-[10.5px] font-bold font-mono mt-1 ${isSelected ? "text-white" : "text-[#0A2517]"}`}>
+                                  {pkgPrice.toLocaleString("vi-VN")}đ
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Ngày nhận đồ & Lịch hiển thị */}
+                        <div className="pt-0.5 grid grid-cols-2 gap-2 items-center">
                           <div>
-                            <span className="text-[10.5px] text-stone-500 block mb-1">Ngày nhận đồ:</span>
+                            <span className="text-[10px] text-stone-500 block mb-0.5">Ngày nhận đồ:</span>
                             <input
                               type="date"
                               required
                               min={new Date().toISOString().slice(0, 10)}
                               value={checkoutStartDate}
                               onChange={(e) => setCheckoutStartDate(e.target.value)}
-                              className="w-full h-9 px-2.5 rounded-xl border border-stone-300 bg-stone-50 text-xs font-medium outline-none focus:border-[#0A2517]"
+                              className="w-full h-8 px-2 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#0A2517]"
                             />
                           </div>
-
                           <div>
-                            <span className="text-[10.5px] text-stone-500 block mb-1">Gói thuê:</span>
-                            <select
-                              value={checkoutDays}
-                              onChange={(e) => setCheckoutDays(Number(e.target.value))}
-                              className="w-full h-9 px-2 rounded-xl border border-stone-300 bg-stone-50 text-xs font-bold text-[#0A2517] outline-none"
-                            >
-                              <option value={3}>Gói 3 ngày (Mặc tiệc)</option>
-                              <option value={5}>Gói 5 ngày (Cuối tuần)</option>
-                              <option value={7}>Gói 7 ngày (Du lịch)</option>
-                            </select>
+                            <span className="text-[10px] text-stone-500 block mb-0.5">Lịch dự kiến:</span>
+                            <div className="h-8 px-2 rounded-xl bg-stone-100 border border-stone-200 flex items-center justify-between text-[10px] font-mono font-bold text-[#0A2517]">
+                              <span>{checkoutStartDate ? checkoutStartDate.slice(5) : ""}</span>
+                              <span>➔</span>
+                              <span>{checkoutEndDate ? checkoutEndDate.slice(5) : ""} ({checkoutDays}d)</span>
+                            </div>
                           </div>
-                        </div>
-
-                        <div className="p-2 rounded-xl bg-stone-100/80 border border-stone-200 text-[11px] text-stone-700 flex items-center justify-between">
-                          <span>Lịch dự kiến:</span>
-                          <strong className="font-mono font-bold text-[#0A2517]">
-                            {checkoutStartDate} ➔ {checkoutEndDate} ({checkoutDays} ngày)
-                          </strong>
                         </div>
                       </div>
                     )}
@@ -4421,29 +4500,36 @@ export default function MobileAppClient({
                       </div>
                     </div>
 
-                    {/* 4. CHI TIẾT TÍNH TIỀN MINH BẠCH */}
+                    {/* 4. CHI TIẾT TÍNH TIỀN MINH BẠCH (100% CHUẨN WEB) */}
                     <div className="p-3.5 rounded-2xl bg-[#F5F8F5] border border-stone-200/90 space-y-2 text-xs">
                       <div className="flex justify-between text-stone-600">
-                        <span>{checkoutProduct.listingTypeRaw === "SELL" ? "Giá chuyển nhượng:" : `Phí thuê (${checkoutDays} ngày):`}</span>
-                        <span className="font-bold text-stone-900">
-                          {((checkoutProduct.listingTypeRaw === "SELL" ? (checkoutProduct.salePrice || checkoutProduct.price || 0) : ((checkoutProduct.rentalPrice || checkoutProduct.price || 0) * checkoutDays))).toLocaleString("vi-VN")}đ
+                        <span>{checkoutProduct.listingTypeRaw === "SELL" ? "Giá chuyển nhượng:" : `Phí gói thuê (${checkoutDays} ngày):`}</span>
+                        <span className="font-bold text-stone-900 font-mono">
+                          {calculatedRentalFee.toLocaleString("vi-VN")}đ
                         </span>
                       </div>
 
                       {checkoutProduct.listingTypeRaw !== "SELL" && (
                         <div className="flex justify-between text-stone-600">
-                          <span>Tiền cọc đảm bảo:</span>
+                          <div>
+                            <span>Tiền cọc đảm bảo:</span>
+                            {calculatedDeposit === 0 ? (
+                              <span className="text-[10px] text-emerald-700 block">Miễn cọc thành viên</span>
+                            ) : (
+                              <span className="text-[10px] text-stone-400 block">Hoàn trả 100% khi trả đồ</span>
+                            )}
+                          </div>
                           <span className="font-mono font-bold text-stone-900">
-                            {(checkoutProduct.deposit > 0 ? checkoutProduct.deposit : (checkoutProduct.rentalPrice || checkoutProduct.price || 0) * 3).toLocaleString("vi-VN")}đ
+                            {calculatedDeposit === 0 ? "0đ (Miễn cọc)" : `+${calculatedDeposit.toLocaleString("vi-VN")}đ`}
                           </span>
                         </div>
                       )}
 
                       <div className="flex justify-between text-stone-600">
                         <span>Phí giao nhận:</span>
-                        <span className={`font-bold ${checkoutShippingMode === "CLOOP_BOOK" && checkoutShippingFee === null ? "text-amber-700 italic font-normal" : "text-stone-900"}`}>
+                        <span className={`font-bold font-mono ${checkoutShippingMode === "CLOOP_BOOK" && checkoutShippingFee === null ? "text-amber-700 italic font-normal" : "text-stone-900"}`}>
                           {checkoutShippingMode === "SELF_BOOK"
-                            ? "Miễn phí (Tự lấy tại trạm)"
+                            ? "0đ (Tự lấy tại trạm)"
                             : isLoadingCheckoutShipping
                             ? "Đang tính..."
                             : checkoutShippingFee !== null
@@ -4459,19 +4545,18 @@ export default function MobileAppClient({
 
                       <div className="pt-2 border-t border-stone-200 flex justify-between items-baseline">
                         <div>
-                          <span className="font-bold text-xs text-[#0A2517] block">Tổng thanh toán đặt cọc:</span>
+                          <span className="font-bold text-xs text-[#0A2517] block">Tổng thanh toán:</span>
                           {checkoutShippingMode === "CLOOP_BOOK" && checkoutShippingFee === null ? (
-                            <span className="text-[10px] text-amber-700 italic">* Chưa bao gồm cước vận chuyển GHN</span>
-                          ) : checkoutProduct.listingTypeRaw !== "SELL" ? (
-                            <span className="text-[10px] text-stone-500 italic">* Tiền cọc được hoàn trả 100% khi trả đồ</span>
+                            <span className="text-[10px] text-amber-700 italic">* Chưa gồm cước vận chuyển GHN</span>
+                          ) : checkoutProduct.listingTypeRaw !== "SELL" && calculatedDeposit > 0 ? (
+                            <span className="text-[10px] text-stone-500 italic">* Đã gồm cọc (Hoàn lại 100% khi trả đồ)</span>
                           ) : null}
                         </div>
-                        <span className="font-heading font-black text-lg text-[#0A2517]">
+                        <span className="font-heading font-black text-lg text-[#0A2517] font-mono">
                           {(
-                            (checkoutProduct.listingTypeRaw === "SELL" 
-                              ? (checkoutProduct.salePrice || checkoutProduct.price || 0) 
-                              : ((checkoutProduct.rentalPrice || checkoutProduct.price || 0) * checkoutDays + (checkoutProduct.deposit > 0 ? checkoutProduct.deposit : (checkoutProduct.rentalPrice || checkoutProduct.price || 0) * 3))
-                            ) + (checkoutShippingMode === "CLOOP_BOOK" ? (checkoutShippingFee || 0) : 0)
+                            calculatedRentalFee + 
+                            calculatedDeposit + 
+                            (checkoutShippingMode === "CLOOP_BOOK" ? (checkoutShippingFee || 0) : 0)
                           ).toLocaleString("vi-VN")}đ
                         </span>
                       </div>

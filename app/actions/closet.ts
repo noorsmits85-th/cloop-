@@ -445,7 +445,12 @@ export async function getMyClosetMobileDataAction() {
         condition: p.condition || "GOOD",
         rentalPrice: rentListing ? Number(rentListing.basePrice) : 0,
         salePrice: sellListing ? Number(sellListing.basePrice) : 0,
-        deposit: rentListing ? Number(rentListing.depositAmount || 0) : 0,
+        deposit: rentListing ? Number(rentListing.deposit || 0) : 0,
+        province: p.province || "Hà Nội",
+        location: p.province || "Hà Nội",
+        districtId: p.districtId || null,
+        wardCode: p.wardCode || null,
+        pricingTiers: (rentListing?.pricing_tiers as any) || null,
         status: p.status || "ON_MARKET",
         createdAt: p.createdAt.toISOString()
       };

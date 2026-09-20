@@ -16,6 +16,7 @@ export async function createBooking({
   ownerPhone,
   isRental,
   shippingMode,
+  shippingFee: clientShippingFee,
   fastTrackMode = false
 }: {
   productId: string;
@@ -27,6 +28,7 @@ export async function createBooking({
   ownerPhone: string;
   isRental: boolean;
   shippingMode: "CLOOP_BOOK" | "SELF_BOOK";
+  shippingFee?: number;
   fastTrackMode?: boolean;
 }) {
   const log = new Logger();
@@ -118,16 +120,33 @@ export async function createBooking({
 
     const deposit = depositCalculation.finalDeposit;
     
-    // Tính toán số ngày và tổng tiền trên Server
+    // Tính toán số ngày và tổng tiền trên Server đồng bộ 100% quy chuẩn Web
     const start = new Date(startDate);
     const end = new Date(endDate);
     const days = isRental && start && end ? Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000) + 1) : 0;
     
-    const shippingFee = shippingMode === "CLOOP_BOOK" ? 35000 : 0;
-    const subTotal = isRental ? (days > 0 ? days * basePrice : 0) : basePrice; 
+    let itemPrice = basePrice;
+    if (isRental) {
+      const pricingTiers = listing.pricing_tiers as Array<{ days: number; price: number }> | null;
+      if (pricingTiers && Array.isArray(pricingTiers)) {
+        const selectedTier = pricingTiers.find(t => t.days === days);
+        if (selectedTier) {
+          itemPrice = selectedTier.price;
+        } else {
+          itemPrice = Math.round(basePrice * days * (days >= 7 ? 0.7 : days >= 3 ? 0.85 : 1) / 1000) * 1000;
+        }
+      } else {
+        itemPrice = Math.round(basePrice * days * (days >= 7 ? 0.7 : days >= 3 ? 0.85 : 1) / 1000) * 1000;
+      }
+    } else {
+      itemPrice = listing.salePrice || basePrice || 0;
+    }
+
+    const subTotal = itemPrice;
+    const shippingFee = shippingMode === "CLOOP_BOOK" ? (Number(clientShippingFee) || 0) : 0;
     const totalAmount = isRental 
-      ? (days > 0 ? subTotal + deposit + serviceFee + shippingFee : 0)
-      : (basePrice + serviceFee + shippingFee);
+      ? (subTotal + deposit + serviceFee + shippingFee)
+      : (subTotal + serviceFee + shippingFee);
 
     // 2. Chặn trùng lịch (Overlap check) trên Server (Sử dụng Prisma Transaction để an toàn)
     return await prisma.$transaction(async (tx) => {
