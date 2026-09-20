@@ -46,14 +46,16 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 📱 1.1 ĐIỀU HƯỚNG BẢO ĐẢM TRẢI NGHIỆM APP DUY NHẤT (Chống lộn xộn bản web cũ):
+  // 📱 1.1 ĐIỀU HƯỚNG THÔNG MINH THEO THIẾT BỊ (Mobile -> Giao diện App, Laptop -> Giữ nguyên bản Web)
   const userAgent = request.headers.get('user-agent') || '';
   const isMobileOrZalo = /Android|iPhone|iPad|iPod|Zalo|MiniApp|Mobile/i.test(userAgent);
   const isWebOldRoute = pathname === '/' || pathname === '/ai-stylist' || pathname === '/blog';
 
-  if ((isMobileOrZalo && isWebOldRoute) || (pathname === '/' && !request.nextUrl.searchParams.has('desktop'))) {
+  // CHỈ chuyển hướng sang /app khi truy cập từ ĐIỆN THOẠI (Mobile / Zalo)
+  // Trên Laptop / Máy tính: Giữ nguyên 100% giao diện Web rộng lớn ban đầu!
+  if (isMobileOrZalo && isWebOldRoute) {
     const appUrl = new URL('/app', request.url);
-    if (search && !search.includes('desktop')) {
+    if (search) {
       appUrl.search = search;
     }
     return NextResponse.redirect(appUrl);
