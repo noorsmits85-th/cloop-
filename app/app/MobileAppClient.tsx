@@ -108,9 +108,24 @@ export default function MobileAppClient({
   const [searchQuery, setSearchQuery] = useState("");
   const [likedItems, setLikedItems] = useState<Record<string, boolean>>({});
 
+  // 🌐 THIẾT LẬP NGÔN NGỮ (VIE / ENG)
+  const [lang, setLang] = useState<"vi" | "en">("vi");
+  const [langToast, setLangToast] = useState<string | null>(null);
+
+  const toggleLang = (newLang: "vi" | "en") => {
+    setLang(newLang);
+    setLangToast(newLang === "vi" ? "Đã chuyển sang Tiếng Việt" : "Switched to English");
+    setTimeout(() => setLangToast(null), 2200);
+  };
+
+  // 📜 TỰ ĐỘNG ẨN THANH ĐIỀU HƯỚNG KHI CUỘN XUỐNG XEM ĐỒ
+  const [isBottomBarVisible, setIsBottomBarVisible] = useState(true);
+  const lastScrollY = useRef(0);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
   // 🌐 DỮ LIỆU FEED SẢN PHẨM (PRELOAD SERVER)
-  const [products, setProducts] = useState<any[]>(initialProducts);
-  const [totalProductsCount, setTotalProductsCount] = useState(initialTotalCount || initialProducts.length);
+  const [products, setProducts] = useState<any[]>(initialProducts || []);
+  const [totalProductsCount, setTotalProductsCount] = useState(initialTotalCount || (initialProducts?.length || 0));
 
   // 👤 DỮ LIỆU TỦ ĐỒ CÁ NHÂN & THEO DÕI HỒ SƠ
   const [closetData, setClosetData] = useState<any>(initialUserData || null);
@@ -120,6 +135,11 @@ export default function MobileAppClient({
   const [isDrawerMenuOpen, setIsDrawerMenuOpen] = useState(false);
   const [isBlogModalOpen, setIsBlogModalOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+
+  // 🛡️ DỮ LIỆU AN TOÀN TRÁNH CRASH GIAO DIỆN (NULL-SAFETY)
+  const safeOrdersAsRenter = closetData?.ordersAsRenter || [];
+  const safeOrdersAsLender = closetData?.ordersAsLender || [];
+  const safeMyProducts = closetData?.myProducts || [];
 
   // 👗 MODAL CHI TIẾT SẢN PHẨM TRONG APP
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
@@ -419,6 +439,45 @@ export default function MobileAppClient({
       refreshPersonalData();
     }
   }, [activeTab, currentUser]);
+
+  // 📜 LẮNG NGHE SỰ KIỆN CUỘN TRANG ĐỂ ẨN/HIỆN THANH ĐIỀU HƯỚNG ĐÁY
+  useEffect(() => {
+    const handleScrollEvent = (scrollTop: number) => {
+      const diff = scrollTop - lastScrollY.current;
+      if (Math.abs(diff) < 8) return;
+      if (diff > 0 && scrollTop > 50) {
+        // Cuộn xuống -> Thu gọn thanh đáy nhường chỗ xem sản phẩm
+        setIsBottomBarVisible(false);
+      } else if (diff < 0) {
+        // Cuộn lên -> Hiển thị lại thanh đáy
+        setIsBottomBarVisible(true);
+      }
+      lastScrollY.current = Math.max(0, scrollTop);
+    };
+
+    const onWindowScroll = () => {
+      handleScrollEvent(window.scrollY || document.documentElement.scrollTop || 0);
+    };
+
+    const containerEl = scrollContainerRef.current;
+    const onContainerScroll = () => {
+      if (containerEl) {
+        handleScrollEvent(containerEl.scrollTop);
+      }
+    };
+
+    window.addEventListener("scroll", onWindowScroll, { passive: true });
+    if (containerEl) {
+      containerEl.addEventListener("scroll", onContainerScroll, { passive: true });
+    }
+
+    return () => {
+      window.removeEventListener("scroll", onWindowScroll);
+      if (containerEl) {
+        containerEl.removeEventListener("scroll", onContainerScroll);
+      }
+    };
+  }, []);
 
   // 🛍️ TỰ ĐỘNG NẠP DANH MỤC TRANG PHỤC & THÔNG TIN CHỦ TỦ KHI MỞ TỦ ĐỒ (TIKTOK/SHOPEE STYLE)
   useEffect(() => {
@@ -939,7 +998,7 @@ export default function MobileAppClient({
 
     try {
       const res = await updateClosetProfileAction({
-        userId: closetData.user.id,
+        userId: closetData?.user?.id || currentUser?.id || "",
         name: profileForm.name,
         location: profileForm.pickupAddress || profileForm.name,
         bio: profileForm.bio,
@@ -976,7 +1035,10 @@ export default function MobileAppClient({
     <div className="min-h-screen bg-[#FAF8F5] sm:bg-[#EAE7E1] py-0 sm:py-8 flex justify-center selection:bg-[#0A2517] selection:text-white">
       
       {/* 📱 KHUNG MÁY APP: TRẢI NGHIỆM 100% NATIVE MOBILE APP */}
-      <div className="w-full sm:max-w-[430px] min-h-screen sm:min-h-[890px] sm:max-h-[920px] bg-[#FBF9F5] text-[#0A2517] antialiased sm:shadow-[0_25px_60px_rgba(0,0,0,0.18)] sm:rounded-[44px] sm:border-[6px] border-stone-800/80 relative overflow-y-auto overflow-x-hidden select-none pb-24 no-scrollbar flex flex-col">
+      <div 
+        ref={scrollContainerRef}
+        className="w-full sm:max-w-[430px] min-h-screen sm:min-h-[890px] sm:max-h-[920px] bg-[#FBF9F5] text-[#0A2517] antialiased sm:shadow-[0_25px_60px_rgba(0,0,0,0.18)] sm:rounded-[44px] sm:border-[6px] border-stone-800/80 relative overflow-y-auto overflow-x-hidden select-none pb-24 no-scrollbar flex flex-col"
+      >
         
         {/* ========================================================
             🌿 1. HEADER NATIVE APP TINH TẾ & THOÁNG ĐÃNG
@@ -1000,8 +1062,31 @@ export default function MobileAppClient({
               </span>
             </div>
 
-            {/* Khoảng trống bên phải thoáng đãng cho capsule của Zalo (... | X), hoàn toàn không bị lúm nhúm */}
-            <div className="w-24 shrink-0" />
+            {/* 🌐 NÚT CHUYỂN ĐỔI NGÔN NGỮ VIỆT / ANH TINH TẾ (GỌN GÀNG, ĐẸP MẮT) */}
+            <div className="flex items-center bg-stone-200/80 border border-stone-300/70 rounded-full p-0.5 shadow-2xs shrink-0">
+              <button
+                type="button"
+                onClick={() => toggleLang("vi")}
+                className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-all cursor-pointer ${
+                  lang === "vi"
+                    ? "bg-[#0A2517] text-white shadow-xs"
+                    : "text-stone-500 hover:text-stone-800"
+                }`}
+              >
+                VIE
+              </button>
+              <button
+                type="button"
+                onClick={() => toggleLang("en")}
+                className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-all cursor-pointer ${
+                  lang === "en"
+                    ? "bg-[#0A2517] text-white shadow-xs"
+                    : "text-stone-500 hover:text-stone-800"
+                }`}
+              >
+                ENG
+              </button>
+            </div>
           </div>
 
           {/* Ô TÌM KIẾM TRONG APP (HIỂN THỊ Ở TAB KHÁM PHÁ & SÀN ĐỒ) */}
@@ -1011,7 +1096,7 @@ export default function MobileAppClient({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Tìm đầm tiệc cưới, dạ hội, áo dài..."
+                placeholder={lang === "vi" ? "Tìm đầm tiệc cưới, dạ hội, áo dài..." : "Search dresses, gala, wedding outfits..."}
                 className="w-full h-10 bg-white text-stone-900 placeholder-stone-400 pl-4 pr-10 rounded-xl text-xs font-medium outline-none border border-stone-200/90 shadow-2xs focus:border-[#0A2517] focus:ring-1 focus:ring-[#0A2517]"
               />
               <button
@@ -1020,6 +1105,13 @@ export default function MobileAppClient({
               >
                 <Search size={16} />
               </button>
+            </div>
+          )}
+
+          {/* TOAST THÔNG BÁO CHUYỂN ĐỔI NGÔN NGỮ */}
+          {langToast && (
+            <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-[#0A2517] text-white text-[11px] font-bold px-3 py-1 rounded-full shadow-md border border-emerald-600/60 animate-bounce">
+              {langToast}
             </div>
           )}
         </div>
@@ -1053,10 +1145,12 @@ export default function MobileAppClient({
                 <div className="w-2 h-2 rounded-full bg-emerald-700 shrink-0 ml-1" />
                 <div>
                   <p className="text-[11px] font-bold text-[#0A2517]">
-                    {totalProductsCount > 0 ? `${totalProductsCount * 120}+ lượt mặc tuần hoàn` : "Tủ đồ tuần hoàn CLOOP"}
+                    {totalProductsCount > 0 
+                      ? (lang === "vi" ? `${totalProductsCount * 120}+ lượt mặc tuần hoàn` : `${totalProductsCount * 120}+ circular rotations`) 
+                      : (lang === "vi" ? "Tủ đồ tuần hoàn CLOOP" : "CLOOP Circular Closet")}
                   </p>
                   <p className="text-[9.5px] text-stone-500">
-                    Đã giảm 65 tấn khí thải CO2e cùng cộng đồng
+                    {lang === "vi" ? "Đã giảm 65 tấn khí thải CO2e cùng cộng đồng" : "Saved 65 tons of CO2e with community"}
                   </p>
                 </div>
               </div>
@@ -1065,7 +1159,7 @@ export default function MobileAppClient({
                 onClick={() => setIsUploadModalOpen(true)}
                 className="px-2.5 py-1.5 rounded-lg bg-[#0A2517] text-white text-[10px] font-bold shadow-2xs hover:bg-[#143E29] transition active:scale-95 shrink-0 cursor-pointer"
               >
-                + Up đồ
+                {lang === "vi" ? "+ Up đồ" : "+ List"}
               </button>
             </div>
 
@@ -1074,13 +1168,13 @@ export default function MobileAppClient({
             <div className="px-3 pt-2 pb-2">
               <div className="flex items-center justify-between mb-2 px-1">
                 <h2 className="font-heading font-black text-sm uppercase tracking-wider text-[#0A2517]">
-                  Gợi Ý Trang Phục Nổi Bật
+                  {lang === "vi" ? "Gợi Ý Trang Phục Nổi Bật" : "Featured Outfits"}
                 </h2>
                 <button
                   onClick={() => setActiveTab("shop")}
                   className="text-[11px] font-bold text-emerald-800 hover:underline cursor-pointer"
                 >
-                  Xem tất cả →
+                  {lang === "vi" ? "Xem tất cả →" : "View all →"}
                 </button>
               </div>
 
@@ -1088,6 +1182,9 @@ export default function MobileAppClient({
               <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
                 {OCCASIONS_TABS.map((tab) => {
                   const isActive = selectedOccasion === tab.name;
+                  const label = lang === "en" 
+                    ? (tab.name === "Tất cả" ? "All" : tab.name === "Tiệc cưới" ? "Wedding" : tab.name === "Dạ hội" ? "Gala" : tab.name === "Sinh nhật" ? "Birthday" : tab.name === "Áo dài" ? "Heritage" : tab.name === "Phụ kiện" ? "Accessories" : tab.name)
+                    : tab.name;
                   return (
                     <button
                       key={tab.id}
@@ -1098,7 +1195,7 @@ export default function MobileAppClient({
                           : "bg-white text-stone-700 hover:bg-stone-100 border border-stone-200/80"
                       }`}
                     >
-                      {tab.name}
+                      {label}
                     </button>
                   );
                 })}
@@ -1521,22 +1618,24 @@ export default function MobileAppClient({
             {/* SUB-CONTENT 1: ĐỒ ĐI THUÊ */}
             {orderSubTab === "renter" && (
               <div className="space-y-3">
-                {(!closetData?.ordersAsRenter || closetData.ordersAsRenter.length === 0) ? (
+                {safeOrdersAsRenter.length === 0 ? (
                   <div className="py-12 text-center bg-white rounded-2xl border border-stone-200/80 p-6 space-y-3 text-stone-500">
-                    <h4 className="font-bold text-sm text-stone-800">Chưa có đơn thuê trang phục nào</h4>
+                    <h4 className="font-bold text-sm text-stone-800">
+                      {lang === "vi" ? "Chưa có đơn thuê trang phục nào" : "No rental orders yet"}
+                    </h4>
                     <p className="text-xs text-stone-500 max-w-xs mx-auto">
-                      Dạo Sàn đồ CLOOP để chọn đầm dạ hội, áo dài và phụ kiện cho sự kiện sắp tới của bạn.
+                      {lang === "vi" ? "Dạo Sàn đồ CLOOP để chọn đầm dạ hội, áo dài và phụ kiện cho sự kiện sắp tới của bạn." : "Browse CLOOP to find dresses and outfits for your next event."}
                     </p>
                     <button
                       onClick={() => setActiveTab("shop")}
                       className="px-4 py-2 bg-[#0A2517] text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer"
                     >
-                      Dạo Sàn Đồ Ngay
+                      {lang === "vi" ? "Dạo Sàn Đồ Ngay" : "Browse Shop Now"}
                     </button>
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {closetData.ordersAsRenter.map((order: any, idx: number) => (
+                    {safeOrdersAsRenter.map((order: any, idx: number) => (
                       <div key={order.id || idx} className="bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs space-y-2">
                         <div className="flex items-center justify-between text-[11px]">
                           <span className="font-mono text-stone-400">Đơn #{order.id?.slice(-6) || idx + 1}</span>
@@ -1546,7 +1645,7 @@ export default function MobileAppClient({
                         </div>
                         <div className="flex gap-3 items-center">
                           <div className="relative w-14 h-16 rounded-xl overflow-hidden bg-stone-100 shrink-0">
-                            <Image src={order.productImage || "/1.1.jpg"} alt={order.productTitle} fill className="object-cover" unoptimized />
+                            <Image src={order.productImage || "/1.1.jpg"} alt={order.productTitle || "Trang phục"} fill className="object-cover" unoptimized />
                           </div>
                           <div className="flex-1 min-w-0 text-xs">
                             <h5 className="font-bold text-stone-900 truncate">{order.productTitle}</h5>
@@ -1564,22 +1663,24 @@ export default function MobileAppClient({
             {/* SUB-CONTENT 2: ĐỒ CHO THUÊ */}
             {orderSubTab === "lender" && (
               <div className="space-y-3">
-                {(!closetData?.ordersAsLender || closetData.ordersAsLender.length === 0) ? (
+                {safeOrdersAsLender.length === 0 ? (
                   <div className="py-12 text-center bg-white rounded-2xl border border-stone-200/80 p-6 space-y-3 text-stone-500">
-                    <h4 className="font-bold text-sm text-stone-800">Chưa có khách đặt thuê đồ</h4>
+                    <h4 className="font-bold text-sm text-stone-800">
+                      {lang === "vi" ? "Chưa có khách đặt thuê đồ" : "No rental bookings yet"}
+                    </h4>
                     <p className="text-xs text-stone-500 max-w-xs mx-auto">
-                      Đăng thêm đầm tiệc vào kệ đồ để bắt đầu tạo thu nhập thụ động tuần hoàn.
+                      {lang === "vi" ? "Đăng thêm đầm tiệc vào kệ đồ để bắt đầu tạo thu nhập thụ động tuần hoàn." : "Add more dresses to your closet to start earning passive income."}
                     </p>
                     <button
                       onClick={() => setIsUploadModalOpen(true)}
                       className="px-4 py-2 bg-[#0A2517] text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer"
                     >
-                      + Đăng Trang Phục Mới
+                      {lang === "vi" ? "+ Đăng Trang Phục Mới" : "+ List New Outfit"}
                     </button>
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {closetData.ordersAsLender.map((order: any, idx: number) => (
+                    {safeOrdersAsLender.map((order: any, idx: number) => (
                       <div key={order.id || idx} className="bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs space-y-2">
                         <div className="flex items-center justify-between text-[11px]">
                           <span className="font-mono text-stone-400">Đơn #{order.id?.slice(-6) || idx + 1}</span>
@@ -1589,7 +1690,7 @@ export default function MobileAppClient({
                         </div>
                         <div className="flex gap-3 items-center">
                           <div className="relative w-14 h-16 rounded-xl overflow-hidden bg-stone-100 shrink-0">
-                            <Image src={order.productImage || "/1.1.jpg"} alt={order.productTitle} fill className="object-cover" unoptimized />
+                            <Image src={order.productImage || "/1.1.jpg"} alt={order.productTitle || "Trang phục"} fill className="object-cover" unoptimized />
                           </div>
                           <div className="flex-1 min-w-0 text-xs">
                             <h5 className="font-bold text-stone-900 truncate">{order.productTitle}</h5>
@@ -1733,7 +1834,7 @@ export default function MobileAppClient({
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-full bg-emerald-800 text-white flex items-center justify-center font-heading font-black text-lg border-2 border-emerald-400 overflow-hidden shrink-0 shadow-xs">
-                        {closetData?.user?.avatar ? (
+                        {closetData?.user?.avatar && typeof closetData.user.avatar === "string" && closetData.user.avatar.trim() !== "" ? (
                           <Image src={closetData.user.avatar} alt="Avatar" width={48} height={48} className="object-cover" unoptimized />
                         ) : (
                           displayName ? displayName[0].toUpperCase() : "C"
@@ -1951,30 +2052,32 @@ export default function MobileAppClient({
                           </button>
                         </div>
 
-                        {(!closetData?.myProducts || closetData.myProducts.length === 0) ? (
+                        {safeMyProducts.length === 0 ? (
                           <div className="p-8 text-center bg-white rounded-2xl border border-stone-200/80 space-y-2">
                             <Shirt size={28} className="mx-auto text-stone-400" />
-                            <h4 className="font-bold text-xs text-stone-800">Tủ đồ chưa có trang phục nào</h4>
+                            <h4 className="font-bold text-xs text-stone-800">
+                              {lang === "vi" ? "Tủ đồ chưa có trang phục nào" : "No items in your closet yet"}
+                            </h4>
                             <p className="text-[11px] text-stone-500 max-w-xs mx-auto">
-                              Đầm tiệc cưới, áo dài, đầm dạ hội của bạn chỉ mặc 1 lần? Hãy chia sẻ vào vòng tuần hoàn để nhận thu nhập thụ động!
+                              {lang === "vi" ? "Đầm tiệc cưới, áo dài, đầm dạ hội của bạn chỉ mặc 1 lần? Hãy chia sẻ vào vòng tuần hoàn để nhận thu nhập thụ động!" : "Share your dresses and outfits into the circular loop to earn passive income!"}
                             </p>
                             <button
                               onClick={() => setIsUploadModalOpen(true)}
                               className="mt-2 px-4 py-2 bg-[#0A2517] text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer inline-flex items-center gap-1.5"
                             >
                               <Plus size={14} />
-                              <span>Up bài chia sẻ trang phục đầu tiên</span>
+                              <span>{lang === "vi" ? "Up bài chia sẻ trang phục đầu tiên" : "+ List First Outfit"}</span>
                             </button>
                           </div>
                         ) : (
                           <div className="space-y-2">
-                            {closetData.myProducts.map((item: any, idx: number) => (
+                            {safeMyProducts.map((item: any, idx: number) => (
                               <div
                                 key={item.id || idx}
                                 className="bg-white rounded-2xl p-3 border border-stone-200/80 shadow-2xs flex gap-3 items-center"
                               >
                                 <div className="relative w-16 h-20 rounded-xl overflow-hidden bg-stone-100 shrink-0">
-                                  <Image src={item.image || "/1.1.jpg"} alt={item.title} fill className="object-cover" unoptimized />
+                                  <Image src={item.image || "/1.1.jpg"} alt={item.title || "Trang phục"} fill className="object-cover" unoptimized />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-1.5">
@@ -1985,7 +2088,7 @@ export default function MobileAppClient({
                                       Size {item.size || "M"}
                                     </span>
                                     <span className="text-[8.5px] bg-emerald-100 text-emerald-900 font-bold px-1.5 py-0.2 rounded ml-auto">
-                                      Đang hiển thị
+                                      {lang === "vi" ? "Đang hiển thị" : "Active"}
                                     </span>
                                   </div>
                                   <h4 className="text-xs font-bold text-stone-900 truncate mt-1">{item.title}</h4>
@@ -2020,7 +2123,7 @@ export default function MobileAppClient({
                                 : "text-stone-600 hover:text-stone-900"
                             }`}
                           >
-                            <span>Khách thuê đồ của bạn ({closetData?.ordersAsLender?.length || 0})</span>
+                            <span>Khách thuê ({safeOrdersAsLender.length})</span>
                           </button>
                           <button
                             onClick={() => setOrderSubTab("renter")}
@@ -2030,18 +2133,18 @@ export default function MobileAppClient({
                                 : "text-stone-600 hover:text-stone-900"
                             }`}
                           >
-                            <span>Đồ bạn đang thuê ({closetData?.ordersAsRenter?.length || 0})</span>
+                            <span>Bạn đang thuê ({safeOrdersAsRenter.length})</span>
                           </button>
                         </div>
 
                         {orderSubTab === "lender" ? (
-                          (!closetData?.ordersAsLender || closetData.ordersAsLender.length === 0) ? (
+                          safeOrdersAsLender.length === 0 ? (
                             <div className="p-6 text-center bg-white rounded-2xl border border-stone-200/80 text-stone-500 text-xs">
-                              Chưa có khách đặt thuê đồ mới. Các trang phục của bạn đang sẵn sàng đón người mặc tiếp theo!
+                              {lang === "vi" ? "Chưa có khách đặt thuê đồ mới. Các trang phục của bạn đang sẵn sàng đón người mặc tiếp theo!" : "No incoming rental requests yet. Your closet is ready for the next wearer!"}
                             </div>
                           ) : (
                             <div className="space-y-2">
-                              {closetData.ordersAsLender.map((order: any, idx: number) => (
+                              {safeOrdersAsLender.map((order: any, idx: number) => (
                                 <div key={order.id || idx} className="bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs space-y-2">
                                   <div className="flex items-center justify-between text-[11px]">
                                     <span className="font-mono text-stone-400">Đơn #{order.id?.slice(-6) || idx + 1}</span>
@@ -2051,7 +2154,7 @@ export default function MobileAppClient({
                                   </div>
                                   <div className="flex gap-3 items-center">
                                     <div className="relative w-14 h-16 rounded-xl overflow-hidden bg-stone-100 shrink-0">
-                                      <Image src={order.productImage || "/1.1.jpg"} alt={order.productTitle} fill className="object-cover" unoptimized />
+                                      <Image src={order.productImage || "/1.1.jpg"} alt={order.productTitle || "Trang phục"} fill className="object-cover" unoptimized />
                                     </div>
                                     <div className="flex-1 min-w-0 text-xs">
                                       <h5 className="font-bold text-stone-900 truncate">{order.productTitle}</h5>
@@ -2067,13 +2170,13 @@ export default function MobileAppClient({
                             </div>
                           )
                         ) : (
-                          (!closetData?.ordersAsRenter || closetData.ordersAsRenter.length === 0) ? (
+                          safeOrdersAsRenter.length === 0 ? (
                             <div className="p-6 text-center bg-white rounded-2xl border border-stone-200/80 text-stone-500 text-xs">
-                              Bạn chưa có đơn thuê trang phục nào. Hãy vào mục Đi tiệc để chuẩn bị cho sự kiện sắp tới!
+                              {lang === "vi" ? "Bạn chưa có đơn thuê trang phục nào. Hãy vào mục Đi tiệc để chuẩn bị cho sự kiện sắp tới!" : "You have no active rentals. Browse events to prepare for your next occasion!"}
                             </div>
                           ) : (
                             <div className="space-y-2">
-                              {closetData.ordersAsRenter.map((order: any, idx: number) => (
+                              {safeOrdersAsRenter.map((order: any, idx: number) => (
                                 <div key={order.id || idx} className="bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs space-y-2">
                                   <div className="flex items-center justify-between text-[11px]">
                                     <span className="font-mono text-stone-400">Mã đơn #{order.id?.slice(-6) || idx + 1}</span>
@@ -2083,7 +2186,7 @@ export default function MobileAppClient({
                                   </div>
                                   <div className="flex gap-3 items-center">
                                     <div className="relative w-14 h-16 rounded-xl overflow-hidden bg-stone-100 shrink-0">
-                                      <Image src={order.productImage || "/1.1.jpg"} alt={order.productTitle} fill className="object-cover" unoptimized />
+                                      <Image src={order.productImage || "/1.1.jpg"} alt={order.productTitle || "Trang phục"} fill className="object-cover" unoptimized />
                                     </div>
                                     <div className="flex-1 min-w-0 text-xs">
                                       <h5 className="font-bold text-stone-900 truncate">{order.productTitle}</h5>
@@ -2341,8 +2444,11 @@ export default function MobileAppClient({
 
         {/* ========================================================
             🏛️ 7. THANH ĐIỀU HƯỚNG ĐÁY CHUẨN ĐỒNG BỘ WEB (5 TABS)
+            TỰ ĐỘNG TRƯỢT XUỐNG ẨN KHI LƯỚT BÀI ĐỂ XEM ĐỒ RỘNG RÃI
             ======================================================== */}
-        <nav className="fixed bottom-0 left-0 right-0 w-full sm:max-w-[430px] mx-auto z-50 bg-white/95 backdrop-blur-md border-t border-stone-200/80 px-2 py-2 flex items-center justify-around shadow-lg pb-[calc(0.6rem+env(safe-area-inset-bottom,0px))] sm:rounded-b-[40px]">
+        <nav className={`fixed bottom-0 left-0 right-0 w-full sm:max-w-[430px] mx-auto z-50 bg-white/95 backdrop-blur-md border-t border-stone-200/80 px-2 py-2 flex items-center justify-around shadow-lg pb-[calc(0.6rem+env(safe-area-inset-bottom,0px))] sm:rounded-b-[40px] transition-transform duration-300 ease-in-out ${
+          isBottomBarVisible ? "translate-y-0" : "translate-y-full pointer-events-none"
+        }`}>
           
           {/* TAB 1: KHÁM PHÁ (Trang chủ) */}
           <button
@@ -2352,7 +2458,9 @@ export default function MobileAppClient({
             }`}
           >
             <Compass size={20} strokeWidth={activeTab === "home" ? 2.5 : 1.8} />
-            <span className="text-[10px] tracking-tight mt-0.5">Khám phá</span>
+            <span className="text-[10px] tracking-tight mt-0.5">
+              {lang === "vi" ? "Khám phá" : "Explore"}
+            </span>
           </button>
 
           {/* TAB 2: SÀN ĐỒ (ICON TÚI GIỎ CHUẨN TIKTOK SHOP) */}
@@ -2363,7 +2471,9 @@ export default function MobileAppClient({
             }`}
           >
             <ShoppingBag size={20} strokeWidth={activeTab === "shop" ? 2.5 : 1.8} />
-            <span className="text-[10px] tracking-tight mt-0.5">Sàn đồ</span>
+            <span className="text-[10px] tracking-tight mt-0.5">
+              {lang === "vi" ? "Sàn đồ" : "Shop"}
+            </span>
           </button>
 
           {/* TAB 3: 🌟 NÚT "+ ĐĂNG ĐỒ" NỔI BẬT Ở GIỮA */}
@@ -2374,7 +2484,9 @@ export default function MobileAppClient({
             <div className="w-8 h-8 rounded-full bg-[#0A2517] text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-all -mt-1.5 mb-0.5">
               <Plus size={18} strokeWidth={2.5} />
             </div>
-            <span className="text-[9.5px] font-bold text-[#0A2517] tracking-tight">Đăng đồ</span>
+            <span className="text-[9.5px] font-bold text-[#0A2517] tracking-tight">
+              {lang === "vi" ? "Đăng đồ" : "+ List"}
+            </span>
           </button>
 
           {/* TAB 4: ĐƠN HÀNG (Đồng bộ /my-closet/orders & Giỏ thuê) */}
@@ -2385,12 +2497,14 @@ export default function MobileAppClient({
             }`}
           >
             <Package size={20} strokeWidth={activeTab === "orders" ? 2.5 : 1.8} />
-            {(cartItems.length > 0 || (closetData?.ordersAsRenter?.length || 0) + (closetData?.ordersAsLender?.length || 0) > 0) && (
+            {(cartItems.length > 0 || (safeOrdersAsRenter.length + safeOrdersAsLender.length) > 0) && (
               <span className="absolute top-0 right-3 min-w-[14px] h-[14px] px-0.5 rounded-full bg-emerald-700 text-white text-[8.5px] font-extrabold flex items-center justify-center">
-                {cartItems.length + (closetData?.ordersAsRenter?.length || 0) + (closetData?.ordersAsLender?.length || 0)}
+                {cartItems.length + safeOrdersAsRenter.length + safeOrdersAsLender.length}
               </span>
             )}
-            <span className="text-[10px] tracking-tight mt-0.5">Đơn hàng</span>
+            <span className="text-[10px] tracking-tight mt-0.5">
+              {lang === "vi" ? "Đơn hàng" : "Orders"}
+            </span>
           </button>
 
           {/* TAB 5: TỦ ĐỒ (Đồng bộ /my-closet) */}
@@ -2401,18 +2515,23 @@ export default function MobileAppClient({
             }`}
           >
             <User size={20} strokeWidth={activeTab === "closet" ? 2.5 : 1.8} />
-            {closetData?.myProducts?.length > 0 && (
+            {safeMyProducts.length > 0 && (
               <span className="absolute top-0 right-3 w-2 h-2 rounded-full bg-emerald-600 ring-2 ring-white" />
             )}
-            <span className="text-[10px] tracking-tight mt-0.5">Tủ đồ</span>
+            <span className="text-[10px] tracking-tight mt-0.5">
+              {lang === "vi" ? "Tủ đồ" : "Closet"}
+            </span>
           </button>
 
         </nav>
 
         {/* ========================================================
             💬 7.5. TRỢ LÝ AI STYLIST NỔI GỌN NHẸ (CHUẨN TIKTOK ASSISTANT)
+            TỰ ĐỘNG HẠ XUỐNG DƯỚI KHI THANH ĐIỀU HƯỚNG ẨN
             ======================================================== */}
-        <div className="fixed bottom-20 left-0 right-0 w-full sm:max-w-[430px] mx-auto pointer-events-none z-40 flex justify-end px-3.5">
+        <div className={`fixed left-0 right-0 w-full sm:max-w-[430px] mx-auto pointer-events-none z-40 flex justify-end px-3.5 transition-all duration-300 ease-in-out ${
+          isBottomBarVisible ? "bottom-20" : "bottom-5"
+        }`}>
           <div className="pointer-events-auto">
             <AiStylistChat 
               isMobileApp={true}

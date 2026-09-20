@@ -40,19 +40,31 @@ export default function GlobalError({
         <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
           <button
             type="button"
-            onClick={() => reset()}
-            className="w-full flex items-center justify-center gap-2 bg-[#183A2D] hover:bg-[#112a20] text-white py-3 px-4 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
+            onClick={() => {
+              if (typeof window !== "undefined") {
+                window.location.reload();
+              } else {
+                reset();
+              }
+            }}
+            className="w-full flex items-center justify-center gap-2 bg-[#183A2D] hover:bg-[#112a20] text-white py-3 px-4 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer active:scale-95"
           >
             <RefreshCw size={15} />
             Thử lại ngay
           </button>
-          <Link
-            href="/"
-            className="w-full flex items-center justify-center gap-2 bg-stone-100 hover:bg-stone-200 text-stone-700 py-3 px-4 rounded-xl text-xs font-bold transition cursor-pointer"
+          <button
+            type="button"
+            onClick={() => {
+              if (typeof window !== "undefined") {
+                const isMobile = /Android|iPhone|iPad|iPod|Zalo|MiniApp|Mobile/i.test(navigator.userAgent);
+                window.location.href = isMobile ? "/app" : "/";
+              }
+            }}
+            className="w-full flex items-center justify-center gap-2 bg-stone-100 hover:bg-stone-200 text-stone-700 py-3 px-4 rounded-xl text-xs font-bold transition cursor-pointer active:scale-95"
           >
             <Home size={15} />
             Về Trang chủ
-          </Link>
+          </button>
         </div>
       </div>
     </div>
