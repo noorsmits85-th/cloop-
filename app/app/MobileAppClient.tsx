@@ -9,7 +9,7 @@ import {
   Plus, CheckCircle2, UploadCloud, Camera, RefreshCw,
   Leaf, ArrowRight, Shirt, Calendar, ShieldCheck, Check,
   ChevronRight, ArrowLeft, Wallet, Droplet, Award,
-  MapPin, Edit3, Menu, HelpCircle, LogOut, Package, Crop,
+  MapPin, Edit3, Menu, HelpCircle, LogOut, Package, Crop, Truck,
   Zap, CreditCard, QrCode, Sparkles
 } from "lucide-react";
 import Cropper from "react-easy-crop";
@@ -245,6 +245,16 @@ export default function MobileAppClient({
   const [bookingSuccessData, setBookingSuccessData] = useState<any | null>(null);
   const [isTransferConfirmed, setIsTransferConfirmed] = useState<boolean>(false);
 
+  // 🚚 ĐỊA CHỈ & TÍNH CƯỚC GHN TỰ ĐỘNG CHO CHECKOUT (ĐỒNG BỘ 100% BẢN WEB)
+  const [checkoutProvinceId, setCheckoutProvinceId] = useState<number | "">("");
+  const [checkoutDistrictId, setCheckoutDistrictId] = useState<number | "">("");
+  const [checkoutWardCode, setCheckoutWardCode] = useState<string>("");
+  const [checkoutDistricts, setCheckoutDistricts] = useState<any[]>([]);
+  const [checkoutWards, setCheckoutWards] = useState<any[]>([]);
+  const [checkoutAddressDetail, setCheckoutAddressDetail] = useState<string>("");
+  const [checkoutShippingFee, setCheckoutShippingFee] = useState<number | null>(null);
+  const [isLoadingCheckoutShipping, setIsLoadingCheckoutShipping] = useState<boolean>(false);
+
   // ⚙️ QUẢN LÝ HỒ SƠ TỦ ĐỒ (CLOSET SETTINGS)
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [profileForm, setProfileForm] = useState({
@@ -321,6 +331,93 @@ export default function MobileAppClient({
       .catch(err => console.error("Lỗi nạp xã GHN:", err))
       .finally(() => setIsLoadingGhnWards(false));
   }, [selectedGhnDistrictId]);
+
+  // 🚚 LẤY QUẬN / HUYỆN CHO CHECKOUT KHI CHỌN TỈNH
+  useEffect(() => {
+    if (!checkoutProvinceId) {
+      setCheckoutDistricts([]);
+      setCheckoutWards([]);
+      setCheckoutDistrictId("");
+      setCheckoutWardCode("");
+      setCheckoutShippingFee(null);
+      return;
+    }
+    fetch(`/api/shipping/address?type=district&province_id=${checkoutProvinceId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data?.data && Array.isArray(data.data)) {
+          setCheckoutDistricts(data.data);
+        }
+      })
+      .catch(() => {});
+  }, [checkoutProvinceId]);
+
+  // 🚚 LẤY PHƯỜNG / XÃ CHO CHECKOUT KHI CHỌN HUYỆN
+  useEffect(() => {
+    if (!checkoutDistrictId) {
+      setCheckoutWards([]);
+      setCheckoutWardCode("");
+      setCheckoutShippingFee(null);
+      return;
+    }
+    fetch(`/api/shipping/address?type=ward&district_id=${checkoutDistrictId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data?.data && Array.isArray(data.data)) {
+          setCheckoutWards(data.data);
+        }
+      })
+      .catch(() => {});
+  }, [checkoutDistrictId]);
+
+  // ⚡ TÍNH CƯỚC GHN TỰ ĐỘNG KHI CHỌN XONG PHƯỜNG XÃ (ĐỒNG BỘ WEB & GHN GATEWAY)
+  useEffect(() => {
+    if (checkoutShippingMode !== "CLOOP_BOOK") {
+      setCheckoutShippingFee(0);
+      return;
+    }
+    if (!checkoutProvinceId || !checkoutDistrictId || !checkoutWardCode || !checkoutProduct) {
+      setCheckoutShippingFee(null);
+      return;
+    }
+
+    const prov = ghnProvinces.find(p => String(p.ProvinceID) === String(checkoutProvinceId));
+    const dist = checkoutDistricts.find(d => String(d.DistrictID) === String(checkoutDistrictId));
+    const ward = checkoutWards.find(w => String(w.WardCode) === String(checkoutWardCode));
+    const fullToProvinceStr = `${ward?.WardName || ""}, ${dist?.DistrictName || ""}, ${prov?.ProvinceName || ""}`;
+
+    setIsLoadingCheckoutShipping(true);
+    fetch("/api/shipping/quote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fromProvince: checkoutProduct.province || checkoutProduct.location || "Hà Nội",
+        toProvince: fullToProvinceStr,
+        fromDistrictId: checkoutProduct.districtId || null,
+        fromWardCode: checkoutProduct.wardCode || null,
+        toDistrictId: checkoutDistrictId,
+        toWardCode: checkoutWardCode,
+        weight: 500,
+        isRental: checkoutProduct.listingTypeRaw !== "SELL"
+      })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.options && data.options.length > 0) {
+          const standardOption = data.options.find((o: any) => o.quote?.serviceId === "standard") || data.options[0];
+          const fee = Number(standardOption.quote?.fee) || 0;
+          setCheckoutShippingFee(fee);
+        } else {
+          setCheckoutShippingFee(35000);
+        }
+      })
+      .catch(() => {
+        setCheckoutShippingFee(35000);
+      })
+      .finally(() => {
+        setIsLoadingCheckoutShipping(false);
+      });
+  }, [checkoutShippingMode, checkoutProvinceId, checkoutDistrictId, checkoutWardCode, checkoutProduct]);
 
   // 4. Hàm ghép địa chỉ chuẩn hóa từ các trường GHN đã chọn
   const handleApplyGhnAddress = (
@@ -626,7 +723,7 @@ export default function MobileAppClient({
   // 🚀 MỞ MODAL ĐẶT THUÊ / MUA ĐỒ
   const handleOpenCheckout = (product: any) => {
     setCheckoutProduct(product);
-    setBookingError(null);
+    setBookingError("");
     setBookingSuccessData(null);
     setIsTransferConfirmed(false);
     setCheckoutDays(product.minDays || 3);
@@ -634,19 +731,32 @@ export default function MobileAppClient({
     tomorrow.setDate(tomorrow.getDate() + 1);
     setCheckoutStartDate(tomorrow.toISOString().slice(0, 10));
 
-    // 💾 Lấy thông tin liên hệ đã lưu từ trước (làm 1 lần giữ mãi)
+    // 💾 Lấy thông tin liên hệ & địa chỉ GHN đã lưu từ trước (làm 1 lần giữ mãi)
     let savedInfo: any = null;
+    let savedLoc: any = null;
     try {
       if (typeof window !== "undefined") {
         const raw = localStorage.getItem("cloop_saved_renter_info");
         if (raw) savedInfo = JSON.parse(raw);
+        const rawLoc = localStorage.getItem("cloop_saved_pickup_location");
+        if (rawLoc) savedLoc = JSON.parse(rawLoc);
       }
     } catch (_) {}
 
     setCheckoutRenterName(savedInfo?.name || currentUser?.name || closetData?.user?.name || "");
     setCheckoutRenterPhone(savedInfo?.phone || closetData?.user?.phone || "");
-    setCheckoutRenterAddress(savedInfo?.address || closetData?.user?.address || "");
     setCheckoutRenterNote(savedInfo?.note || "");
+
+    const provId = savedInfo?.provinceId || savedLoc?.provinceId || "";
+    const distId = savedInfo?.districtId || savedLoc?.districtId || "";
+    const wdCode = savedInfo?.wardCode || savedLoc?.wardCode || "";
+    const addr = savedInfo?.addressDetail || savedInfo?.address || savedLoc?.address || closetData?.user?.address || "";
+
+    setCheckoutProvinceId(provId);
+    setCheckoutDistrictId(distId);
+    setCheckoutWardCode(wdCode);
+    setCheckoutAddressDetail(addr);
+    setCheckoutShippingFee(null);
   };
 
   // 💳 XÁC NHẬN TẠO ĐƠN HÀNG (RENTAL HOẶC PURCHASE)
@@ -664,12 +774,38 @@ export default function MobileAppClient({
       setBookingError("Vui lòng điền số điện thoại hợp lệ (10 chữ số)");
       return;
     }
-    if (checkoutShippingMode === "CLOOP_BOOK" && !checkoutRenterAddress.trim()) {
-      setBookingError("Vui lòng điền địa chỉ nhận hàng chi tiết");
-      return;
+    if (checkoutShippingMode === "CLOOP_BOOK") {
+      if (!checkoutProvinceId || !checkoutDistrictId || !checkoutWardCode) {
+        setBookingError("Vui lòng chọn đầy đủ Tỉnh/Thành phố, Quận/Huyện và Phường/Xã để tính cước GHN");
+        return;
+      }
+      if (!checkoutAddressDetail.trim()) {
+        setBookingError("Vui lòng điền số nhà, tên đường chi tiết");
+        return;
+      }
     }
 
     setIsSubmittingBooking(true);
+
+    const isRental = checkoutProduct.listingTypeRaw !== "SELL";
+    const unitPrice = isRental ? (checkoutProduct.rentalPrice || checkoutProduct.price || 0) : (checkoutProduct.salePrice || checkoutProduct.price || 0);
+    const subTotal = isRental ? unitPrice * checkoutDays : unitPrice;
+    const deposit = isRental ? (checkoutProduct.deposit > 0 ? checkoutProduct.deposit : unitPrice * 3) : 0;
+    const effectiveShipping = checkoutShippingMode === "CLOOP_BOOK" ? (checkoutShippingFee !== null ? checkoutShippingFee : 35000) : 0;
+    const totalAmount = subTotal + deposit + effectiveShipping;
+
+    const prov = ghnProvinces.find(p => String(p.ProvinceID) === String(checkoutProvinceId));
+    const dist = checkoutDistricts.find(d => String(d.DistrictID) === String(checkoutDistrictId));
+    const ward = checkoutWards.find(w => String(w.WardCode) === String(checkoutWardCode));
+    const addressParts = [
+      checkoutAddressDetail.trim(),
+      ward?.WardName,
+      dist?.DistrictName,
+      prov?.ProvinceName
+    ].filter(Boolean).join(", ");
+    const fullShippingAddress = checkoutShippingMode === "CLOOP_BOOK"
+      ? `${addressParts}${checkoutRenterNote.trim() ? ` (Ghi chú: ${checkoutRenterNote.trim()})` : ""}`
+      : `Nhận trực tiếp tại trạm: ${checkoutProduct.specificAddress || checkoutProduct.location || "Hà Nội"}`;
 
     // Lưu thông tin liên hệ vào LocalStorage nếu người dùng tích chọn
     try {
@@ -677,18 +813,14 @@ export default function MobileAppClient({
         localStorage.setItem("cloop_saved_renter_info", JSON.stringify({
           name: checkoutRenterName.trim(),
           phone: checkoutRenterPhone.trim(),
-          address: checkoutRenterAddress.trim(),
+          provinceId: checkoutProvinceId,
+          districtId: checkoutDistrictId,
+          wardCode: checkoutWardCode,
+          addressDetail: checkoutAddressDetail.trim(),
           note: checkoutRenterNote.trim(),
         }));
       }
     } catch (_) {}
-
-    const isRental = checkoutProduct.listingTypeRaw !== "SELL";
-    const unitPrice = isRental ? (checkoutProduct.rentalPrice || checkoutProduct.price || 0) : (checkoutProduct.salePrice || checkoutProduct.price || 0);
-    const subTotal = isRental ? unitPrice * checkoutDays : unitPrice;
-    const deposit = isRental ? (checkoutProduct.deposit > 0 ? checkoutProduct.deposit : unitPrice * 3) : 0;
-    const shippingFee = checkoutShippingMode === "CLOOP_BOOK" ? 35000 : 0;
-    const totalAmount = subTotal + deposit + shippingFee;
 
     try {
       const res = await createBookingAction({
@@ -707,17 +839,13 @@ export default function MobileAppClient({
         setCartItems(prev => prev.filter(item => item.id !== checkoutProduct.id));
         refreshPersonalData();
 
-        const fullShippingAddress = checkoutShippingMode === "CLOOP_BOOK"
-          ? `${checkoutRenterAddress.trim()}${checkoutRenterNote.trim() ? ` (Ghi chú: ${checkoutRenterNote.trim()})` : ""}`
-          : (checkoutProduct.specificAddress || checkoutProduct.location || "Trạm chủ tủ");
-
         setBookingSuccessData({
           rentalId: res.rentalId,
           orderCode: res.rentalId.slice(-6).toUpperCase(),
           totalAmount: res.totalAmount || totalAmount,
           depositAmount: res.depositAmount || deposit,
           rentalFee: subTotal,
-          shippingFee,
+          shippingFee: effectiveShipping,
           startDate: checkoutStartDate,
           endDate: checkoutEndDate,
           packageDays: checkoutDays,
@@ -4073,7 +4201,15 @@ export default function MobileAppClient({
                           }`}
                         >
                           <span className="text-xs font-bold block text-stone-900">Giao tận nơi</span>
-                          <span className="text-[10px] text-stone-500 block mt-0.5">Shipper giao (35.000đ)</span>
+                          <span className="text-[10px] text-stone-500 block mt-0.5">
+                            {isLoadingCheckoutShipping ? (
+                              <span className="text-amber-700 animate-pulse font-medium">Đang tính GHN...</span>
+                            ) : checkoutShippingFee !== null ? (
+                              <span className="text-emerald-700 font-semibold">Shipper GHN (+{checkoutShippingFee.toLocaleString("vi-VN")}đ)</span>
+                            ) : (
+                              <span>Shipper GHN (Theo địa chỉ)</span>
+                            )}
+                          </span>
                         </button>
 
                         <button
@@ -4097,7 +4233,7 @@ export default function MobileAppClient({
                       )}
                     </div>
 
-                    {/* 3. THÔNG TIN NGƯỜI NHẬN (LÀM 1 LẦN GIỮ MÃI NHƯNG VẪN CHỦ ĐỘNG CHỈNH SỬA) */}
+                    {/* 3. THÔNG TIN NGƯỜI NHẬN & ĐỊA CHỈ GHN */}
                     <div className="p-3.5 rounded-2xl bg-white border border-stone-200/90 space-y-2.5">
                       <div className="flex items-center justify-between">
                         <label className="block text-xs font-bold text-[#0A2517]">
@@ -4154,50 +4290,121 @@ export default function MobileAppClient({
                       </div>
 
                       {checkoutShippingMode === "CLOOP_BOOK" && (
-                        <>
+                        <div className="space-y-2 pt-1 border-t border-stone-100">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold text-[#0A2517] flex items-center gap-1">
+                              <MapPin size={12} className="text-emerald-700" />
+                              Địa chỉ giao nhận (GHN) *
+                            </span>
+                            {isLoadingCheckoutShipping && (
+                              <span className="text-[10px] text-amber-700 flex items-center gap-1">
+                                <RefreshCw size={10} className="animate-spin" />
+                                Đang tính cước GHN...
+                              </span>
+                            )}
+                          </div>
+
+                          {/* 3 Dropdown chuẩn API Giao Hàng Nhanh (GHN) */}
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <div>
+                              <span className="text-[10px] text-stone-500 block mb-0.5">Tỉnh / TP *</span>
+                              <select
+                                required
+                                value={checkoutProvinceId}
+                                onChange={(e) => setCheckoutProvinceId(e.target.value ? Number(e.target.value) : "")}
+                                className="w-full h-8 px-2 rounded-xl border border-stone-300 bg-white text-[11px] font-medium outline-none focus:border-[#0A2517]"
+                              >
+                                <option value="">-- Chọn Tỉnh/TP --</option>
+                                {ghnProvinces.map((p: any) => (
+                                  <option key={p.ProvinceID} value={p.ProvinceID}>
+                                    {p.ProvinceName}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div>
+                              <span className="text-[10px] text-stone-500 block mb-0.5">Quận / Huyện *</span>
+                              <select
+                                required
+                                disabled={!checkoutProvinceId}
+                                value={checkoutDistrictId}
+                                onChange={(e) => setCheckoutDistrictId(e.target.value ? Number(e.target.value) : "")}
+                                className="w-full h-8 px-2 rounded-xl border border-stone-300 bg-white text-[11px] font-medium outline-none focus:border-[#0A2517] disabled:bg-stone-100 disabled:text-stone-400"
+                              >
+                                <option value="">-- Chọn Quận/Huyện --</option>
+                                {checkoutDistricts.map((d: any) => (
+                                  <option key={d.DistrictID} value={d.DistrictID}>
+                                    {d.DistrictName}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div>
+                              <span className="text-[10px] text-stone-500 block mb-0.5">Phường / Xã *</span>
+                              <select
+                                required
+                                disabled={!checkoutDistrictId}
+                                value={checkoutWardCode}
+                                onChange={(e) => setCheckoutWardCode(e.target.value)}
+                                className="w-full h-8 px-2 rounded-xl border border-stone-300 bg-white text-[11px] font-medium outline-none focus:border-[#0A2517] disabled:bg-stone-100 disabled:text-stone-400"
+                              >
+                                <option value="">-- Chọn Phường/Xã --</option>
+                                {checkoutWards.map((w: any) => (
+                                  <option key={w.WardCode} value={w.WardCode}>
+                                    {w.WardName}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+
                           <div>
-                            <span className="text-[10.5px] text-stone-500 block mb-1">Địa chỉ nhận đồ cụ thể *</span>
+                            <span className="text-[10px] text-stone-500 block mb-0.5">Số nhà, ngõ, tên đường cụ thể *</span>
                             <input
                               type="text"
                               required
-                              placeholder="Số nhà, tên đường, phường/xã, quận/huyện..."
-                              value={checkoutRenterAddress}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setCheckoutRenterAddress(val);
-                                try {
-                                  if (typeof window !== "undefined") {
-                                    const raw = localStorage.getItem("cloop_saved_renter_info");
-                                    const parsed = raw ? JSON.parse(raw) : {};
-                                    localStorage.setItem("cloop_saved_renter_info", JSON.stringify({ ...parsed, address: val }));
-                                  }
-                                } catch (_) {}
-                              }}
+                              placeholder="VD: Số 18, Ngõ 45, Đường Láng..."
+                              value={checkoutAddressDetail}
+                              onChange={(e) => setCheckoutAddressDetail(e.target.value)}
                               className="w-full h-9 px-2.5 rounded-xl border border-stone-300 bg-white text-xs outline-none focus:border-[#0A2517]"
                             />
                           </div>
 
                           <div>
-                            <span className="text-[10.5px] text-stone-500 block mb-1">Ghi chú địa chỉ (Điểm mốc, toà nhà, số tầng, gọi trước 15p...)</span>
+                            <span className="text-[10px] text-stone-500 block mb-0.5">Ghi chú giao hàng (Toà nhà, số phòng, dặn shipper...)</span>
                             <input
                               type="text"
-                              placeholder="VD: Chung cư Sky City, toà A, tầng 8..."
+                              placeholder="VD: Chung cư Star Tower, tầng 12, gọi trước khi giao..."
                               value={checkoutRenterNote}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setCheckoutRenterNote(val);
-                                try {
-                                  if (typeof window !== "undefined") {
-                                    const raw = localStorage.getItem("cloop_saved_renter_info");
-                                    const parsed = raw ? JSON.parse(raw) : {};
-                                    localStorage.setItem("cloop_saved_renter_info", JSON.stringify({ ...parsed, note: val }));
-                                  }
-                                } catch (_) {}
-                              }}
+                              onChange={(e) => setCheckoutRenterNote(e.target.value)}
                               className="w-full h-9 px-2.5 rounded-xl border border-stone-300 bg-white text-xs outline-none focus:border-[#0A2517]"
                             />
                           </div>
-                        </>
+
+                          {/* Báo cáo cước GHN trực tiếp */}
+                          <div className={`p-2 rounded-xl text-[10.5px] flex items-center justify-between border ${
+                            checkoutShippingFee !== null
+                              ? "bg-emerald-50/80 border-emerald-200 text-emerald-900"
+                              : isLoadingCheckoutShipping
+                              ? "bg-amber-50/80 border-amber-200 text-amber-900"
+                              : "bg-stone-50 border-stone-200 text-stone-600"
+                          }`}>
+                            <span className="flex items-center gap-1.5">
+                              <Truck size={13} className={checkoutShippingFee !== null ? "text-emerald-700" : "text-stone-400"} />
+                              {isLoadingCheckoutShipping
+                                ? "Đang kết nối GHN Gateway để tính cước chính xác..."
+                                : checkoutShippingFee !== null
+                                ? "Cước giao GHN tiêu chuẩn:"
+                                : "Chưa chọn địa chỉ giao (chọn Tỉnh, Huyện, Xã để tính)"
+                              }
+                            </span>
+                            <span className="font-bold font-mono">
+                              {checkoutShippingFee !== null ? `${checkoutShippingFee.toLocaleString("vi-VN")}đ` : "--"}
+                            </span>
+                          </div>
+                        </div>
                       )}
 
                       <div className="flex items-center gap-2 pt-0.5">
@@ -4234,8 +4441,14 @@ export default function MobileAppClient({
 
                       <div className="flex justify-between text-stone-600">
                         <span>Phí giao nhận:</span>
-                        <span className="font-bold text-stone-900">
-                          {checkoutShippingMode === "CLOOP_BOOK" ? "35.000đ" : "Miễn phí (Tự lấy)"}
+                        <span className={`font-bold ${checkoutShippingMode === "CLOOP_BOOK" && checkoutShippingFee === null ? "text-amber-700 italic font-normal" : "text-stone-900"}`}>
+                          {checkoutShippingMode === "SELF_BOOK"
+                            ? "Miễn phí (Tự lấy tại trạm)"
+                            : isLoadingCheckoutShipping
+                            ? "Đang tính..."
+                            : checkoutShippingFee !== null
+                            ? `+${checkoutShippingFee.toLocaleString("vi-VN")}đ`
+                            : "Chưa chọn địa chỉ"}
                         </span>
                       </div>
 
@@ -4247,16 +4460,18 @@ export default function MobileAppClient({
                       <div className="pt-2 border-t border-stone-200 flex justify-between items-baseline">
                         <div>
                           <span className="font-bold text-xs text-[#0A2517] block">Tổng thanh toán đặt cọc:</span>
-                          {checkoutProduct.listingTypeRaw !== "SELL" && (
+                          {checkoutShippingMode === "CLOOP_BOOK" && checkoutShippingFee === null ? (
+                            <span className="text-[10px] text-amber-700 italic">* Chưa bao gồm cước vận chuyển GHN</span>
+                          ) : checkoutProduct.listingTypeRaw !== "SELL" ? (
                             <span className="text-[10px] text-stone-500 italic">* Tiền cọc được hoàn trả 100% khi trả đồ</span>
-                          )}
+                          ) : null}
                         </div>
                         <span className="font-heading font-black text-lg text-[#0A2517]">
                           {(
                             (checkoutProduct.listingTypeRaw === "SELL" 
                               ? (checkoutProduct.salePrice || checkoutProduct.price || 0) 
                               : ((checkoutProduct.rentalPrice || checkoutProduct.price || 0) * checkoutDays + (checkoutProduct.deposit > 0 ? checkoutProduct.deposit : (checkoutProduct.rentalPrice || checkoutProduct.price || 0) * 3))
-                            ) + (checkoutShippingMode === "CLOOP_BOOK" ? 35000 : 0)
+                            ) + (checkoutShippingMode === "CLOOP_BOOK" ? (checkoutShippingFee || 0) : 0)
                           ).toLocaleString("vi-VN")}đ
                         </span>
                       </div>
