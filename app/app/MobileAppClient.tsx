@@ -1062,31 +1062,18 @@ export default function MobileAppClient({
               </span>
             </div>
 
-            {/* 🌐 NÚT CHUYỂN ĐỔI NGÔN NGỮ VIỆT / ANH TINH TẾ (GỌN GÀNG, ĐẸP MẮT) */}
-            <div className="flex items-center bg-stone-200/80 border border-stone-300/70 rounded-full p-0.5 shadow-2xs shrink-0">
-              <button
-                type="button"
-                onClick={() => toggleLang("vi")}
-                className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-all cursor-pointer ${
-                  lang === "vi"
-                    ? "bg-[#0A2517] text-white shadow-xs"
-                    : "text-stone-500 hover:text-stone-800"
-                }`}
-              >
-                VIE
-              </button>
-              <button
-                type="button"
-                onClick={() => toggleLang("en")}
-                className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-all cursor-pointer ${
-                  lang === "en"
-                    ? "bg-[#0A2517] text-white shadow-xs"
-                    : "text-stone-500 hover:text-stone-800"
-                }`}
-              >
-                ENG
-              </button>
-            </div>
+            {/* 🌿 NÚT CHUYỂN ĐỔI NGÔN NGỮ ĐƠN GỌN GÀNG (ICON LÁ CON + VIE / ENG) */}
+            <button
+              type="button"
+              onClick={() => toggleLang(lang === "vi" ? "en" : "vi")}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/95 hover:bg-emerald-50/90 active:scale-95 border border-emerald-800/20 shadow-2xs transition-all cursor-pointer select-none shrink-0"
+              title={lang === "vi" ? "Chuyển sang English" : "Chuyển sang Tiếng Việt"}
+            >
+              <Leaf size={13} className="text-emerald-700 shrink-0 fill-emerald-600/20" />
+              <span className="text-[11px] font-bold text-[#0A2517] tracking-tight">
+                {lang === "vi" ? "Vie" : "Eng"}
+              </span>
+            </button>
           </div>
 
           {/* Ô TÌM KIẾM TRONG APP (HIỂN THỊ Ở TAB KHÁM PHÁ & SÀN ĐỒ) */}

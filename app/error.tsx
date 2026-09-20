@@ -31,6 +31,14 @@ export default function GlobalError({
           </p>
         </div>
 
+        {error?.message && (
+          <div className="p-3 bg-red-50/80 border border-red-200/80 rounded-2xl text-left max-h-24 overflow-y-auto">
+            <p className="text-[11px] font-mono text-red-600 break-all leading-tight">
+              {error.message}
+            </p>
+          </div>
+        )}
+
         {error?.digest && (
           <div className="text-[10px] text-stone-400 font-mono bg-stone-50 px-3 py-1.5 rounded-lg border border-stone-200 inline-block">
             Mã định danh: {error.digest}
@@ -40,9 +48,17 @@ export default function GlobalError({
         <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
           <button
             type="button"
-            onClick={() => {
+            onClick={async () => {
               if (typeof window !== "undefined") {
-                window.location.reload();
+                try {
+                  if ("caches" in window) {
+                    const keys = await window.caches.keys();
+                    await Promise.all(keys.map((k) => window.caches.delete(k)));
+                  }
+                } catch (_) {}
+                const isMobile = /Android|iPhone|iPad|iPod|Zalo|MiniApp|Mobile/i.test(navigator.userAgent);
+                const target = isMobile ? "/app" : "/";
+                window.location.href = `${target}?reload=${Date.now()}`;
               } else {
                 reset();
               }
