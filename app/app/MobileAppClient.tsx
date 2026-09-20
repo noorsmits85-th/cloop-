@@ -796,6 +796,50 @@ export default function MobileAppClient({
     setCheckoutWardCode(wdCode);
     setCheckoutAddressDetail(addr);
     setCheckoutShippingFee(null);
+
+    // 🚚 Nạp sẵn danh sách Quận/Huyện và Phường/Xã nếu đã có địa chỉ lưu để dropdown hiển thị chuẩn xác
+    if (provId) {
+      fetch(`/api/shipping/address?type=district&province_id=${provId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data?.data && Array.isArray(data.data)) {
+            setCheckoutDistricts(data.data);
+          }
+        })
+        .catch(() => {});
+    }
+    if (distId) {
+      fetch(`/api/shipping/address?type=ward&district_id=${distId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data?.data && Array.isArray(data.data)) {
+            setCheckoutWards(data.data);
+          }
+        })
+        .catch(() => {});
+    }
+  };
+
+  // 🚚 XỬ LÝ CHỌN CẤP BẬC ĐỊA CHỈ GHN LIỀN MẠCH (RESET CẤP DƯỚI KHI THAY ĐỔI CẤP TRÊN)
+  const handleCheckoutProvinceChange = (provId: number | "") => {
+    setCheckoutProvinceId(provId);
+    setCheckoutDistrictId("");
+    setCheckoutWardCode("");
+    setCheckoutDistricts([]);
+    setCheckoutWards([]);
+    setCheckoutShippingFee(null);
+  };
+
+  const handleCheckoutDistrictChange = (distId: number | "") => {
+    setCheckoutDistrictId(distId);
+    setCheckoutWardCode("");
+    setCheckoutWards([]);
+    setCheckoutShippingFee(null);
+  };
+
+  const handleCheckoutWardChange = (wdCode: string) => {
+    setCheckoutWardCode(wdCode);
+    setCheckoutShippingFee(null);
   };
 
   // 💳 XÁC NHẬN TẠO ĐƠN HÀNG (RENTAL HOẶC PURCHASE)
@@ -804,6 +848,13 @@ export default function MobileAppClient({
     if (!checkoutProduct) return;
 
     setBookingError("");
+
+    // 🛡️ Kiểm tra đăng nhập ngay trên Client: Nếu chưa đăng nhập thì bật ngay Modal ID Xanh
+    if (!currentUser) {
+      setShowAuthModal(true);
+      setBookingError("Vui lòng đăng nhập bằng ID Xanh để hoàn tất đặt đơn");
+      return;
+    }
 
     if (!checkoutRenterName.trim()) {
       setBookingError("Vui lòng điền họ tên người nhận");
@@ -1029,6 +1080,20 @@ export default function MobileAppClient({
       return;
     }
 
+    const parsedRentPrice = parseInt(uploadData.rentalPrice.replace(/\D/g, "")) || 0;
+    if (uploadData.isRent && parsedRentPrice <= 0) {
+      setPostError("Vui lòng nhập giá thuê / ngày hợp lệ!");
+      return;
+    }
+
+    const parsedSalePrice = parseInt(uploadData.salePrice.replace(/\D/g, "")) || 0;
+    if (uploadData.isSale && parsedSalePrice <= 0) {
+      setPostError("Vui lòng nhập giá bán hợp lệ!");
+      return;
+    }
+
+    const parsedDeposit = uploadData.deposit ? (parseInt(uploadData.deposit.replace(/\D/g, "")) || 0) : 0;
+
     setIsSubmittingPost(true);
 
     try {
@@ -1056,10 +1121,6 @@ export default function MobileAppClient({
         setIsSubmittingPost(false);
         return;
       }
-
-      const parsedRentPrice = parseInt(uploadData.rentalPrice.replace(/\D/g, "")) || 250000;
-      const parsedDeposit = parseInt(uploadData.deposit.replace(/\D/g, "")) || (parsedRentPrice * 2);
-      const parsedSalePrice = uploadData.isSale ? (parseInt(uploadData.salePrice.replace(/\D/g, "")) || 1500000) : 0;
 
       // 💾 LƯU TRẠM GỬI LÀM MẶC ĐỊNH VÀO LOCALSTORAGE CHO CÁC LẦN UP TIẾP THEO
       try {
@@ -1233,14 +1294,32 @@ export default function MobileAppClient({
               </span>
             </div>
 
-            {/* 🇻🇳 🇬🇧 NÚT CHUYỂN ĐỔI NGÔN NGỮ ĐƠN GỌN GÀNG (LÁ CỜ QUỐC KỲ + VIE / ENG) */}
+            {/* 🇻🇳 🇬🇧 NÚT CHUYỂN ĐỔI NGÔN NGỮ ĐƠN GỌN GÀNG (LÁ CỜ QUỐC KỲ CHUẨN SVG + VIE / ENG) */}
             <button
               type="button"
               onClick={() => toggleLang(lang === "vi" ? "en" : "vi")}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/95 hover:bg-stone-100 active:scale-95 border border-stone-200 shadow-2xs transition-all cursor-pointer select-none shrink-0"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/95 hover:bg-stone-100 active:scale-95 border border-stone-200 shadow-2xs transition-all cursor-pointer select-none shrink-0"
               title={lang === "vi" ? "Chuyển sang English" : "Chuyển sang Tiếng Việt"}
             >
-              <span className="text-[14px] leading-none select-none">{lang === "vi" ? "🇻🇳" : "🇬🇧"}</span>
+              {lang === "vi" ? (
+                <svg className="w-4 h-2.5 rounded-xs shadow-2xs shrink-0 overflow-hidden" viewBox="0 0 30 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect width="30" height="20" fill="#DA251D"/>
+                  <polygon points="15,4 16.5,8.8 21.5,8.8 17.5,11.8 19,16.5 15,13.5 11,16.5 12.5,11.8 8.5,8.8 13.5,8.8" fill="#FFFF00"/>
+                </svg>
+              ) : (
+                <svg className="w-4 h-2.5 rounded-xs shadow-2xs shrink-0 overflow-hidden" viewBox="0 0 60 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <clipPath id="uk-flag-mobile">
+                    <rect width="60" height="30" />
+                  </clipPath>
+                  <g clipPath="url(#uk-flag-mobile)">
+                    <rect width="60" height="30" fill="#012169"/>
+                    <path d="M0,0 L60,30 M60,0 L0,30" stroke="#FFF" strokeWidth="6"/>
+                    <path d="M0,0 L60,30 M60,0 L0,30" stroke="#C8102E" strokeWidth="4"/>
+                    <path d="M30,0 v30 M0,15 h60" stroke="#FFF" strokeWidth="10"/>
+                    <path d="M30,0 v30 M0,15 h60" stroke="#C8102E" strokeWidth="6"/>
+                  </g>
+                </svg>
+              )}
               <span className="text-[11px] font-bold text-[#0A2517] tracking-tight">
                 {lang === "vi" ? "Vie" : "Eng"}
               </span>
@@ -1471,10 +1550,10 @@ export default function MobileAppClient({
                               </span>
                             </div>
 
-                            {/* Gói thuê theo ngày thực tế */}
+                            {/* Gói thuê theo ngày thực tế (Đồng bộ 100% Web) */}
                             {isRent && rentPrice > 0 && (
                               <p className="text-[10px] text-emerald-800 font-medium">
-                                Gói {p.minDays || 3} ngày: {(rentPrice * (p.minDays || 3)).toLocaleString("vi-VN")}đ
+                                Gói {p.minDays || 3} ngày: {(calculatePackageRentalFee(p, p.minDays || 3)).toLocaleString("vi-VN")}đ
                               </p>
                             )}
 
@@ -1689,10 +1768,10 @@ export default function MobileAppClient({
                             </span>
                           </div>
 
-                          {/* Gói thuê theo ngày thực tế */}
+                          {/* Gói thuê theo ngày thực tế (Đồng bộ 100% Web) */}
                           {isRent && rentPrice > 0 && (
                             <p className="text-[10px] text-emerald-800 font-medium">
-                              Gói {p.minDays || 3} ngày: {(rentPrice * (p.minDays || 3)).toLocaleString("vi-VN")}đ
+                              Gói {p.minDays || 3} ngày: {(calculatePackageRentalFee(p, p.minDays || 3)).toLocaleString("vi-VN")}đ
                             </p>
                           )}
 
@@ -1808,7 +1887,7 @@ export default function MobileAppClient({
                           <div className="flex-1 min-w-0 text-xs">
                             <h5 className="font-bold text-stone-900 truncate">{order.productTitle}</h5>
                             <p className="text-stone-500 text-[11px] mt-0.5">Lịch thuê: {order.startDate} - {order.endDate}</p>
-                            <p className="font-black text-[#0A2517] mt-1">{order.amount?.toLocaleString("vi-VN")}đ</p>
+                            <p className="font-black text-[#0A2517] mt-1">{(Number(order.amount) || 0).toLocaleString("vi-VN")}đ</p>
                           </div>
                         </div>
                       </div>
@@ -1841,9 +1920,9 @@ export default function MobileAppClient({
                     {safeOrdersAsLender.map((order: any, idx: number) => (
                       <div key={order.id || idx} className="bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs space-y-2">
                         <div className="flex items-center justify-between text-[11px]">
-                          <span className="font-mono text-stone-400">Đơn #{order.id?.slice(-6) || idx + 1}</span>
+                          <span className="font-mono text-stone-400">Yêu cầu #{order.id?.slice(-6) || idx + 1}</span>
                           <span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full text-[10px]">
-                            {order.status === "LENDER_COMPLETED" ? "Đã hoàn tất" : "Đang cho thuê"}
+                            {order.status === "COMPLETED" ? "Hoàn tất" : "Chờ giao"}
                           </span>
                         </div>
                         <div className="flex gap-3 items-center">
@@ -1854,8 +1933,8 @@ export default function MobileAppClient({
                             <h5 className="font-bold text-stone-900 truncate">{order.productTitle}</h5>
                             <p className="text-stone-500 text-[11px] mt-0.5">Lịch: {order.startDate} - {order.endDate}</p>
                             <div className="flex items-center justify-between mt-1">
-                              <span className="font-black text-[#0A2517]">{order.amount?.toLocaleString("vi-VN")}đ</span>
-                              <span className="text-[10px] text-stone-400">Cọc: {order.depositAmount?.toLocaleString("vi-VN")}đ</span>
+                              <span className="font-black text-[#0A2517]">{(Number(order.amount) || 0).toLocaleString("vi-VN")}đ</span>
+                              <span className="text-[10px] text-stone-400">Cọc: {(Number(order.depositAmount) || 0).toLocaleString("vi-VN")}đ</span>
                             </div>
                           </div>
                         </div>
@@ -1895,8 +1974,8 @@ export default function MobileAppClient({
                     </div>
 
                     {cartItems.map((item, idx) => {
-                      const price = item.price || item.rentalPrice || 250000;
                       const itemImg = item.image || item.primaryImage || item.images?.[0] || "/1.1.jpg";
+                      const packageFee = calculatePackageRentalFee(item, item.minDays || 3);
                       return (
                         <div key={idx} className="bg-white rounded-2xl p-3 border border-stone-200/80 shadow-2xs flex gap-3 items-center">
                           <div className="relative w-16 h-20 rounded-xl overflow-hidden bg-stone-100 shrink-0">
@@ -1910,7 +1989,7 @@ export default function MobileAppClient({
                               {(item.rentalPrice || item.price || 0).toLocaleString("vi-VN")}đ <span className="text-[10px] font-normal text-stone-500">/ ngày</span>
                             </p>
                             <p className="text-[10px] text-emerald-800 font-medium">
-                              • Gói {item.minDays || 3} ngày: {((item.rentalPrice || item.price || 0) * (item.minDays || 3)).toLocaleString("vi-VN")}đ
+                              • Gói {item.minDays || 3} ngày: {packageFee.toLocaleString("vi-VN")}đ
                             </p>
                           </div>
                           <button
@@ -1927,7 +2006,7 @@ export default function MobileAppClient({
                       <div className="flex justify-between text-xs text-stone-600">
                         <span>Tạm tính phí thuê (gói 3 ngày):</span>
                         <span className="font-bold text-stone-900">
-                          {cartItems.reduce((sum, item) => sum + ((item.rentalPrice || item.price || 0) * (item.minDays || 3)), 0).toLocaleString("vi-VN")}đ
+                          {cartItems.reduce((sum, item) => sum + calculatePackageRentalFee(item, item.minDays || 3), 0).toLocaleString("vi-VN")}đ
                         </span>
                       </div>
                       <div className="flex justify-between text-xs text-stone-600">
@@ -1937,7 +2016,7 @@ export default function MobileAppClient({
                       <div className="pt-2 border-t border-stone-100 flex justify-between items-center">
                         <span className="font-bold text-sm text-[#0A2517]">Tổng thanh toán:</span>
                         <span className="font-heading font-black text-base text-[#0A2517]">
-                          {cartItems.reduce((sum, item) => sum + (item.price || item.rentalPrice || 250000), 0).toLocaleString("vi-VN")}đ
+                          {cartItems.reduce((sum, item) => sum + calculatePackageRentalFee(item, item.minDays || 3), 0).toLocaleString("vi-VN")}đ
                         </span>
                       </div>
                       <button
@@ -2255,11 +2334,11 @@ export default function MobileAppClient({
                                   </p>
                                   {item.rentalPrice > 0 && (
                                     <p className="text-[9.5px] text-emerald-800 font-medium">
-                                      • Gói 3 ngày: {(item.rentalPrice * 3).toLocaleString("vi-VN")}đ
+                                      • Gói 3 ngày (-15%): {(calculatePackageRentalFee(item, 3)).toLocaleString("vi-VN")}đ
                                     </p>
                                   )}
                                   <p className="text-[9.5px] text-stone-400 mt-0.5">
-                                    Cọc đảm bảo: {(item.deposit || item.rentalPrice * 3 || 0).toLocaleString("vi-VN")}đ
+                                    Cọc đảm bảo: {Number(item.deposit || 0) > 0 ? `${Number(item.deposit).toLocaleString("vi-VN")}đ` : "0đ (Miễn cọc)"}
                                   </p>
                                 </div>
                               </div>
@@ -2318,8 +2397,8 @@ export default function MobileAppClient({
                                       <h5 className="font-bold text-stone-900 truncate">{order.productTitle}</h5>
                                       <p className="text-stone-500 text-[11px] mt-0.5">Lịch: {order.startDate} - {order.endDate}</p>
                                       <div className="flex items-center justify-between mt-1">
-                                        <span className="font-black text-[#0A2517]">{order.amount?.toLocaleString("vi-VN")}đ</span>
-                                        <span className="text-[10px] text-stone-400">Cọc: {order.depositAmount?.toLocaleString("vi-VN")}đ</span>
+                                        <span className="font-black text-[#0A2517]">{(Number(order.amount) || 0).toLocaleString("vi-VN")}đ</span>
+                                        <span className="text-[10px] text-stone-400">Cọc: {(Number(order.depositAmount) || 0).toLocaleString("vi-VN")}đ</span>
                                       </div>
                                     </div>
                                   </div>
@@ -2349,7 +2428,7 @@ export default function MobileAppClient({
                                     <div className="flex-1 min-w-0 text-xs">
                                       <h5 className="font-bold text-stone-900 truncate">{order.productTitle}</h5>
                                       <p className="text-stone-500 text-[11px] mt-0.5">Thời gian: {order.startDate} - {order.endDate}</p>
-                                      <p className="font-black text-[#0A2517] mt-1">{order.amount?.toLocaleString("vi-VN")}đ</p>
+                                      <p className="font-black text-[#0A2517] mt-1">{(Number(order.amount) || 0).toLocaleString("vi-VN")}đ</p>
                                     </div>
                                   </div>
                                 </div>
@@ -3025,13 +3104,13 @@ export default function MobileAppClient({
                       const isRent = item.listingTypeRaw !== "SELL";
                       let priceDisplay = "";
                       if (isRent) {
-                        const raw = item.rentalPrice || item.price || 50000;
-                        const num = typeof raw === "number" ? raw : parseInt(String(raw).replace(/\D/g, ""), 10) || 50000;
-                        priceDisplay = `${num.toLocaleString("vi-VN")}đ / ngày`;
+                        const raw = item.rentalPrice ?? item.price ?? 0;
+                        const num = typeof raw === "number" ? raw : parseInt(String(raw).replace(/\D/g, ""), 10) || 0;
+                        priceDisplay = num > 0 ? `${num.toLocaleString("vi-VN")}đ / ngày` : "Liên hệ thuê";
                       } else {
-                        const raw = item.salePrice || item.price || 450000;
-                        const num = typeof raw === "number" ? raw : parseInt(String(raw).replace(/\D/g, ""), 10) || 450000;
-                        priceDisplay = `${num.toLocaleString("vi-VN")}đ`;
+                        const raw = item.salePrice ?? item.price ?? 0;
+                        const num = typeof raw === "number" ? raw : parseInt(String(raw).replace(/\D/g, ""), 10) || 0;
+                        priceDisplay = num > 0 ? `${num.toLocaleString("vi-VN")}đ` : "Liên hệ mua";
                       }
                       const img = item.image || item.primaryImage || item.images?.[0] || "/1.1.jpg";
 
@@ -3242,16 +3321,16 @@ export default function MobileAppClient({
                     </div>
                     {selectedProduct.listingTypeRaw !== "SELL" && (
                       <p className="text-[11px] text-emerald-800 font-medium mt-1">
-                        • Gói {selectedProduct.minDays || 3} ngày: <strong>{((selectedProduct.price || selectedProduct.rentalPrice || 0) * (selectedProduct.minDays || 3)).toLocaleString("vi-VN")}đ</strong>
+                        • Gói {selectedProduct.minDays || 3} ngày: <strong>{(calculatePackageRentalFee(selectedProduct, selectedProduct.minDays || 3)).toLocaleString("vi-VN")}đ</strong>
                       </p>
                     )}
                   </div>
 
-                  {selectedProduct.deposit > 0 && (
+                  {Number(selectedProduct.deposit || 0) > 0 && (
                     <div className="text-right">
                       <span className="text-[10px] text-stone-500 uppercase font-bold tracking-wider block">Tiền cọc đảm bảo</span>
                       <span className="text-sm font-mono font-bold text-stone-700">
-                        {selectedProduct.deposit.toLocaleString("vi-VN")}đ
+                        {(Number(selectedProduct.deposit) || 0).toLocaleString("vi-VN")}đ
                       </span>
                       <span className="text-[9.5px] text-stone-400 block">Hoàn lại khi trả đồ</span>
                     </div>
@@ -3636,16 +3715,17 @@ export default function MobileAppClient({
                           value={uploadData.rentalPrice}
                           onChange={(e) => {
                             const val = e.target.value;
+                            const num = parseInt(val.replace(/\D/g, "")) || 0;
                             setUploadData(prev => ({
                               ...prev,
                               rentalPrice: val,
-                              deposit: val ? `${(parseInt(val.replace(/\D/g, "")) || 50000) * 3}` : prev.deposit
+                              deposit: prev.deposit ? prev.deposit : (num > 0 ? `${num * 2}` : "")
                             }));
                           }}
                           className="w-full h-10 px-3 rounded-xl border border-emerald-300 bg-white text-xs font-bold outline-none"
                         />
                         <p className="text-[10px] text-emerald-800 font-medium mt-1">
-                          • Gói 3 ngày: {uploadData.rentalPrice ? `${((parseInt(uploadData.rentalPrice.replace(/\D/g, "")) || 0) * 3).toLocaleString("vi-VN")}đ` : "0đ"}
+                          • Gói 3 ngày (-15%): {uploadData.rentalPrice ? `${(Math.round((parseInt(uploadData.rentalPrice.replace(/\D/g, "")) || 0) * 3 * 0.85 / 1000) * 1000).toLocaleString("vi-VN")}đ` : "0đ"}
                         </p>
                       </div>
 
@@ -4095,7 +4175,7 @@ export default function MobileAppClient({
                         </div>
                         <div className="flex justify-between">
                           <span className="text-stone-500 font-sans">Số tiền cọc:</span>
-                          <strong className="text-emerald-900 font-black text-sm">{bookingSuccessData.totalAmount.toLocaleString("vi-VN")}đ</strong>
+                          <strong className="text-emerald-900 font-black text-sm">{(Number(bookingSuccessData.totalAmount) || 0).toLocaleString("vi-VN")}đ</strong>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-stone-500 font-sans">Nội dung chuyển:</span>
@@ -4390,14 +4470,14 @@ export default function MobileAppClient({
                               <select
                                 required
                                 value={checkoutProvinceId}
-                                onChange={(e) => setCheckoutProvinceId(e.target.value ? Number(e.target.value) : "")}
+                                onChange={(e) => handleCheckoutProvinceChange(e.target.value ? Number(e.target.value) : "")}
                                 className="w-full h-8 px-2 rounded-xl border border-stone-300 bg-white text-[11px] font-medium outline-none focus:border-[#0A2517]"
                               >
                                 <option value="">-- Chọn Tỉnh/TP --</option>
                                 {ghnProvinces.map((p: any) => (
-                                  <option key={p.ProvinceID} value={p.ProvinceID}>
-                                    {p.ProvinceName}
-                                  </option>
+                                   <option key={p.ProvinceID} value={p.ProvinceID}>
+                                     {p.ProvinceName}
+                                   </option>
                                 ))}
                               </select>
                             </div>
@@ -4408,14 +4488,14 @@ export default function MobileAppClient({
                                 required
                                 disabled={!checkoutProvinceId}
                                 value={checkoutDistrictId}
-                                onChange={(e) => setCheckoutDistrictId(e.target.value ? Number(e.target.value) : "")}
+                                onChange={(e) => handleCheckoutDistrictChange(e.target.value ? Number(e.target.value) : "")}
                                 className="w-full h-8 px-2 rounded-xl border border-stone-300 bg-white text-[11px] font-medium outline-none focus:border-[#0A2517] disabled:bg-stone-100 disabled:text-stone-400"
                               >
                                 <option value="">-- Chọn Quận/Huyện --</option>
                                 {checkoutDistricts.map((d: any) => (
-                                  <option key={d.DistrictID} value={d.DistrictID}>
-                                    {d.DistrictName}
-                                  </option>
+                                   <option key={d.DistrictID} value={d.DistrictID}>
+                                     {d.DistrictName}
+                                   </option>
                                 ))}
                               </select>
                             </div>
@@ -4426,7 +4506,7 @@ export default function MobileAppClient({
                                 required
                                 disabled={!checkoutDistrictId}
                                 value={checkoutWardCode}
-                                onChange={(e) => setCheckoutWardCode(e.target.value)}
+                                onChange={(e) => handleCheckoutWardChange(e.target.value)}
                                 className="w-full h-8 px-2 rounded-xl border border-stone-300 bg-white text-[11px] font-medium outline-none focus:border-[#0A2517] disabled:bg-stone-100 disabled:text-stone-400"
                               >
                                 <option value="">-- Chọn Phường/Xã --</option>

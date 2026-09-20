@@ -424,9 +424,11 @@ export async function getMyClosetMobileDataAction() {
     let waterSaved = 0;
     products.forEach((p) => {
       const rentListing = p.listings.find(l => l.listingType === "RENT");
-      const basePrice = rentListing?.basePrice ? Number(rentListing.basePrice) : 250000;
-      co2Saved += Math.round((basePrice / 50000) * 5.8 * 10) / 10;
-      waterSaved += Math.round((basePrice / 50000) * 2000);
+      const basePrice = rentListing?.basePrice ? Number(rentListing.basePrice) : (p.listings[0]?.basePrice ? Number(p.listings[0].basePrice) : 0);
+      if (basePrice > 0) {
+        co2Saved += Math.round((basePrice / 50000) * 5.8 * 10) / 10;
+        waterSaved += Math.round((basePrice / 50000) * 2000);
+      }
     });
 
     const formattedProducts = products.map((p) => {
