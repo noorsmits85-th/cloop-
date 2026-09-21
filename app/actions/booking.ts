@@ -5,6 +5,8 @@ import { createClient } from "@/src/utils/supabase/server";
 import { prisma } from "@/src/lib/prisma";
 import { Logger } from "next-axiom";
 import { calculateUserTrustScore, checkExposureLimit, calculateDynamicDeposit, getItemValuation } from "@/lib/trust-engine";
+import { payos } from "@/src/utils/payos";
+import { generatePayOSOrderCode } from "@/src/utils/order-code";
 
 export async function createBooking({
   productId,
@@ -179,11 +181,10 @@ export async function createBooking({
         }
       }
 
-      // 3. Tạo Đơn hàng (Invoice) với trạng thái PENDING_PAYMENT
-      // Giai đoạn Pilot: Vẫn cho là active sau khi bấm "Đã chuyển khoản" theo luồng Pilot 50 user.
-      // Tuy nhiên vì user click "Đã chuyển khoản" ở form VNPAY, chúng ta sẽ lưu trạng thái là PENDING_PAYMENT
-      // đợi Admin duyệt, hoặc cho Active luôn theo đúng luồng cũ để không vỡ giao diện.
-      
+      // 3. Tạo mã PayOS OrderCode an toàn
+      const orderCode = generatePayOSOrderCode();
+
+      // 4. Tạo Hợp đồng thuê (RentalHistory)
       const rental = await tx.rentalHistory.create({
         data: {
           product_id: productId,
@@ -195,12 +196,12 @@ export async function createBooking({
           owner_phone: verifiedOwnerPhone,
           start_date: isRental ? start : new Date(),
           end_date: isRental ? end : new Date(),
-          status: "PENDING_APPROVAL", // Giai đoạn Pilot: Tạo pending trước, sau đó Pilot sẽ check
+          status: "PENDING_APPROVAL",
         }
       });
 
-      // Tạo Invoice đính kèm chuẩn quy chuẩn kế toán (Tách rõ Cọc, Thuê, Ship, Phí sàn)
-      await tx.invoice.create({
+      // Tạo Invoice đính kèm chuẩn quy chuẩn kế toán & PayOS OrderCode
+      const invoice = await tx.invoice.create({
         data: {
           rentalId: rental.id,
           amount: totalAmount,
@@ -208,12 +209,12 @@ export async function createBooking({
           depositAmount: deposit,
           shippingFeeCollected: shippingFee,
           platformFee: serviceFee,
-          status: "PENDING"
+          status: "PENDING",
+          orderCode: BigInt(orderCode)
         }
       });
 
-      // 4. Đổi trạng thái (State Machine) sang RESERVED
-      // Nếu thuê thì khóa listing RENT, mua thì khóa listing SELL
+      // 5. Đổi trạng thái (State Machine) sang RESERVED
       await tx.listing.updateMany({
         where: {
           productId: productId,
@@ -226,27 +227,65 @@ export async function createBooking({
       });
       
       // Ghi log Nghiệp vụ
-      log.info("Booking Created Successfully", { rentalId: rental.id, amount: totalAmount, shippingMode });
+      log.info("Booking Created Successfully", { rentalId: rental.id, amount: totalAmount, shippingMode, orderCode });
 
       return { 
-        success: true, 
         rentalId: rental.id, 
-        totalAmount,
-        depositAmount: deposit,
-        depositDiscount: depositCalculation.discountAmount,
-        trustTier: trustBreakdown.tier,
-        trustScore: trustBreakdown.score,
-        depositExplanation: depositCalculation.explanation,
-        message: "Tạo đơn hàng thành công! Vui lòng chuyển khoản." 
+        invoiceId: invoice.id,
+        orderCode,
       };
     });
+
+    // 6. Tạo Link PayOS sau khi Transaction Database đã Commit thành công
+    const host = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://cloop-sable.vercel.app");
+    let paymentLinkRes: any = null;
+
+    if (payos) {
+      try {
+        paymentLinkRes = await payos.paymentRequests.create({
+          orderCode: txResult.orderCode,
+          amount: totalAmount,
+          description: `CLOOP GD ${String(txResult.orderCode).slice(-15)}`,
+          returnUrl: `${host}/payment/result?orderCode=${txResult.orderCode}`,
+          cancelUrl: `${host}/app?cancel=true`
+        });
+
+        if (paymentLinkRes?.paymentLinkId) {
+          await prisma.invoice.update({
+            where: { id: txResult.invoiceId },
+            data: { paymentLinkId: paymentLinkRes.paymentLinkId }
+          });
+        }
+      } catch (payosErr: any) {
+        console.warn("PayOS payment link creation notice:", payosErr?.message || payosErr);
+      }
+    }
+
+    return { 
+      success: true, 
+      rentalId: txResult.rentalId,
+      orderCode: txResult.orderCode,
+      qrCode: paymentLinkRes?.qrCode || null,
+      checkoutUrl: paymentLinkRes?.checkoutUrl || null,
+      accountNumber: paymentLinkRes?.accountNumber || "0335805562",
+      accountName: paymentLinkRes?.accountName || "CLOOP VIETNAM",
+      bin: paymentLinkRes?.bin || "970422",
+      description: paymentLinkRes?.description || `CLOOP GD ${String(txResult.orderCode).slice(-15)}`,
+      totalAmount,
+      depositAmount: deposit,
+      depositDiscount: depositCalculation.discountAmount,
+      trustTier: trustBreakdown.tier,
+      trustScore: trustBreakdown.score,
+      depositExplanation: depositCalculation.explanation,
+      message: "Khởi tạo đơn hàng PayOS thành công!" 
+    };
 
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Lỗi hệ thống khi tạo đơn hàng.";
     console.error("SERVER ACTION ERROR:", err);
     return { success: false, error: message };
   } finally {
-    // 5. Kích nổ Cache của Next.js để tránh ảo giác giao diện!
+    // 7. Kích nổ Cache của Next.js để đồng bộ giao diện
     try {
       revalidatePath(`/product/${productId}`, "page");
       revalidatePath("/", "page");
@@ -258,27 +297,9 @@ export async function createBooking({
   }
 }
 
-export async function confirmManualTransfer(rentalId: string) {
-  try {
-    const supabase = await createClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    let user = session?.user || null;
-    if (!user) {
-      const { data: { user: fetchedUser } } = await supabase.auth.getUser();
-      user = fetchedUser;
-    }
-    if (!user) return { success: false, error: "Chưa đăng nhập." };
-
-    // Fake confirmation for Pilot (changes status to active upon click "Tôi đã chuyển khoản")
-    // This allows the demo UI to work while retaining security (we know WHO clicked it).
-    await prisma.rentalHistory.update({
-      where: { id: rentalId, renterId: user.id },
-      data: { status: "LENDER_SHIPPED" } // In reality, an Admin should do this or PayOS Webhook
-    });
-
-    return { success: true };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Lỗi xác nhận chuyển khoản.";
-    return { success: false, error: message };
-  }
+export async function confirmManualTransfer(_rentalId: string) {
+  return {
+    success: false,
+    error: "Phương thức tự báo chuyển khoản đã ngừng hoạt động. Hệ thống CLOOP sử dụng cổng PayOS để tự động xác minh giao dịch thực tế."
+  };
 }

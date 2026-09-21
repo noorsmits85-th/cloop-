@@ -10,7 +10,6 @@ import {
   Home, PlusCircle, User, Loader2, AlertCircle, CheckCircle2, Eye, EyeOff
 } from "lucide-react";
 import { createClient } from "@/src/utils/supabase/client"; 
-import { loginWithCredentials, registerWithCredentials } from "@/app/(storefront)/login/actions";
 import { translateAuthError } from "@/src/utils/authErrors";
 import "../globals.css";
 import AiStylistChat from "./AiStylistChat"; 
@@ -493,54 +492,98 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                     const redirectParam = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('redirectTo') || undefined : undefined;
 
                     if (authMode === 'login') {
-                      const res = await loginWithCredentials({ email: email.trim(), password, redirectTo: redirectParam });
+                      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+                        email: email.trim(),
+                        password: password.trim(),
+                      });
 
-                      if (res.error) {
-                        setAuthModalError(translateAuthError(res.error));
+                      if (signInError) {
+                        setAuthModalError(translateAuthError(signInError.message));
                         return;
                       }
 
-                      if (res.user) {
+                      if (signInData?.user) {
+                        const userName = signInData.user.user_metadata?.name || signInData.user.user_metadata?.full_name || email.trim().split('@')[0];
                         setCurrentUser({
-                          name: res.user.name || email.split('@')[0],
-                          email: res.user.email || email,
+                          name: userName,
+                          email: signInData.user.email || email.trim(),
                           isLoggedIn: true,
-                          id: res.user.id
+                          id: signInData.user.id
                         });
                       }
 
                       setShowAuthModal(false);
-                      if (res.redirectUrl && res.redirectUrl !== '/') {
-                        router.push(res.redirectUrl);
+                      if (redirectParam && redirectParam !== '/') {
+                        router.push(redirectParam);
                       } else {
                         router.refresh();
                       }
                       
                     } else if (authMode === 'register') {
-                      const res = await registerWithCredentials({ 
-                        email: email.trim(), 
-                        password, 
-                        name: name,
-                        redirectTo: redirectParam 
+                      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+                        email: email.trim(),
+                        password: password.trim(),
+                        options: {
+                          data: {
+                            name: name,
+                            full_name: name,
+                          }
+                        }
                       });
-                      
-                      if (res.error) {
-                        setAuthModalError(translateAuthError(res.error));
+
+                      if (signUpError) {
+                        if (signUpError.message?.includes("already registered") || signUpError.message?.includes("User already exists")) {
+                          // Nếu tài khoản đã tồn tại, tự động chuyển sang đăng nhập
+                          const { data: logData, error: logErr } = await supabase.auth.signInWithPassword({
+                            email: email.trim(),
+                            password: password.trim(),
+                          });
+                          if (logErr) {
+                            setAuthModalError("Tài khoản đã tồn tại trên hệ thống. Vui lòng kiểm tra mật khẩu hoặc đăng nhập.");
+                            switchAuthMode('login');
+                            return;
+                          }
+                          if (logData?.user) {
+                            const uName = logData.user.user_metadata?.name || logData.user.user_metadata?.full_name || name || email.trim().split('@')[0];
+                            setCurrentUser({
+                              name: uName,
+                              email: logData.user.email || email.trim(),
+                              isLoggedIn: true,
+                              id: logData.user.id
+                            });
+                          }
+                          setShowAuthModal(false);
+                          if (redirectParam && redirectParam !== '/') {
+                            router.push(redirectParam);
+                          } else {
+                            router.refresh();
+                          }
+                          return;
+                        }
+                        setAuthModalError(translateAuthError(signUpError.message));
                         return;
                       }
 
-                      if (res.user) {
+                      // Đăng nhập ngay sau khi đăng ký thành công
+                      const { data: signInData } = await supabase.auth.signInWithPassword({
+                        email: email.trim(),
+                        password: password.trim(),
+                      });
+
+                      const finalUser = signInData?.user || signUpData?.user;
+                      if (finalUser) {
+                        const uName = finalUser.user_metadata?.name || finalUser.user_metadata?.full_name || name || email.trim().split('@')[0];
                         setCurrentUser({
-                          name: res.user.name || name || email.split('@')[0],
-                          email: res.user.email || email,
+                          name: uName,
+                          email: finalUser.email || email.trim(),
                           isLoggedIn: true,
-                          id: res.user.id
+                          id: finalUser.id
                         });
                       }
 
                       setShowAuthModal(false);
-                      if (res.redirectUrl && res.redirectUrl !== '/') {
-                        router.push(res.redirectUrl);
+                      if (redirectParam && redirectParam !== '/') {
+                        router.push(redirectParam);
                       } else {
                         router.refresh();
                       }

@@ -44,49 +44,55 @@ export async function login(formData: FormData): Promise<AuthActionResult> {
     return { error: `Phát hiện quá nhiều lần thử đăng nhập không hợp lệ. Vui lòng thử lại sau ${rl.resetInSec} giây.` };
   }
 
-  // Tự động gỡ rào cản email_confirmed_at nếu tài khoản chưa confirm
-  try {
-    const { prisma } = await import('@/src/lib/prisma');
-    await prisma.$executeRawUnsafe(
-      `UPDATE auth.users SET email_confirmed_at = NOW() WHERE email = $1 AND email_confirmed_at IS NULL;`,
-      email
-    );
-  } catch (_) {}
-
-  const { data: signInData, error } = await supabase.auth.signInWithPassword({
+  // Đăng nhập trực tiếp qua Supabase Auth
+  let { data: signInData, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
 
-  if (error) {
-    return { error: translateAuthError(error.message) };
-  }
-
-  // Đảm bảo sync vào Prisma User
-  if (signInData.user?.id) {
+  // Tự động gỡ rào cản email_confirmed_at CHỈ KHI tài khoản gặp lỗi chưa confirm
+  if (error && error.message?.toLowerCase().includes("email not confirmed")) {
     try {
       const { prisma } = await import('@/src/lib/prisma');
-      const userName = signInData.user.user_metadata?.name || signInData.user.user_metadata?.full_name || email.split('@')[0];
-      await prisma.user.upsert({
-        where: { id: signInData.user.id },
-        update: { email: email },
-        create: {
-          id: signInData.user.id,
-          email: email,
-          password: 'supabase_auth_managed',
-          name: userName,
-          walletBalance: 0,
-          cloopCoins: 100,
-          role: 'USER',
-          isVerified: true
-        }
-      });
+      await prisma.$executeRawUnsafe(
+        `UPDATE auth.users SET email_confirmed_at = NOW() WHERE email = $1 AND email_confirmed_at IS NULL;`,
+        email
+      );
+      const retry = await supabase.auth.signInWithPassword({ email, password });
+      if (!retry.error && retry.data?.user) {
+        signInData = retry.data;
+        error = null;
+      }
     } catch (_) {}
   }
 
+  if (error || !signInData?.user) {
+    return { error: translateAuthError(error?.message || "Đăng nhập không thành công") };
+  }
+
+  // Đồng bộ User Prisma không làm nghẽn luồng phản hồi
+  try {
+    const { prisma } = await import('@/src/lib/prisma');
+    const userName = signInData.user.user_metadata?.name || signInData.user.user_metadata?.full_name || email.split('@')[0];
+    await prisma.user.upsert({
+      where: { id: signInData.user.id },
+      update: { email: email },
+      create: {
+        id: signInData.user.id,
+        email: email,
+        password: 'supabase_auth_managed',
+        name: userName,
+        walletBalance: 0,
+        cloopCoins: 100,
+        role: 'USER',
+        isVerified: true
+      }
+    });
+  } catch (_) {}
+
   const nextUrl = (formData.get('nextUrl') as string) || (formData.get('redirectTo') as string) || '/';
   try {
-    revalidatePath(nextUrl, 'layout');
+    revalidatePath(nextUrl);
   } catch (_) {}
 
   return { 

@@ -10,14 +10,14 @@ import {
   Leaf, ArrowRight, Shirt, Calendar, ShieldCheck, Check,
   ChevronRight, ArrowLeft, Wallet, Droplet, Award,
   MapPin, Edit3, Menu, HelpCircle, LogOut, Package, Crop, Truck,
-  Zap, CreditCard, QrCode, Sparkles
+  Zap, CreditCard, QrCode, Sparkles, Loader2, ExternalLink, Copy
 } from "lucide-react";
 import Cropper from "react-easy-crop";
 import { useAuthModal } from "@/app/AuthModalContext";
 import { getShopProductsAction, createProductAction } from "@/app/actions/product";
 import { toggleProductInteractionAction } from "@/app/actions/favorite";
 import { getMyClosetMobileDataAction, updateClosetProfileAction, getClosetFullDataAction } from "@/app/actions/closet";
-import { createBooking, confirmManualTransfer } from "@/app/actions/booking";
+import { createBooking } from "@/app/actions/booking";
 
 // 🏷️ DỊP TIỆC THỜI TRANG TUẦN HOÀN
 const OCCASIONS_TABS = [
@@ -243,7 +243,10 @@ export default function MobileAppClient({
   const [isSubmittingBooking, setIsSubmittingBooking] = useState<boolean>(false);
   const [bookingError, setBookingError] = useState<string>("");
   const [bookingSuccessData, setBookingSuccessData] = useState<any | null>(null);
-  const [isTransferConfirmed, setIsTransferConfirmed] = useState<boolean>(false);
+  const [isPaidSuccess, setIsPaidSuccess] = useState<boolean>(false);
+  const [isCheckingPayment, setIsCheckingPayment] = useState<boolean>(false);
+  const [paymentCheckMsg, setPaymentCheckMsg] = useState<{ type: "info" | "error"; text: string } | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
   // 🚚 ĐỊA CHỈ & TÍNH CƯỚC GHN TỰ ĐỘNG CHO CHECKOUT (ĐỒNG BỘ 100% BẢN WEB)
   const [checkoutProvinceId, setCheckoutProvinceId] = useState<number | "">("");
@@ -763,7 +766,10 @@ export default function MobileAppClient({
     setCheckoutProduct(product);
     setBookingError("");
     setBookingSuccessData(null);
-    setIsTransferConfirmed(false);
+    setIsPaidSuccess(false);
+    setIsCheckingPayment(false);
+    setPaymentCheckMsg(null);
+    setCopiedField(null);
     // Mặc định chọn gói 3 ngày (gói phổ biến nhất trên web)
     setCheckoutDays(3);
     const tomorrow = new Date();
@@ -935,7 +941,13 @@ export default function MobileAppClient({
 
         setBookingSuccessData({
           rentalId: res.rentalId,
-          orderCode: res.rentalId.slice(-6).toUpperCase(),
+          orderCode: res.orderCode || res.rentalId.slice(-6).toUpperCase(),
+          qrCode: res.qrCode || null,
+          checkoutUrl: res.checkoutUrl || null,
+          accountNumber: res.accountNumber || "0335805562",
+          accountName: res.accountName || "CLOOP VIETNAM",
+          bin: res.bin || "970422",
+          description: res.description || `CLOOP GD ${res.orderCode || res.rentalId.slice(-6).toUpperCase()}`,
           totalAmount: res.totalAmount || totalAmount,
           depositAmount: res.depositAmount ?? deposit,
           rentalFee: res.rentalFee || subTotal,
@@ -949,6 +961,9 @@ export default function MobileAppClient({
           shippingAddress: fullShippingAddress,
           isRental,
         });
+        setIsPaidSuccess(false);
+        setIsCheckingPayment(false);
+        setPaymentCheckMsg(null);
       } else {
         setBookingError(res.error || "Không thể khởi tạo đơn hàng. Vui lòng thử lại!");
       }
@@ -959,13 +974,59 @@ export default function MobileAppClient({
     }
   };
 
-  // 🏦 XÁC NHẬN ĐÃ CHUYỂN KHOẢN ĐẶT CỌC
-  const handleConfirmTransfer = async () => {
-    if (!bookingSuccessData?.rentalId) return;
-    setIsTransferConfirmed(true);
+  // ⚡ TỰ ĐỘNG QUÉT VÀ ĐỒNG BỘ TRẠNG THÁI THANH TOÁN TỪ PAYOS THEO THỜI GIAN THỰC (GIÃN CÁCH 3.5S)
+  useEffect(() => {
+    if (!bookingSuccessData?.orderCode || isPaidSuccess) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const { checkAndSyncPaymentStatusAction } = await import("@/app/actions/payment");
+        const res = await checkAndSyncPaymentStatusAction(bookingSuccessData.orderCode);
+        if (res.success && res.isPaid) {
+          setIsPaidSuccess(true);
+          refreshPersonalData();
+          clearInterval(interval);
+        }
+      } catch (e) {
+        console.error("Polling PayOS payment status error:", e);
+      }
+    }, 3500);
+
+    return () => clearInterval(interval);
+  }, [bookingSuccessData?.orderCode, isPaidSuccess]);
+
+  // 🏦 NÚT KIỂM TRA TRẠNG THÁI THANH TOÁN PAYOS THỦ CÔNG KHI KHÁCH BẤM "TÔI ĐÃ CHUYỂN KHOẢN"
+  const handleCheckPayment = async () => {
+    if (!bookingSuccessData?.orderCode || isCheckingPayment) return;
+    setIsCheckingPayment(true);
+    setPaymentCheckMsg(null);
     try {
-      await confirmManualTransfer(bookingSuccessData.rentalId);
-      refreshPersonalData();
+      const { checkAndSyncPaymentStatusAction } = await import("@/app/actions/payment");
+      const res = await checkAndSyncPaymentStatusAction(bookingSuccessData.orderCode);
+      if (res.success && res.isPaid) {
+        setIsPaidSuccess(true);
+        refreshPersonalData();
+      } else {
+        setPaymentCheckMsg({
+          type: "info",
+          text: "Hệ thống chưa ghi nhận giao dịch thành công từ PayOS. Vui lòng đảm bảo bạn đã chuyển đúng số tiền và nội dung chuyển khoản, hoặc đợi từ 15 đến 30 giây nếu ngân hàng đang xử lý."
+        });
+      }
+    } catch (e: any) {
+      setPaymentCheckMsg({
+        type: "error",
+        text: e.message || "Lỗi kiểm tra trạng thái thanh toán từ cổng PayOS."
+      });
+    } finally {
+      setIsCheckingPayment(false);
+    }
+  };
+
+  const copyToClipboard = (text: string, fieldName: string) => {
+    try {
+      navigator.clipboard.writeText(text);
+      setCopiedField(fieldName);
+      setTimeout(() => setCopiedField(null), 2000);
     } catch (_) {}
   };
 
@@ -4091,10 +4152,10 @@ export default function MobileAppClient({
               <div className="flex items-center justify-between p-5 pb-3.5 border-b border-stone-200 sticky top-0 bg-[#FAF9F5] z-20 shrink-0">
                 <div>
                   <h3 className="font-heading font-black text-base text-[#0A2517] leading-tight">
-                    {bookingSuccessData ? "Xác Nhận Đơn Thành Công" : (checkoutProduct.listingTypeRaw === "SELL" ? "Xác Nhận Mua Trang Phục" : "Xác Nhận Thuê Trang Phục")}
+                    {bookingSuccessData ? (isPaidSuccess ? "Thanh Toán Thành Công" : "Cổng Thanh Toán PayOS") : (checkoutProduct.listingTypeRaw === "SELL" ? "Xác Nhận Mua Trang Phục" : "Xác Nhận Thuê Trang Phục")}
                   </h3>
                   <p className="text-[11px] text-stone-500 mt-0.5">
-                    {bookingSuccessData ? "Mã đơn đã được lưu vào hệ thống" : "Bảo chứng thanh toán an toàn bởi CLOOP Escrow"}
+                    {bookingSuccessData ? (isPaidSuccess ? "Giao dịch đã xác thực bởi PayOS" : "Két bảo chứng tự động khóa tiền cọc") : "Bảo chứng thanh toán an toàn bởi CLOOP Escrow"}
                   </p>
                 </div>
 
@@ -4104,6 +4165,9 @@ export default function MobileAppClient({
                     setCheckoutProduct(null);
                     setBookingSuccessData(null);
                     setBookingError(null);
+                    setIsPaidSuccess(false);
+                    setIsCheckingPayment(false);
+                    setPaymentCheckMsg(null);
                   }}
                   className="w-8 h-8 rounded-full bg-stone-200/70 hover:bg-stone-300 flex items-center justify-center text-stone-600 transition cursor-pointer"
                 >
@@ -4114,117 +4178,228 @@ export default function MobileAppClient({
               {/* Nội dung bên trong Modal */}
               <div className="p-5 pt-3.5 space-y-3.5">
 
-                {/* TH1: NẾU ĐẶT ĐƠN THÀNH CÔNG -> HIỂN THỊ MÀN HÌNH THANH TOÁN & QUÉT QR */}
+                {/* TH1: NẾU ĐẶT ĐƠN THÀNH CÔNG -> HIỂN THỊ MÀN HÌNH THANH TOÁN PAYOS */}
                 {bookingSuccessData ? (
-                  <div className="space-y-4 py-1 animate-in fade-in duration-300">
-                    <div className="text-center space-y-2 bg-emerald-50/80 p-4 rounded-2xl border border-emerald-200/80">
-                      <div className="w-12 h-12 bg-emerald-800 text-white rounded-full flex items-center justify-center mx-auto shadow-xs">
-                        <CheckCircle2 size={26} />
-                      </div>
-                      <h4 className="font-heading font-black text-lg text-emerald-950">
-                        {bookingSuccessData.isRental ? "Đặt Lịch Thuê Thành Công!" : "Đặt Mua Thành Công!"}
-                      </h4>
-                      <p className="text-xs text-emerald-900">
-                        Mã đơn hàng: <strong className="font-mono text-sm font-black text-[#0A2517]">#{bookingSuccessData.orderCode}</strong>
-                      </p>
-                      <p className="text-[11px] text-stone-600 leading-tight">
-                        {bookingSuccessData.isRental 
-                          ? `Lịch hẹn: Từ ${bookingSuccessData.startDate} đến ${bookingSuccessData.endDate} (${bookingSuccessData.packageDays} ngày)` 
-                          : "Đơn mua đã được chuyển tới chủ tủ để đóng gói."}
-                      </p>
-                    </div>
-
-                    {/* THÔNG TIN CHUYỂN KHOẢN VIETQR */}
-                    <div className="bg-white p-4 rounded-2xl border border-stone-200 shadow-2xs space-y-3 text-xs">
-                      <div className="flex items-center justify-between border-b border-stone-100 pb-2">
-                        <span className="font-bold text-[#0A2517]">
-                          Quét mã VietQR chuyển khoản đặt cọc
-                        </span>
-                        <span className="text-[10px] bg-stone-100 text-stone-700 font-bold px-2 py-0.5 rounded-full border border-stone-200">
-                          {isTransferConfirmed ? "Đã báo chuyển khoản" : "Chờ đặt cọc"}
-                        </span>
-                      </div>
-
-                      <div className="flex flex-col items-center justify-center py-2 bg-stone-50 rounded-xl border border-stone-100">
-                        <div className="relative w-48 aspect-square rounded-lg overflow-hidden bg-white p-2 shadow-xs border border-stone-200">
-                          <Image
-                            src={`https://img.vietqr.io/image/MB-0335805562-compact2.png?amount=${bookingSuccessData.totalAmount}&addInfo=CLOOP%20${bookingSuccessData.orderCode}&accountName=CLOOP%20VIETNAM`}
-                            alt="VietQR Chuyển Khoản"
-                            fill
-                            className="object-contain"
-                            unoptimized
-                          />
+                  isPaidSuccess ? (
+                    /* TRƯỜNG HỢP 1A: PAYOS ĐÃ XÁC THỰC THANH TOÁN THÀNH CÔNG */
+                    <div className="space-y-4 py-2 animate-in fade-in zoom-in-95 duration-300">
+                      <div className="text-center space-y-3 bg-emerald-50/90 p-5 rounded-2xl border border-emerald-200 shadow-xs">
+                        <div className="w-14 h-14 bg-emerald-700 text-white rounded-full flex items-center justify-center mx-auto shadow-md">
+                          <CheckCircle2 size={32} />
                         </div>
-                        <p className="text-[10px] text-stone-500 mt-2 text-center">
-                          Mở App Ngân hàng bất kỳ (MB, VCB, Techcombank, Momo...) để quét mã tự điền số tiền.
+                        <div>
+                          <h4 className="font-heading font-black text-lg text-emerald-950">
+                            Thanh Toán PayOS Thành Công! 🎉
+                          </h4>
+                          <p className="text-xs text-emerald-800 mt-0.5">
+                            Két bảo chứng CLOOP Escrow đã nhận tiền cọc & xác nhận đơn hàng.
+                          </p>
+                        </div>
+                        <div className="inline-block bg-white px-3 py-1.5 rounded-full border border-emerald-300 font-mono text-xs font-black text-[#0A2517]">
+                          Mã đơn: #{bookingSuccessData.orderCode}
+                        </div>
+                      </div>
+
+                      <div className="bg-white p-4 rounded-2xl border border-stone-200 shadow-xs space-y-2 text-xs">
+                        <div className="flex justify-between py-1 border-b border-stone-100">
+                          <span className="text-stone-500">Sản phẩm:</span>
+                          <span className="font-bold text-stone-900 line-clamp-1 max-w-[200px]">{bookingSuccessData.productTitle}</span>
+                        </div>
+                        {bookingSuccessData.isRental && (
+                          <div className="flex justify-between py-1 border-b border-stone-100">
+                            <span className="text-stone-500">Thời gian thuê:</span>
+                            <span className="font-medium text-stone-800">{bookingSuccessData.startDate} → {bookingSuccessData.endDate} ({bookingSuccessData.packageDays} ngày)</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between py-1 border-b border-stone-100">
+                          <span className="text-stone-500">Tổng thanh toán:</span>
+                          <strong className="text-emerald-900 font-black text-sm">{(Number(bookingSuccessData.totalAmount) || 0).toLocaleString("vi-VN")}đ</strong>
+                        </div>
+                        <div className="flex justify-between py-1">
+                          <span className="text-stone-500">Trạng thái:</span>
+                          <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                            ✓ Đã xác thực thanh toán PayOS
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Nút điều hướng */}
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCheckoutProduct(null);
+                            setBookingSuccessData(null);
+                            setIsPaidSuccess(false);
+                            setActiveTab("closet");
+                            setActiveClosetView("orders");
+                            setOrderSubTab("renter");
+                          }}
+                          className="py-3 px-3 rounded-xl bg-[#0A2517] hover:bg-[#15462D] text-white font-bold text-xs shadow-xs transition cursor-pointer text-center"
+                        >
+                          Xem đơn của tôi
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCheckoutProduct(null);
+                            setBookingSuccessData(null);
+                            setIsPaidSuccess(false);
+                          }}
+                          className="py-3 px-3 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs transition cursor-pointer text-center"
+                        >
+                          Tiếp tục dạo đồ
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* TRƯỜNG HỢP 1B: ĐANG CHỜ THANH TOÁN PAYOS (QUÉT MÃ QR & POLLING REALTIME) */
+                    <div className="space-y-3.5 py-1 animate-in fade-in duration-300">
+                      <div className="text-center space-y-1 bg-stone-50 p-3 rounded-2xl border border-stone-200">
+                        <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200/80 inline-block">
+                          KÉT BẢO CHỨNG TỰ ĐỘNG KHÓA TIỀN CỌC
+                        </span>
+                        <h4 className="font-heading font-black text-base text-[#0A2517] pt-0.5">
+                          Quét Mã QR Chuyển Khoản PayOS
+                        </h4>
+                        <p className="text-[11px] text-stone-500">
+                          Mã đơn: <strong className="font-mono text-xs font-black text-[#0A2517]">#{bookingSuccessData.orderCode}</strong>
                         </p>
                       </div>
 
-                      <div className="space-y-1.5 font-mono text-[11px] bg-stone-50 p-3 rounded-xl border border-stone-100">
-                        <div className="flex justify-between">
-                          <span className="text-stone-500 font-sans">Ngân hàng:</span>
-                          <strong className="text-stone-900 font-sans">MB Bank (Quân Đội)</strong>
+                      {/* Khung Mã QR PayOS */}
+                      <div className="flex flex-col items-center justify-center py-3 bg-white rounded-2xl border border-stone-200 shadow-2xs">
+                        <div className="relative w-48 h-48 bg-white p-1 rounded-xl border border-stone-200 shadow-xs flex items-center justify-center">
+                          {bookingSuccessData.bin && bookingSuccessData.accountNumber ? (
+                            <img
+                              src={`https://api.vietqr.io/image/${bookingSuccessData.bin}-${bookingSuccessData.accountNumber}-compact2.jpg?amount=${bookingSuccessData.totalAmount}&addInfo=${encodeURIComponent(bookingSuccessData.description || `CLOOP GD ${bookingSuccessData.orderCode}`)}&accountName=${encodeURIComponent(bookingSuccessData.accountName || 'CLOOP')}`}
+                              alt="Mã QR PayOS"
+                              className="w-full h-full object-contain"
+                            />
+                          ) : bookingSuccessData.qrCode ? (
+                            <img
+                              src={`https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent(bookingSuccessData.qrCode)}`}
+                              alt="Mã QR PayOS"
+                              className="w-full h-full object-contain"
+                            />
+                          ) : (
+                            <img
+                              src={`https://api.vietqr.io/image/970422-0335805562-compact2.jpg?amount=${bookingSuccessData.totalAmount}&addInfo=${encodeURIComponent(`CLOOP GD ${bookingSuccessData.orderCode}`)}&accountName=CLOOP%20VIETNAM`}
+                              alt="Mã QR PayOS"
+                              className="w-full h-full object-contain"
+                            />
+                          )}
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-stone-500 font-sans">Số tài khoản:</span>
-                          <strong className="text-stone-900 font-bold">0335805562</strong>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-stone-500 font-sans">Chủ tài khoản:</span>
-                          <strong className="text-stone-900 font-sans">CLOOP VIETNAM</strong>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-stone-500 font-sans">Số tiền cọc:</span>
-                          <strong className="text-emerald-900 font-black text-sm">{(Number(bookingSuccessData.totalAmount) || 0).toLocaleString("vi-VN")}đ</strong>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-stone-500 font-sans">Nội dung chuyển:</span>
-                          <strong className="text-[#0A2517] bg-stone-200/80 px-1 rounded">CLOOP {bookingSuccessData.orderCode}</strong>
+
+                        <div className="mt-2.5 flex items-center gap-2 text-[11px] text-emerald-800 font-bold">
+                          <Loader2 size={13} className="animate-spin text-emerald-700" />
+                          <span>Đang chờ chuyển khoản... (PayOS tự động nhận diện)</span>
                         </div>
                       </div>
 
-                      {isTransferConfirmed ? (
-                        <div className="p-2.5 rounded-xl bg-emerald-100 text-emerald-900 text-center font-bold text-xs">
-                          Đã ghi nhận chuyển khoản! CLOOP sẽ xác nhận và gửi thông báo cho bạn.
+                      {/* Bảng thông tin chuyển khoản chi tiết & nút copy */}
+                      <div className="space-y-1.5 font-mono text-[11px] bg-stone-50 p-3 rounded-xl border border-stone-200/80">
+                        <div className="flex justify-between items-center py-0.5">
+                          <span className="text-stone-500 font-sans">Ngân hàng:</span>
+                          <strong className="text-stone-900 font-sans">MB Bank / ACB (PayOS)</strong>
                         </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={handleConfirmTransfer}
-                          className="w-full py-3 bg-[#0A2517] text-white rounded-xl font-bold text-xs hover:bg-[#15462D] transition shadow-xs cursor-pointer text-center"
-                        >
-                          Tôi đã chuyển khoản đặt cọc
-                        </button>
-                      )}
-                    </div>
+                        <div className="flex justify-between items-center py-0.5">
+                          <span className="text-stone-500 font-sans">Số tài khoản:</span>
+                          <div className="flex items-center gap-1.5">
+                            <strong className="text-stone-900 font-bold">{bookingSuccessData.accountNumber || "0335805562"}</strong>
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(bookingSuccessData.accountNumber || "0335805562", "accountNumber")}
+                              className="text-[10px] text-emerald-700 hover:text-emerald-900 font-bold font-sans bg-white px-1.5 py-0.5 rounded border border-stone-200 cursor-pointer"
+                            >
+                              {copiedField === "accountNumber" ? "✓ Đã chép" : "Chép"}
+                            </button>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-0.5">
+                          <span className="text-stone-500 font-sans">Chủ tài khoản:</span>
+                          <strong className="text-stone-900 font-sans">{bookingSuccessData.accountName || "CLOOP VIETNAM"}</strong>
+                        </div>
+                        <div className="flex justify-between items-center py-0.5">
+                          <span className="text-stone-500 font-sans">Số tiền cọc:</span>
+                          <div className="flex items-center gap-1.5">
+                            <strong className="text-emerald-900 font-black text-sm">{(Number(bookingSuccessData.totalAmount) || 0).toLocaleString("vi-VN")}đ</strong>
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(String(bookingSuccessData.totalAmount), "amount")}
+                              className="text-[10px] text-emerald-700 hover:text-emerald-900 font-bold font-sans bg-white px-1.5 py-0.5 rounded border border-stone-200 cursor-pointer"
+                            >
+                              {copiedField === "amount" ? "✓ Đã chép" : "Chép"}
+                            </button>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center py-0.5">
+                          <span className="text-stone-500 font-sans">Nội dung CK:</span>
+                          <div className="flex items-center gap-1.5">
+                            <strong className="text-[#0A2517] bg-amber-50 text-amber-900 border border-amber-200 px-1 rounded font-bold">
+                              {bookingSuccessData.description || `CLOOP GD ${bookingSuccessData.orderCode}`}
+                            </strong>
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(bookingSuccessData.description || `CLOOP GD ${bookingSuccessData.orderCode}`, "description")}
+                              className="text-[10px] text-emerald-700 hover:text-emerald-900 font-bold font-sans bg-white px-1.5 py-0.5 rounded border border-stone-200 cursor-pointer"
+                            >
+                              {copiedField === "description" ? "✓ Đã chép" : "Chép"}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
 
-                    {/* Nút điều hướng */}
-                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      {/* Nút kiểm tra trạng thái thanh toán thủ công */}
                       <button
                         type="button"
-                        onClick={() => {
-                          setCheckoutProduct(null);
-                          setBookingSuccessData(null);
-                          setActiveTab("closet");
-                          setActiveClosetView("orders");
-                          setOrderSubTab("renter");
-                        }}
-                        className="py-2.5 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-[#0A2517] font-bold text-xs border border-emerald-200 transition cursor-pointer text-center"
+                        disabled={isCheckingPayment}
+                        onClick={handleCheckPayment}
+                        className="w-full py-3 bg-[#0A2517] hover:bg-[#15462D] text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer disabled:opacity-50"
                       >
-                        Xem đơn của tôi
+                        {isCheckingPayment ? (
+                          <>
+                            <Loader2 size={14} className="animate-spin" /> Đang kiểm tra với PayOS...
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw size={14} /> Tôi đã chuyển khoản (Kiểm tra lại ngay)
+                          </>
+                        )}
                       </button>
+
+                      {paymentCheckMsg && (
+                        <div className={`p-2.5 rounded-xl text-xs text-center leading-relaxed ${
+                          paymentCheckMsg.type === "error" ? "bg-red-50 text-red-700 border border-red-200" : "bg-amber-50 text-amber-900 border border-amber-200"
+                        }`}>
+                          {paymentCheckMsg.text}
+                        </div>
+                      )}
+
+                      {bookingSuccessData.checkoutUrl && (
+                        <a
+                          href={bookingSuccessData.checkoutUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer text-center"
+                        >
+                          <ExternalLink size={13} /> Mở cổng PayOS (Trang thanh toán chính thức)
+                        </a>
+                      )}
+
                       <button
                         type="button"
                         onClick={() => {
                           setCheckoutProduct(null);
                           setBookingSuccessData(null);
+                          setIsPaidSuccess(false);
                         }}
-                        className="py-2.5 px-3 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs transition cursor-pointer text-center"
+                        className="w-full py-2 text-stone-500 hover:text-stone-700 text-xs font-medium transition cursor-pointer text-center"
                       >
-                        Tiếp tục dạo tủ đồ
+                        Đóng (Đơn hàng đã được lưu trên hệ thống)
                       </button>
                     </div>
-                  </div>
+                  )
                 ) : (
                   /* TH2: FORM CẤU HÌNH & XÁC NHẬN ĐƠN THUÊ / MUA */
                   <form onSubmit={handleConfirmBooking} className="space-y-3.5">
