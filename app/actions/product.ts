@@ -5,6 +5,7 @@ import { ItemCondition, GenderCategory, ListingType } from "@prisma/client";
 import { prisma } from "@/src/lib/prisma";
 import { uploadProductSchema } from "@/lib/validations/product";
 import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
+import { maskPublicAddress } from "@/src/utils/shipping";
 
 // ⚡ HIGH-SPEED SWR IN-MEMORY CACHE (1ms Response Time, 100% Crash-Proof)
 const memoryCache = new Map<string, { data: any; expiry: number }>();
@@ -101,6 +102,8 @@ export async function createProductAction({
           color: validData.color || null,
           condition: conditionEnum,
           province: validData.province,
+          districtId: product.districtId ? Number(product.districtId) : null,
+          wardCode: product.wardCode ? String(product.wardCode) : null,
           specificAddress: fullAddress,
           category: "DRESSES",
           gender: GenderCategory.UNISEX,
@@ -365,7 +368,7 @@ const fetchShopProductsCached = unstable_cache(
         districtId: p.districtId || null,
         wardCode: p.wardCode || null,
         pricingTiers: (rentListing?.pricing_tiers as any) || null,
-        specificAddress: p.specificAddress || p.province || "Hà Nội",
+        specificAddress: maskPublicAddress(p.specificAddress || p.province || "Hà Nội"),
         rating: p.user?.rating ? Number(p.user.rating).toFixed(1) : "5.0",
         reviewCount: p.user?.reviewCount || 0,
         completedOrders: p.user?.completedOrders || 0,

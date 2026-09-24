@@ -68,6 +68,37 @@ export function extractProvince(address: string): string {
   return "";
 }
 
+/**
+ * 🛡️ BẢO MẬT ĐỊA CHỈ TRẠM GIAO NHẬN (Ẩn số nhà, ngõ ngách, tên đường riêng tư khi hiển thị công khai)
+ * Chỉ công khai Phường/Xã, Quận/Huyện, Tỉnh/Thành phố.
+ * Số nhà và thông tin cụ thể chỉ bàn giao sau khi đơn hàng được đặt/xác nhận thành công.
+ */
+export function maskPublicAddress(fullAddress?: string | null): string {
+  if (!fullAddress || typeof fullAddress !== "string") return "Hà Nội, Việt Nam";
+
+  // 1. Loại bỏ các phần chú thích riêng tư trong ngoặc đơn (VD: "(Ghi chú: gọi 0912...)")
+  let cleaned = fullAddress.replace(/\s*\([^)]*\)/g, "").trim();
+  if (!cleaned) return "Hà Nội, Việt Nam";
+
+  // 2. Tách các thành phần theo dấu phẩy
+  const parts = cleaned.split(",").map(p => p.trim()).filter(Boolean);
+
+  if (parts.length <= 1) {
+    return cleaned;
+  }
+
+  // Kiểm tra xem phần đầu có phải là số nhà / ngõ ngách / tên đường cụ thể không
+  const isSpecificAddressStart = /^((\d+[\w\/-]*)|số|ngõ|hẻm|đường|tổ|phố|nhà|căn|tòa|lô|kiệt|kp|khu phố)\b/i.test(parts[0]);
+
+  // Nếu có từ 4 phần trở lên (Ví dụ: "Số 12 ngõ 34 Trường Chinh, Phường Đông Vĩnh, TP. Vinh, Nghệ An")
+  // hoặc từ 2 phần trở lên mà phần đầu là số nhà cụ thể:
+  if (parts.length >= 4 || (parts.length >= 2 && isSpecificAddressStart)) {
+    return parts.slice(1).join(", ");
+  }
+
+  return cleaned;
+}
+
 export function getRegion(provinceName: string): "NORTH" | "CENTRAL" | "SOUTH" {
   const p = (provinceName || "").toLowerCase();
   if (NORTH_PROVINCES.some(prov => p.includes(prov))) return "NORTH";

@@ -155,6 +155,8 @@ export default function UploadForm() {
       province: prov?.ProvinceName || data.province,
       district: dist?.DistrictName || "",
       ward: ward?.WardName || data.ward,
+      districtId: selectedDistrictId || null,
+      wardCode: selectedWardCode || null,
       address: addressNote.trim() ? `${specificAddress.trim()} (Ghi chú: ${addressNote.trim()})` : specificAddress.trim(),
       occasion: data.occasion || "",
     };

@@ -21,6 +21,7 @@ import { getMyClosetMobileDataAction, updateClosetProfileAction, getClosetFullDa
 import { deleteProductAction, toggleProductHideAction } from "@/app/(dashboard)/my-closet/items/actions";
 import { getScrubbedReviewsAction } from "@/app/(dashboard)/my-closet/orders/actions";
 import { createBooking } from "@/app/actions/booking";
+import { maskPublicAddress } from "@/src/utils/shipping";
 
 // 🏷️ DỊP TIỆC THỜI TRANG TUẦN HOÀN
 const OCCASIONS_TABS = [
@@ -1347,6 +1348,8 @@ export default function MobileAppClient({
           province: uploadData.province.trim(),
           district: uploadData.district.trim(),
           ward: uploadData.ward.trim(),
+          districtId: selectedGhnDistrictId || null,
+          wardCode: selectedGhnWardCode || null,
           address: uploadData.note?.trim() ? `${uploadData.address.trim()} (Ghi chú: ${uploadData.note.trim()})` : uploadData.address.trim(),
           ownerPhone: uploadData.ownerPhone.trim(),
           occasion: uploadData.occasion,
@@ -3227,14 +3230,14 @@ export default function MobileAppClient({
         )}
 
         {/* ========================================================
-            🛍️ 8.5. MODAL TỦ ĐỒ CHỦ TỦ IN-APP (TIKTOK / SHOPEE CREATOR SHOP)
+            🛍️ 8.5. MODAL TỦ ĐỒ CHỦ TỦ IN-APP (TIKTOK / SHOPEE CREATOR SHOP) - TRÀN VIỀN 100% NATIVE
             ======================================================== */}
         {viewingClosetOwner && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200 mobile-app-root font-sans">
-            <div className="w-full max-w-[430px] max-h-[92vh] sm:max-h-[88vh] bg-[#FBF9F5] rounded-t-[32px] sm:rounded-[36px] overflow-y-auto shadow-2xl relative animate-in slide-in-from-bottom duration-300 overscroll-contain flex flex-col mobile-app-root font-sans no-scrollbar">
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-stretch sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200 mobile-app-root font-sans">
+            <div className="w-full max-w-[430px] h-[100dvh] h-screen sm:h-auto sm:max-h-[88vh] bg-[#FBF9F5] rounded-none sm:rounded-[36px] overflow-y-auto shadow-2xl relative animate-in slide-in-from-bottom duration-300 overscroll-contain flex flex-col mobile-app-root font-sans no-scrollbar">
               
-              {/* STICKY TOP BAR (Z-30 TRÁNH BỊ CHE BỞI CÁC PHẦN TỬ CON) */}
-              <div className="sticky top-0 z-30 bg-[#0A2517] text-white px-4 py-3 flex items-center justify-between border-b border-emerald-900/40 shadow-xs shrink-0">
+              {/* STICKY TOP BAR (Z-30 TRÁNH BỊ CHE BỞI CÁC PHẦN TỬ CON, AN TOÀN NOTCH IPHONE) */}
+              <div className="sticky top-0 z-30 bg-[#0A2517] text-white px-4 py-3 sm:py-3 pt-[max(0.75rem,env(safe-area-inset-top))] flex items-center justify-between border-b border-emerald-900/40 shadow-xs shrink-0">
                 <div className="flex items-center gap-2.5">
                   <button
                     type="button"
@@ -3307,7 +3310,7 @@ export default function MobileAppClient({
                     
                     <div className="flex items-center gap-1.5 text-[11px] text-emerald-200/90 mt-0.5">
                       <MapPin size={12} className="shrink-0 text-emerald-300" />
-                      <span className="truncate">{viewingClosetOwner.location || "Hà Nội, Việt Nam"}</span>
+                      <span className="truncate">{maskPublicAddress(viewingClosetOwner.location || "Hà Nội, Việt Nam")}</span>
                     </div>
 
                     {/* Bio / Quote */}
@@ -3569,11 +3572,11 @@ export default function MobileAppClient({
         )}
 
         {/* ========================================================
-            👗 9. MODAL CHI TIẾT SẢN PHẨM TRONG APP (PRODUCT DETAIL SHEET)
+            👗 9. MODAL CHI TIẾT SẢN PHẨM TRONG APP (PRODUCT DETAIL SHEET) - TRÀN VIỀN 100% NATIVE
             ======================================================== */}
         {selectedProduct && (
-          <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-xs flex items-end justify-center p-0 sm:p-4 animate-in fade-in duration-200 mobile-app-root font-sans">
-            <div className="w-full max-w-[430px] bg-[#FBF9F5] rounded-t-[32px] sm:rounded-[32px] max-h-[94vh] sm:max-h-[90vh] overflow-y-auto p-0 text-[#0A2517] shadow-2xl relative animate-in slide-in-from-bottom duration-300 no-scrollbar flex flex-col mobile-app-root font-sans">
+          <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-xs flex items-stretch sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200 mobile-app-root font-sans">
+            <div className="w-full max-w-[430px] bg-[#FBF9F5] rounded-none sm:rounded-[32px] h-[100dvh] h-screen sm:h-auto sm:max-h-[90vh] overflow-y-auto p-0 text-[#0A2517] shadow-2xl relative animate-in slide-in-from-bottom duration-300 no-scrollbar flex flex-col mobile-app-root font-sans">
               
               {/* 📸 HERO ẢNH TRÀN VIỀN 100% (TIKTOK SHOP / FACEBOOK MARKETPLACE STYLE) */}
               <div className="relative w-full aspect-[4/5] bg-stone-900 select-none overflow-hidden shrink-0">
@@ -3595,8 +3598,8 @@ export default function MobileAppClient({
                 <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/60 via-black/20 to-transparent pointer-events-none z-10" />
                 <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/60 via-black/20 to-transparent pointer-events-none z-10" />
 
-                {/* THANH ĐIỀU HƯỚNG NỔI TRÊN ẢNH (FLOATING TOP BAR) */}
-                <div className="absolute top-3.5 inset-x-3.5 flex items-center justify-between z-20">
+                {/* THANH ĐIỀU HƯỚNG NỔI TRÊN ẢNH (FLOATING TOP BAR - AN TOÀN NOTCH IPHONE) */}
+                <div className="absolute top-[max(0.875rem,env(safe-area-inset-top))] sm:top-3.5 inset-x-3.5 flex items-center justify-between z-20">
                   <button
                     type="button"
                     onClick={() => {
@@ -3813,14 +3816,23 @@ export default function MobileAppClient({
                 </div>
 
                 {/* 5. TRẠM GIAO NHẬN TRANG PHỤC */}
-                <div className="p-3 rounded-2xl bg-white border border-stone-200/80 text-xs text-stone-700 space-y-1 shadow-2xs">
-                  <div className="flex items-center gap-1.5 text-[#0A2517] font-bold">
-                    <MapPin size={13} className="text-emerald-700 shrink-0" />
-                    <span>Trạm giao nhận trang phục</span>
+                <div className="p-3.5 rounded-2xl bg-white border border-stone-200/80 text-xs text-stone-700 space-y-1.5 shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-[#0A2517] font-bold">
+                      <MapPin size={13} className="text-emerald-700 shrink-0" />
+                      <span>Khu vực bàn giao trang phục</span>
+                    </div>
+                    <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60 flex items-center gap-1">
+                      <ShieldCheck size={11} className="text-emerald-600" />
+                      Đã xác minh
+                    </span>
                   </div>
-                  <p className="text-stone-600 leading-snug pl-4.5">
-                    {selectedProduct.specificAddress || selectedProduct.location || "Hà Nội"}
+                  <p className="text-stone-700 font-medium leading-snug pl-4.5">
+                    {maskPublicAddress(selectedProduct.specificAddress || selectedProduct.location || "Hà Nội")}
                   </p>
+                  <div className="text-[10.5px] text-stone-500 pl-4.5 flex items-center gap-1">
+                    <span>🛡️ Bảo mật: Số nhà &amp; định vị cụ thể được mã hóa, chỉ bàn giao sau khi xác nhận đơn.</span>
+                  </div>
                 </div>
 
                 {/* 6. LỜI NHẮN TỪ CHỦ TỦ NẾU CÓ */}
@@ -5020,9 +5032,15 @@ export default function MobileAppClient({
                       </div>
 
                       {checkoutShippingMode === "SELF_BOOK" && (
-                        <p className="text-[10.5px] text-stone-600 bg-stone-100 p-2 rounded-lg">
-                          <strong>Trạm lấy đồ:</strong> {checkoutProduct.specificAddress || checkoutProduct.location || "Hà Nội"}
-                        </p>
+                        <div className="text-[11px] text-stone-700 bg-stone-50 p-2.5 rounded-xl border border-stone-200/80 space-y-1">
+                          <p>
+                            <strong>Khu vực lấy đồ:</strong> {maskPublicAddress(checkoutProduct.specificAddress || checkoutProduct.location || "Hà Nội")}
+                          </p>
+                          <p className="text-[10px] text-emerald-800 flex items-center gap-1 font-medium">
+                            <ShieldCheck size={11} className="text-emerald-600 shrink-0" />
+                            <span>Số nhà &amp; liên hệ chi tiết được tự động gửi trong tin nhắn xác nhận sau khi tạo đơn</span>
+                          </p>
+                        </div>
                       )}
                     </div>
 

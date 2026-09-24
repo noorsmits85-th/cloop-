@@ -13,6 +13,113 @@ const QuoteSchema = z.object({
   isRental: z.boolean().default(true),
 });
 
+// BẢN ĐỒ CHUYỂN ĐỔI MÃ QUẬN HUYỆN TỪ MOCK SANG MÃ CHÍNH THỨC CỦA GHN GATEWAY
+const MOCK_TO_GHN_DISTRICT_MAP: Record<number, number> = {
+  // Hà Nội
+  20101: 1482, // Hoàn Kiếm
+  20102: 1484, // Ba Đình
+  20103: 1486, // Đống Đa
+  20104: 1483, // Hai Bà Trưng
+  20105: 1485, // Cầu Giấy
+  20106: 1488, // Tây Hồ
+  20107: 1490, // Thanh Xuân
+  20108: 1489, // Hoàng Mai
+  20109: 1491, // Long Biên
+  20110: 1493, // Nam Từ Liêm
+  20111: 1492, // Bắc Từ Liêm
+  20112: 1494, // Hà Đông
+  // TP. Hồ Chí Minh
+  20201: 1442, // Quận 1
+  20202: 1444, // Quận 3
+  20203: 1446, // Quận 4
+  20204: 1443, // Quận 5
+  20205: 1450, // Quận 6
+  20206: 1452, // Quận 7
+  20207: 1453, // Quận 8
+  20208: 1448, // Quận 10
+  20209: 1451, // Quận 11
+  20210: 1454, // Quận 12
+  20211: 1449, // TP Thủ Đức
+  20212: 1447, // Bình Thạnh
+  20213: 1456, // Gò Vấp
+  20214: 1455, // Phú Nhuận
+  20215: 1445, // Tân Bình
+  20216: 1457, // Tân Phú
+  20217: 1458, // Bình Tân
+  // Đà Nẵng
+  20301: 1530, // Hải Châu
+  20302: 1531, // Thanh Khê
+  20303: 1532, // Sơn Trà
+  20304: 1533, // Ngũ Hành Sơn
+  20305: 1534, // Liên Chiểu
+  20306: 1535, // Cẩm Lệ
+  // Nghệ An
+  20601: 1536, // TP Vinh
+  20602: 1572, // TX Cửa Lò
+  20605: 1570, // Diễn Châu
+  20606: 1571, // Quỳnh Lưu
+  20609: 1568, // Nghi Lộc
+  20610: 1569, // Nam Đàn
+  // Thanh Hóa
+  20701: 1538, // TP Thanh Hóa
+  20702: 1576, // Sầm Sơn
+  // Hà Tĩnh
+  20801: 1539, // TP Hà Tĩnh
+  // Thừa Thiên Huế
+  20901: 1560, // TP Huế
+};
+
+// ĐỊNH TUYẾN MẶC ĐỊNH CHO TỪNG TỈNH KHI THIẾU MÃ QUẬN HUYỆN (TRÁNH BỊ ÉP VỀ HÀ NỘI)
+const PROVINCE_DEFAULT_DISTRICT_MAP: Record<string, { districtId: number; wardCode: string }> = {
+  "hà nội": { districtId: 1484, wardCode: "1A0101" }, // Ba Đình
+  "hồ chí minh": { districtId: 1442, wardCode: "20101" }, // Quận 1
+  "sài gòn": { districtId: 1442, wardCode: "20101" }, // Quận 1
+  "tp. hồ chí minh": { districtId: 1442, wardCode: "20101" }, // Quận 1
+  "đà nẵng": { districtId: 1530, wardCode: "040101" }, // Hải Châu
+  "hải phòng": { districtId: 1542, wardCode: "020101" }, // Hồng Bàng
+  "cần thơ": { districtId: 1552, wardCode: "550101" }, // Ninh Kiều
+  "nghệ an": { districtId: 1536, wardCode: "290101" }, // TP Vinh
+  "thanh hóa": { districtId: 1538, wardCode: "280101" }, // TP Thanh Hóa
+  "hà tĩnh": { districtId: 1539, wardCode: "300101" }, // TP Hà Tĩnh
+  "thừa thiên huế": { districtId: 1560, wardCode: "330101" }, // TP Huế
+  "huế": { districtId: 1560, wardCode: "330101" }, // TP Huế
+  "quảng ninh": { districtId: 1545, wardCode: "140101" }, // Hạ Long
+  "bắc ninh": { districtId: 1544, wardCode: "180101" }, // TP Bắc Ninh
+  "hải dương": { districtId: 1546, wardCode: "190101" }, // TP Hải Dương
+  "bình dương": { districtId: 1537, wardCode: "460101" }, // Thủ Dầu Một
+  "đồng nai": { districtId: 1547, wardCode: "480101" }, // Biên Hòa
+  "khánh hòa": { districtId: 1549, wardCode: "370101" }, // Nha Trang
+  "nha trang": { districtId: 1549, wardCode: "370101" }, // Nha Trang
+  "lâm đồng": { districtId: 1548, wardCode: "420101" }, // Đà Lạt
+  "đà lạt": { districtId: 1548, wardCode: "420101" }, // Đà Lạt
+};
+
+function resolveDistrictAndWard(
+  districtId: string | number | null | undefined,
+  wardCode: string | null | undefined,
+  province: string
+): { districtId: number; wardCode?: string } {
+  let dId = districtId ? Number(districtId) : 0;
+  if (dId && MOCK_TO_GHN_DISTRICT_MAP[dId]) {
+    dId = MOCK_TO_GHN_DISTRICT_MAP[dId];
+  }
+  
+  if (dId > 0 && dId < 10000) {
+    return { districtId: dId, wardCode: wardCode || undefined };
+  }
+
+  // Nếu không có districtId hoặc là mã không hợp lệ, tra cứu theo Tỉnh / Thành
+  const normProv = (province || "").toLowerCase();
+  for (const [key, mapping] of Object.entries(PROVINCE_DEFAULT_DISTRICT_MAP)) {
+    if (normProv.includes(key)) {
+      return { districtId: mapping.districtId, wardCode: wardCode || mapping.wardCode };
+    }
+  }
+
+  // Mặc định an toàn: Kho trung tâm Ba Đình, Hà Nội
+  return { districtId: 1484, wardCode: wardCode || "1A0101" };
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -45,13 +152,11 @@ export async function POST(req: Request) {
     
     let quotes: Awaited<ReturnType<typeof getShippingQuotes>> = [];
 
-    // 1. NẾU CÓ TOKEN GHN & CÓ MÃ QUẬN HUYỆN -> GỌI TRỰC TIẾP CẢ CƯỚC PHÍ & DỰ KIẾN GIAO TỪ GHN GATEWAY
-    if (GHN_TOKEN && toDistrictId) {
+    // 1. NẾU CÓ TOKEN GHN -> ĐỊNH TUYẾN CHÍNH XÁC VÀ GỌI GHN GATEWAY
+    if (GHN_TOKEN) {
       try {
-        const fromDistrict = Number(fromDistrictId) || 1484; // 1484 = Ba Đình, Hà Nội (kho điều phối chính CLOOP)
-        const fromWard = fromWardCode ? String(fromWardCode) : "1A0101"; // 1A0101 = Phường Cống Vị, Ba Đình
-        const toDistrict = Number(toDistrictId);
-        const toWard = toWardCode ? String(toWardCode) : undefined;
+        const { districtId: fromDistrict, wardCode: fromWard } = resolveDistrictAndWard(fromDistrictId, fromWardCode, fromProvince);
+        const { districtId: toDistrict, wardCode: toWard } = resolveDistrictAndWard(toDistrictId, toWardCode, toProvince);
 
         // Tự động xác định service_id tối ưu từ GHN available-services cho tuyến đường này
         let selectedServiceId: number = 53321;
@@ -189,7 +294,17 @@ export async function POST(req: Request) {
           const rawOneWayFee = data.data.total;
           // Áp dụng 5% buffer an toàn và nâng lên Block 5K
           const safeOneWayFee = rawOneWayFee * 1.05;
-          const normalizedFee = Math.max(5000, Math.ceil(safeOneWayFee / 5000) * 5000);
+          let normalizedFee = Math.max(5000, Math.ceil(safeOneWayFee / 5000) * 5000);
+
+          // 🛡️ BẢO VỆ CHỐNG TÍNH SAI CƯỚC NỘI TỈNH:
+          // Nếu cả điểm gửi và nhận cùng thuộc 1 tỉnh/thành (VD: cùng Nghệ An, cùng Hà Nội, cùng TP.HCM)
+          // thì cước GHN thực tế không bao giờ vượt quá 25.000đ (chuẩn nội tỉnh GHN 16.5k - 22k)
+          const normFrom = (fromProvince || "").trim().toLowerCase();
+          const normTo = (toProvince || "").trim().toLowerCase();
+          const isSameProv = normFrom.length > 2 && (normTo.includes(normFrom) || normFrom.includes(normTo));
+          if (isSameProv && normalizedFee > 25000) {
+            normalizedFee = 25000;
+          }
 
           quotes = [
             {
