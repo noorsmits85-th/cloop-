@@ -778,15 +778,19 @@ export default function MobileAppClient({
     });
   }, [safeMyProducts, myItemsFilterTab]);
 
-  // Lọc sản phẩm của chủ tủ theo phân loại Thuê / Bán
+  // Lọc sản phẩm của chủ tủ theo phân loại Thuê / Bán chính xác
   const filteredClosetOwnerProducts = useMemo(() => {
-    if (closetOwnerFilter === "rent") {
-      return closetOwnerProducts.filter((p: any) => p.listingTypeRaw !== "SELL");
-    }
-    if (closetOwnerFilter === "sell") {
-      return closetOwnerProducts.filter((p: any) => p.listingTypeRaw === "SELL" || !!p.salePrice);
-    }
-    return closetOwnerProducts;
+    return closetOwnerProducts.filter((p: any) => {
+      const rPrice = typeof p.rentalPrice === "number" ? p.rentalPrice : parseInt(String(p.rentalPrice || 0).replace(/\D/g, ""), 10) || 0;
+      const sPrice = typeof p.salePrice === "number" ? p.salePrice : parseInt(String(p.salePrice || 0).replace(/\D/g, ""), 10) || 0;
+      
+      const hasRent = rPrice > 0 || p.listingTypeRaw === "RENT" || p.type === "Thuê";
+      const hasSell = sPrice > 0 || p.listingTypeRaw === "SELL" || p.type === "Mua sắm";
+
+      if (closetOwnerFilter === "rent") return hasRent;
+      if (closetOwnerFilter === "sell") return hasSell;
+      return true;
+    });
   }, [closetOwnerProducts, closetOwnerFilter]);
 
   // 🔍 LỌC THÔNG MINH SẢN PHẨM TRỰC TIẾP
@@ -3376,8 +3380,20 @@ export default function MobileAppClient({
               <div className="sticky top-[52px] z-20 bg-[#FBF9F5] border-b border-stone-200 px-3 py-2 flex items-center gap-1.5 shadow-2xs shrink-0 overflow-x-auto no-scrollbar isolate">
                 {[
                   { id: "all", label: `Tất cả (${closetOwnerProducts.length})` },
-                  { id: "rent", label: `Cho thuê (${closetOwnerProducts.filter(p => p.listingTypeRaw !== "SELL").length})` },
-                  { id: "sell", label: `Thanh lý (${closetOwnerProducts.filter(p => p.listingTypeRaw === "SELL" || !!p.salePrice).length})` },
+                  { 
+                    id: "rent", 
+                    label: `Cho thuê (${closetOwnerProducts.filter(p => {
+                      const r = typeof p.rentalPrice === "number" ? p.rentalPrice : parseInt(String(p.rentalPrice || 0).replace(/\D/g, ""), 10) || 0;
+                      return r > 0 || p.listingTypeRaw === "RENT" || p.type === "Thuê";
+                    }).length})` 
+                  },
+                  { 
+                    id: "sell", 
+                    label: `Thanh lý (${closetOwnerProducts.filter(p => {
+                      const s = typeof p.salePrice === "number" ? p.salePrice : parseInt(String(p.salePrice || 0).replace(/\D/g, ""), 10) || 0;
+                      return s > 0 || p.listingTypeRaw === "SELL" || p.type === "Mua sắm";
+                    }).length})` 
+                  },
                   { id: "reviews", label: `Đánh giá (${ownerReviews.length})` },
                 ].map(tab => (
                   <button
@@ -3498,24 +3514,62 @@ export default function MobileAppClient({
                   ) : (
                     <div className="grid grid-cols-2 gap-2.5">
                       {filteredClosetOwnerProducts.map((item: any, idx: number) => {
-                        const isRent = item.listingTypeRaw !== "SELL";
+                        const rentNum = typeof item.rentalPrice === "number" ? item.rentalPrice : parseInt(String(item.rentalPrice || 0).replace(/\D/g, ""), 10) || 0;
+                        const saleNum = typeof item.salePrice === "number" ? item.salePrice : parseInt(String(item.salePrice || 0).replace(/\D/g, ""), 10) || 0;
+                        const fallbackNum = typeof item.price === "number" ? item.price : parseInt(String(item.price || 0).replace(/\D/g, ""), 10) || 0;
+
+                        let isRent = true;
                         let priceDisplay = "";
-                        if (isRent) {
-                          const raw = item.rentalPrice ?? item.price ?? 0;
-                          const num = typeof raw === "number" ? raw : parseInt(String(raw).replace(/\D/g, ""), 10) || 0;
-                          priceDisplay = num > 0 ? `${num.toLocaleString("vi-VN")}đ / ngày` : "Liên hệ thuê";
+                        let badgeText = "Thuê đồ";
+
+                        if (closetOwnerFilter === "sell") {
+                          // Tab Thanh lý -> 100% hiển thị giá bán & Mua sở hữu!
+                          isRent = false;
+                          const effectiveSale = saleNum > 0 ? saleNum : fallbackNum;
+                          priceDisplay = effectiveSale > 0 ? `${effectiveSale.toLocaleString("vi-VN")}đ` : "Liên hệ mua";
+                          badgeText = "Mua sở hữu";
+                        } else if (closetOwnerFilter === "rent") {
+                          // Tab Cho thuê -> 100% hiển thị giá thuê & Thuê đồ!
+                          isRent = true;
+                          const effectiveRent = rentNum > 0 ? rentNum : fallbackNum;
+                          priceDisplay = effectiveRent > 0 ? `${effectiveRent.toLocaleString("vi-VN")}đ / ngày` : "Liên hệ thuê";
+                          badgeText = "Thuê đồ";
                         } else {
-                          const raw = item.salePrice ?? item.price ?? 0;
-                          const num = typeof raw === "number" ? raw : parseInt(String(raw).replace(/\D/g, ""), 10) || 0;
-                          priceDisplay = num > 0 ? `${num.toLocaleString("vi-VN")}đ` : "Liên hệ mua";
+                          // Tab Tất cả:
+                          if (rentNum > 0 && saleNum > 0) {
+                            isRent = true;
+                            priceDisplay = `${rentNum.toLocaleString("vi-VN")}đ / ngày`;
+                            badgeText = "Thuê & Mua";
+                          } else if (saleNum > 0 || item.listingTypeRaw === "SELL" || item.type === "Mua sắm") {
+                            isRent = false;
+                            const effectiveSale = saleNum > 0 ? saleNum : fallbackNum;
+                            priceDisplay = effectiveSale > 0 ? `${effectiveSale.toLocaleString("vi-VN")}đ` : "Liên hệ mua";
+                            badgeText = "Mua sở hữu";
+                          } else {
+                            isRent = true;
+                            const effectiveRent = rentNum > 0 ? rentNum : fallbackNum;
+                            priceDisplay = effectiveRent > 0 ? `${effectiveRent.toLocaleString("vi-VN")}đ / ngày` : "Liên hệ thuê";
+                            badgeText = "Thuê đồ";
+                          }
                         }
+
                         const img = item.image || item.primaryImage || item.images?.[0] || "/1.1.jpg";
 
                         return (
                           <div
                             key={item.id || idx}
                             onClick={() => {
-                              setSelectedProduct(item);
+                              const targetListingType = isRent ? "RENT" : "SELL";
+                              const targetPrice = isRent 
+                                ? (rentNum > 0 ? rentNum : fallbackNum)
+                                : (saleNum > 0 ? saleNum : fallbackNum);
+                              setSelectedProduct({
+                                ...item,
+                                listingTypeRaw: targetListingType,
+                                price: targetPrice,
+                                rentalPrice: rentNum > 0 ? rentNum : item.rentalPrice,
+                                salePrice: saleNum > 0 ? saleNum : item.salePrice,
+                              });
                             }}
                             className="bg-white rounded-2xl overflow-hidden shadow-2xs hover:shadow-md border border-stone-200/80 flex flex-col justify-between cursor-pointer active:scale-[0.98] transition-all group relative isolate"
                           >
@@ -3528,9 +3582,13 @@ export default function MobileAppClient({
                                 unoptimized
                               />
                               <span className={`absolute top-2 left-2 text-white text-[9.5px] font-bold px-2 py-0.5 rounded-md shadow-xs z-[2] pointer-events-none ${
-                                isRent ? "bg-[#0A2517]/90 backdrop-blur-xs" : "bg-amber-800/90 backdrop-blur-xs"
+                                badgeText === "Thuê & Mua" 
+                                  ? "bg-emerald-700/90 backdrop-blur-xs"
+                                  : isRent 
+                                    ? "bg-[#0A2517]/90 backdrop-blur-xs" 
+                                    : "bg-amber-800/90 backdrop-blur-xs"
                               }`}>
-                                {isRent ? "Thuê đồ" : "Mua sở hữu"}
+                                {badgeText}
                               </span>
                               {item.size && (
                                 <span className="absolute top-2 right-2 bg-black/60 backdrop-blur-xs text-white text-[9.5px] font-bold px-1.5 py-0.5 rounded-md z-[2] pointer-events-none">
@@ -3694,6 +3752,42 @@ export default function MobileAppClient({
                         • Gói {selectedProduct.minDays || 3} ngày: <strong>{(calculatePackageRentalFee(selectedProduct, selectedProduct.minDays || 3)).toLocaleString("vi-VN")}đ</strong>
                       </p>
                     )}
+
+                    {/* 🔀 TOGGLE CHUYỂN ĐỔI THUÊ HOẶC MUA (NẾU MÓN ĐỒ CÓ CẢ 2 HÌNH THỨC) */}
+                    {Number(selectedProduct.rentalPrice || 0) > 0 && Number(selectedProduct.salePrice || 0) > 0 && (
+                      <div className="flex items-center gap-1.5 bg-stone-100 p-1 rounded-xl mt-2.5 w-fit border border-stone-200/60">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedProduct((prev: any) => ({
+                            ...prev,
+                            listingTypeRaw: "RENT",
+                            price: Number(prev.rentalPrice)
+                          }))}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                            selectedProduct.listingTypeRaw !== "SELL"
+                              ? "bg-[#0A2517] text-white shadow-xs"
+                              : "text-stone-600 hover:text-stone-900"
+                          }`}
+                        >
+                          Thuê đồ ({Number(selectedProduct.rentalPrice).toLocaleString("vi-VN")}đ/ngày)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedProduct((prev: any) => ({
+                            ...prev,
+                            listingTypeRaw: "SELL",
+                            price: Number(prev.salePrice)
+                          }))}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                            selectedProduct.listingTypeRaw === "SELL"
+                              ? "bg-[#0A2517] text-white shadow-xs"
+                              : "text-stone-600 hover:text-stone-900"
+                          }`}
+                        >
+                          Mua sở hữu ({Number(selectedProduct.salePrice).toLocaleString("vi-VN")}đ)
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {Number(selectedProduct.deposit || 0) > 0 && (
@@ -3815,23 +3909,26 @@ export default function MobileAppClient({
                   </button>
                 </div>
 
-                {/* 5. TRẠM GIAO NHẬN TRANG PHỤC */}
-                <div className="p-3.5 rounded-2xl bg-white border border-stone-200/80 text-xs text-stone-700 space-y-1.5 shadow-2xs">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 text-[#0A2517] font-bold">
-                      <MapPin size={13} className="text-emerald-700 shrink-0" />
-                      <span>Khu vực bàn giao trang phục</span>
+                {/* 5. KHU VỰC TRANG PHỤC (BẢO MẬT ĐỊA CHỈ 100%) */}
+                <div className="p-3 rounded-2xl bg-white border border-stone-200/80 text-xs text-stone-700 flex items-center justify-between shadow-2xs">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-200/60">
+                      <MapPin size={15} />
                     </div>
-                    <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60 flex items-center gap-1">
-                      <ShieldCheck size={11} className="text-emerald-600" />
-                      Đã xác minh
-                    </span>
-                  </div>
-                  <p className="text-stone-700 font-medium leading-snug pl-4.5">
-                    {maskPublicAddress(selectedProduct.specificAddress || selectedProduct.location || "Hà Nội")}
-                  </p>
-                  <div className="text-[10.5px] text-stone-500 pl-4.5 flex items-center gap-1">
-                    <span>🛡️ Bảo mật: Số nhà &amp; định vị cụ thể được mã hóa, chỉ bàn giao sau khi xác nhận đơn.</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-bold text-[#0A2517] text-xs">
+                          Khu vực: {maskPublicAddress(selectedProduct.specificAddress || selectedProduct.location || selectedProduct.province || "Hà Nội")}
+                        </span>
+                        <span className="text-[9.5px] font-semibold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded-full border border-emerald-200/60 flex items-center gap-0.5 shrink-0">
+                          <ShieldCheck size={10} className="text-emerald-600" />
+                          Đã ẩn số nhà &amp; phường xã
+                        </span>
+                      </div>
+                      <p className="text-[10.5px] text-stone-400 mt-0.5 truncate">
+                        Vị trí giao nhận chi tiết bảo mật 100% • Bàn giao sau khi chốt đơn
+                      </p>
+                    </div>
                   </div>
                 </div>
 

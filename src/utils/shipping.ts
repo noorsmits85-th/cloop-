@@ -69,9 +69,9 @@ export function extractProvince(address: string): string {
 }
 
 /**
- * 🛡️ BẢO MẬT ĐỊA CHỈ TRẠM GIAO NHẬN (Ẩn số nhà, ngõ ngách, tên đường riêng tư khi hiển thị công khai)
- * Chỉ công khai Phường/Xã, Quận/Huyện, Tỉnh/Thành phố.
- * Số nhà và thông tin cụ thể chỉ bàn giao sau khi đơn hàng được đặt/xác nhận thành công.
+ * 🛡️ BẢO MẬT ĐỊA CHỈ TRẠM GIAO NHẬN (Ẩn số nhà, ngõ ngách, tên đường VÀ Phường/Xã riêng tư khi hiển thị công khai)
+ * Chỉ công khai Quận/Huyện/Thị xã/Thành phố & Tỉnh (Ví dụ: "TP. Vinh, Nghệ An", "Quận Ba Đình, Hà Nội").
+ * Ẩn hoàn toàn số nhà, ngõ ngách và Phường/Xã để tránh lộ vị trí cư trú cá nhân của chủ tủ.
  */
 export function maskPublicAddress(fullAddress?: string | null): string {
   if (!fullAddress || typeof fullAddress !== "string") return "Hà Nội, Việt Nam";
@@ -87,13 +87,25 @@ export function maskPublicAddress(fullAddress?: string | null): string {
     return cleaned;
   }
 
-  // Kiểm tra xem phần đầu có phải là số nhà / ngõ ngách / tên đường cụ thể không
-  const isSpecificAddressStart = /^((\d+[\w\/-]*)|số|ngõ|hẻm|đường|tổ|phố|nhà|căn|tòa|lô|kiệt|kp|khu phố)\b/i.test(parts[0]);
+  // 3. Nếu có từ 4 phần trở lên (Ví dụ: "Số 12 ngõ 34", "Phường Đông Vĩnh", "Thành phố Vinh", "Nghệ An")
+  // -> Chỉ lấy 2 phần cuối: [Quận/Huyện/Thành phố], [Tỉnh/Thành] -> "Thành phố Vinh, Nghệ An"
+  if (parts.length >= 4) {
+    return parts.slice(-2).join(", ");
+  }
 
-  // Nếu có từ 4 phần trở lên (Ví dụ: "Số 12 ngõ 34 Trường Chinh, Phường Đông Vĩnh, TP. Vinh, Nghệ An")
-  // hoặc từ 2 phần trở lên mà phần đầu là số nhà cụ thể:
-  if (parts.length >= 4 || (parts.length >= 2 && isSpecificAddressStart)) {
-    return parts.slice(1).join(", ");
+  // 4. Nếu có 3 phần (Ví dụ: "Phường Đông Vĩnh", "Thành phố Vinh", "Nghệ An" hoặc "123 Phố Huế", "Hoàn Kiếm", "Hà Nội")
+  // -> Bỏ phần 1 (phường/xã hoặc số nhà), chỉ lấy 2 phần cuối
+  if (parts.length === 3) {
+    return parts.slice(-2).join(", ");
+  }
+
+  // 5. Nếu có 2 phần (Ví dụ: "Phường Đông Vĩnh", "Nghệ An" hoặc "TP. Vinh", "Nghệ An")
+  if (parts.length === 2) {
+    // Nếu phần đầu là phường/xã/số nhà thì chỉ lấy phần tỉnh/thành phố
+    if (/^(phường|xã|thị trấn|số|ngõ|hẻm|đường|tổ|phố|nhà|căn|tòa|lô|kiệt|kp|khu phố)\b/i.test(parts[0])) {
+      return parts[1];
+    }
+    return parts.join(", ");
   }
 
   return cleaned;
