@@ -35,6 +35,7 @@ export async function deleteProductAction(productId: string) {
     revalidatePath("/my-closet");
     revalidatePath("/my-closet/items");
     revalidatePath("/shop");
+    revalidatePath("/app");
     revalidatePath("/");
 
     return { success: true };
@@ -70,6 +71,7 @@ export async function toggleProductHideAction(productId: string, currentIsHidden
     revalidatePath("/my-closet");
     revalidatePath("/my-closet/items");
     revalidatePath("/shop");
+    revalidatePath("/app");
     revalidatePath("/");
 
     return { success: true, isHidden: !currentIsHidden };

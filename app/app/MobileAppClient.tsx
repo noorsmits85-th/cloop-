@@ -10,13 +10,16 @@ import {
   Leaf, ArrowRight, Shirt, Calendar, ShieldCheck, Check,
   ChevronRight, ArrowLeft, Wallet, Droplet, Award,
   MapPin, Edit3, Menu, HelpCircle, LogOut, Package, Crop, Truck,
-  Zap, CreditCard, QrCode, Sparkles, Loader2, ExternalLink, Copy
+  Zap, CreditCard, QrCode, Sparkles, Loader2, ExternalLink, Copy,
+  Trash2, Eye, EyeOff, Edit, PackageX, Share2, MessageCircle
 } from "lucide-react";
 import Cropper from "react-easy-crop";
 import { useAuthModal } from "@/app/AuthModalContext";
 import { getShopProductsAction, createProductAction } from "@/app/actions/product";
 import { toggleProductInteractionAction } from "@/app/actions/favorite";
 import { getMyClosetMobileDataAction, updateClosetProfileAction, getClosetFullDataAction } from "@/app/actions/closet";
+import { deleteProductAction, toggleProductHideAction } from "@/app/(dashboard)/my-closet/items/actions";
+import { getScrubbedReviewsAction } from "@/app/(dashboard)/my-closet/orders/actions";
 import { createBooking } from "@/app/actions/booking";
 
 // 🏷️ DỊP TIỆC THỜI TRANG TUẦN HOÀN
@@ -170,16 +173,28 @@ export default function MobileAppClient({
     name: string;
     avatar?: string | null;
     rating?: number | string;
+    reviewCount?: number;
     completedOrders?: number;
     location?: string;
     bio?: string;
     quote?: string;
   } | null>(null);
   const [closetOwnerProducts, setClosetOwnerProducts] = useState<any[]>([]);
-  const [closetOwnerFilter, setClosetOwnerFilter] = useState<"all" | "rent" | "sell">("all");
+  const [closetOwnerFilter, setClosetOwnerFilter] = useState<"all" | "rent" | "sell" | "reviews">("all");
   const [isLoadingClosetOwner, setIsLoadingClosetOwner] = useState(false);
   const [followedClosets, setFollowedClosets] = useState<Record<string, boolean>>({});
   const [closetToastMessage, setClosetToastMessage] = useState<string | null>(null);
+
+  // 🛍️ QUẢN LÝ KỆ ĐỒ CỦA BẠN (ĐỒNG BỘ 100% VỚI BẢN WEB: XÓA BÀI, ẨN/HIỆN, TABS LỌC)
+  const [myItemsFilterTab, setMyItemsFilterTab] = useState<"ALL" | "RENTING" | "SELLING" | "HIDDEN">("ALL");
+  const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
+  const [togglingProductId, setTogglingProductId] = useState<string | null>(null);
+
+  // ⭐ ĐÁNH GIÁ THỰC TẾ & SAO TRUNG BÌNH DATABASE (REVIEWS THẬT)
+  const [productReviews, setProductReviews] = useState<any[]>([]);
+  const [isLoadingProductReviews, setIsLoadingProductReviews] = useState(false);
+  const [ownerReviews, setOwnerReviews] = useState<any[]>([]);
+  const [isLoadingOwnerReviews, setIsLoadingOwnerReviews] = useState(false);
 
   const showClosetToast = (msg: string) => {
     setClosetToastMessage(msg);
@@ -610,6 +625,7 @@ export default function MobileAppClient({
               quote: res.ownerInfo.quote || prev.quote,
               location: res.ownerInfo.location || prev.location,
               rating: res.ownerInfo.rating ?? prev.rating,
+              reviewCount: res.ownerInfo.reviewCount ?? prev.reviewCount ?? 0,
               completedOrders: res.ownerInfo.completedOrders ?? prev.completedOrders,
             } : null);
 
@@ -632,6 +648,7 @@ export default function MobileAppClient({
                 ownerAvatar: res.ownerInfo.avatar,
                 userId: res.ownerInfo.id,
                 rating: res.ownerInfo.rating,
+                reviewCount: res.ownerInfo.reviewCount || 0,
                 completedOrders: res.ownerInfo.completedOrders,
               }));
               setClosetOwnerProducts(formatted);
@@ -642,6 +659,123 @@ export default function MobileAppClient({
         .finally(() => setIsLoadingClosetOwner(false));
     }
   }, [viewingClosetOwner?.id, viewingClosetOwner?.name]);
+
+  // ⭐ FETCH ĐÁNH GIÁ THỰC TẾ CHO SẢN PHẨM ĐANG XEM
+  useEffect(() => {
+    if (!selectedProduct?.userId || selectedProduct.userId === "official" || selectedProduct.userId === "anonymous") {
+      setProductReviews([]);
+      return;
+    }
+    let isCancelled = false;
+    setIsLoadingProductReviews(true);
+    getScrubbedReviewsAction(selectedProduct.userId)
+      .then((res) => {
+        if (!isCancelled && res.success && res.reviews) {
+          setProductReviews(res.reviews);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!isCancelled) setIsLoadingProductReviews(false);
+      });
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedProduct?.userId]);
+
+  // ⭐ FETCH ĐÁNH GIÁ THỰC TẾ CHO TỦ ĐỒ ĐANG XEM
+  useEffect(() => {
+    if (!viewingClosetOwner?.id || viewingClosetOwner.id === "official") {
+      setOwnerReviews([]);
+      return;
+    }
+    let isCancelled = false;
+    setIsLoadingOwnerReviews(true);
+    getScrubbedReviewsAction(viewingClosetOwner.id)
+      .then((res) => {
+        if (!isCancelled && res.success && res.reviews) {
+          setOwnerReviews(res.reviews);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!isCancelled) setIsLoadingOwnerReviews(false);
+      });
+    return () => {
+      isCancelled = true;
+    };
+  }, [viewingClosetOwner?.id]);
+
+  // 🗑️ XÓA BÀI ĐĂNG TRÊN MOBILE (ĐỒNG BỘ 100% VỚI BẢN WEB)
+  const handleDeleteProduct = async (productId: string, title: string) => {
+    const isConfirmed = window.confirm(`Bạn có chắc chắn muốn xóa "${title}" khỏi tủ đồ của bạn không?`);
+    if (!isConfirmed) return;
+
+    setDeletingProductId(productId);
+    try {
+      const res = await deleteProductAction(productId);
+      if (!res.success) {
+        showClosetToast("Lỗi khi xóa: " + (res.error || "Thao tác không thành công"));
+        return;
+      }
+      setClosetData((prev: any) => {
+        if (!prev) return prev;
+        const nextProducts = (prev.myProducts || []).filter((p: any) => p.id !== productId);
+        return {
+          ...prev,
+          myProducts: nextProducts,
+          stats: {
+            ...prev.stats,
+            totalItems: Math.max(0, (prev.stats?.totalItems || 1) - 1)
+          }
+        };
+      });
+      setProducts((prev: any) => prev.filter((p: any) => p.id !== productId));
+      showClosetToast("Đã xóa món đồ khỏi tủ đồ thành công!");
+    } catch (err: any) {
+      showClosetToast("Lỗi khi xóa món đồ: " + (err.message || err));
+    } finally {
+      setDeletingProductId(null);
+    }
+  };
+
+  // 👁️ ẨN / HIỆN MÓN ĐỒ TRÊN SÀN (ĐỒNG BỘ 100% VỚI BẢN WEB)
+  const handleToggleHideProduct = async (productId: string, currentIsHidden: boolean) => {
+    setTogglingProductId(productId);
+    try {
+      const res = await toggleProductHideAction(productId, currentIsHidden);
+      if (!res.success) {
+        showClosetToast("Lỗi: " + (res.error || "Không thể đổi trạng thái"));
+        return;
+      }
+      const newHidden = res.isHidden !== undefined ? res.isHidden : !currentIsHidden;
+      setClosetData((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          myProducts: (prev.myProducts || []).map((p: any) =>
+            p.id === productId ? { ...p, isShopHidden: newHidden } : p
+          )
+        };
+      });
+      showClosetToast(newHidden ? "📦 Đã ẩn món đồ khỏi Sàn!" : "🟢 Đã hiển thị món đồ lên Sàn!");
+    } catch (err: any) {
+      showClosetToast("Lỗi: " + (err.message || err));
+    } finally {
+      setTogglingProductId(null);
+    }
+  };
+
+  // 🗂️ LỌC MÓN ĐỒ TỦ ĐỒ CỦA TÔI
+  const filteredMyProducts = useMemo(() => {
+    return safeMyProducts.filter((item: any) => {
+      if (myItemsFilterTab === "ALL") return true;
+      if (myItemsFilterTab === "RENTING") return (item.rentalPrice > 0 || item.isRentalActive) && !item.isShopHidden;
+      if (myItemsFilterTab === "SELLING") return (item.salePrice > 0 || item.isSaleActive) && !item.isShopHidden;
+      if (myItemsFilterTab === "HIDDEN") return Boolean(item.isShopHidden);
+      return true;
+    });
+  }, [safeMyProducts, myItemsFilterTab]);
 
   // Lọc sản phẩm của chủ tủ theo phân loại Thuê / Bán
   const filteredClosetOwnerProducts = useMemo(() => {
@@ -1574,6 +1708,7 @@ export default function MobileAppClient({
                                 name: ownerName,
                                 avatar: p.ownerAvatar || null,
                                 rating: p.rating || 5.0,
+                                reviewCount: p.reviewCount || 0,
                                 completedOrders: p.completedOrders || 0,
                                 location: p.location || p.province || "Hà Nội",
                               });
@@ -1792,6 +1927,7 @@ export default function MobileAppClient({
                               name: ownerName,
                               avatar: p.ownerAvatar || null,
                               rating: p.rating || 5.0,
+                              reviewCount: p.reviewCount || 0,
                               completedOrders: p.completedOrders || 0,
                               location: p.location || p.province || "Hà Nội",
                             });
@@ -2335,19 +2471,48 @@ export default function MobileAppClient({
                     </button>
 
                     {/* CHI TIẾT PHÂN MỤC 1: KỆ ĐỒ CỦA TÔI */}
+                    {/* CHI TIẾT PHÂN MỤC 1: KỆ ĐỒ CỦA TÔI */}
                     {activeClosetView === "items" && (
-                      <div className="space-y-2.5">
+                      <div className="space-y-3">
                         <div className="flex items-center justify-between px-1">
-                          <h4 className="font-heading font-black text-sm uppercase tracking-wider text-[#0A2517]">
-                            Kệ Đồ Của Bạn ({closetData?.myProducts?.length || 0})
-                          </h4>
+                          <div>
+                            <h4 className="font-heading font-black text-sm uppercase tracking-wider text-[#0A2517]">
+                              Kệ Đồ Của Bạn ({safeMyProducts.length})
+                            </h4>
+                            <p className="text-[10px] text-stone-500">
+                              Quản lý trang phục, đổi trạng thái ẩn/hiện hoặc xóa bài
+                            </p>
+                          </div>
                           <button
                             onClick={() => setIsUploadModalOpen(true)}
-                            className="px-2.5 py-1 rounded-lg bg-[#0A2517] text-white text-[11px] font-bold shadow-2xs hover:bg-[#143E29] transition flex items-center gap-1 cursor-pointer"
+                            className="px-2.5 py-1.5 rounded-xl bg-[#0A2517] text-white text-xs font-bold shadow-xs hover:bg-[#143E29] transition flex items-center gap-1 cursor-pointer active:scale-95"
                           >
-                            <Plus size={12} strokeWidth={3} />
+                            <Plus size={13} strokeWidth={3} />
                             <span>Up đồ mới</span>
                           </button>
+                        </div>
+
+                        {/* TABS PHÂN LOẠI ĐỒNG BỘ 100% VỚI BẢN WEB */}
+                        <div className="flex bg-stone-200/70 p-1 rounded-2xl gap-1 overflow-x-auto no-scrollbar">
+                          {[
+                            { id: "ALL", label: `Tất cả (${safeMyProducts.length})` },
+                            { id: "RENTING", label: `Cho thuê (${safeMyProducts.filter(p => (p.rentalPrice > 0 || p.isRentalActive) && !p.isShopHidden).length})` },
+                            { id: "SELLING", label: `Đang bán (${safeMyProducts.filter(p => (p.salePrice > 0 || p.isSaleActive) && !p.isShopHidden).length})` },
+                            { id: "HIDDEN", label: `Đã ẩn (${safeMyProducts.filter(p => p.isShopHidden).length})` },
+                          ].map(tab => (
+                            <button
+                              key={tab.id}
+                              type="button"
+                              onClick={() => setMyItemsFilterTab(tab.id as any)}
+                              className={`flex-1 py-1.5 px-2 text-[10.5px] font-bold rounded-xl transition whitespace-nowrap cursor-pointer text-center ${
+                                myItemsFilterTab === tab.id
+                                  ? "bg-[#0A2517] text-white shadow-xs"
+                                  : "text-stone-600 hover:text-stone-900"
+                              }`}
+                            >
+                              {tab.label}
+                            </button>
+                          ))}
                         </div>
 
                         {safeMyProducts.length === 0 ? (
@@ -2367,43 +2532,127 @@ export default function MobileAppClient({
                               <span>{lang === "vi" ? "Up bài chia sẻ trang phục đầu tiên" : "+ List First Outfit"}</span>
                             </button>
                           </div>
+                        ) : filteredMyProducts.length === 0 ? (
+                          <div className="p-6 text-center bg-white rounded-2xl border border-stone-200/80 text-stone-500 text-xs space-y-1">
+                            <p className="font-bold text-stone-700">Không có trang phục nào trong mục này</p>
+                            <p className="text-[11px] text-stone-400">Chọn tab khác hoặc đăng thêm trang phục mới vào tủ đồ.</p>
+                          </div>
                         ) : (
-                          <div className="space-y-2">
-                            {safeMyProducts.map((item: any, idx: number) => (
-                              <div
-                                key={item.id || idx}
-                                className="bg-white rounded-2xl p-3 border border-stone-200/80 shadow-2xs flex gap-3 items-center"
-                              >
-                                <div className="relative w-16 h-20 rounded-xl overflow-hidden bg-stone-100 shrink-0">
-                                  <Image src={item.image || "/1.1.jpg"} alt={item.title || "Trang phục"} fill className="object-cover" unoptimized />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-[9px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded">
-                                      {item.occasion || "Đi tiệc"}
-                                    </span>
-                                    <span className="text-[9px] font-medium text-stone-500">
-                                      Size {item.size || "M"}
-                                    </span>
-                                    <span className="text-[8.5px] bg-emerald-100 text-emerald-900 font-bold px-1.5 py-0.2 rounded ml-auto">
-                                      {lang === "vi" ? "Đang hiển thị" : "Active"}
-                                    </span>
+                          <div className="space-y-2.5">
+                            {filteredMyProducts.map((item: any, idx: number) => {
+                              const isHidden = Boolean(item.isShopHidden);
+                              const isDeleting = deletingProductId === item.id;
+                              const isToggling = togglingProductId === item.id;
+
+                              return (
+                                <div
+                                  key={item.id || idx}
+                                  className="bg-white rounded-2xl p-3 border border-stone-200/80 shadow-2xs space-y-2.5"
+                                >
+                                  <div className="flex gap-3 items-center">
+                                    <div className="relative w-16 h-20 rounded-xl overflow-hidden bg-stone-100 shrink-0 border border-stone-100">
+                                      <Image src={item.image || "/1.1.jpg"} alt={item.title || "Trang phục"} fill className="object-cover" unoptimized />
+                                      {isHidden && (
+                                        <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center">
+                                          <span className="text-[8px] font-bold text-white bg-stone-900/80 px-1 py-0.5 rounded">
+                                            Đã ẩn
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-[9px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded">
+                                          {item.occasion || "Đi tiệc"}
+                                        </span>
+                                        <span className="text-[9px] font-medium text-stone-500">
+                                          Size {item.size || "M"}
+                                        </span>
+                                        {isHidden ? (
+                                          <span className="text-[8.5px] bg-stone-100 text-stone-600 font-bold px-1.5 py-0.2 rounded ml-auto">
+                                            Đã ẩn khỏi sàn
+                                          </span>
+                                        ) : (
+                                          <span className="text-[8.5px] bg-emerald-100 text-emerald-900 font-bold px-1.5 py-0.2 rounded ml-auto">
+                                            Đang hiển thị
+                                          </span>
+                                        )}
+                                      </div>
+                                      <h4 className="text-xs font-bold text-stone-900 truncate mt-1">{item.title}</h4>
+                                      <p className="text-xs font-black text-[#0A2517] mt-0.5">
+                                        {item.rentalPrice ? `${item.rentalPrice.toLocaleString("vi-VN")}đ / ngày` : (item.salePrice ? `${item.salePrice.toLocaleString("vi-VN")}đ` : "Liên hệ thuê")}
+                                      </p>
+                                      {item.rentalPrice > 0 && (
+                                        <p className="text-[9.5px] text-emerald-800 font-medium">
+                                          • Gói 3 ngày: {(calculatePackageRentalFee(item, 3)).toLocaleString("vi-VN")}đ
+                                        </p>
+                                      )}
+                                      <p className="text-[9.5px] text-stone-400 mt-0.5">
+                                        Cọc: {Number(item.deposit || 0) > 0 ? `${Number(item.deposit).toLocaleString("vi-VN")}đ` : "0đ (Miễn cọc)"}
+                                      </p>
+                                    </div>
                                   </div>
-                                  <h4 className="text-xs font-bold text-stone-900 truncate mt-1">{item.title}</h4>
-                                  <p className="text-xs font-black text-[#0A2517] mt-0.5">
-                                    {item.rentalPrice ? `${item.rentalPrice.toLocaleString("vi-VN")}đ / ngày` : "Liên hệ thuê"}
-                                  </p>
-                                  {item.rentalPrice > 0 && (
-                                    <p className="text-[9.5px] text-emerald-800 font-medium">
-                                      • Gói 3 ngày (-15%): {(calculatePackageRentalFee(item, 3)).toLocaleString("vi-VN")}đ
-                                    </p>
-                                  )}
-                                  <p className="text-[9.5px] text-stone-400 mt-0.5">
-                                    Cọc đảm bảo: {Number(item.deposit || 0) > 0 ? `${Number(item.deposit).toLocaleString("vi-VN")}đ` : "0đ (Miễn cọc)"}
-                                  </p>
+
+                                  {/* THANH HÀNH ĐỘNG ĐỒNG BỘ: SỬA, ẨN/HIỆN, XÓA */}
+                                  <div className="flex items-center gap-1.5 pt-2 border-t border-stone-100">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        window.location.href = `/shop/${item.id}/edit`;
+                                      }}
+                                      className="flex-1 py-1.5 px-2 bg-stone-100 hover:bg-stone-200 active:scale-95 rounded-xl text-[11px] font-bold text-stone-700 flex items-center justify-center gap-1 transition cursor-pointer"
+                                      title="Chỉnh sửa thông tin món đồ"
+                                    >
+                                      <Edit size={12} className="text-stone-500" />
+                                      <span>Sửa bài</span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      disabled={isToggling}
+                                      onClick={() => handleToggleHideProduct(item.id, isHidden)}
+                                      className={`flex-1 py-1.5 px-2 active:scale-95 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition cursor-pointer ${
+                                        isHidden
+                                          ? "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200/80"
+                                          : "bg-stone-100 hover:bg-stone-200 text-stone-700"
+                                      }`}
+                                      title={isHidden ? "Hiện lại món đồ lên sàn mua sắm" : "Ẩn món đồ khỏi sàn"}
+                                    >
+                                      {isToggling ? (
+                                        <Loader2 size={12} className="animate-spin text-stone-500" />
+                                      ) : isHidden ? (
+                                        <>
+                                          <Eye size={12} className="text-emerald-700" />
+                                          <span>Hiện sàn</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <EyeOff size={12} className="text-stone-500" />
+                                          <span>Ẩn sàn</span>
+                                        </>
+                                      )}
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      disabled={isDeleting}
+                                      onClick={() => handleDeleteProduct(item.id, item.title)}
+                                      className="py-1.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 active:scale-95 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition cursor-pointer border border-rose-200/60"
+                                      title="Xóa vĩnh viễn món đồ khỏi tủ đồ"
+                                    >
+                                      {isDeleting ? (
+                                        <Loader2 size={12} className="animate-spin text-rose-500" />
+                                      ) : (
+                                        <>
+                                          <Trash2 size={12} className="text-rose-600" />
+                                          <span>Xóa bài</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         )}
                       </div>
@@ -2982,10 +3231,10 @@ export default function MobileAppClient({
             ======================================================== */}
         {viewingClosetOwner && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200 mobile-app-root font-sans">
-            <div className="w-full max-w-[430px] max-h-[92vh] sm:max-h-[88vh] bg-[#FBF9F5] rounded-t-[32px] sm:rounded-[36px] overflow-y-auto shadow-2xl relative animate-in slide-in-from-bottom duration-300 overscroll-contain flex flex-col mobile-app-root font-sans">
+            <div className="w-full max-w-[430px] max-h-[92vh] sm:max-h-[88vh] bg-[#FBF9F5] rounded-t-[32px] sm:rounded-[36px] overflow-y-auto shadow-2xl relative animate-in slide-in-from-bottom duration-300 overscroll-contain flex flex-col mobile-app-root font-sans no-scrollbar">
               
-              {/* STICKY TOP BAR */}
-              <div className="sticky top-0 z-20 bg-[#0A2517] text-white px-4 py-3 flex items-center justify-between border-b border-emerald-900/40 shadow-xs shrink-0">
+              {/* STICKY TOP BAR (Z-30 TRÁNH BỊ CHE BỞI CÁC PHẦN TỬ CON) */}
+              <div className="sticky top-0 z-30 bg-[#0A2517] text-white px-4 py-3 flex items-center justify-between border-b border-emerald-900/40 shadow-xs shrink-0">
                 <div className="flex items-center gap-2.5">
                   <button
                     type="button"
@@ -3068,7 +3317,7 @@ export default function MobileAppClient({
                   </div>
                 </div>
 
-                {/* THANH THỐNG KÊ CHỈ SỐ UY TÍN (TIKTOK SHOP STYLE) */}
+                {/* THANH THỐNG KÊ CHỈ SỐ UY TÍN (TIKTOK SHOP STYLE: SAO VÀ ĐÁNH GIÁ THỰC TẾ) */}
                 <div className="bg-white/10 backdrop-blur-md rounded-2xl p-2.5 grid grid-cols-4 gap-1 text-center border border-white/15">
                   <div>
                     <div className="font-bold text-sm text-white">{closetOwnerProducts.length}</div>
@@ -3076,10 +3325,12 @@ export default function MobileAppClient({
                   </div>
                   <div>
                     <div className="font-bold text-sm text-amber-300 flex items-center justify-center gap-0.5">
-                      <Star size={12} className="fill-amber-300" />
-                      <span>{viewingClosetOwner.rating || "5.0"}</span>
+                      <Star size={12} className="fill-amber-300 text-amber-300" />
+                      <span>{Number(viewingClosetOwner.rating || 5.0).toFixed(1)}</span>
                     </div>
-                    <div className="text-[10px] text-stone-300">Đánh giá</div>
+                    <div className="text-[10px] text-stone-300">
+                      {viewingClosetOwner.reviewCount ? `${viewingClosetOwner.reviewCount} đánh giá` : "Đánh giá"}
+                    </div>
                   </div>
                   <div>
                     <div className="font-bold text-sm text-white">{viewingClosetOwner.completedOrders || 0}</div>
@@ -3118,18 +3369,19 @@ export default function MobileAppClient({
 
               </div>
 
-              {/* TABS PHÂN LOẠI ĐỒ TRONG TỦ (STICKY DƯỚI HEADER) */}
-              <div className="sticky top-[52px] z-10 bg-[#FBF9F5] border-b border-stone-200 px-4 py-2 flex items-center gap-2 shadow-2xs shrink-0">
+              {/* TABS PHÂN LOẠI ĐỒ TRONG TỦ (STICKY DƯỚI HEADER, Z-20 CHẮC CHẮN ĐÈ LÊN SẢN PHẨM CUỘN) */}
+              <div className="sticky top-[52px] z-20 bg-[#FBF9F5] border-b border-stone-200 px-3 py-2 flex items-center gap-1.5 shadow-2xs shrink-0 overflow-x-auto no-scrollbar isolate">
                 {[
                   { id: "all", label: `Tất cả (${closetOwnerProducts.length})` },
                   { id: "rent", label: `Cho thuê (${closetOwnerProducts.filter(p => p.listingTypeRaw !== "SELL").length})` },
                   { id: "sell", label: `Thanh lý (${closetOwnerProducts.filter(p => p.listingTypeRaw === "SELL" || !!p.salePrice).length})` },
+                  { id: "reviews", label: `Đánh giá (${ownerReviews.length})` },
                 ].map(tab => (
                   <button
                     key={tab.id}
                     type="button"
                     onClick={() => setClosetOwnerFilter(tab.id as any)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer whitespace-nowrap ${
                       closetOwnerFilter === tab.id
                         ? "bg-[#0A2517] text-white shadow-xs"
                         : "bg-white text-stone-600 hover:bg-stone-100 border border-stone-200/80"
@@ -3140,87 +3392,169 @@ export default function MobileAppClient({
                 ))}
               </div>
 
-              {/* DANH SÁCH SẢN PHẨM TRONG TỦ (2 CỘT TIKTOK SHOP STYLE) */}
-              <div className="p-3 pb-16 flex-1">
-                {isLoadingClosetOwner && closetOwnerProducts.length === 0 ? (
-                  <div className="py-16 text-center text-stone-400 space-y-2">
-                    <RefreshCw size={24} className="animate-spin mx-auto text-emerald-800" />
-                    <p className="text-xs font-medium">Đang tải tủ đồ...</p>
+              {/* PHÂN VÙNG HIỂN THỊ NỘI DUNG: SẢN PHẨM HOẶC ĐÁNH GIÁ THỰC TẾ */}
+              {closetOwnerFilter === "reviews" ? (
+                <div className="p-3 pb-16 space-y-3 flex-1">
+                  <div className="bg-white rounded-2xl p-4 border border-stone-200/80 shadow-2xs flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Star size={18} className="fill-amber-400 text-amber-400" />
+                      <div>
+                        <div className="font-heading font-black text-sm text-[#0A2517]">
+                          Đánh giá cộng đồng
+                        </div>
+                        <div className="text-[10px] text-stone-400 font-medium">
+                          Dựa trên {ownerReviews.length} lượt nhận xét thực tế
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-heading font-black text-xl text-amber-600">
+                        {Number(viewingClosetOwner.rating || 5.0).toFixed(1)}
+                      </span>
+                      <span className="text-xs text-stone-400 font-bold"> / 5.0</span>
+                    </div>
                   </div>
-                ) : filteredClosetOwnerProducts.length === 0 ? (
-                  <div className="py-12 text-center text-stone-500 bg-white rounded-2xl border border-stone-200 p-6 space-y-2">
-                    <p className="text-xs font-bold text-stone-700">Chưa có món đồ nào trong mục này</p>
-                    <p className="text-[11px] text-stone-500">Chủ tủ đang chuẩn bị thêm trang phục mới.</p>
-                    <button
-                      type="button"
-                      onClick={() => setClosetOwnerFilter("all")}
-                      className="mt-2 px-3.5 py-1.5 bg-[#0A2517] text-white text-xs font-bold rounded-full cursor-pointer"
-                    >
-                      Xem tất cả đồ của tủ
-                    </button>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-2.5">
-                    {filteredClosetOwnerProducts.map((item: any, idx: number) => {
-                      const isRent = item.listingTypeRaw !== "SELL";
-                      let priceDisplay = "";
-                      if (isRent) {
-                        const raw = item.rentalPrice ?? item.price ?? 0;
-                        const num = typeof raw === "number" ? raw : parseInt(String(raw).replace(/\D/g, ""), 10) || 0;
-                        priceDisplay = num > 0 ? `${num.toLocaleString("vi-VN")}đ / ngày` : "Liên hệ thuê";
-                      } else {
-                        const raw = item.salePrice ?? item.price ?? 0;
-                        const num = typeof raw === "number" ? raw : parseInt(String(raw).replace(/\D/g, ""), 10) || 0;
-                        priceDisplay = num > 0 ? `${num.toLocaleString("vi-VN")}đ` : "Liên hệ mua";
-                      }
-                      const img = item.image || item.primaryImage || item.images?.[0] || "/1.1.jpg";
 
-                      return (
-                        <div
-                          key={item.id || idx}
-                          onClick={() => {
-                            setSelectedProduct(item);
-                          }}
-                          className="bg-white rounded-2xl overflow-hidden shadow-xs hover:shadow-md border border-stone-200 flex flex-col justify-between cursor-pointer active:scale-[0.98] transition-all group"
-                        >
-                          <div className="relative w-full aspect-[4/5] bg-stone-100 overflow-hidden">
-                            <Image
-                              src={img}
-                              alt={item.title}
-                              fill
-                              className="object-cover group-hover:scale-105 transition-transform duration-500"
-                              unoptimized
-                            />
-                            <span className={`absolute top-2 left-2 text-white text-[9.5px] font-bold px-2 py-0.5 rounded-md shadow-xs z-10 ${
-                              isRent ? "bg-[#0A2517]/90 backdrop-blur-xs" : "bg-amber-800/90 backdrop-blur-xs"
-                            }`}>
-                              {isRent ? "Thuê đồ" : "Mua sở hữu"}
-                            </span>
-                            {item.size && (
-                              <span className="absolute top-2 right-2 bg-black/60 backdrop-blur-xs text-white text-[9.5px] font-bold px-1.5 py-0.5 rounded-md">
-                                Size {item.size}
+                  {isLoadingOwnerReviews ? (
+                    <div className="py-12 text-center text-stone-400 space-y-2">
+                      <Loader2 size={24} className="animate-spin mx-auto text-emerald-800" />
+                      <p className="text-xs font-medium">Đang nạp đánh giá...</p>
+                    </div>
+                  ) : ownerReviews.length === 0 ? (
+                    <div className="py-12 text-center text-stone-500 bg-white rounded-2xl border border-stone-200 p-6 space-y-1">
+                      <p className="text-xs font-bold text-stone-700">Chưa có đánh giá nào</p>
+                      <p className="text-[11px] text-stone-400">Chủ tủ này đang sẵn sàng đón nhận những lượt thuê đầu tiên!</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {ownerReviews.map((rev: any, rIdx: number) => (
+                        <div key={rev.id || rIdx} className="bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-full overflow-hidden bg-stone-200 relative shrink-0">
+                                {rev.reviewer?.avatar ? (
+                                  <Image src={rev.reviewer.avatar} alt="" fill className="object-cover" unoptimized />
+                                ) : (
+                                  <div className="w-full h-full bg-[#0A2517] text-white text-xs font-bold flex items-center justify-center">
+                                    {(rev.reviewer?.name || "K")[0].toUpperCase()}
+                                  </div>
+                                )}
+                              </div>
+                              <div>
+                                <h5 className="font-bold text-xs text-stone-900 leading-tight">
+                                  {rev.reviewer?.name || "Khách thuê CLOOP"}
+                                </h5>
+                                <div className="flex items-center gap-0.5 text-amber-400 mt-0.5">
+                                  {[1, 2, 3, 4, 5].map((s) => (
+                                    <Star key={s} size={10} className={s <= (rev.rating || 5) ? "fill-amber-400 text-amber-400" : "text-stone-200"} />
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                            {rev.createdAt && (
+                              <span className="text-[10px] text-stone-400 font-medium">
+                                {new Date(rev.createdAt).toLocaleDateString("vi-VN")}
                               </span>
                             )}
                           </div>
-
-                          <div className="p-2.5 space-y-1">
-                            <h4 className="font-bold text-xs text-[#0A2517] line-clamp-1 leading-snug">
-                              {item.title}
-                            </h4>
-                            <div className="text-[12px] font-black text-[#0A2517]">
-                              {priceDisplay}
+                          {rev.comment && rev.comment !== "HIDDEN_BY_SERVER" && (
+                            <p className="text-xs text-stone-700 leading-relaxed bg-stone-50/80 p-2.5 rounded-xl border border-stone-100">
+                              "{rev.comment}"
+                            </p>
+                          )}
+                          {rev.product?.title && (
+                            <div className="text-[10px] text-emerald-800 font-medium">
+                              Đã thuê: {rev.product.title}
                             </div>
-                            <div className="flex items-center justify-between pt-0.5 text-[10px] text-stone-500">
-                              <span>{item.occasion || "Dạo phố"}</span>
-                              <span className="text-emerald-700 font-bold hover:underline">Chi tiết →</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* DANH SÁCH SẢN PHẨM TRONG TỦ (2 CỘT TIKTOK SHOP STYLE - ISOLATE VÀ Z-[2] CHỐNG NHẢY CHỮ/BADGE) */
+                <div className="p-3 pb-16 flex-1">
+                  {isLoadingClosetOwner && closetOwnerProducts.length === 0 ? (
+                    <div className="py-16 text-center text-stone-400 space-y-2">
+                      <RefreshCw size={24} className="animate-spin mx-auto text-emerald-800" />
+                      <p className="text-xs font-medium">Đang tải tủ đồ...</p>
+                    </div>
+                  ) : filteredClosetOwnerProducts.length === 0 ? (
+                    <div className="py-12 text-center text-stone-500 bg-white rounded-2xl border border-stone-200 p-6 space-y-2">
+                      <p className="text-xs font-bold text-stone-700">Chưa có món đồ nào trong mục này</p>
+                      <p className="text-[11px] text-stone-500">Chủ tủ đang chuẩn bị thêm trang phục mới.</p>
+                      <button
+                        type="button"
+                        onClick={() => setClosetOwnerFilter("all")}
+                        className="mt-2 px-3.5 py-1.5 bg-[#0A2517] text-white text-xs font-bold rounded-full cursor-pointer"
+                      >
+                        Xem tất cả đồ của tủ
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2.5">
+                      {filteredClosetOwnerProducts.map((item: any, idx: number) => {
+                        const isRent = item.listingTypeRaw !== "SELL";
+                        let priceDisplay = "";
+                        if (isRent) {
+                          const raw = item.rentalPrice ?? item.price ?? 0;
+                          const num = typeof raw === "number" ? raw : parseInt(String(raw).replace(/\D/g, ""), 10) || 0;
+                          priceDisplay = num > 0 ? `${num.toLocaleString("vi-VN")}đ / ngày` : "Liên hệ thuê";
+                        } else {
+                          const raw = item.salePrice ?? item.price ?? 0;
+                          const num = typeof raw === "number" ? raw : parseInt(String(raw).replace(/\D/g, ""), 10) || 0;
+                          priceDisplay = num > 0 ? `${num.toLocaleString("vi-VN")}đ` : "Liên hệ mua";
+                        }
+                        const img = item.image || item.primaryImage || item.images?.[0] || "/1.1.jpg";
+
+                        return (
+                          <div
+                            key={item.id || idx}
+                            onClick={() => {
+                              setSelectedProduct(item);
+                            }}
+                            className="bg-white rounded-2xl overflow-hidden shadow-2xs hover:shadow-md border border-stone-200/80 flex flex-col justify-between cursor-pointer active:scale-[0.98] transition-all group relative isolate"
+                          >
+                            <div className="relative w-full aspect-[4/5] bg-stone-100 overflow-hidden">
+                              <Image
+                                src={img}
+                                alt={item.title}
+                                fill
+                                className="object-cover group-hover:scale-105 transition-transform duration-500"
+                                unoptimized
+                              />
+                              <span className={`absolute top-2 left-2 text-white text-[9.5px] font-bold px-2 py-0.5 rounded-md shadow-xs z-[2] pointer-events-none ${
+                                isRent ? "bg-[#0A2517]/90 backdrop-blur-xs" : "bg-amber-800/90 backdrop-blur-xs"
+                              }`}>
+                                {isRent ? "Thuê đồ" : "Mua sở hữu"}
+                              </span>
+                              {item.size && (
+                                <span className="absolute top-2 right-2 bg-black/60 backdrop-blur-xs text-white text-[9.5px] font-bold px-1.5 py-0.5 rounded-md z-[2] pointer-events-none">
+                                  Size {item.size}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="p-2.5 space-y-1">
+                              <h4 className="font-bold text-xs text-[#0A2517] line-clamp-1 leading-snug">
+                                {item.title}
+                              </h4>
+                              <div className="text-[12px] font-black text-[#0A2517]">
+                                {priceDisplay}
+                              </div>
+                              <div className="flex items-center justify-between pt-0.5 text-[10px] text-stone-500">
+                                <span>{item.occasion || "Dạo phố"}</span>
+                                <span className="text-emerald-700 font-bold hover:underline">Chi tiết →</span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
 
             </div>
           </div>
@@ -3239,90 +3573,10 @@ export default function MobileAppClient({
             ======================================================== */}
         {selectedProduct && (
           <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-xs flex items-end justify-center p-0 sm:p-4 animate-in fade-in duration-200 mobile-app-root font-sans">
-            <div className="w-full max-w-[430px] bg-[#FBF9F5] rounded-t-[32px] sm:rounded-[32px] max-h-[90vh] overflow-y-auto p-5 text-[#0A2517] shadow-2xl relative animate-in slide-in-from-bottom duration-300 space-y-3.5 no-scrollbar mobile-app-root font-sans">
+            <div className="w-full max-w-[430px] bg-[#FBF9F5] rounded-t-[32px] sm:rounded-[32px] max-h-[94vh] sm:max-h-[90vh] overflow-y-auto p-0 text-[#0A2517] shadow-2xl relative animate-in slide-in-from-bottom duration-300 no-scrollbar flex flex-col mobile-app-root font-sans">
               
-              {/* 👤 HEADER TRÊN CÙNG: AVATAR & THÔNG TIN CHỦ TỦ */}
-              <div className="flex items-center justify-between pb-3 border-b border-stone-200 sticky top-0 bg-[#FBF9F5] z-10 pt-1">
-                <div 
-                  onClick={() => {
-                    setViewingClosetOwner({
-                      id: selectedProduct.userId || 'official',
-                      name: selectedProduct.ownerName || 'Chủ tủ CLOOP',
-                      avatar: selectedProduct.ownerAvatar || null,
-                      rating: selectedProduct.rating || 5.0,
-                      completedOrders: selectedProduct.completedOrders || 0,
-                      location: selectedProduct.location || selectedProduct.province || "Hà Nội",
-                    });
-                    setSelectedProduct(null);
-                  }}
-                  className="flex items-center gap-2.5 cursor-pointer group"
-                  title="Xem tủ đồ của người này"
-                >
-                  <div className="w-10 h-10 rounded-full overflow-hidden relative border-2 border-emerald-700/30 bg-stone-200 shrink-0 shadow-2xs group-hover:border-emerald-600 transition">
-                    {selectedProduct.ownerAvatar ? (
-                      <Image src={selectedProduct.ownerAvatar} alt="" fill className="object-cover" unoptimized />
-                    ) : (
-                      <div className="w-full h-full bg-[#0A2517] text-white text-xs font-bold flex items-center justify-center">
-                        {(selectedProduct.ownerName || "C")[0].toUpperCase()}
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-bold text-xs text-[#0A2517] leading-tight group-hover:underline">
-                        {selectedProduct.ownerName || "Thành viên CLOOP"}
-                      </span>
-                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-900 font-bold">
-                        Chủ tủ
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-[11px] text-stone-500 mt-0.5">
-                      <span className="font-semibold text-stone-700">
-                        {selectedProduct.rating || "5.0"} / 5.0
-                      </span>
-                      <span className="text-stone-300">•</span>
-                      <span>
-                        {selectedProduct.completedOrders > 0
-                          ? `${selectedProduct.completedOrders} đơn`
-                          : "Chủ tủ mới"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setViewingClosetOwner({
-                        id: selectedProduct.userId || 'official',
-                        name: selectedProduct.ownerName || 'Chủ tủ CLOOP',
-                        avatar: selectedProduct.ownerAvatar || null,
-                        rating: selectedProduct.rating || 5.0,
-                        completedOrders: selectedProduct.completedOrders || 0,
-                        location: selectedProduct.location || selectedProduct.province || "Hà Nội",
-                      });
-                      setSelectedProduct(null);
-                    }}
-                    className="text-[11px] font-bold text-[#0A2517] bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 px-3 py-1 rounded-full transition cursor-pointer shrink-0 active:scale-95"
-                  >
-                    Ghé tủ đồ
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedProduct(null);
-                      setActiveDetailImgIndex(0);
-                    }}
-                    className="w-8 h-8 rounded-full bg-stone-200/70 hover:bg-stone-300 text-stone-700 flex items-center justify-center transition cursor-pointer"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Ảnh lớn thực tế */}
-              <div className="relative w-full aspect-[4/5] rounded-2xl overflow-hidden bg-stone-100 shadow-2xs">
+              {/* 📸 HERO ẢNH TRÀN VIỀN 100% (TIKTOK SHOP / FACEBOOK MARKETPLACE STYLE) */}
+              <div className="relative w-full aspect-[4/5] bg-stone-900 select-none overflow-hidden shrink-0">
                 <Image
                   src={
                     (selectedProduct.images && selectedProduct.images[activeDetailImgIndex]) ||
@@ -3333,16 +3587,73 @@ export default function MobileAppClient({
                   alt={selectedProduct.title}
                   fill
                   className="object-cover"
+                  priority
                   unoptimized
                 />
-                <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
-                  {selectedProduct.occasion || "Dạo phố"}
+                
+                {/* Lớp phủ chuyển màu tăng độ tương phản nút bấm */}
+                <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/60 via-black/20 to-transparent pointer-events-none z-10" />
+                <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/60 via-black/20 to-transparent pointer-events-none z-10" />
+
+                {/* THANH ĐIỀU HƯỚNG NỔI TRÊN ẢNH (FLOATING TOP BAR) */}
+                <div className="absolute top-3.5 inset-x-3.5 flex items-center justify-between z-20">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedProduct(null);
+                      setActiveDetailImgIndex(0);
+                    }}
+                    className="w-9 h-9 rounded-full bg-black/45 hover:bg-black/65 backdrop-blur-md text-white flex items-center justify-center transition cursor-pointer active:scale-95 border border-white/20 shadow-md"
+                    title="Đóng"
+                  >
+                    <ArrowLeft size={18} />
+                  </button>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (typeof navigator !== "undefined" && navigator.share) {
+                          navigator.share({ title: selectedProduct.title, url: window.location.href }).catch(() => {});
+                        } else {
+                          showClosetToast("Đã sao chép liên kết trang phục!");
+                        }
+                      }}
+                      className="w-9 h-9 rounded-full bg-black/45 hover:bg-black/65 backdrop-blur-md text-white flex items-center justify-center transition cursor-pointer active:scale-95 border border-white/20 shadow-md"
+                      title="Chia sẻ"
+                    >
+                      <Share2 size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => handleToggleLike(selectedProduct.id, e)}
+                      className={`w-9 h-9 rounded-full bg-black/45 hover:bg-black/65 backdrop-blur-md flex items-center justify-center transition cursor-pointer active:scale-95 border border-white/20 shadow-md ${
+                        likedItems[selectedProduct.id] ? "text-red-400" : "text-white"
+                      }`}
+                      title="Yêu thích"
+                    >
+                      <Heart size={18} className={likedItems[selectedProduct.id] ? "fill-red-500 text-red-500" : "fill-none"} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* BADGE NỔI GÓC DƯỚI ẢNH */}
+                <div className="absolute bottom-3 inset-x-3.5 flex items-center justify-between z-20 pointer-events-none">
+                  <span className="px-2.5 py-1 rounded-full bg-black/55 backdrop-blur-md text-white text-[10.5px] font-bold">
+                    {selectedProduct.occasion || "Dạ tiệc & Sự kiện"}
+                  </span>
+                  {selectedProduct.images && selectedProduct.images.length > 1 && (
+                    <span className="px-2.5 py-1 rounded-full bg-black/55 backdrop-blur-md text-white text-[10px] font-mono font-bold tracking-wider">
+                      {activeDetailImgIndex + 1} / {selectedProduct.images.length}
+                    </span>
+                  )}
                 </div>
               </div>
 
-              {/* Lưới thumbnail nếu sản phẩm có nhiều ảnh thực tế */}
+              {/* LƯỚI THUMBNAIL TRÀN VIỀN NẾU CÓ NHIỀU ẢNH THỰC TẾ */}
               {selectedProduct.images && selectedProduct.images.length > 1 && (
-                <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                <div className="flex gap-2 overflow-x-auto px-4 py-2 bg-stone-100/60 border-b border-stone-200/60 no-scrollbar">
                   {selectedProduct.images.map((imgUrl: string, i: number) => (
                     <button
                       key={i}
@@ -3358,21 +3669,16 @@ export default function MobileAppClient({
                 </div>
               )}
 
-              {/* Tên sản phẩm */}
-              <div className="space-y-1 pb-2 border-b border-stone-200">
-                <h2 className="font-heading font-black text-xl text-[#0A2517] leading-tight">
-                  {selectedProduct.title}
-                </h2>
-              </div>
-
-              {/* Bảng giá thực tế & Chi tiết số ngày */}
-              <div className="py-2.5 border-b border-stone-200">
-                <div className="flex items-baseline justify-between">
+              {/* KHỐI NỘI DUNG THÔNG TIN TRANG PHỤC */}
+              <div className="px-4 pt-3.5 pb-24 space-y-4">
+                
+                {/* 1. BẢNG GIÁ THỰC TẾ & TIỀN CỌC */}
+                <div className="flex items-baseline justify-between pb-3 border-b border-stone-200/80">
                   <div>
                     <span className="text-[10px] text-stone-500 uppercase font-bold tracking-wider block">
                       {selectedProduct.listingTypeRaw === "SELL" ? "Giá chuyển nhượng" : "Chi phí thuê trang phục"}
                     </span>
-                    <div className="flex items-baseline gap-1.5">
+                    <div className="flex items-baseline gap-1.5 mt-0.5">
                       <span className="font-heading font-black text-2xl text-[#0A2517]">
                         {(selectedProduct.price || selectedProduct.rentalPrice || selectedProduct.salePrice || 0).toLocaleString("vi-VN")}đ
                       </span>
@@ -3397,71 +3703,222 @@ export default function MobileAppClient({
                     </div>
                   )}
                 </div>
-              </div>
 
-              {/* Thông số kỹ thuật trang phục */}
-              <div className="py-2.5 border-b border-stone-200">
+                {/* 2. TIÊU ĐỀ TRANG PHỤC */}
+                <div>
+                  <h2 className="font-heading font-black text-lg text-[#0A2517] leading-snug">
+                    {selectedProduct.title}
+                  </h2>
+                </div>
+
+                {/* 3. THÔNG SỐ KỸ THUẬT (4 Ô GỌN GÀNG) */}
                 <div className="grid grid-cols-4 gap-2 text-center">
-                  <div className="bg-stone-100/80 p-2 rounded-xl">
-                    <span className="text-[10px] text-stone-400 block font-medium">Size</span>
+                  <div className="bg-stone-100/90 p-2 rounded-xl border border-stone-200/60">
+                    <span className="text-[9.5px] text-stone-400 block font-medium">Size</span>
                     <span className="text-xs font-bold text-stone-800">{selectedProduct.size || "M"}</span>
                   </div>
-                  <div className="bg-stone-100/80 p-2 rounded-xl">
-                    <span className="text-[10px] text-stone-400 block font-medium">Chất liệu</span>
+                  <div className="bg-stone-100/90 p-2 rounded-xl border border-stone-200/60">
+                    <span className="text-[9.5px] text-stone-400 block font-medium">Chất liệu</span>
                     <span className="text-xs font-bold text-stone-800 truncate block">{selectedProduct.material || "Lụa"}</span>
                   </div>
-                  <div className="bg-stone-100/80 p-2 rounded-xl">
-                    <span className="text-[10px] text-stone-400 block font-medium">Độ mới</span>
+                  <div className="bg-stone-100/90 p-2 rounded-xl border border-stone-200/60">
+                    <span className="text-[9.5px] text-stone-400 block font-medium">Độ mới</span>
                     <span className="text-xs font-bold text-stone-800">{selectedProduct.condition || "Mới 95%"}</span>
                   </div>
-                  <div className="bg-stone-100/80 p-2 rounded-xl">
-                    <span className="text-[10px] text-stone-400 block font-medium">Dịp mặc</span>
+                  <div className="bg-stone-100/90 p-2 rounded-xl border border-stone-200/60">
+                    <span className="text-[9.5px] text-stone-400 block font-medium">Dịp mặc</span>
                     <span className="text-xs font-bold text-stone-800 truncate block">{selectedProduct.occasion || "Dạo phố"}</span>
                   </div>
                 </div>
-              </div>
 
-              {/* Trạm giao nhận trang phục thực tế */}
-              <div className="py-2.5 border-b border-stone-200 text-xs text-stone-700 space-y-0.5">
-                <span className="font-bold text-[#0A2517] block">Trạm giao nhận trang phục:</span>
-                <p className="text-stone-600 leading-tight">
-                  {selectedProduct.specificAddress || selectedProduct.location || "Hà Nội"}
-                </p>
-              </div>
+                {/* 4. CARD CHỦ TỦ VỚI SAO ĐÁNH GIÁ THỰC TẾ TỪ HỆ THỐNG */}
+                <div className="bg-white rounded-2xl p-3 border border-stone-200/80 shadow-2xs flex items-center justify-between">
+                  <div 
+                    onClick={() => {
+                      setViewingClosetOwner({
+                        id: selectedProduct.userId || 'official',
+                        name: selectedProduct.ownerName || 'Chủ tủ CLOOP',
+                        avatar: selectedProduct.ownerAvatar || null,
+                        rating: Number(selectedProduct.rating || 5.0),
+                        reviewCount: Number(selectedProduct.reviewCount || 0),
+                        completedOrders: selectedProduct.completedOrders || 0,
+                        location: selectedProduct.location || selectedProduct.province || "Hà Nội",
+                      });
+                      setSelectedProduct(null);
+                    }}
+                    className="flex items-center gap-2.5 cursor-pointer group flex-1 min-w-0"
+                    title="Xem tủ đồ của người này"
+                  >
+                    <div className="w-11 h-11 rounded-full overflow-hidden relative border-2 border-emerald-600/30 bg-stone-100 shrink-0 shadow-2xs group-hover:border-emerald-600 transition">
+                      {selectedProduct.ownerAvatar ? (
+                        <Image src={selectedProduct.ownerAvatar} alt="" fill className="object-cover" unoptimized />
+                      ) : (
+                        <div className="w-full h-full bg-[#0A2517] text-white text-xs font-bold flex items-center justify-center">
+                          {(selectedProduct.ownerName || "C")[0].toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-xs text-[#0A2517] leading-tight group-hover:underline truncate">
+                          {selectedProduct.ownerName || "Thành viên CLOOP"}
+                        </span>
+                        <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
+                      </div>
+                      
+                      {/* ⭐ SAO ĐÁNH GIÁ THỰC TẾ CHẠY DỮ LIỆU THẬT DATABASE */}
+                      <div className="flex items-center gap-1 text-[11px] text-stone-500 mt-0.5">
+                        <div className="flex items-center gap-0.5 text-amber-400">
+                          {[1, 2, 3, 4, 5].map((starIdx) => (
+                            <Star
+                              key={starIdx}
+                              size={10}
+                              className={starIdx <= Math.round(Number(selectedProduct.rating || 5.0)) ? "fill-amber-400 text-amber-400" : "text-stone-300"}
+                            />
+                          ))}
+                        </div>
+                        <span className="font-bold text-stone-800 ml-1">
+                          {Number(selectedProduct.rating || 5.0).toFixed(1)}
+                        </span>
+                        <span className="text-stone-300">•</span>
+                        <span>
+                          {selectedProduct.reviewCount > 0
+                            ? `${selectedProduct.reviewCount} đánh giá`
+                            : (selectedProduct.completedOrders > 0
+                                ? `${selectedProduct.completedOrders} đơn`
+                                : "Chủ tủ mới")}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
 
-              {/* Mô tả từ chủ tủ nếu có */}
-              {selectedProduct.description && (
-                <div className="py-2 border-b border-stone-200 space-y-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500 block">Lời nhắn từ chủ tủ</span>
-                  <p className="text-xs text-stone-700 leading-relaxed whitespace-pre-line bg-stone-50/70 p-3 rounded-xl border border-stone-200/60">
-                    {selectedProduct.description}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setViewingClosetOwner({
+                        id: selectedProduct.userId || 'official',
+                        name: selectedProduct.ownerName || 'Chủ tủ CLOOP',
+                        avatar: selectedProduct.ownerAvatar || null,
+                        rating: Number(selectedProduct.rating || 5.0),
+                        reviewCount: Number(selectedProduct.reviewCount || 0),
+                        completedOrders: selectedProduct.completedOrders || 0,
+                        location: selectedProduct.location || selectedProduct.province || "Hà Nội",
+                      });
+                      setSelectedProduct(null);
+                    }}
+                    className="text-[11px] font-bold text-[#0A2517] bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 px-3 py-1.5 rounded-full transition cursor-pointer shrink-0 active:scale-95 ml-2"
+                  >
+                    Ghé tủ đồ →
+                  </button>
+                </div>
+
+                {/* 5. TRẠM GIAO NHẬN TRANG PHỤC */}
+                <div className="p-3 rounded-2xl bg-white border border-stone-200/80 text-xs text-stone-700 space-y-1 shadow-2xs">
+                  <div className="flex items-center gap-1.5 text-[#0A2517] font-bold">
+                    <MapPin size={13} className="text-emerald-700 shrink-0" />
+                    <span>Trạm giao nhận trang phục</span>
+                  </div>
+                  <p className="text-stone-600 leading-snug pl-4.5">
+                    {selectedProduct.specificAddress || selectedProduct.location || "Hà Nội"}
                   </p>
                 </div>
-              )}
 
-              {/* Lợi ích môi trường thực tế */}
-              <div className="p-3 rounded-xl bg-stone-100/80 border border-stone-200/80 text-stone-700 text-xs leading-relaxed">
-                Mỗi lượt chia sẻ trang phục này giúp tiết kiệm <strong>5.8kg CO2e</strong> và <strong>2.000L nước</strong> so với việc sản xuất mới.
+                {/* 6. LỜI NHẮN TỪ CHỦ TỦ NẾU CÓ */}
+                {selectedProduct.description && (
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block px-1">
+                      Lời nhắn từ chủ tủ
+                    </span>
+                    <p className="text-xs text-stone-700 leading-relaxed whitespace-pre-line bg-white p-3 rounded-2xl border border-stone-200/80 shadow-2xs">
+                      {selectedProduct.description}
+                    </p>
+                  </div>
+                )}
+
+                {/* 7. LỢI ÍCH MÔI TRƯỜNG SINH THÁI TUẦN HOÀN */}
+                <div className="p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200/70 text-emerald-950 text-xs leading-relaxed flex items-center gap-2.5">
+                  <Leaf size={16} className="text-emerald-700 shrink-0 fill-emerald-700" />
+                  <div>
+                    Mỗi lượt chia sẻ trang phục này giúp tiết kiệm <strong>5.8kg CO2e</strong> và <strong>2.000L nước</strong> so với việc may mới.
+                  </div>
+                </div>
+
+                {/* 8. KHỐI ĐÁNH GIÁ CỘNG ĐỒNG THỰC TẾ (NHƯ BẢN WEB) */}
+                <div className="bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Star size={14} className="fill-amber-400 text-amber-400" />
+                      <h4 className="font-heading font-black text-xs uppercase tracking-wider text-[#0A2517]">
+                        Đánh giá cộng đồng ({productReviews.length})
+                      </h4>
+                    </div>
+                    <span className="text-[11px] font-bold text-amber-600">
+                      ★ {Number(selectedProduct.rating || 5.0).toFixed(1)} / 5.0
+                    </span>
+                  </div>
+
+                  {isLoadingProductReviews ? (
+                    <div className="py-4 text-center text-stone-400 space-y-1">
+                      <Loader2 size={18} className="animate-spin mx-auto text-emerald-800" />
+                      <p className="text-[10px]">Đang nạp đánh giá...</p>
+                    </div>
+                  ) : productReviews.length === 0 ? (
+                    <div className="text-center py-4 bg-stone-50 rounded-xl p-3 border border-stone-100">
+                      <p className="text-[11px] font-medium text-stone-600">
+                        Chưa có đánh giá nào cho tủ đồ này.
+                      </p>
+                      <p className="text-[10px] text-stone-400 mt-0.5">
+                        Hãy là người đầu tiên thuê và trải nghiệm món đồ này!
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5 divide-y divide-stone-100">
+                      {productReviews.slice(0, 3).map((rev: any, rIdx: number) => (
+                        <div key={rev.id || rIdx} className={rIdx > 0 ? "pt-2.5" : ""}>
+                          <div className="flex items-center justify-between text-[11px]">
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-5 h-5 rounded-full overflow-hidden bg-stone-200 relative shrink-0">
+                                {rev.reviewer?.avatar ? (
+                                  <Image src={rev.reviewer.avatar} alt="" fill className="object-cover" unoptimized />
+                                ) : (
+                                  <div className="w-full h-full bg-[#0A2517] text-white text-[8px] font-bold flex items-center justify-center">
+                                    {(rev.reviewer?.name || "K")[0].toUpperCase()}
+                                  </div>
+                                )}
+                              </div>
+                              <span className="font-bold text-stone-800 text-[11px]">
+                                {rev.reviewer?.name || "Khách thuê"}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-0.5 text-amber-400">
+                              {[1, 2, 3, 4, 5].map((s) => (
+                                <Star
+                                  key={s}
+                                  size={9}
+                                  className={s <= (rev.rating || 5) ? "fill-amber-400 text-amber-400" : "text-stone-200"}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                          {rev.comment && rev.comment !== "HIDDEN_BY_SERVER" && (
+                            <p className="text-[11px] text-stone-600 mt-1 leading-relaxed">
+                              "{rev.comment}"
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
               </div>
 
-              {/* Nút hành động */}
-              <div className="pt-2 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={(e) => handleToggleLike(selectedProduct.id, e)}
-                  className={`w-12 h-12 rounded-xl border flex items-center justify-center transition cursor-pointer shrink-0 ${
-                    likedItems[selectedProduct.id]
-                      ? "border-red-200 bg-red-50 text-red-500"
-                      : "border-stone-300 text-stone-400 hover:text-red-500 hover:border-red-200"
-                  }`}
-                  title="Yêu thích"
-                >
-                  <Heart size={20} className={likedItems[selectedProduct.id] ? "fill-red-500 text-red-500" : "fill-none"} />
-                </button>
+              {/* 9. THANH HÀNH ĐỘNG DÍNH DƯỚI ĐÁY (STICKY BOTTOM ACTION BAR) */}
+              <div className="sticky bottom-0 z-30 bg-white/95 backdrop-blur-md border-t border-stone-200 p-3 flex items-center gap-2 shadow-lg shrink-0">
                 <button
                   type="button"
                   onClick={() => handleAddToCart(selectedProduct)}
-                  className="h-12 px-4 rounded-xl border border-stone-300 bg-stone-100 hover:bg-stone-200 text-stone-800 font-semibold text-xs flex items-center justify-center transition cursor-pointer shrink-0"
+                  className="h-11 px-4 rounded-xl border border-stone-300 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-xs flex items-center justify-center transition cursor-pointer active:scale-95 shrink-0"
                   title="Thêm vào giỏ"
                 >
                   Thêm giỏ
@@ -3473,9 +3930,11 @@ export default function MobileAppClient({
                     setSelectedProduct(null);
                     handleOpenCheckout(prod);
                   }}
-                  className="flex-1 h-12 rounded-xl bg-[#0A2517] text-white font-semibold text-xs flex items-center justify-center shadow-md hover:bg-[#15462D] transition cursor-pointer"
+                  className="flex-1 h-11 rounded-xl bg-[#0A2517] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md hover:bg-[#15462D] transition cursor-pointer active:scale-95"
                 >
-                  {selectedProduct.listingTypeRaw === "SELL" ? "Mua Ngay" : "Thuê Ngay"}
+                  <span>{selectedProduct.listingTypeRaw === "SELL" ? "Mua Ngay" : "Thuê Ngay"}</span>
+                  <span>•</span>
+                  <span>{(selectedProduct.price || selectedProduct.rentalPrice || selectedProduct.salePrice || 0).toLocaleString("vi-VN")}đ{selectedProduct.listingTypeRaw !== "SELL" ? "/ngày" : ""}</span>
                 </button>
               </div>
 

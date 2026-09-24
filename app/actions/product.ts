@@ -308,6 +308,7 @@ const fetchShopProductsCached = unstable_cache(
             name: true,
             avatar: true,
             rating: true,
+            reviewCount: true,
             completedOrders: true,
             isVerified: true
           }
@@ -366,6 +367,7 @@ const fetchShopProductsCached = unstable_cache(
         pricingTiers: (rentListing?.pricing_tiers as any) || null,
         specificAddress: p.specificAddress || p.province || "Hà Nội",
         rating: p.user?.rating ? Number(p.user.rating).toFixed(1) : "5.0",
+        reviewCount: p.user?.reviewCount || 0,
         completedOrders: p.user?.completedOrders || 0,
         condition: p.condition === "EXCELLENT" ? "Mới 98%" : (p.condition === "NEW_WITH_TAGS" ? "Mới 100%" : "Mới 95%"),
         occasion: p.occasion || "Dạo phố",

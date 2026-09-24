@@ -28,6 +28,7 @@ export interface ClosetUserProfile {
   location: string;
   todaysMemory: string;
   rating: number;
+  reviewCount?: number;
   completedOrders: number;
   totalProducts: number;
 }
@@ -198,6 +199,7 @@ export async function getClosetFullDataAction(userId: string) {
       location: authMeta.location || products[0]?.province || "Nghệ An, Việt Nam",
       todaysMemory: authMeta.todaysMemory || "Hôm nay mình vừa thêm đồ mới vào tủ đồ CLOOP. Cùng chia sẻ để sống xanh!",
       rating: activeUser.rating !== undefined ? Number(activeUser.rating) : 5.0,
+      reviewCount: activeUser.reviewCount ? Number(activeUser.reviewCount) : 0,
       completedOrders: Math.max(activeUser.completedOrders || 0, completedCount),
       totalProducts: products.length
     };
@@ -436,10 +438,15 @@ export async function getMyClosetMobileDataAction() {
       const sellListing = p.listings.find(l => l.listingType === "SELL" || l.listingType === "RECYCLE");
       const primaryImg = p.images[0]?.url || "/1.1.jpg";
 
+      const isShopHidden = p.listings.length > 0 && p.listings.every(l => l.status === "HIDDEN");
+      const isRentalActive = p.listings.some(l => l.listingType === "RENT" && l.status === "AVAILABLE");
+      const isSaleActive = p.listings.some(l => (l.listingType === "SELL" || l.listingType === "RECYCLE") && l.status === "AVAILABLE");
+
       return {
         id: p.id,
         title: p.title,
         image: primaryImg,
+        images: p.images.map(img => img.url),
         category: p.category || "Dạ hội & Tiệc",
         occasion: p.occasion || "Tiệc cưới",
         size: p.size || "M",
@@ -454,6 +461,9 @@ export async function getMyClosetMobileDataAction() {
         wardCode: p.wardCode || null,
         pricingTiers: (rentListing?.pricing_tiers as any) || null,
         status: p.status || "ON_MARKET",
+        isShopHidden,
+        isRentalActive,
+        isSaleActive,
         createdAt: p.createdAt.toISOString()
       };
     });
@@ -474,6 +484,7 @@ export async function getMyClosetMobileDataAction() {
         cloopCoins: dbUser?.cloopCoins ?? 120,
         walletBalance: dbUser?.walletBalance ?? 0,
         rating: Number(dbUser?.rating ?? 5.0),
+        reviewCount: dbUser?.reviewCount ?? 0,
         completedOrders: dbUser?.completedOrders ?? 0,
         joinDate: dbUser?.createdAt ? new Date(dbUser.createdAt).toLocaleDateString("vi-VN") : "2026"
       },
