@@ -5,8 +5,6 @@ import { createClient } from '@/src/utils/supabase/server';
 import { translateAuthError } from '@/src/utils/authErrors';
 import { checkRateLimit } from '@/src/utils/rate-limit';
 
-export { translateAuthError };
-
 const MIN_PASSWORD_LENGTH = 8;
 
 export interface AuthActionResult {

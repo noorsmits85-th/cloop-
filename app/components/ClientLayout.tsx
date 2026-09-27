@@ -16,7 +16,6 @@ import AiStylistChat from "./AiStylistChat";
 import PwaInstallPrompt from "./PwaInstallPrompt";
 import MobileBottomDock from "./MobileBottomDock";
 import { useAuthModal } from "../AuthModalContext";
-import { loginWithCredentials, registerWithCredentials } from "@/app/(storefront)/login/actions";
 
 const supabase = createClient();
 
@@ -495,35 +494,42 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                     const redirectParam = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('redirectTo') || undefined : undefined;
 
                     if (authMode === 'login') {
-                      // 1. Xác thực qua Server Action (gỡ rào cản unconfirmed email, đồng bộ Prisma và gán Cookie Server 1 năm)
-                      const serverRes = await loginWithCredentials({
+                      let { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
                         email: cleanEmail,
                         password: cleanPassword,
-                        redirectTo: redirectParam
                       });
 
-                      if (serverRes?.error) {
-                        setAuthModalError(translateAuthError(serverRes.error));
+                      // Nếu bị lỗi (đặc biệt là Invalid credentials do unconfirmed email), tự động mở khóa qua API
+                      if (signInError) {
+                        try {
+                          const unlockRes = await fetch("/api/auth/unlock-unconfirmed", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ email: cleanEmail })
+                          });
+                          const unlockJson = await unlockRes.json().catch(() => null);
+                          if (unlockJson?.success) {
+                            const retry = await supabase.auth.signInWithPassword({
+                              email: cleanEmail,
+                              password: cleanPassword,
+                            });
+                            if (!retry.error && retry.data?.user) {
+                              signInData = retry.data;
+                              signInError = null;
+                            }
+                          }
+                        } catch (_) {}
+                      }
+
+                      if (signInError || !signInData?.user) {
+                        setAuthModalError(translateAuthError(signInError?.message || "Đăng nhập không thành công"));
                         return;
                       }
 
-                      // 2. Đồng bộ luôn với Supabase Browser Client
-                      let finalUserId = serverRes?.user?.id;
-                      let finalUserName = serverRes?.user?.name;
-                      try {
-                        const { data: signInData } = await supabase.auth.signInWithPassword({
-                          email: cleanEmail,
-                          password: cleanPassword,
-                        });
-                        if (signInData?.user) {
-                          finalUserId = signInData.user.id;
-                          finalUserName = signInData.user.user_metadata?.name || signInData.user.user_metadata?.full_name || finalUserName;
-                        }
-                      } catch (_) {}
-
-                      const userName = finalUserName || cleanEmail.split('@')[0];
+                      const finalUserId = signInData.user.id;
+                      const finalUserName = signInData.user.user_metadata?.name || signInData.user.user_metadata?.full_name || cleanEmail.split('@')[0];
                       const userObj = {
-                        name: userName,
+                        name: finalUserName,
                         email: cleanEmail,
                         isLoggedIn: true,
                         id: finalUserId
@@ -538,39 +544,72 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                       }
                       
                     } else if (authMode === 'register') {
-                      // 1. Đăng ký qua Server Action (tạo Supabase auth, tự động kích hoạt email_confirmed_at và ghi nhận Prisma User)
-                      const regRes = await registerWithCredentials({
+                      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
                         email: cleanEmail,
                         password: cleanPassword,
-                        name,
-                        redirectTo: redirectParam
+                        options: {
+                          data: {
+                            name: name,
+                            full_name: name,
+                          }
+                        }
                       });
 
-                      if (regRes?.error) {
-                        setAuthModalError(translateAuthError(regRes.error));
+                      if (signUpError) {
+                        if (signUpError.message?.includes("already registered") || signUpError.message?.includes("User already exists")) {
+                          // Nếu tài khoản đã tồn tại, thử đăng nhập
+                          const { data: logData, error: logErr } = await supabase.auth.signInWithPassword({
+                            email: cleanEmail,
+                            password: cleanPassword,
+                          });
+                          if (logErr) {
+                            setAuthModalError("Tài khoản đã tồn tại trên hệ thống. Vui lòng kiểm tra mật khẩu hoặc đăng nhập.");
+                            switchAuthMode('login');
+                            return;
+                          }
+                          if (logData?.user) {
+                            const uName = logData.user.user_metadata?.name || logData.user.user_metadata?.full_name || name || cleanEmail.split('@')[0];
+                            setCurrentUser({
+                              name: uName,
+                              email: cleanEmail,
+                              isLoggedIn: true,
+                              id: logData.user.id
+                            });
+                            setShowAuthModal(false);
+                            if (redirectParam && redirectParam !== '/') {
+                              router.push(redirectParam);
+                            } else {
+                              router.refresh();
+                            }
+                            return;
+                          }
+                        }
+                        setAuthModalError(translateAuthError(signUpError.message));
                         return;
                       }
 
-                      // 2. Đăng nhập trực tiếp trên browser client
-                      let finalUserId = regRes?.user?.id;
-                      let finalUserName = regRes?.user?.name;
+                      // Tự động kích hoạt email_confirmed_at và đồng bộ Prisma
                       try {
-                        const { data: signInData } = await supabase.auth.signInWithPassword({
-                          email: cleanEmail,
-                          password: cleanPassword,
+                        await fetch("/api/auth/unlock-unconfirmed", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ email: cleanEmail, name, userId: signUpData?.user?.id })
                         });
-                        if (signInData?.user) {
-                          finalUserId = signInData.user.id;
-                          finalUserName = signInData.user.user_metadata?.name || signInData.user.user_metadata?.full_name || finalUserName;
-                        }
                       } catch (_) {}
 
-                      const userName = finalUserName || name || cleanEmail.split('@')[0];
+                      // Đăng nhập trực tiếp trên browser client
+                      const { data: signInData } = await supabase.auth.signInWithPassword({
+                        email: cleanEmail,
+                        password: cleanPassword,
+                      });
+
+                      const finalUser = signInData?.user || signUpData?.user;
+                      const userName = finalUser?.user_metadata?.name || finalUser?.user_metadata?.full_name || name || cleanEmail.split('@')[0];
                       const userObj = {
                         name: userName,
                         email: cleanEmail,
                         isLoggedIn: true,
-                        id: finalUserId
+                        id: finalUser?.id
                       };
                       setCurrentUser(userObj);
 

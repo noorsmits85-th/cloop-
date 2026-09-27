@@ -158,7 +158,12 @@ export async function middleware(request: NextRequest) {
     (pathname.startsWith('/my-closet') && !pathname.startsWith('/my-closet/create')) ||
     pathname.startsWith('/admin');
 
-  // 3. Đồng bộ & làm mới phiên làm việc Supabase Cookie liên tục cho mọi yêu cầu
+  // Route công khai (Homepage, Shop, Product detail, Blog...) -> Cho qua tức thì
+  if (!isProtectedApi && !isProtectedPage) {
+    return NextResponse.next();
+  }
+
+  // 3. FAIL-CLOSED ENFORCEMENT: Xử lý bảo mật cho route được bảo vệ
   try {
     const { response, user, error } = await updateSession(request);
 

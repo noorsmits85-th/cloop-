@@ -37,11 +37,6 @@ export async function updateSession(request: NextRequest) {
             );
           },
         },
-        cookieOptions: {
-          path: '/',
-          sameSite: 'lax',
-          maxAge: 365 * 24 * 60 * 60,
-        },
       }
     );
 

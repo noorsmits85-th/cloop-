@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { login, loginWithOtp, verifyOtp, signup, resetPasswordForEmail, verifyRecoveryOtp, translateAuthError } from './actions';
+import { login, loginWithOtp, verifyOtp, signup, resetPasswordForEmail, verifyRecoveryOtp } from './actions';
+import { translateAuthError } from '@/src/utils/authErrors';
 import { Mail, Lock, KeyRound, ArrowRight, Loader2, User, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/src/utils/supabase/client';

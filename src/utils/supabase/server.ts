@@ -30,11 +30,6 @@ export async function createClient() {
           }
         },
       },
-      cookieOptions: {
-        path: '/',
-        sameSite: 'lax',
-        maxAge: 365 * 24 * 60 * 60,
-      },
     }
   );
 }
