@@ -158,6 +158,34 @@ export default function LoginPage() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-2xl sm:px-10 border border-stone-200">
+          {/* 🟢 TABS CHUYỂN ĐỔI RÕ RÀNG GIỮA ĐĂNG NHẬP & ĐĂNG KÝ */}
+          {(mode === 'LOGIN' || mode === 'SIGNUP') && (
+            <div className="flex p-1 rounded-xl bg-slate-100 border border-slate-200 mb-6">
+              <button
+                type="button"
+                onClick={() => { setMode('LOGIN'); setMessage(null); }}
+                className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  mode === 'LOGIN'
+                    ? "bg-[#183A2D] text-white shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <span>🔑 Đăng Nhập</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMode('SIGNUP'); setMessage(null); }}
+                className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  mode === 'SIGNUP'
+                    ? "bg-[#183A2D] text-white shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <span>✨ Đăng Ký Tài Khoản</span>
+              </button>
+            </div>
+          )}
+
           <form className="space-y-6" onSubmit={handleSubmit}>
             <input type="hidden" name="nextUrl" value={nextUrl} />
             
@@ -375,20 +403,39 @@ export default function LoginPage() {
                     Quên mật khẩu?
                   </button>
                 </div>
-                <div className="pt-2">
-                  <span>Chưa có tài khoản? </span>
-                  <button type="button" onClick={() => { setMode('SIGNUP'); setMessage(null); }} className="text-[#183A2D] font-bold hover:underline">
-                    Đăng ký ngay
+                {/* Thẻ nổi bật cho người dùng chưa có tài khoản */}
+                <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-center space-y-1 my-2">
+                  <p className="text-xs text-amber-900 font-semibold">Chưa có tài khoản CLOOP?</p>
+                  <button 
+                    type="button" 
+                    onClick={() => { setMode('SIGNUP'); setMessage(null); }} 
+                    className="w-full py-2.5 px-3 bg-white hover:bg-slate-50 border border-amber-300 rounded-lg text-xs font-bold text-[#183A2D] shadow-2xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>✨ Tạo tài khoản mới ngay (chỉ mất 10s)</span>
                   </button>
                 </div>
               </>
             )}
 
             {(mode === 'SIGNUP' || mode === 'OTP_REQUEST' || mode === 'OTP_VERIFY' || mode === 'FORGOT_PASSWORD' || mode === 'FORGOT_PASSWORD_OTP') && (
-              <div>
-                <button type="button" onClick={() => { setMode('LOGIN'); setMessage(null); }} className="text-[#183A2D] font-bold hover:underline">
-                  &larr; Quay lại Đăng nhập
-                </button>
+              <div className="space-y-3">
+                {mode === 'SIGNUP' && (
+                  <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-center space-y-1 mb-2">
+                    <p className="text-xs text-emerald-900 font-semibold">Đã có tài khoản từ trước?</p>
+                    <button 
+                      type="button" 
+                      onClick={() => { setMode('LOGIN'); setMessage(null); }} 
+                      className="w-full py-2.5 px-3 bg-white hover:bg-slate-50 border border-emerald-300 rounded-lg text-xs font-bold text-[#183A2D] shadow-2xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <span>🔑 Bấm vào đây để Đăng Nhập</span>
+                    </button>
+                  </div>
+                )}
+                <div>
+                  <button type="button" onClick={() => { setMode('LOGIN'); setMessage(null); }} className="text-[#183A2D] font-bold hover:underline">
+                    &larr; Quay lại Đăng nhập
+                  </button>
+                </div>
               </div>
             )}
           </div>

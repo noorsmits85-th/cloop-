@@ -11,9 +11,14 @@ export interface CurrentUser {
   avatar?: string;
 }
 
+export type AuthModeType = 'login' | 'register' | 'forgot' | 'forgot_otp';
+
 interface AuthModalContextType {
   showAuthModal: boolean;
   setShowAuthModal: (show: boolean) => void;
+  authMode: AuthModeType;
+  setAuthMode: (mode: AuthModeType) => void;
+  openAuthModal: (mode?: 'login' | 'register') => void;
   activeFeatureName: string;
   handleFeatureRequirement: (featureName: string) => void;
   currentUser: CurrentUser | null;
@@ -24,7 +29,13 @@ const AuthModalContext = createContext<AuthModalContextType | null>(null);
 
 export const AuthModalProvider = ({ children, initialUser = null }: { children: ReactNode, initialUser?: CurrentUser | null }) => {
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<AuthModeType>('login');
   const [activeFeatureName, setActiveFeatureName] = useState("");
+
+  const openAuthModal = (mode: 'login' | 'register' = 'login') => {
+    setAuthMode(mode);
+    setShowAuthModal(true);
+  };
   const [currentUser, setCurrentUserState] = useState<CurrentUser | null>(() => {
     if (initialUser) return initialUser;
     if (typeof window !== "undefined") {
@@ -58,7 +69,12 @@ export const AuthModalProvider = ({ children, initialUser = null }: { children: 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      if (params.get("auth") === "login" || params.get("auth") === "signup") {
+      const authQuery = params.get("auth");
+      if (authQuery === "signup" || authQuery === "register") {
+        setAuthMode("register");
+        setShowAuthModal(true);
+      } else if (authQuery === "login") {
+        setAuthMode("login");
         setShowAuthModal(true);
       }
     }
@@ -140,6 +156,9 @@ export const AuthModalProvider = ({ children, initialUser = null }: { children: 
       value={{
         showAuthModal,
         setShowAuthModal,
+        authMode,
+        setAuthMode,
+        openAuthModal,
         activeFeatureName,
         handleFeatureRequirement,
         currentUser,

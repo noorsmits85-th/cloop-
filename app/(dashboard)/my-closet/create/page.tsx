@@ -188,8 +188,12 @@ export default function CreateProductListingPage() {
       }
 
       if (validFiles.length > 0) {
-        const fileArray = validFiles.slice(0, 5 - images.length);
-        setCropQueue((prev) => [...prev, ...fileArray]);
+        const fileArray = validFiles.slice(0, 6 - images.length);
+        const newImages = fileArray.map((file) => ({
+          file,
+          previewUrl: URL.createObjectURL(file),
+        }));
+        setImages((prev) => [...prev, ...newImages]);
         // Quét AI ngay tấm đầu tiên
         triggerAiAutofill(fileArray[0]);
       }

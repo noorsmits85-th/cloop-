@@ -103,7 +103,7 @@ export default function MobileAppClient({
   initialTotalCount,
   initialUserData 
 }: MobileAppClientProps) {
-  const { currentUser, setShowAuthModal } = useAuthModal();
+  const { currentUser, setShowAuthModal, openAuthModal } = useAuthModal();
   
   // 📱 ĐIỀU HƯỚNG CHÍNH NỘI BỘ APP (5 TABS ĐÁY CHUẨN ĐỒNG BỘ WEB)
   const [activeTab, setActiveTab] = useState<"home" | "shop" | "orders" | "closet">("home");
@@ -1224,7 +1224,7 @@ export default function MobileAppClient({
     }
   };
 
-  // 📸 CHỌN NHIỀU ẢNH TỪ MÁY (TỐI ĐA 5 ẢNH)
+  // 📸 CHỌN NHIỀU ẢNH TỪ MÁY (TỐI ĐA 6 ẢNH) - NẠP NGAY TOÀN BỘ VÀO DANH SÁCH
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
@@ -1242,9 +1242,13 @@ export default function MobileAppClient({
       }
 
       if (validFiles.length > 0) {
-        const remaining = 5 - uploadedImages.length;
+        const remaining = 6 - uploadedImages.length;
         const toAdd = validFiles.slice(0, Math.max(0, remaining));
-        setCropQueue((prev) => [...prev, ...toAdd]);
+        const newImages = toAdd.map((file) => ({
+          file,
+          previewUrl: URL.createObjectURL(file),
+        }));
+        setUploadedImages((prev) => [...prev, ...newImages]);
       }
     }
     if (e.target) e.target.value = "";
@@ -2254,7 +2258,7 @@ export default function MobileAppClient({
         {activeTab === "closet" && (
           <div className="p-3.5 space-y-3.5 flex-1">
             
-            {/* THẺ ĐĂNG NHẬP (NẾU CHƯA CÓ SESSION) */}
+            {/* THẺ ĐĂNG NHẬP / ĐĂNG KÝ (NẾU CHƯA CÓ SESSION) */}
             {!currentUser && !closetData?.isLoggedIn ? (
               <div className="bg-[#0A2517] text-white rounded-3xl p-5 space-y-4 relative overflow-hidden shadow-lg border border-emerald-800">
                 <div>
@@ -2262,18 +2266,26 @@ export default function MobileAppClient({
                     ĐỒNG BỘ TỦ ĐỒ THỜI TRANG TUẦN HOÀN
                   </span>
                   <h3 className="font-heading font-black text-xl text-white mt-1 leading-tight">
-                    Kích Hoạt ID Xanh Cá Nhân
+                    Tủ Đồ Cá Nhân CLOOP
                   </h3>
                   <p className="text-xs text-stone-300 mt-1 leading-relaxed">
-                    Đăng nhập để xem tủ đồ chia sẻ từ bản web, kiểm tra lịch khách thuê đồ, tích lũy điểm xanh và nhận thu nhập thụ động.
+                    Đăng nhập hoặc đăng ký tài khoản miễn phí để quản lý tủ đồ, nhận lịch khách thuê, tích lũy điểm xanh và nhận thu nhập thụ động.
                   </p>
                 </div>
-                <button
-                  onClick={() => setShowAuthModal(true)}
-                  className="w-full py-3 rounded-xl bg-white text-[#0A2517] font-bold text-xs tracking-wider uppercase shadow-sm hover:bg-stone-100 transition cursor-pointer"
-                >
-                  Đăng Nhập / Tạo ID Xanh Ngay
-                </button>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    onClick={() => openAuthModal ? openAuthModal('register') : setShowAuthModal(true)}
+                    className="py-3 px-2 rounded-xl bg-white text-[#0A2517] font-bold text-xs tracking-wider uppercase shadow-sm hover:bg-stone-100 transition cursor-pointer text-center flex items-center justify-center gap-1"
+                  >
+                    <span>✨ Đăng Ký Mới</span>
+                  </button>
+                  <button
+                    onClick={() => openAuthModal ? openAuthModal('login') : setShowAuthModal(true)}
+                    className="py-3 px-2 rounded-xl bg-emerald-900/80 border border-emerald-600/70 text-white font-bold text-xs tracking-wider uppercase shadow-sm hover:bg-emerald-800 transition cursor-pointer text-center flex items-center justify-center gap-1"
+                  >
+                    <span>🔑 Đăng Nhập</span>
+                  </button>
+                </div>
               </div>
             ) : (
               <>
@@ -4151,10 +4163,10 @@ export default function MobileAppClient({
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="text-xs font-bold text-stone-800">
-                        Ảnh trang phục ({uploadedImages.length}/5) <span className="text-rose-500">*</span>
+                        Ảnh trang phục ({uploadedImages.length}/6) <span className="text-rose-500">*</span>
                       </label>
                       <span className="text-[10px] text-stone-400 font-medium">
-                        Tối đa 5 ảnh
+                        Chọn được nhiều ảnh cùng lúc (Tối đa 6)
                       </span>
                     </div>
 
@@ -4176,14 +4188,14 @@ export default function MobileAppClient({
                       >
                         <div className="text-center space-y-1">
                           <span className="text-xs font-bold text-stone-800 block">
-                            Chọn ảnh từ máy (Tối đa 5 ảnh)
+                            📸 Chạm để chọn nhiều ảnh cùng lúc từ thư viện
                           </span>
-                          <span className="text-[10px] text-stone-400 block">
-                            Chọn được nhiều ảnh cùng lúc • Chủ tủ tự do cắt &amp; căn góc
+                          <span className="text-[10px] text-stone-500 block">
+                            Hỗ trợ chọn cùng lúc tới 6 ảnh • Nạp nhanh tức thì
                           </span>
                         </div>
                         <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-700 border border-stone-200 font-medium">
-                          Khuyên dùng: Ảnh toàn thân, mặt trước, mặt sau, chất vải
+                          Khuyên dùng: Ảnh toàn thân, mặt trước, mặt sau, chất vải, tem mác
                         </span>
                       </button>
                     ) : (
@@ -4234,8 +4246,8 @@ export default function MobileAppClient({
                             </div>
                           ))}
 
-                          {/* Ô thêm ảnh nếu chưa đủ 5 */}
-                          {uploadedImages.length < 5 && (
+                          {/* Ô thêm ảnh nếu chưa đủ 6 */}
+                          {uploadedImages.length < 6 && (
                             <button
                               type="button"
                               onClick={() => fileInputRef.current?.click()}
@@ -4243,14 +4255,14 @@ export default function MobileAppClient({
                             >
                               <span className="text-sm font-bold text-stone-600">+</span>
                               <span className="text-[10px] font-bold">Thêm ảnh</span>
-                              <span className="text-[9px] text-stone-400">({5 - uploadedImages.length} ảnh nữa)</span>
+                              <span className="text-[9px] text-stone-400">({6 - uploadedImages.length} ảnh nữa)</span>
                             </button>
                           )}
                         </div>
 
                         <div className="flex items-center justify-between text-[10px] text-stone-500 px-1">
                           <span>Ảnh đầu tiên là ảnh bìa hiển thị ngoài sàn đồ</span>
-                          {uploadedImages.length < 5 && (
+                          {uploadedImages.length < 6 && (
                             <button
                               type="button"
                               onClick={() => fileInputRef.current?.click()}

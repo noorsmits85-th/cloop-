@@ -132,9 +132,8 @@ function HeaderNavbar({ darkMode, setDarkMode, handleFeatureRequirement, current
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { showAuthModal, setShowAuthModal, activeFeatureName, handleFeatureRequirement, currentUser, setCurrentUser } = useAuthModal();
+  const { showAuthModal, setShowAuthModal, activeFeatureName, handleFeatureRequirement, currentUser, setCurrentUser, authMode, setAuthMode } = useAuthModal();
   const [darkMode, setDarkMode] = useState<boolean>(false);
-  const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot' | 'forgot_otp'>('login');
   const [authModalError, setAuthModalError] = useState<string | null>(null);
   const [authModalSuccess, setAuthModalSuccess] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -391,12 +390,42 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
               
               <div className="text-center space-y-1">
                 <h3 className="font-heading text-xl font-bold uppercase tracking-wide text-[#183A2D]">
-                  {authMode === 'login' ? 'Đăng nhập CLOOP' : authMode === 'register' ? 'Kích hoạt ID Xanh' : authMode === 'forgot' ? 'Quên mật khẩu' : 'Nhập mã khôi phục'}
+                  {authMode === 'login' ? 'Đăng Nhập CLOOP' : authMode === 'register' ? 'Đăng Ký Tài Khoản Mới' : authMode === 'forgot' ? 'Quên Mật Khẩu' : 'Nhập Mã Khôi Phục'}
                 </h3>
                 <p className="text-xs text-stone-500 font-normal leading-relaxed max-w-xs mx-auto">
-                  {authMode === 'login' ? 'Chào mừng bạn quay trở lại với thời trang tuần hoàn.' : authMode === 'register' ? 'Đăng ký tài khoản bảo mật để đồng bộ hóa và quản lý kệ đồ cá nhân.' : authMode === 'forgot' ? 'Nhập email để nhận mã OTP khôi phục mật khẩu.' : `Mã bảo mật đã được gửi tới ${resetEmail}. Nhập mã và mật khẩu mới.`}
+                  {authMode === 'login' ? 'Chào mừng bạn quay trở lại với thời trang tuần hoàn.' : authMode === 'register' ? 'Tạo tài khoản miễn phí để đăng đồ, thuê đồ và tích lũy điểm xanh.' : authMode === 'forgot' ? 'Nhập email để nhận mã OTP khôi phục mật khẩu.' : `Mã bảo mật đã được gửi tới ${resetEmail}. Nhập mã và mật khẩu mới.`}
                 </p>
               </div>
+
+              {/* 🟢 TAB CHUYỂN ĐỔI RÕ RÀNG: ĐĂNG NHẬP / ĐĂNG KÝ */}
+              {(authMode === 'login' || authMode === 'register') && (
+                <div className={`flex p-1 rounded-2xl border transition-all ${
+                  darkMode ? "bg-[#0F1720] border-[#2B3946]" : "bg-stone-200/80 border-stone-300"
+                }`}>
+                  <button
+                    type="button"
+                    onClick={() => switchAuthMode('login')}
+                    className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      authMode === 'login'
+                        ? "bg-[#183A2D] text-white shadow-md"
+                        : "text-stone-600 dark:text-stone-400 hover:text-stone-900"
+                    }`}
+                  >
+                    <span>🔑 Đăng Nhập</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => switchAuthMode('register')}
+                    className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      authMode === 'register'
+                        ? "bg-[#183A2D] text-white shadow-md"
+                        : "text-stone-600 dark:text-stone-400 hover:text-stone-900"
+                    }`}
+                  >
+                    <span>✨ Đăng Ký Mới</span>
+                  </button>
+                </div>
+              )}
 
               {authModalError && (
                 <div className="p-3.5 rounded-2xl bg-rose-50/90 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-rose-700 dark:text-rose-300 text-xs font-medium flex items-start gap-2.5 text-left shadow-xs transition-all">
@@ -630,7 +659,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
               >
                 {authMode === 'register' && (
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Biệt danh công khai</label>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Họ và tên / Biệt danh hiển thị</label>
                     <input 
                       type="text" 
                       name="username" 
@@ -638,7 +667,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                       autoCapitalize="words"
                       autoCorrect="off"
                       spellCheck={false}
-                      placeholder="Ví dụ: Hoàng Yến..." 
+                      placeholder="Ví dụ: Hoàng Yến, Minh Anh..." 
                       className={`w-full px-4 py-2.5 border rounded-xl text-xs font-medium outline-none ${darkMode ? "bg-[#0F1720] border-[#2B3946] text-white" : "bg-[#FAF8F3] border-[#E9E2D8] text-[#183A2D]"}`} 
                     />
                   </div>
@@ -646,7 +675,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
                 {authMode !== 'forgot_otp' && (
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Địa chỉ Email</label>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Địa chỉ Email của bạn</label>
                     <input 
                       type="email" 
                       name="email" 
@@ -693,7 +722,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
                 {authMode !== 'forgot' && (
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{authMode === 'forgot_otp' ? 'Mật khẩu mới' : 'Mật khẩu bảo mật'}</label>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{authMode === 'forgot_otp' ? 'Mật khẩu mới' : 'Mật khẩu (tối thiểu 6 ký tự)'}</label>
                     <div className="relative">
                       <input 
                         type={showPassword ? "text" : "password"} 
@@ -726,8 +755,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                 >
                   {isLoading && <Loader2 size={16} className="animate-spin" />}
                   {isLoading ? 'Đang xử lý...' : 
-                    authMode === 'login' ? 'Đăng nhập ngay' : 
-                    authMode === 'register' ? 'Kích hoạt tài khoản' : 
+                    authMode === 'login' ? 'Đăng Nhập Ngay' : 
+                    authMode === 'register' ? 'Đăng Ký Tài Khoản Ngay' : 
                     authMode === 'forgot' ? (otpCooldown > 0 ? `Đang gửi mã... (${otpCooldown}s)` : 'Gửi mã OTP khôi phục') : 
                     'Đổi mật khẩu'}
                 </button>
@@ -736,12 +765,33 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
               <div className="flex flex-col gap-2 mt-4 text-[11px] font-medium text-gray-500">
                 {authMode === 'login' && (
                   <>
-                    <button onClick={() => switchAuthMode('forgot')} className="hover:text-[#183A2D] transition hover:underline cursor-pointer">Quên mật khẩu?</button>
-                    <button onClick={() => switchAuthMode('register')} className="hover:text-[#183A2D] transition hover:underline cursor-pointer">Chưa có ID Xanh? Tạo ngay</button>
+                    {/* Hộp nổi bật dành riêng cho người chưa có tài khoản */}
+                    <div className="p-3 rounded-2xl bg-amber-50/90 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 text-center space-y-1.5 my-1">
+                      <p className="text-[11px] text-amber-900 dark:text-amber-200 font-semibold">Chưa có tài khoản CLOOP?</p>
+                      <button 
+                        type="button" 
+                        onClick={() => switchAuthMode('register')} 
+                        className="w-full py-2.5 px-3 bg-white dark:bg-stone-800 hover:bg-stone-50 border border-amber-300 dark:border-amber-700/80 rounded-xl text-xs font-bold text-[#183A2D] dark:text-emerald-300 shadow-2xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <span>✨ Tạo tài khoản mới ngay (chỉ mất 10s)</span>
+                      </button>
+                    </div>
+
+                    <button onClick={() => switchAuthMode('forgot')} className="hover:text-[#183A2D] transition hover:underline cursor-pointer py-1">Quên mật khẩu?</button>
                   </>
                 )}
+
                 {authMode === 'register' && (
-                  <button onClick={() => switchAuthMode('login')} className="hover:text-[#183A2D] transition hover:underline cursor-pointer">Đã có ID Xanh? Đăng nhập</button>
+                  <div className="p-3 rounded-2xl bg-emerald-50/90 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 text-center space-y-1.5 my-1">
+                    <p className="text-[11px] text-emerald-900 dark:text-emerald-200 font-semibold">Đã có tài khoản từ trước?</p>
+                    <button 
+                      type="button" 
+                      onClick={() => switchAuthMode('login')} 
+                      className="w-full py-2.5 px-3 bg-white dark:bg-stone-800 hover:bg-stone-50 border border-emerald-300 dark:border-emerald-700/80 rounded-xl text-xs font-bold text-[#183A2D] dark:text-emerald-300 shadow-2xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <span>🔑 Bấm vào đây để Đăng Nhập</span>
+                    </button>
+                  </div>
                 )}
                 {(authMode === 'forgot' || authMode === 'forgot_otp') && (
                   <button onClick={() => switchAuthMode('login')} className="hover:text-[#183A2D] transition hover:underline cursor-pointer">Quay lại đăng nhập</button>
