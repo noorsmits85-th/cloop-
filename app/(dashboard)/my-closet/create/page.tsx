@@ -79,7 +79,7 @@ export default function CreateProductListingPage() {
   const { currentUser, setShowAuthModal } = useAuthModal();
   
   const [product, setProduct] = useState<ProductSpecifications>({
-    name: "", category: "Dạ hội & Sự kiện", size: "M", targetHeight: "", targetWeight: "",
+    name: "", category: "Áo", size: "M", targetHeight: "", targetWeight: "",
     bust: "", waist: "", hips: "", color: "", material: "",
     condition: "Mới 95%", province: "Hà Nội", district: "Quận Hoàn Kiếm", ward: "Phường Hàng Đào", address: "",
     originalPrice: 500000, 
@@ -527,15 +527,14 @@ export default function CreateProductListingPage() {
                 <div>
                   <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Danh mục sản phẩm</label>
                   <select className="scrapbook-input cursor-pointer" value={product.category} onChange={(e) => setProduct({...product, category: e.target.value})}>
-                    <option value="Dạ hội & Sự kiện">Dạ hội & Sự kiện</option>
-                    <option value="Tiệc cưới">Tiệc cưới</option>
-                    <option value="Áo dài truyền thống">Áo dài truyền thống</option>
-                    <option value="Đồ hoài cổ 90s">Đồ hoài cổ 90s</option>
-                    <option value="Tối giản">Tối giản</option>
-                    <option value="Công sở & Blazer">Công sở & Blazer</option>
-                    <option value="Set đồ & Dạo phố">Set đồ & Dạo phố</option>
-                    <option value="Túi xách & Phụ kiện">Túi xách & Phụ kiện</option>
-                    <option value="Giày & Boots">Giày & Boots</option>
+                    <option value="Áo">Áo</option>
+                    <option value="Quần">Quần</option>
+                    <option value="Chân váy">Chân váy</option>
+                    <option value="Đầm & Váy liền">Đầm & Váy liền</option>
+                    <option value="Set đồ & Bộ trang phục">Set đồ & Bộ trang phục</option>
+                    <option value="Áo khoác & Blazer">Áo khoác & Blazer</option>
+                    <option value="Áo dài & Cổ phục">Áo dài & Cổ phục</option>
+                    <option value="Phụ kiện & Túi xách">Phụ kiện & Túi xách</option>
                   </select>
                 </div>
 
@@ -543,15 +542,19 @@ export default function CreateProductListingPage() {
                   <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Phong cách / Dịp</label>
                   <select className="scrapbook-input cursor-pointer" value={product.occasion} onChange={(e) => setProduct({...product, occasion: e.target.value})}>
                     <option value="Dạo phố">Dạo phố</option>
-                    <option value="Tiệc cưới">Tiệc cưới</option>
-                    <option value="Dạ hội">Dạ hội</option>
-                    <option value="Áo dài">Áo dài</option>
-                    <option value="Đi biển">Đi biển</option>
-                    <option value="Kỷ yếu">Kỷ yếu</option>
+                    <option value="Thể thao">Thể thao</option>
+                    <option value="Dã ngoại">Dã ngoại</option>
+                    <option value="Du lịch">Du lịch</option>
                     <option value="Lễ hội">Lễ hội</option>
-                    <option value="Công sở">Công sở</option>
-                    <option value="Vintage & Hoài cổ">Vintage & Hoài cổ</option>
-                    <option value="Tối giản">Tối giản</option>
+                    <option value="Tiệc cưới">Tiệc cưới</option>
+                    <option value="Sự kiện">Sự kiện</option>
+                    <option value="Sinh nhật">Sinh nhật</option>
+                    <option value="Tốt nghiệp">Tốt nghiệp</option>
+                    <option value="Chụp ảnh">Chụp ảnh</option>
+                    <option value="Concert">Concert</option>
+                    <option value="Đi làm & Công sở">Đi làm & Công sở</option>
+                    <option value="Dạ hội & Gala">Dạ hội & Gala</option>
+                    <option value="Mọi dịp linh hoạt">Mọi dịp linh hoạt</option>
                   </select>
                 </div>
 

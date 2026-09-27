@@ -91,18 +91,27 @@ export function ShopClient({
   const [selectedOccasion, setSelectedOccasion] = useState(urlOccasion || urlCategory || initialOccasion || "Tất cả");
 
   const occasionList = [
-    "Tất cả", 
-    "Tiệc cưới", 
-    "Dạ hội", 
-    "Dạo phố", 
-    "Áo dài", 
-    "Đi biển", 
-    "Kỷ yếu", 
-    "Lễ hội", 
-    "Công sở", 
-    "Upcycle", 
-    "Vintage",
-    "Phụ kiện"
+    "Tất cả",
+    "Áo",
+    "Quần",
+    "Chân váy",
+    "Đầm & Váy liền",
+    "Set đồ & Bộ trang phục",
+    "Áo khoác & Blazer",
+    "Áo dài & Cổ phục",
+    "Dạo phố",
+    "Thể thao",
+    "Dã ngoại",
+    "Du lịch",
+    "Lễ hội",
+    "Tiệc cưới",
+    "Sự kiện",
+    "Sinh nhật",
+    "Tốt nghiệp",
+    "Chụp ảnh",
+    "Concert",
+    "Đi làm & Công sở",
+    "Phụ kiện & Túi xách"
   ];
 
   const [debouncedSearch, setDebouncedSearch] = useState(initialSearch || "");

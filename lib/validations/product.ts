@@ -1,15 +1,21 @@
 import { z } from "zod";
 
 export const uploadProductSchema = z.object({
-  title: z.string().min(5, { message: "Tên sản phẩm phải có ít nhất 5 ký tự." }).max(100),
-  description: z.string().min(10, { message: "Mô tả phải có ít nhất 10 ký tự." }),
-  size: z.string().min(1, { message: "Vui lòng chọn size." }),
-  material: z.string().min(1, { message: "Vui lòng nhập chất liệu." }),
+  title: z.string().min(3, { message: "Tên sản phẩm phải có ít nhất 3 ký tự." }).max(100),
+  description: z.string().optional(),
+  category: z.string().optional(),
   color: z.string().optional(),
-  condition: z.enum(["95", "99", "NEW"]),
+  size: z.string().min(1, { message: "Vui lòng chọn size." }),
+  material: z.string().optional(),
+  condition: z.string().optional(),
   province: z.string().min(1, { message: "Vui lòng chọn khu vực bàn giao." }),
-  ward: z.string().min(1, { message: "Vui lòng nhập phường/xã." }),
+  ward: z.string().optional(),
   occasion: z.string().optional(),
+  targetHeight: z.string().optional(),
+  targetWeight: z.string().optional(),
+  bust: z.any().optional(),
+  waist: z.any().optional(),
+  hips: z.any().optional(),
   
   // Tùy chọn cho thuê
   isRental: z.boolean().default(true),

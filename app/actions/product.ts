@@ -132,15 +132,21 @@ export async function createProductAction({
     }
 
     const payloadToValidate = {
-      title: product.name,
-      description: product.description,
-      size: product.size,
-      material: product.material,
-      color: product.color,
-      condition: product.condition,
-      province: product.province,
-      ward: product.ward,
-      occasion: product.occasion,
+      title: product.name || product.title,
+      description: product.description || "",
+      category: product.category || "Áo",
+      size: product.size || "M",
+      material: product.material || "Cao cấp",
+      color: product.color || null,
+      condition: product.condition || "99",
+      province: product.province || "Hà Nội",
+      ward: product.ward || "",
+      occasion: product.occasion || "Đi chơi & Dạo phố",
+      targetHeight: product.targetHeight || "",
+      targetWeight: product.targetWeight || "",
+      bust: product.bust || null,
+      waist: product.waist || null,
+      hips: product.hips || null,
       isRental: listings.isRental,
       isSale: listings.isSale,
       rentalPrice: listings.rentalPrice,
@@ -166,25 +172,37 @@ export async function createProductAction({
       product.ward || validData.ward,
       product.district,
       validData.province
-    ].filter(Boolean).join(", ") || `${validData.ward}, ${validData.province}`;
+    ].filter(Boolean).join(", ") || `${validData.ward || ''}, ${validData.province}`;
+
+    const parsedBust = product.bust ? Number(String(product.bust).replace(/\D/g, "")) : null;
+    const parsedWaist = product.waist ? Number(String(product.waist).replace(/\D/g, "")) : null;
+    const parsedHips = product.hips ? Number(String(product.hips).replace(/\D/g, "")) : null;
+    const styleInfo = [
+      product.targetHeight ? `Cao: ${product.targetHeight}` : '',
+      product.targetWeight ? `Nặng: ${product.targetWeight}` : ''
+    ].filter(Boolean).join(" • ") || null;
 
     const newProductId = await prisma.$transaction(async (tx) => {
       const newProduct = await tx.product.create({
         data: {
           title: validData.title,
-          description: validData.description,
+          description: validData.description || "",
           size: validData.size,
-          material: validData.material,
-          color: validData.color || null,
+          material: validData.material || "Cao cấp",
+          color: validData.color || product.color || null,
           condition: conditionEnum,
           province: validData.province,
           districtId: product.districtId ? Number(product.districtId) : null,
           wardCode: product.wardCode ? String(product.wardCode) : null,
           specificAddress: fullAddress,
-          category: "DRESSES",
+          category: validData.category || product.category || "Áo",
           gender: GenderCategory.UNISEX,
           userId: authUser.id,
-          occasion: validData.occasion || null,
+          occasion: validData.occasion || product.occasion || null,
+          style: styleInfo,
+          bust: parsedBust,
+          waist: parsedWaist,
+          hips: parsedHips,
         }
       });
 
@@ -249,6 +267,7 @@ export async function createProductAction({
     try {
       revalidatePath("/shop");
       revalidatePath("/");
+      revalidatePath("/app");
       revalidatePath("/my-closet/items");
     } catch(e) {
       console.error("Cache purge failed:", e);
@@ -450,12 +469,17 @@ const fetchShopProductsCached = unstable_cache(
         completedOrders: p.user?.completedOrders || 0,
         condition: p.condition === "EXCELLENT" ? "Mới 98%" : (p.condition === "NEW_WITH_TAGS" ? "Mới 100%" : "Mới 95%"),
         occasion: p.occasion || "Dạo phố",
+        category: p.category || "Áo",
         ownerName: p.user?.name || "Thành viên CLOOP",
         ownerAvatar: p.user?.avatar || null,
         userId: p.userId || "anonymous",
         size: p.size || "M",
         material: p.material || "Lụa",
         color: p.color || "",
+        style: p.style || "",
+        bust: p.bust || null,
+        waist: p.waist || null,
+        hips: p.hips || null,
         createdAt: p.createdAt.toISOString(),
         isBoosted: Boolean(p.isHighlighted)
       };

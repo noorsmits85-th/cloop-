@@ -336,7 +336,7 @@ export default function GoogleFlowFashionHero() {
               {column.map((card) => (
                 <div key={card.id} className="relative group">
                   
-                  {/* ✨ PULSING NEON MATCHA GLOW HALO (Clean zero-blur GPU layer) */}
+                  {/* PULSING NEON MATCHA GLOW HALO (Clean zero-blur GPU layer) */}
                   <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-[#A3E39F] via-white to-[#A3E39F] opacity-0 group-hover:opacity-60 transition-opacity duration-300 pointer-events-none z-0" />
 
                   <div
@@ -352,7 +352,7 @@ export default function GoogleFlowFashionHero() {
                       className="object-cover transition-all duration-500 group-hover:scale-108 brightness-105 group-hover:brightness-125 opacity-90 group-hover:opacity-100"
                     />
 
-                    {/* ✨ LUMINOUS GLASS SHIMMER OVERLAY */}
+                    {/* LUMINOUS GLASS SHIMMER OVERLAY */}
                     <div className="absolute inset-0 bg-gradient-to-tr from-[#A3E39F]/30 via-white/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none mix-blend-overlay" />
 
                     {/* Gradient Overlay */}

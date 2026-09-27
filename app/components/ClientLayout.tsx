@@ -422,7 +422,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                         : "text-stone-600 dark:text-stone-400 hover:text-stone-900"
                     }`}
                   >
-                    <span>✨ Đăng Ký Mới</span>
+                    <span>Đăng Ký Mới</span>
                   </button>
                 </div>
               )}
@@ -773,7 +773,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                         onClick={() => switchAuthMode('register')} 
                         className="w-full py-2.5 px-3 bg-white dark:bg-stone-800 hover:bg-stone-50 border border-amber-300 dark:border-amber-700/80 rounded-xl text-xs font-bold text-[#183A2D] dark:text-emerald-300 shadow-2xs transition flex items-center justify-center gap-1.5 cursor-pointer"
                       >
-                        <span>✨ Tạo tài khoản mới ngay (chỉ mất 10s)</span>
+                        <span>Tạo tài khoản mới ngay (chỉ mất 10s)</span>
                       </button>
                     </div>
 

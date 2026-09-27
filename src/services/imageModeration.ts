@@ -156,7 +156,7 @@ Hãy trả về JSON theo schema:
       // Tầng 3: Rác / Spam 100% rõ ràng không còn nghi ngờ -> REJECTED
       decision = "REJECTED";
       isApproved = false;
-      userMessage = "Ảnh tải lên chưa thấy rõ trang phục hoặc phụ kiện thời trang. Bạn vui lòng chụp rõ món đồ hơn giúp CLOOP nhé! ✨";
+      userMessage = "Ảnh tải lên chưa thấy rõ trang phục hoặc phụ kiện thời trang. Bạn vui lòng chụp rõ món đồ hơn giúp CLOOP nhé!";
     } else {
       // Tầng 2: Ảnh biên, góc chụp khó, lấn cấn hoặc confidence thấp -> PENDING_REVIEW (Không chặn user)
       decision = "PENDING_REVIEW";

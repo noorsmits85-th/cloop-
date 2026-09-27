@@ -181,7 +181,7 @@ export default function LoginPage() {
                     : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                <span>✨ Đăng Ký Tài Khoản</span>
+                <span>Đăng Ký Tài Khoản</span>
               </button>
             </div>
           )}
@@ -411,7 +411,7 @@ export default function LoginPage() {
                     onClick={() => { setMode('SIGNUP'); setMessage(null); }} 
                     className="w-full py-2.5 px-3 bg-white hover:bg-slate-50 border border-amber-300 rounded-lg text-xs font-bold text-[#183A2D] shadow-2xs transition flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    <span>✨ Tạo tài khoản mới ngay (chỉ mất 10s)</span>
+                    <span>Tạo tài khoản mới ngay (chỉ mất 10s)</span>
                   </button>
                 </div>
               </>

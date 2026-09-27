@@ -4,7 +4,7 @@ import { PrismaClient } from "@prisma/client";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
-// ✨ ĐỒNG BỘ TUYỆT ĐỐI: Để trống trơn để triệt tiêu toàn bộ gạch đỏ dòng 9!
+// DONG BO TUYET DOI: De trong tron de triet tieu toan bo gach do dong 9!
 const prisma = globalForPrisma.prisma || new PrismaClient();
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 

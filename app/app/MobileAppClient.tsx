@@ -23,23 +23,71 @@ import { getScrubbedReviewsAction } from "@/app/(dashboard)/my-closet/orders/act
 import { createBooking } from "@/app/actions/booking";
 import { maskPublicAddress } from "@/src/utils/shipping";
 
-// 🏷️ DỊP TIỆC THỜI TRANG TUẦN HOÀN
+// 🏷️ BỘ LỌC DANH MỤC & DỊP MẶC TRANG PHỤC TUẦN HOÀN
 const OCCASIONS_TABS = [
   { id: "all", name: "Tất cả" },
-  { id: "wedding", name: "Tiệc cưới" },
-  { id: "gala", name: "Dạ hội" },
-  { id: "birthday", name: "Sinh nhật" },
-  { id: "prom", name: "Prom" },
-  { id: "heritage", name: "Áo dài" },
-  { id: "accessories", name: "Phụ kiện" },
+  { id: "ao", name: "Áo" },
+  { id: "quan", name: "Quần" },
+  { id: "chan_vay", name: "Chân váy" },
+  { id: "dam", name: "Đầm & Váy" },
+  { id: "set_do", name: "Set đồ" },
+  { id: "ao_khoac", name: "Áo khoác & Blazer" },
+  { id: "ao_dai", name: "Áo dài" },
+  { id: "phu_kien", name: "Phụ kiện" },
+  { id: "dao_pho", name: "Dạo phố" },
+  { id: "tiec_cuoi", name: "Tiệc cưới" },
+  { id: "su_kien", name: "Sự kiện" },
+  { id: "concert", name: "Concert" },
+  { id: "chup_anh", name: "Chụp ảnh" },
+  { id: "du_lich", name: "Du lịch" },
+  { id: "the_thao", name: "Thể thao" },
+  { id: "da_ngoai", name: "Dã ngoại" },
+  { id: "sinh_nhat", name: "Sinh nhật" },
+  { id: "tot_nghiep", name: "Tốt nghiệp" },
+  { id: "le_hoi", name: "Lễ hội" },
+  { id: "cong_so", name: "Công sở" },
 ];
 
 const CATEGORIES_LIST = [
-  "Đầm dạ hội & Sự kiện",
-  "Áo dài truyền thống & Cách tân",
-  "Váy tiệc nhẹ & Sinh nhật",
-  "Set vest & Blazer tiệc",
-  "Phụ kiện & Túi xách tiệc"
+  "Áo",
+  "Quần",
+  "Chân váy",
+  "Đầm & Váy liền",
+  "Set đồ & Bộ trang phục",
+  "Áo khoác & Blazer",
+  "Áo dài & Cổ phục",
+  "Phụ kiện & Túi xách"
+];
+
+const OCCASIONS_LIST = [
+  "Dạo phố",
+  "Thể thao",
+  "Dã ngoại",
+  "Du lịch",
+  "Lễ hội",
+  "Tiệc cưới",
+  "Sự kiện",
+  "Sinh nhật",
+  "Tốt nghiệp",
+  "Chụp ảnh",
+  "Concert",
+  "Đi làm & Công sở",
+  "Dạ hội & Gala",
+  "Mọi dịp linh hoạt"
+];
+
+const COLORS_LIST = [
+  "Đen",
+  "Trắng",
+  "Be / Kem",
+  "Nâu / Đất",
+  "Xám / Ghi",
+  "Đỏ / Đỏ rượu",
+  "Hồng",
+  "Xanh dương / Denim",
+  "Xanh lá / Rêu",
+  "Vàng / Cam",
+  "Họa tiết / Phối màu"
 ];
 
 const SIZES_LIST = ["XS", "S", "M", "L", "XL", "Freesize"];
@@ -207,10 +255,16 @@ export default function MobileAppClient({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadData, setUploadData] = useState({
     title: "",
-    category: "Đầm dạ hội & Sự kiện",
-    occasion: "Tiệc cưới",
+    category: "Áo",
+    occasion: "Dạo phố",
+    color: "Trắng",
     size: "M",
     condition: "99",
+    targetHeight: "",
+    targetWeight: "",
+    bust: "",
+    waist: "",
+    hips: "",
     material: "Lụa tơ tằm cao cấp",
     province: "Hà Nội",
     district: "Quận Hoàn Kiếm",
@@ -1269,6 +1323,16 @@ export default function MobileAppClient({
       return;
     }
 
+    if (!uploadData.targetHeight.trim()) {
+      setPostError("Vui lòng nhập chiều cao mặc đẹp (bắt buộc, VD: 1m55 - 1m65)!");
+      return;
+    }
+
+    if (!uploadData.targetWeight.trim()) {
+      setPostError("Vui lòng nhập cân nặng mặc vừa (bắt buộc, VD: 45 - 52 kg)!");
+      return;
+    }
+
     if (uploadedImages.length === 0) {
       setPostError("Vui lòng chọn hoặc chụp ít nhất 1 ảnh trang phục!");
       return;
@@ -1285,7 +1349,7 @@ export default function MobileAppClient({
     }
 
     const parsedRentPrice = parseInt(uploadData.rentalPrice.replace(/\D/g, "")) || 0;
-    if (uploadData.isRent && parsedRentPrice <= 0) {
+    if (uploadData.isRental && parsedRentPrice <= 0) {
       setPostError("Vui lòng nhập giá thuê / ngày hợp lệ!");
       return;
     }
@@ -1349,10 +1413,16 @@ export default function MobileAppClient({
         product: {
           userId: currentUser?.id,
           name: uploadData.title.trim(),
-          description: uploadData.description.trim() || uploadData.story.trim() || `Trang phục đi tiệc ${uploadData.occasion} chọn lọc từ tủ đồ cá nhân. Tình trạng ${uploadData.condition}%, chất liệu ${uploadData.material}.`,
+          description: uploadData.description.trim() || uploadData.story.trim() || `Trang phục ${uploadData.category} - ${uploadData.occasion} chọn lọc từ tủ đồ cá nhân. Chiều cao: ${uploadData.targetHeight}, Cân nặng: ${uploadData.targetWeight}. Tình trạng ${uploadData.condition}%, chất liệu ${uploadData.material}.`,
+          category: uploadData.category,
+          color: uploadData.color,
           size: uploadData.size,
+          targetHeight: uploadData.targetHeight.trim(),
+          targetWeight: uploadData.targetWeight.trim(),
+          bust: uploadData.bust.trim() || undefined,
+          waist: uploadData.waist.trim() || undefined,
+          hips: uploadData.hips.trim() || undefined,
           material: uploadData.material,
-          color: "Tự nhiên",
           condition: uploadData.condition,
           province: uploadData.province.trim(),
           district: uploadData.district.trim(),
@@ -1397,10 +1467,16 @@ export default function MobileAppClient({
           setUploadData(prev => ({
             ...prev,
             title: "",
-            category: "Đầm dạ hội & Sự kiện",
-            occasion: "Tiệc cưới",
+            category: "Áo",
+            occasion: "Dạo phố",
+            color: "Trắng",
             size: "M",
             condition: "99",
+            targetHeight: "",
+            targetWeight: "",
+            bust: "",
+            waist: "",
+            hips: "",
             material: "Lụa tơ tằm cao cấp",
             isRental: true,
             rentalPrice: "280.000",
@@ -2277,7 +2353,7 @@ export default function MobileAppClient({
                     onClick={() => openAuthModal ? openAuthModal('register') : setShowAuthModal(true)}
                     className="py-3 px-2 rounded-xl bg-white text-[#0A2517] font-bold text-xs tracking-wider uppercase shadow-sm hover:bg-stone-100 transition cursor-pointer text-center flex items-center justify-center gap-1"
                   >
-                    <span>✨ Đăng Ký Mới</span>
+                    <span>Đăng Ký Mới</span>
                   </button>
                   <button
                     onClick={() => openAuthModal ? openAuthModal('login') : setShowAuthModal(true)}
@@ -3858,24 +3934,62 @@ export default function MobileAppClient({
                   </h2>
                 </div>
 
-                {/* 3. THÔNG SỐ KỸ THUẬT (4 Ô GỌN GÀNG) */}
-                <div className="grid grid-cols-4 gap-2 text-center">
-                  <div className="bg-stone-100/90 p-2 rounded-xl border border-stone-200/60">
-                    <span className="text-[9.5px] text-stone-400 block font-medium">Size</span>
-                    <span className="text-xs font-bold text-stone-800">{selectedProduct.size || "M"}</span>
+                {/* 3. THÔNG SỐ KỸ THUẬT & PHÂN LOẠI */}
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {selectedProduct.category && (
+                      <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#0A2517] text-white">
+                        {selectedProduct.category}
+                      </span>
+                    )}
+                    {selectedProduct.color && (
+                      <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-stone-200/80 text-stone-800">
+                        Màu: {selectedProduct.color}
+                      </span>
+                    )}
+                    {selectedProduct.occasion && (
+                      <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-900 border border-emerald-200">
+                        {selectedProduct.occasion}
+                      </span>
+                    )}
                   </div>
-                  <div className="bg-stone-100/90 p-2 rounded-xl border border-stone-200/60">
-                    <span className="text-[9.5px] text-stone-400 block font-medium">Chất liệu</span>
-                    <span className="text-xs font-bold text-stone-800 truncate block">{selectedProduct.material || "Lụa"}</span>
+
+                  <div className="grid grid-cols-4 gap-2 text-center">
+                    <div className="bg-stone-100/90 p-2 rounded-xl border border-stone-200/60">
+                      <span className="text-[9.5px] text-stone-400 block font-medium">Size</span>
+                      <span className="text-xs font-bold text-stone-800">{selectedProduct.size || "M"}</span>
+                    </div>
+                    <div className="bg-stone-100/90 p-2 rounded-xl border border-stone-200/60">
+                      <span className="text-[9.5px] text-stone-400 block font-medium">Chất liệu</span>
+                      <span className="text-xs font-bold text-stone-800 truncate block">{selectedProduct.material || "Lụa"}</span>
+                    </div>
+                    <div className="bg-stone-100/90 p-2 rounded-xl border border-stone-200/60">
+                      <span className="text-[9.5px] text-stone-400 block font-medium">Độ mới</span>
+                      <span className="text-xs font-bold text-stone-800">{selectedProduct.condition || "Mới 95%"}</span>
+                    </div>
+                    <div className="bg-stone-100/90 p-2 rounded-xl border border-stone-200/60">
+                      <span className="text-[9.5px] text-stone-400 block font-medium">Dịp mặc</span>
+                      <span className="text-xs font-bold text-stone-800 truncate block">{selectedProduct.occasion || "Dạo phố"}</span>
+                    </div>
                   </div>
-                  <div className="bg-stone-100/90 p-2 rounded-xl border border-stone-200/60">
-                    <span className="text-[9.5px] text-stone-400 block font-medium">Độ mới</span>
-                    <span className="text-xs font-bold text-stone-800">{selectedProduct.condition || "Mới 95%"}</span>
-                  </div>
-                  <div className="bg-stone-100/90 p-2 rounded-xl border border-stone-200/60">
-                    <span className="text-[9.5px] text-stone-400 block font-medium">Dịp mặc</span>
-                    <span className="text-xs font-bold text-stone-800 truncate block">{selectedProduct.occasion || "Dạo phố"}</span>
-                  </div>
+
+                  {/* Chiều cao, cân nặng & số đo nếu có */}
+                  {(selectedProduct.style || selectedProduct.bust || selectedProduct.waist || selectedProduct.hips) && (
+                    <div className="bg-amber-50/70 p-2.5 rounded-xl border border-amber-200/70 text-xs text-amber-950">
+                      <div className="flex items-center justify-between text-[11px] font-bold">
+                        <span>Form dáng người mặc</span>
+                        {selectedProduct.style && <span className="font-semibold text-emerald-900">{selectedProduct.style}</span>}
+                      </div>
+                      {(selectedProduct.bust || selectedProduct.waist || selectedProduct.hips) && (
+                        <div className="flex items-center gap-2 text-[10px] text-stone-600 mt-1">
+                          <span>Số đo 3 vòng:</span>
+                          {selectedProduct.bust && <span className="bg-white px-1.5 py-0.5 rounded border border-stone-200">Ngực: {selectedProduct.bust}cm</span>}
+                          {selectedProduct.waist && <span className="bg-white px-1.5 py-0.5 rounded border border-stone-200">Eo: {selectedProduct.waist}cm</span>}
+                          {selectedProduct.hips && <span className="bg-white px-1.5 py-0.5 rounded border border-stone-200">Mông: {selectedProduct.hips}cm</span>}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* 4. CARD CHỦ TỦ VỚI SAO ĐÁNH GIÁ THỰC TẾ TỪ HỆ THỐNG */}
@@ -4126,7 +4240,7 @@ export default function MobileAppClient({
                     </h3>
                   </div>
                   <p className="text-[11px] text-stone-500 mt-0.5">
-                    Đưa váy tiệc vào vòng tuần hoàn • Nhận thu nhập thụ động
+                    Chia sẻ trang phục vào vòng tuần hoàn • Nhận thu nhập thụ động
                   </p>
                 </div>
 
@@ -4323,43 +4437,64 @@ export default function MobileAppClient({
                     />
                   </div>
 
-                  {/* 4. DỊP MẶC & DANH MỤC */}
+                  {/* 4. DANH MỤC TRANG PHỤC & DỊP MẶC */}
                   <div className="grid grid-cols-2 gap-2.5">
                     <div>
-                      <label className="block text-xs font-bold text-stone-800 mb-1">Dịp tiệc phù hợp</label>
-                      <select
-                        value={uploadData.occasion}
-                        onChange={(e) => setUploadData({ ...uploadData, occasion: e.target.value })}
-                        className="w-full h-10 px-2.5 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none"
-                      >
-                        {["Tiệc cưới", "Dạ hội", "Sinh nhật", "Prom", "Áo dài", "Đi biển", "Dạo phố"].map(o => (
-                          <option key={o} value={o}>{o}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-stone-800 mb-1">Danh mục</label>
+                      <label className="block text-xs font-bold text-stone-800 mb-1">
+                        Danh mục trang phục <span className="text-rose-500">*</span>
+                      </label>
                       <select
                         value={uploadData.category}
                         onChange={(e) => setUploadData({ ...uploadData, category: e.target.value })}
-                        className="w-full h-10 px-2.5 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none"
+                        className="w-full h-10 px-2.5 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#0A2517]"
                       >
                         {CATEGORIES_LIST.map(c => (
                           <option key={c} value={c}>{c}</option>
                         ))}
                       </select>
                     </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-stone-800 mb-1">
+                        Dịp mặc / Sự kiện <span className="text-rose-500">*</span>
+                      </label>
+                      <select
+                        value={uploadData.occasion}
+                        onChange={(e) => setUploadData({ ...uploadData, occasion: e.target.value })}
+                        className="w-full h-10 px-2.5 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#0A2517]"
+                      >
+                        {OCCASIONS_LIST.map(o => (
+                          <option key={o} value={o}>{o}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
 
-                  {/* 5. SIZE & ĐỘ MỚI */}
-                  <div className="grid grid-cols-2 gap-2.5">
+                  {/* 5. MÀU SẮC, SIZE & ĐỘ MỚI */}
+                  <div className="grid grid-cols-3 gap-2">
                     <div>
-                      <label className="block text-xs font-bold text-stone-800 mb-1">Size</label>
+                      <label className="block text-[11px] font-bold text-stone-800 mb-1">
+                        Màu sắc <span className="text-rose-500">*</span>
+                      </label>
+                      <select
+                        value={uploadData.color}
+                        onChange={(e) => setUploadData({ ...uploadData, color: e.target.value })}
+                        className="w-full h-10 px-2 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#0A2517]"
+                      >
+                        {COLORS_LIST.map(col => (
+                          <option key={col} value={col}>{col}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-800 mb-1">
+                        Size <span className="text-rose-500">*</span>
+                      </label>
                       <select
                         value={uploadData.size}
                         onChange={(e) => setUploadData({ ...uploadData, size: e.target.value })}
-                        className="w-full h-10 px-2.5 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none"
+                        className="w-full h-10 px-2 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#0A2517]"
                       >
                         {SIZES_LIST.map(s => (
                           <option key={s} value={s}>{s}</option>
@@ -4368,17 +4503,110 @@ export default function MobileAppClient({
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-stone-800 mb-1">Độ mới</label>
+                      <label className="block text-[11px] font-bold text-stone-800 mb-1">
+                        Độ mới <span className="text-rose-500">*</span>
+                      </label>
                       <select
                         value={uploadData.condition}
                         onChange={(e) => setUploadData({ ...uploadData, condition: e.target.value })}
-                        className="w-full h-10 px-2.5 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none"
+                        className="w-full h-10 px-2 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#0A2517]"
                       >
                         {CONDITIONS_LIST.map(c => (
                           <option key={c.id} value={c.id}>{c.label}</option>
                         ))}
                       </select>
                     </div>
+                  </div>
+
+                  {/* 5B. THÔNG SỐ NGƯỜI MẶC (BẮT BUỘC CHIỀU CAO & CÂN NẶNG, 3 VÒNG LINH HOẠT) */}
+                  <div className="p-3 rounded-2xl bg-amber-50/50 border border-amber-200/80 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-[#0A2517]">
+                        Thông số người mặc chuẩn form
+                      </span>
+                      <span className="text-[10px] text-amber-800 font-semibold bg-amber-100/80 px-2 py-0.5 rounded-full">
+                        Cao &amp; Nặng bắt buộc
+                      </span>
+                    </div>
+
+                    {/* Chiều cao & Cân nặng (Bắt buộc) */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+                          Chiều cao mặc đẹp <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="VD: 1m55 - 1m65"
+                          value={uploadData.targetHeight}
+                          onChange={(e) => setUploadData({ ...uploadData, targetHeight: e.target.value })}
+                          className="w-full h-9 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#0A2517]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+                          Cân nặng mặc vừa <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="VD: 45 - 52 kg"
+                          value={uploadData.targetWeight}
+                          onChange={(e) => setUploadData({ ...uploadData, targetWeight: e.target.value })}
+                          className="w-full h-9 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#0A2517]"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Số đo 3 vòng (Linh hoạt - Không bắt buộc) */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-[11px] font-semibold text-stone-600">
+                          Số đo 3 vòng (cm)
+                        </label>
+                        <span className="text-[9.5px] text-stone-400 italic">
+                          Linh hoạt • Không bắt buộc
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        <input
+                          type="text"
+                          placeholder="V1 Ngực: 84"
+                          value={uploadData.bust}
+                          onChange={(e) => setUploadData({ ...uploadData, bust: e.target.value })}
+                          className="w-full h-8 px-2 rounded-lg border border-stone-200 bg-white text-[11px] text-center font-medium outline-none focus:border-[#0A2517]"
+                        />
+                        <input
+                          type="text"
+                          placeholder="V2 Eo: 64"
+                          value={uploadData.waist}
+                          onChange={(e) => setUploadData({ ...uploadData, waist: e.target.value })}
+                          className="w-full h-8 px-2 rounded-lg border border-stone-200 bg-white text-[11px] text-center font-medium outline-none focus:border-[#0A2517]"
+                        />
+                        <input
+                          type="text"
+                          placeholder="V3 Mông: 90"
+                          value={uploadData.hips}
+                          onChange={(e) => setUploadData({ ...uploadData, hips: e.target.value })}
+                          className="w-full h-8 px-2 rounded-lg border border-stone-200 bg-white text-[11px] text-center font-medium outline-none focus:border-[#0A2517]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 5C. CHẤT LIỆU */}
+                  <div>
+                    <label className="block text-xs font-bold text-stone-800 mb-1">
+                      Chất liệu &amp; Ghi chú bảo quản
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="VD: Lụa tơ tằm, Dạ tweed, Linen, Cotton..."
+                      value={uploadData.material}
+                      onChange={(e) => setUploadData({ ...uploadData, material: e.target.value })}
+                      className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#0A2517]"
+                    />
                   </div>
 
                   {/* 6. GIÁ THUÊ & TIỀN CỌC (NẾU CHỌN CHO THUÊ) */}

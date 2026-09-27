@@ -17,7 +17,7 @@ Hãy viết một đoạn tản văn ngắn (khoảng 3 đoạn, 150-200 từ) k
 - Tên món đồ: ${productName || "Chiếc váy yêu thích"}
 
 Phong cách viết: Thơ mộng, hoài niệm, trân trọng từng đường kim mũi chỉ và tôn vinh triết lý thời trang tuần hoàn (mỗi bộ váy mang trong mình một linh hồn và một câu chuyện đáng được sống tiếp).
-Không dùng emoji lấp lánh ✨.
+Không dùng emoji.
 `;
 
     const text = await executeWithGeminiPool(async (apiKey) => {
