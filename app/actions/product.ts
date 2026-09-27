@@ -426,9 +426,7 @@ const fetchShopProductsCached = unstable_cache(
       const depositAmount = rentListing?.deposit ? Number(rentListing.deposit) : 0;
       const minDays = rentListing?.minDays || 3;
 
-      let primaryImg = p.images[0]?.url || "/1.1.jpg";
-      if (primaryImg.includes("photo-1548624149-19d45e4ab558")) primaryImg = "/vintage_coat.jpg";
-      if (primaryImg.includes("photo-1584916201218-f4242ceb4809")) primaryImg = "/step2_bag.jpg";
+      let primaryImg = p.images[0]?.url || "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530424/cloop_mobile_closet/pt4xccwmvrjsrnhrgnib.png";
 
       let displayPrice = "";
       let listingTypeRaw = "RENT";

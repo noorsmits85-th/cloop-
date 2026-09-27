@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -9,6 +9,7 @@ import {
   ShieldCheck, Leaf
 } from "lucide-react";
 import VisualSearchModal from "@/app/components/VisualSearchModal";
+import { getShopProductsAction } from "@/app/actions/product";
 
 interface FashionItem {
   id: string;
@@ -27,227 +28,333 @@ interface FashionItem {
   occasion: string;
 }
 
-// 24 bức ảnh thời trang tràn ngập 100% diện tích không gian
-const FULL_MOSAIC_COLUMNS: FashionItem[][] = [
-  // Cột 1: Trôi lên
-  [
-    { 
-      id: "m1-1", img: "/evening_dress.jpg", tag: "Dạ Hội", title: "Váy Lụa Sequin Prom", 
-      price: "380k/ngày", originalPrice: "5.200.000đ", aspect: "aspect-[3/4]",
-      eco: "-14.2kg CO₂", passport: "CLP-8821", rentals: "18 lượt", rating: "5.0★",
-      modelFit: "Cao 1m68 • Nặng 48kg • Size S",
-      description: "Được dệt từ sợi tơ sequin bắt sáng cao cấp, đầm ôm dáng thanh lịch tôn trọn đường cong.",
-      occasion: "Gala Night, Dạ Tiệc Cuối Năm, Prom"
-    },
-    { 
-      id: "m1-2", img: "/1.2.jpeg", tag: "Thanh Lịch", title: "Set Dạ Tweed Paris", 
-      price: "180k/ngày", originalPrice: "2.800.000đ", aspect: "aspect-[4/5]",
-      eco: "-8.5kg CO₂", passport: "CLP-4019", rentals: "12 lượt", rating: "4.9★",
-      modelFit: "Cao 1m62 • Nặng 46kg • Size S",
-      description: "Chất dạ tweed Pháp may đo thủ công, giữ ấm hoàn hảo cho những ngày chớm đông.",
-      occasion: "Hẹn Hò, Chụp Ảnh Vintage, Tiệc Trà"
-    },
-    { 
-      id: "m1-3", img: "/step1_phone.jpg", tag: "Trải Nghiệm", title: "App Thuê Tốc Độ 60s", 
-      price: "Tiện Lợi", originalPrice: "Miễn Phí", aspect: "aspect-square",
-      eco: "100% Digital", passport: "CLP-APP", rentals: "500+ lượt/ngày", rating: "5.0★",
-      modelFit: "Giao nhận tận nơi 2H tại HN & HCM",
-      description: "Ứng dụng thông minh hỗ trợ thử đồ bằng AI và nhận đồ giặt sấy chuẩn spa.",
-      occasion: "Mọi Dịp Sự Kiện"
-    },
-    { 
-      id: "m1-4", img: "/vintage_coat.jpg", tag: "Hoài Cổ", title: "Blazer Dạ 1998 Archive", 
-      price: "190k/ngày", originalPrice: "3.500.000đ", aspect: "aspect-[3/4]",
-      eco: "-12.0kg CO₂", passport: "CLP-1998", rentals: "9 lượt", rating: "4.9★",
-      modelFit: "Cao 1m70 • Nặng 52kg • Size M",
-      description: "Form vai quyền lực vintage thập niên 90, chất len cashmere nguyên bản.",
-      occasion: "Fashion Week, Triển Lãm Nghệ Thuật"
-    },
-  ],
-  // Cột 2: Trôi xuống
-  [
-    { 
-      id: "m2-1", img: "/1.1.jpg", tag: "Prom Gala", title: "Đầm Lụa Satin Đỏ Rượu", 
-      price: "350k/ngày", originalPrice: "4.500.000đ", aspect: "aspect-[3/4]",
-      eco: "-11.8kg CO₂", passport: "CLP-7734", rentals: "16 lượt", rating: "5.0★",
-      modelFit: "Cao 1m65 • Nặng 47kg • Size S",
-      description: "Sắc đỏ Bordeaux quý phái, chất lụa satin rủ mềm mại xẻ tà quyến rũ.",
-      occasion: "Khiêu Vũ, Tiệc Rượu, Event Thảm Đỏ"
-    },
-    { 
-      id: "m2-2", img: "/macro_fabric.jpg", tag: "Chất Liệu", title: "Sợi Linen Eco Tự Nhiên", 
-      price: "Chuẩn Xanh", originalPrice: "Hữu Cơ", aspect: "aspect-square",
-      eco: "-6.4kg CO₂", passport: "CLP-ECO", rentals: "Chứng Nhận", rating: "5.0★",
-      modelFit: "Vải dệt từ 100% sợi thực vật",
-      description: "Chất liệu thân thiện với làn da và phân hủy sinh học hoàn toàn.",
-      occasion: "Thời Trang Bền Vững"
-    },
-    { 
-      id: "m2-3", img: "/2.1.jpg", tag: "Tối Giản", title: "Đầm Cúp Ngực Tinh Khôi", 
-      price: "220k/ngày", originalPrice: "2.900.000đ", aspect: "aspect-[4/5]",
-      eco: "-7.9kg CO₂", passport: "CLP-5520", rentals: "14 lượt", rating: "4.8★",
-      modelFit: "Cao 1m64 • Nặng 48kg • Size S",
-      description: "Đường cắt cúp ngực tôn dáng với nơ lưng nhẹ nhàng tinh tế.",
-      occasion: "Sinh Nhật, Tiệc Bãi Biển, Cocktail"
-    },
-    { 
-      id: "m2-4", img: "/hero_warm.jpg", tag: "Ấm Áp", title: "Sắc Nắng Mùa Thu Vintage", 
-      price: "Outfit Thu", originalPrice: "3.200.000đ", aspect: "aspect-[3/4]",
-      eco: "-9.3kg CO₂", passport: "CLP-9912", rentals: "8 lượt", rating: "4.9★",
-      modelFit: "Cao 1m66 • Nặng 50kg • Size M",
-      description: "Tone màu beige ấm áp, hoàn hảo cho những chuyến du lịch Đà Lạt, Sa Pa.",
-      occasion: "Du Lịch, Lookbook Ngoại Cảnh"
-    },
-  ],
-  // Cột 3: Trôi lên (ở giữa)
-  [
-    { 
-      id: "m3-1", img: "/anhbia.png", tag: "Di Sản", title: "Áo Dài Tơ Tằm Thêu Sen", 
-      price: "280k/ngày", originalPrice: "3.800.000đ", aspect: "aspect-[3/4]",
-      eco: "-15.0kg CO₂", passport: "CLP-0015", rentals: "22 lượt", rating: "5.0★",
-      modelFit: "Cao 1m60 - 1m68 • Size S/M",
-      description: "Lụa tơ tằm truyền thống thêu tay hoa sen tinh xảo gìn giữ 15 năm.",
-      occasion: "Lễ Tết, Cưới Hỏi, Du Xuân Hội An"
-    },
-    { 
-      id: "m3-2", img: "/step2_bag.jpg", tag: "Bao Bì", title: "Túi Đóng Gói Tuần Hoàn", 
-      price: "Tái Sử Dụng", originalPrice: "Zero-Waste", aspect: "aspect-[4/5]",
-      eco: "-3.2kg Rác Thải", passport: "CLP-BAG", rentals: "Tái Sinh", rating: "5.0★",
-      modelFit: "Chất liệu chống thấm tái chế",
-      description: "Bao bì thời trang thay thế hoàn toàn túi nilon một lần.",
-      occasion: "Bảo Vệ Sinh Thái"
-    },
-    { 
-      id: "m3-3", img: "/1.2.jpg", tag: "Streetwear", title: "Áo Khoác Da Biker 90s", 
-      price: "250k/ngày", originalPrice: "4.200.000đ", aspect: "aspect-[3/4]",
-      eco: "-18.5kg CO₂", passport: "CLP-6612", rentals: "11 lượt", rating: "4.9★",
-      modelFit: "Cao 1m65 - 1m75 • Size L",
-      description: "Da thật lên màu patina thời gian cực chất, khóa kéo kim loại cổ điển.",
-      occasion: "Dạo Phố, Concert, Night Club"
-    },
-    { 
-      id: "m3-4", img: "/2.2.jpg", tag: "Dạ Tiệc", title: "Đầm Xòe Công Chúa", 
-      price: "320k/ngày", originalPrice: "4.800.000đ", aspect: "aspect-[4/5]",
-      eco: "-10.5kg CO₂", passport: "CLP-3341", rentals: "15 lượt", rating: "5.0★",
-      modelFit: "Cao 1m63 • Nặng 47kg • Size S",
-      description: "Tùng váy phồng nhiều lớp lót voan bồng bềnh như truyện cổ tích.",
-      occasion: "Sinh Nhật, Prom, Kỷ Niệm"
-    },
-  ],
-  // Cột 4: Trôi xuống (ở giữa)
-  [
-    { 
-      id: "m4-1", img: "/hero_group.jpg", tag: "Tái Sinh", title: "Set Đồ Upcycled Denim", 
-      price: "160k/ngày", originalPrice: "2.200.000đ", aspect: "aspect-[16/10]",
-      eco: "-22.1kg CO₂", passport: "CLP-UPCY", rentals: "20 lượt", rating: "5.0★",
-      modelFit: "Free size • Unisex cá tính",
-      description: "Tái chế từ 12 mảnh vải denim quần jean cũ, độc bản duy nhất.",
-      occasion: "Biểu Diễn, Fashion Show, Chụp Ảnh"
-    },
-    { 
-      id: "m4-2", img: "/1.1 (1).jpg", tag: "Gala Night", title: "Đầm Xẻ Tà Hoàng Gia", 
-      price: "350k/ngày", originalPrice: "5.000.000đ", aspect: "aspect-[3/4]",
-      eco: "-13.0kg CO₂", passport: "CLP-8812", rentals: "13 lượt", rating: "5.0★",
-      modelFit: "Cao 1m67 • Nặng 49kg • Size S",
-      description: "Dáng đầm xẻ cao khoe trọn đôi chân thon thả, đính ngọc trai tinh tế.",
-      occasion: "Tiệc Tối Sang Trọng, Gala"
-    },
-    { 
-      id: "m4-3", img: "/step3_party.jpg", tag: "Tỏa Sáng", title: "Khoảnh Khắc Đêm Tiệc", 
-      price: "Kỷ Niệm", originalPrice: "Vô Giá", aspect: "aspect-[4/5]",
-      eco: "100% Cảm Xúc", passport: "CLP-MEM", rentals: "Vòng Đời Mới", rating: "5.0★",
-      modelFit: "Cùng hàng ngàn cô gái tỏa sáng",
-      description: "Những nụ cười và khoảnh khắc đáng nhớ nhất cùng tủ đồ CLOOP.",
-      occasion: "Mọi Khoảnh Khắc Đẹp"
-    },
-    { 
-      id: "m4-4", img: "/kinhgucci.webp", tag: "Phụ Kiện", title: "Kính Mắt Cat-Eye Vintage", 
-      price: "Pass 300k", originalPrice: "1.800.000đ", aspect: "aspect-square",
-      eco: "-2.1kg CO₂", passport: "CLP-ACC1", rentals: "Pass Lại", rating: "4.8★",
-      modelFit: "Gọng đồi mồi chính hãng",
-      description: "Phụ kiện hoàn thiện phong cách cổ điển thanh lịch.",
-      occasion: "Dạo Phố, Cafe Cuối Tuần"
-    },
-  ],
-  // Cột 5: Trôi lên
-  [
-    { 
-      id: "m5-1", img: "/2.1 (1).jpg", tag: "Cocktail", title: "Đầm Tiệc Trắng Lụa Ren", 
-      price: "220k/ngày", originalPrice: "3.100.000đ", aspect: "aspect-[3/4]",
-      eco: "-8.7kg CO₂", passport: "CLP-2114", rentals: "10 lượt", rating: "4.9★",
-      modelFit: "Cao 1m64 • Nặng 47kg • Size S",
-      description: "Chi tiết ren thêu tay thủ công mềm mại, tôn vẻ đẹp thuần khiết.",
-      occasion: "Tiệc Cưới, Hẹn Hò Lãng Mạn"
-    },
-    { 
-      id: "m5-2", img: "/bootvanlentino.webp", tag: "Phụ Kiện", title: "Boots Da Thật Cao Cổ", 
-      price: "Pass 1.2Tr", originalPrice: "6.500.000đ", aspect: "aspect-[4/5]",
-      eco: "-16.4kg CO₂", passport: "CLP-BOT1", rentals: "Pass Mới 98%", rating: "5.0★",
-      modelFit: "Size 37 - 38",
-      description: "Chất da bê cao cấp, gót trụ chắc chắn giúp kéo dài đôi chân.",
-      occasion: "Mùa Đông, Chụp Ảnh Lookbook"
-    },
-    { 
-      id: "m5-3", img: "/vintage_coat.jpg", tag: "Di Sản", title: "Túi Xách Da Archive", 
-      price: "Pass 2.5Tr", originalPrice: "8.000.000đ", aspect: "aspect-[3/4]",
-      eco: "-19.0kg CO₂", passport: "CLP-BAG2", rentals: "Bộ Sưu Tập", rating: "5.0★",
-      modelFit: "Da thật nguyên tấm",
-      description: "Mẫu túi hiếm thập niên 90 được bảo quản hoàn hảo.",
-      occasion: "Sưu Tầm, Đi Tiệc"
-    },
-    { 
-      id: "m5-4", img: "/evening_dress.jpg", tag: "Prom", title: "Váy Sequin Lấp Lánh Emerald", 
-      price: "380k/ngày", originalPrice: "5.500.000đ", aspect: "aspect-square",
-      eco: "-14.5kg CO₂", passport: "CLP-9923", rentals: "17 lượt", rating: "5.0★",
-      modelFit: "Cao 1m65 - 1m70 • Size S",
-      description: "Sắc xanh ngọc lục bảo huyền bí, lấp lánh như viên ngọc trong đêm.",
-      occasion: "Dạ Hội, Thảm Đỏ"
-    },
-  ],
-  // Cột 6: Trôi xuống
-  [
-    { 
-      id: "m6-1", img: "/1.3.jpeg", tag: "Cá Tính", title: "Blazer Oversized Phong Cách Hàn", 
-      price: "210k/ngày", originalPrice: "2.900.000đ", aspect: "aspect-[3/4]",
-      eco: "-9.1kg CO₂", passport: "CLP-1309", rentals: "11 lượt", rating: "4.9★",
-      modelFit: "Free size • Rộng rãi thoải mái",
-      description: "Form suông thời thượng dễ phối cùng váy lụa hoặc quần ống rộng.",
-      occasion: "Đi Làm, Đi Chơi, Sự Kiện"
-    },
-    { 
-      id: "m6-2", img: "/2.2 (1).jpg", tag: "Thanh Lịch", title: "Đầm Dạ Hội Ren Pháp", 
-      price: "340k/ngày", originalPrice: "4.600.000đ", aspect: "aspect-[4/5]",
-      eco: "-11.4kg CO₂", passport: "CLP-2281", rentals: "14 lượt", rating: "5.0★",
-      modelFit: "Cao 1m66 • Nặng 49kg • Size S",
-      description: "Chất ren hoa dập nổi cao cấp, lót lụa satin êm ái.",
-      occasion: "Dạ Tiệc, Lễ Đính Hôn"
-    },
-    { 
-      id: "m6-3", img: "/3.1.jpg", tag: "Tối Giản", title: "Set Váy Satin Minimalist", 
-      price: "260k/ngày", originalPrice: "3.400.000đ", aspect: "aspect-[3/4]",
-      eco: "-8.3kg CO₂", passport: "CLP-3105", rentals: "8 lượt", rating: "4.8★",
-      modelFit: "Cao 1m63 • Nặng 46kg • Size S",
-      description: "Thiết kế tối giản thời thượng với đường nhún eo tinh xảo.",
-      occasion: "Tiệc Trà Chiều, Dạo Phố"
-    },
-    { 
-      id: "m6-4", img: "/hero_warm.jpg", tag: "Mùa Thu", title: "Áo Khoác Trench Coat", 
-      price: "230k/ngày", originalPrice: "3.800.000đ", aspect: "aspect-square",
-      eco: "-10.8kg CO₂", passport: "CLP-4402", rentals: "12 lượt", rating: "4.9★",
-      modelFit: "Cao 1m65 • Nặng 50kg • Size M",
-      description: "Chất kaki chống nước cao cấp, đai thắt eo tôn dáng chuẩn mẫu.",
-      occasion: "Du Lịch Mùa Thu Đông"
-    },
-  ]
+const REAL_DEFAULT_PRODUCTS = [
+  {
+    id: "c3a4cea4-4735-44f7-a53f-5bb3f3323102",
+    title: "Áo sweater dài tay phối cổ sơ mi màu xám",
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530424/cloop_mobile_closet/pt4xccwmvrjsrnhrgnib.png",
+    tag: "Áo",
+    occasion: "Dạo phố",
+    price: "260k/ngày",
+    originalPrice: "850.000đ",
+    ownerName: "huyenlinhtinh555",
+    modelFit: "Size M • Form trẻ trung"
+  },
+  {
+    id: "13bc1fec-26a1-46d5-9b8e-66526af88faf",
+    title: "Set 2 món quần - áo thun trễ vai dạo phố",
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530309/cloop_mobile_closet/zvvo3mp0lrsa4mbvam60.jpg",
+    tag: "Set đồ",
+    occasion: "Dạo phố",
+    price: "120k/ngày",
+    originalPrice: "650.000đ",
+    ownerName: "Quỳnh",
+    modelFit: "Size M • Tôn dáng"
+  },
+  {
+    id: "5ea5802a-6db6-49a8-8e39-756a386bdc60",
+    title: "Áo thun mỏng dài tay trắng",
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530134/cloop_mobile_closet/micrq9ewq00euoaqrmbo.jpg",
+    tag: "Áo",
+    occasion: "Dạo phố",
+    price: "100k/ngày",
+    originalPrice: "450.000đ",
+    ownerName: "Quỳnh",
+    modelFit: "Size M • Mềm mại"
+  },
+  {
+    id: "96fafd3d-60fa-4501-b7c1-4bb26390fb9d",
+    title: "Set 2 món quần jean - áo thun",
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529947/cloop_mobile_closet/a50h6hajzvkxptxaj9go.jpg",
+    tag: "Set đồ",
+    occasion: "Dạo phố",
+    price: "260k/ngày",
+    originalPrice: "1.100.000đ",
+    ownerName: "Quỳnh",
+    modelFit: "Size M • Phong cách"
+  },
+  {
+    id: "c9596782-8dd0-47d8-a339-5ef1a2254d38",
+    title: "Áo yếm trễ hai vai màu trắng",
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529824/cloop_mobile_closet/fm1wjeikdlxlxofjhby8.jpg",
+    tag: "Áo",
+    occasion: "Du lịch",
+    price: "120k/ngày",
+    originalPrice: "520.000đ",
+    ownerName: "huyenlinhtinh555",
+    modelFit: "Size S-M • Quyến rũ"
+  },
+  {
+    id: "70bd8e6e-d3ce-4bf3-8b71-77a4760025d3",
+    title: "Váy trắng dài trễ vai",
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529633/cloop_mobile_closet/ekxdoqiw0ge05f9znmgj.jpg",
+    tag: "Đầm & Váy",
+    occasion: "Tiệc cưới",
+    price: "200k/ngày",
+    originalPrice: "1.200.000đ",
+    ownerName: "Quỳnh",
+    modelFit: "Size M • Sang trọng"
+  },
+  {
+    id: "9c27a170-6daa-4765-b8ae-07e0666fae9e",
+    title: "Áo dạ Tweets siêu xinh",
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529427/cloop_mobile_closet/axmg0f26jcktzy9pq0ak.jpg",
+    tag: "Áo khoác",
+    occasion: "Sự kiện",
+    price: "200k/ngày",
+    originalPrice: "1.350.000đ",
+    ownerName: "Quỳnh",
+    modelFit: "Size M • Chuẩn form"
+  },
+  {
+    id: "b631f003-aac7-474c-9c51-2b016483e980",
+    title: "Set hai món áo thun trễ vai kèm áo dây",
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529215/cloop_mobile_closet/xgets5evjgbimymuwhph.jpg",
+    tag: "Set đồ",
+    occasion: "Dạo phố",
+    price: "280k/ngày",
+    originalPrice: "980.000đ",
+    ownerName: "huyenlinhtinh555",
+    modelFit: "Size M • Nữ tính"
+  },
+  {
+    id: "26a74511-68e7-4e87-9f60-446487711b8e",
+    title: "Quần jean trắng nữ ống rộng",
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529105/cloop_mobile_closet/hjwa8skzpg2hyojtdyw8.jpg",
+    tag: "Quần",
+    occasion: "Dạo phố",
+    price: "150k/ngày",
+    originalPrice: "650.000đ",
+    ownerName: "Quỳnh",
+    modelFit: "Size M • Ống suông"
+  },
+  {
+    id: "73ab9d7c-788a-4500-b6b9-c4739cf17361",
+    title: "Áo cộc tay lệch vai màu xám",
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790528654/cloop_mobile_closet/jtcs4aqozlktffcb8em8.jpg",
+    tag: "Áo",
+    occasion: "Dạo phố",
+    price: "130k/ngày",
+    originalPrice: "480.000đ",
+    ownerName: "huyenlinhtinh555",
+    modelFit: "Size M • Cá tính"
+  },
+  {
+    id: "5b53c97b-abae-41a5-961d-f0e0308e74be",
+    title: "Set Váy Kẻ Caro Kèm Cardigan",
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790528463/cloop_mobile_closet/lod8a8mhqifkmxsghevr.jpg",
+    tag: "Set váy",
+    occasion: "Hẹn hò",
+    price: "200k/ngày",
+    originalPrice: "1.050.000đ",
+    ownerName: "huyenlinhtinh555",
+    modelFit: "Size M • Dễ thương"
+  },
+  {
+    id: "7fe34a92-d544-44d4-99c4-541560b9d55f",
+    title: "Đồ bộ hoa đỏ xanh chụp ảnh",
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790243509/cloop_mobile_closet/frv18nicmfvrr1lwv8qu.jpg",
+    tag: "Set đồ",
+    occasion: "Chụp ảnh",
+    price: "50k/ngày",
+    originalPrice: "350.000đ",
+    ownerName: "Trinh Trần",
+    modelFit: "Size M • Nổi bật"
+  },
+  {
+    id: "e773470f-dada-428e-952f-452a8e925746",
+    title: "Váy ren đen quyến rũ sang trọng",
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790243386/cloop_mobile_closet/xpirvpupmyfoxxneenve.jpg",
+    tag: "Đầm & Váy",
+    occasion: "Dạ hội",
+    price: "200k/ngày",
+    originalPrice: "1.500.000đ",
+    ownerName: "Trinh Trần",
+    modelFit: "Size M • Quyến rũ"
+  },
+  {
+    id: "53256227-1d64-442e-9a30-eccdc7e39b2b",
+    title: "Áo dài sự kiện truyền thống",
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790236961/cloop_mobile_closet/zkfordpozndqzflmfjso.jpg",
+    tag: "Áo dài",
+    occasion: "Sự kiện",
+    price: "100k/ngày",
+    originalPrice: "850.000đ",
+    ownerName: "Trang",
+    modelFit: "Size M • Duyên dáng"
+  },
+  {
+    id: "4c65d5f3-b8f7-49d4-9df9-1534674847d4",
+    title: "Sét đồ sọc nữ đi biển",
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790160514/cloop_mobile_closet/u9te4xi7eh2dgi9u1b5h.jpg",
+    tag: "Set đồ",
+    occasion: "Du lịch",
+    price: "100k/ngày",
+    originalPrice: "500.000đ",
+    ownerName: "Trinh Trần",
+    modelFit: "Size M • Thoáng mát"
+  },
+  {
+    id: "c47cbeee-214c-42d4-ba13-c9401f239f8e",
+    title: "Váy dài đi biển hoa nhí",
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790160203/cloop_mobile_closet/bwaklbajgj4eeyjlbfa9.jpg",
+    tag: "Đầm & Váy",
+    occasion: "Du lịch",
+    price: "70k/ngày",
+    originalPrice: "420.000đ",
+    ownerName: "Trinh Trần",
+    modelFit: "Size M • Nhẹ nhàng"
+  },
+  {
+    id: "45f953eb-2f0f-4485-a499-f1ea46c1ab20",
+    title: "Áo thun sọc nữ đáng yêu",
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790159832/cloop_mobile_closet/tk2qpa5zltgp7aiq1mcm.jpg",
+    tag: "Áo thun",
+    occasion: "Dạo phố",
+    price: "50k/ngày",
+    originalPrice: "300.000đ",
+    ownerName: "Trinh Trần",
+    modelFit: "Size M • Dễ thương"
+  },
+  {
+    id: "018f6cb9-74f1-48fe-bbed-4cc54ea6843f",
+    title: "Áo nữ babydoll dễ thương",
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790159659/cloop_mobile_closet/jiwf2f9me4txmx5zcp96.jpg",
+    tag: "Áo",
+    occasion: "Dạo phố",
+    price: "100k/ngày",
+    originalPrice: "480.000đ",
+    ownerName: "Trinh Trần",
+    modelFit: "Size M • Thoải mái"
+  },
+  {
+    id: "42ff79cd-eeb4-4887-9f55-bc2bd629a615",
+    title: "Váy trắng trễ vai dáng dài sang trọng",
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790159416/cloop_mobile_closet/aefeq2587mrhrxn56udw.jpg",
+    tag: "Đầm & Váy",
+    occasion: "Tiệc cưới",
+    price: "100k/ngày",
+    originalPrice: "890.000đ",
+    ownerName: "Trinh Trần",
+    modelFit: "Size M • Thướt tha"
+  },
+  {
+    id: "cfc8b957-6090-40c6-ac1c-409aaa1bdf91",
+    title: "Áo dài hoa nhí xanh dịu dàng",
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790159335/cloop_mobile_closet/s3lwl54qe2sjov5i4oaw.jpg",
+    tag: "Áo dài",
+    occasion: "Tiệc cưới",
+    price: "70k/ngày",
+    originalPrice: "650.000đ",
+    ownerName: "Trinh Trần",
+    modelFit: "Size M • Nữ tính"
+  },
+  {
+    id: "cc80a8a6-d638-4e72-8f41-8da2275053c6",
+    title: "Váy voan hoa nhí dễ thương",
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790158613/cloop_mobile_closet/zxomorv7ido8dciuftrl.jpg",
+    tag: "Đầm & Váy",
+    occasion: "Dạo phố",
+    price: "100k/ngày",
+    originalPrice: "550.000đ",
+    ownerName: "Trinh Trần",
+    modelFit: "Size M • Xinh xắn"
+  },
+  {
+    id: "173fb95f-4faa-475f-9f6d-bd50290ec5f3",
+    title: "Đồ thể thao đá bóng nữ năng động",
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790158416/cloop_mobile_closet/z8aoxz4mqcyzltogtblw.jpg",
+    tag: "Thể thao",
+    occasion: "Thể thao",
+    price: "100k/ngày",
+    originalPrice: "450.000đ",
+    ownerName: "Trinh Trần",
+    modelFit: "Size M • Năng động"
+  }
 ];
 
-export default function GoogleFlowFashionHero() {
+const aspects = ["aspect-[3/4]", "aspect-[4/5]", "aspect-[3/4]", "aspect-square"];
+
+function buildMosaicColumns(rawItems: any[]): FashionItem[][] {
+  const columns: FashionItem[][] = [[], [], [], [], [], []];
+  
+  const valid = rawItems && rawItems.length > 0 ? rawItems : REAL_DEFAULT_PRODUCTS;
+  
+  const formatted: FashionItem[] = valid
+    .map((p, idx) => {
+      const imgUrl = p.img || p.image || (Array.isArray(p.images) ? (p.images[0]?.url || p.images[0]) : "");
+      if (!imgUrl || typeof imgUrl !== "string" || imgUrl.startsWith("/")) return null;
+
+      const title = p.title || "Trang phục CLOOP";
+      const priceVal = p.price || p.rentalPrice || 100000;
+      const priceDisplay = typeof priceVal === "number" ? `${Math.round(priceVal / 1000)}k/ngày` : `${priceVal}`;
+
+      return {
+        id: p.id || `real-${idx}`,
+        img: imgUrl,
+        tag: p.category && p.category !== "DRESSES" ? p.category : (p.occasion || "Thời trang"),
+        title,
+        price: priceDisplay,
+        originalPrice: p.originalPrice || (p.salePrice ? `${Number(p.salePrice).toLocaleString("vi-VN")}đ` : "Tuyển chọn"),
+        aspect: aspects[idx % aspects.length],
+        eco: "-8.5kg CO₂",
+        passport: `CLP-${(p.id || "REAL").slice(0, 4).toUpperCase()}`,
+        rentals: p.ownerName ? `Chủ tủ ${p.ownerName}` : "CLOOP Verified",
+        rating: `${p.rating || "5.0"}★`,
+        modelFit: p.modelFit || p.style || `Size ${p.size || "M"}`,
+        description: p.description || `Món đồ tuyển chọn thực tế từ tủ đồ của ${p.ownerName || "thành viên CLOOP"}.`,
+        occasion: p.occasion || "Dạo phố"
+      };
+    })
+    .filter(Boolean) as FashionItem[];
+
+  const safeList = formatted.length > 0 ? formatted : (REAL_DEFAULT_PRODUCTS as any);
+
+  const minPerCol = 4;
+  for (let c = 0; c < 6; c++) {
+    for (let i = 0; i < minPerCol; i++) {
+      const itemIdx = (c * minPerCol + i) % safeList.length;
+      const baseItem = safeList[itemIdx];
+      columns[c].push({
+        ...baseItem,
+        id: `${baseItem.id}-c${c}-i${i}`
+      });
+    }
+  }
+
+  return columns;
+}
+
+interface GoogleFlowFashionHeroProps {
+  initialProducts?: any[];
+}
+
+export default function GoogleFlowFashionHero({ initialProducts }: GoogleFlowFashionHeroProps) {
   const [isVisualSearchOpen, setIsVisualSearchOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<FashionItem | null>(null);
+  const [heroProducts, setHeroProducts] = useState<any[]>(initialProducts && initialProducts.length > 0 ? initialProducts : []);
+
+  useEffect(() => {
+    if (initialProducts && initialProducts.length > 0) {
+      setHeroProducts(initialProducts);
+    } else {
+      getShopProductsAction({ type: "all", limit: 32 })
+        .then((res) => {
+          if (res.success && res.products && res.products.length > 0) {
+            setHeroProducts(res.products);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [initialProducts]);
+
+  const mosaicColumns = useMemo(() => {
+    return buildMosaicColumns(heroProducts);
+  }, [heroProducts]);
 
   return (
     <>
-      {/* 📱 1. GIAO DIỆN DI ĐỘNG NHẸ BÃNG (KHÔNG CÒN ẢNH BÌA ĐƠ CỨNG) */}
+      {/* 📱 1. GIAO DIỆN DI ĐỘNG NHẸ BÃNG */}
       <div className="md:hidden w-full bg-[#FAF8F5] px-4 pt-3 pb-3 space-y-3.5 border-b border-[#EBE6D8]">
         {/* Thanh tìm kiếm & Camera AI */}
         <div className="flex items-center gap-2">
@@ -257,7 +364,7 @@ export default function GoogleFlowFashionHero() {
           >
             <Search size={16} className="text-[#183A2D]" />
             <span className="text-xs font-medium text-stone-500 truncate">
-              Tìm váy tiệc, áo dài, túi hiệu...
+              Tìm áo, quần, váy đầm, áo dài...
             </span>
           </Link>
           <button
@@ -270,14 +377,15 @@ export default function GoogleFlowFashionHero() {
           </button>
         </div>
 
-        {/* Vòng tròn danh mục nổi bật (Lướt ngang nhẹ nhàng) */}
+        {/* Vòng tròn danh mục nổi bật */}
         <div className="flex items-center gap-3 overflow-x-auto no-scrollbar py-1 -mx-4 px-4">
           {[
-            { label: "Đầm Dạ Hội", icon: "💃", link: "/shop?occasion=Dạ hội" },
-            { label: "Áo Dài Di Sản", icon: "🪡", link: "/shop?occasion=Áo dài" },
-            { label: "Tiệc Cưới", icon: "👗", link: "/shop?occasion=Tiệc cưới" },
-            { label: "Túi & Phụ Kiện", icon: "👜", link: "/shop?occasion=Phụ kiện" },
-            { label: "Tủ Đồ Xanh", icon: "🌿", link: "/shop?occasion=Vintage" },
+            { label: "Áo", icon: "👚", link: "/shop?category=Áo" },
+            { label: "Quần", icon: "👖", link: "/shop?category=Quần" },
+            { label: "Chân Váy", icon: "👗", link: "/shop?category=Chân váy" },
+            { label: "Đầm Tiệc", icon: "💃", link: "/shop?occasion=Tiệc cưới" },
+            { label: "Áo Dài", icon: "🪡", link: "/shop?category=Áo dài & Cổ phục" },
+            { label: "Dạo Phố", icon: "👟", link: "/shop?occasion=Dạo phố" },
           ].map((cat, idx) => (
             <Link
               key={idx}
@@ -294,14 +402,14 @@ export default function GoogleFlowFashionHero() {
           ))}
         </div>
 
-        {/* Mini-Banner Matcha Lụa (Cao chỉ 110px, nhẹ nhàng, không bị đơ) */}
+        {/* Mini-Banner Matcha Lụa */}
         <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-[#183A2D] via-[#245240] to-[#183A2D] p-3.5 text-white shadow-sm flex items-center justify-between">
           <div className="space-y-1">
             <span className="inline-block text-[8.5px] uppercase tracking-widest font-extrabold text-[#A3E39F] bg-white/10 px-2 py-0.5 rounded-full">
               Tuần Hoàn Tủ Đồ 2026
             </span>
             <h3 className="font-heading text-sm font-extrabold leading-tight text-white">
-              Thuê Đồ Thiết Kế Chỉ Từ 80k/ngày
+              Thuê Đồ Thiết Kế Từ 50k/ngày
             </h3>
             <Link
               href="/shop?type=rent"
@@ -312,7 +420,7 @@ export default function GoogleFlowFashionHero() {
             </Link>
           </div>
           <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center text-3xl shrink-0">
-            👗
+            👚
           </div>
         </div>
       </div>
@@ -321,9 +429,9 @@ export default function GoogleFlowFashionHero() {
       <section 
         className="hidden md:flex relative z-0 isolate w-full min-h-[740px] lg:min-h-[800px] bg-[#071C12] overflow-hidden items-center justify-center select-none border-b border-[#0F3120]"
       >
-      {/* 🖼️ WALL-TO-WALL LIVING PHOTO CANVAS: 6 Cột Ảnh Kín Toàn Bộ Màn Hình (Không Trống Trải) */}
+      {/* 🖼️ WALL-TO-WALL LIVING PHOTO CANVAS: 6 Cột Ảnh Thật 100% Của Người Dùng Thực */}
       <div className="absolute inset-0 w-full h-full overflow-hidden grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2.5 md:gap-3 p-2 sm:p-3 pointer-events-auto transform-gpu opacity-90 hover:opacity-100 transition-opacity duration-500">
-        {FULL_MOSAIC_COLUMNS.map((column, colIdx) => {
+        {mosaicColumns.map((column, colIdx) => {
           const isOdd = colIdx % 2 !== 0;
           return (
             <div
@@ -336,20 +444,21 @@ export default function GoogleFlowFashionHero() {
               {column.map((card) => (
                 <div key={card.id} className="relative group">
                   
-                  {/* PULSING NEON MATCHA GLOW HALO (Clean zero-blur GPU layer) */}
+                  {/* PULSING NEON MATCHA GLOW HALO */}
                   <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-[#A3E39F] via-white to-[#A3E39F] opacity-0 group-hover:opacity-60 transition-opacity duration-300 pointer-events-none z-0" />
 
                   <div
                     onClick={() => setSelectedItem(card)}
                     className={`relative w-full ${card.aspect} rounded-2xl overflow-hidden bg-[#0A2215] border border-white/20 hover:border-[#A3E39F] shadow-lg hover:shadow-[0_0_30px_rgba(163,227,159,0.7)] hover:ring-2 hover:ring-white transition-all duration-300 hover:scale-105 hover:z-50 cursor-pointer block z-10`}
                   >
-                    {/* Glowing & Brightening Image */}
+                    {/* Living Photo từ Cloudinary người dùng thật */}
                     <Image
                       src={card.img}
                       alt={card.title}
                       fill
                       sizes="(max-width: 640px) 33vw, (max-width: 1024px) 25vw, 18vw"
                       className="object-cover transition-all duration-500 group-hover:scale-108 brightness-105 group-hover:brightness-125 opacity-90 group-hover:opacity-100"
+                      unoptimized
                     />
 
                     {/* LUMINOUS GLASS SHIMMER OVERLAY */}
@@ -365,14 +474,14 @@ export default function GoogleFlowFashionHero() {
                       </span>
                     </div>
 
-                    {/* Top Right: Live Eco Impact Chip (Reveals on hover) */}
+                    {/* Top Right: Live Eco Impact Chip */}
                     <div className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                       <span className="text-[7px] uppercase font-bold tracking-wider bg-[#0A2517]/95 text-[#A3E39F] px-2 py-0.5 rounded-full border border-[#A3E39F]/60 font-ui shadow-xs flex items-center gap-1">
                         <Leaf size={7} /> {card.eco}
                       </span>
                     </div>
 
-                    {/* Bottom Info: Title, Price & Live Rentals */}
+                    {/* Bottom Info: Title, Price & Owner */}
                     <div className="absolute bottom-0 left-0 w-full p-2.5 text-white transform translate-y-0.5 group-hover:translate-y-0 transition-transform z-20">
                       <p className="text-[10px] sm:text-[11px] font-heading font-bold leading-tight line-clamp-1 group-hover:text-white group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,1)] transition-all">
                         {card.title}
@@ -381,7 +490,7 @@ export default function GoogleFlowFashionHero() {
                         <p className="text-[9px] sm:text-[9.5px] text-[#A3E39F] group-hover:text-[#D4FFD0] font-mono font-bold group-hover:drop-shadow-[0_0_8px_rgba(163,227,159,1)] transition-all">
                           {card.price}
                         </p>
-                        <span className="text-[8px] text-stone-300 font-ui opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-[8px] text-stone-300 font-ui opacity-0 group-hover:opacity-100 transition-opacity truncate max-w-[90px]">
                           {card.rentals}
                         </span>
                       </div>
@@ -395,13 +504,13 @@ export default function GoogleFlowFashionHero() {
         })}
       </div>
 
-      {/* 🍵 DEEP CENTER SPOTLIGHT MASK: Đè chìm ảnh ở tâm xuống để chữ trắng nổi bần bật, xung quanh vẫn sáng rõ */}
+      {/* 🍵 DEEP CENTER SPOTLIGHT MASK */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(7,24,15,0.92)_0%,_rgba(7,24,15,0.82)_35%,_rgba(7,24,15,0.35)_70%,_rgba(5,18,10,0.85)_100%)] pointer-events-none z-20" />
 
-      {/* 🌟 CENTERPIECE CONTENT: Chữ Trắng Bật Sắc Nét, Không Bị Chìm, Đầy Đủ Tính Năng */}
+      {/* 🌟 CENTERPIECE CONTENT */}
       <div className="relative z-30 max-w-3xl mx-auto px-4 text-center flex flex-col items-center justify-center pointer-events-auto my-auto py-8">
         
-        {/* Top Matcha Badge (Crisp zero-lag GPU pill) */}
+        {/* Top Matcha Badge */}
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#071F13]/85 border border-[#A3E39F]/50 text-[#A3E39F] text-[10.5px] font-bold uppercase tracking-widest mb-4 shadow-lg font-ui">
           <span className="w-2 h-2 rounded-full bg-[#A3E39F] animate-pulse"></span>
           Tủ Đồ Chia Sẻ & Tuần Hoàn 2026
@@ -412,14 +521,13 @@ export default function GoogleFlowFashionHero() {
           CLOOP
         </h1>
 
-        {/* Poetic & High-Fashion Tagline */}
+        {/* Tagline */}
         <p className="font-body text-xs sm:text-sm md:text-[15px] text-stone-100 font-normal leading-relaxed max-w-lg mx-auto mb-6 drop-shadow-[0_2px_14px_rgba(0,0,0,0.9)]">
           Biến tủ đồ của bạn thành nguồn thu nhập. Đăng cho thuê, chuyển nhượng dễ dàng và trải nghiệm hàng nghìn mẫu thiết kế với giá cực hời.
         </p>
 
-        {/* 2 Clear Action Buttons */}
+        {/* 2 Action Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 w-full sm:w-auto">
-          {/* Primary Giant White Pill Button */}
           <Link
             href="/shop?type=rent"
             className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-white text-[#0A2517] hover:bg-[#FAF7F0] font-heading font-extrabold text-xs sm:text-sm tracking-wider uppercase transition-all duration-300 shadow-[0_6px_25px_rgba(255,255,255,0.35)] hover:scale-105 active:scale-95 flex items-center justify-center gap-2 group font-ui"
@@ -428,7 +536,6 @@ export default function GoogleFlowFashionHero() {
             <ArrowRight size={15} className="group-hover:translate-x-1 transition-transform" />
           </Link>
 
-          {/* AI Visual Search Button */}
           <button
             type="button"
             onClick={() => setIsVisualSearchOpen(true)}
@@ -454,7 +561,7 @@ export default function GoogleFlowFashionHero() {
               {/* Close button */}
               <button
                 onClick={() => setSelectedItem(null)}
-                className="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/60 hover:bg-black text-white flex items-center justify-center transition-colors z-30 shadow-md"
+                className="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/60 hover:bg-black text-white flex items-center justify-center transition-colors z-30 shadow-md cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -481,7 +588,7 @@ export default function GoogleFlowFashionHero() {
 
                 <div className="absolute bottom-3 left-4 text-white">
                   <h3 className="font-heading text-lg sm:text-xl font-extrabold">{selectedItem.title}</h3>
-                  <p className="text-xs text-[#A3E39F] font-mono font-bold">{selectedItem.price} • Giá gốc {selectedItem.originalPrice}</p>
+                  <p className="text-xs text-[#A3E39F] font-mono font-bold">{selectedItem.price} • {selectedItem.rentals}</p>
                 </div>
               </div>
 
@@ -511,7 +618,7 @@ export default function GoogleFlowFashionHero() {
                   <div className="p-3 bg-stone-50 rounded-xl border border-stone-200">
                     <p className="text-[9px] uppercase font-bold text-stone-400 font-ui">Vòng Đời Tuần Hoàn</p>
                     <p className="text-xs font-extrabold text-[#183A2D] flex items-center gap-1 mt-0.5">
-                      <ShieldCheck size={12} className="text-emerald-600" /> Đã thuê {selectedItem.rentals}
+                      <ShieldCheck size={12} className="text-emerald-600" /> {selectedItem.rentals}
                     </p>
                   </div>
                 </div>
@@ -524,18 +631,18 @@ export default function GoogleFlowFashionHero() {
                 {/* Action CTA */}
                 <div className="pt-2 flex items-center gap-3">
                   <Link
-                    href={`/shop`}
-                    className="flex-1 py-3.5 rounded-full bg-[#0A2517] hover:bg-[#183A2D] text-white font-heading font-extrabold text-xs uppercase tracking-wider text-center transition-all shadow-md flex items-center justify-center gap-2 font-ui"
+                    href={`/shop?search=${encodeURIComponent(selectedItem.title)}`}
+                    className="flex-1 py-3.5 rounded-full bg-[#0A2517] hover:bg-[#183A2D] text-white font-heading font-extrabold text-xs uppercase tracking-wider text-center transition-all shadow-md flex items-center justify-center gap-2 font-ui cursor-pointer"
                   >
-                    Thuê Trang Phục Này Ngay
+                    Xem Chi Tiết & Thuê Ngay
                     <ArrowRight size={14} />
                   </Link>
 
                   <Link
-                    href="/blog"
-                    className="px-5 py-3.5 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-heading font-bold text-xs uppercase tracking-wider transition-all font-ui text-center"
+                    href="/shop"
+                    className="px-5 py-3.5 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-heading font-bold text-xs uppercase tracking-wider transition-all font-ui text-center cursor-pointer"
                   >
-                    Xem Ký Ức
+                    Xem Thêm
                   </Link>
                 </div>
 

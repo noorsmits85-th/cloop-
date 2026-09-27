@@ -494,7 +494,7 @@ export async function getMyClosetMobileDataAction(clientUserId?: string) {
     const formattedProducts = products.map((p) => {
       const rentListing = p.listings.find(l => l.listingType === "RENT");
       const sellListing = p.listings.find(l => l.listingType === "SELL" || l.listingType === "RECYCLE");
-      const primaryImg = p.images[0]?.url || "/1.1.jpg";
+      const primaryImg = p.images[0]?.url || "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530424/cloop_mobile_closet/pt4xccwmvrjsrnhrgnib.png";
 
       const isShopHidden = p.listings.length > 0 && p.listings.every(l => l.status === "HIDDEN");
       const isRentalActive = p.listings.some(l => l.listingType === "RENT" && l.status === "AVAILABLE");
@@ -559,7 +559,7 @@ export async function getMyClosetMobileDataAction(clientUserId?: string) {
         startDate: r.start_date ? new Date(r.start_date).toLocaleDateString("vi-VN") : "",
         endDate: r.end_date ? new Date(r.end_date).toLocaleDateString("vi-VN") : "",
         productTitle: r.product?.title || "Trang phục tiệc",
-        productImage: r.product?.images?.[0]?.url || "/1.1.jpg",
+        productImage: r.product?.images?.[0]?.url || "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530424/cloop_mobile_closet/pt4xccwmvrjsrnhrgnib.png",
         amount: r.invoice?.amount || r.invoice?.rentalFee || 0,
         depositAmount: r.invoice?.depositAmount || 0,
         createdAt: r.createdAt ? new Date(r.createdAt).toLocaleDateString("vi-VN") : ""
@@ -570,7 +570,7 @@ export async function getMyClosetMobileDataAction(clientUserId?: string) {
         startDate: r.start_date ? new Date(r.start_date).toLocaleDateString("vi-VN") : "",
         endDate: r.end_date ? new Date(r.end_date).toLocaleDateString("vi-VN") : "",
         productTitle: r.product?.title || "Trang phục tiệc",
-        productImage: r.product?.images?.[0]?.url || "/1.1.jpg",
+        productImage: r.product?.images?.[0]?.url || "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530424/cloop_mobile_closet/pt4xccwmvrjsrnhrgnib.png",
         amount: r.invoice?.amount || r.invoice?.rentalFee || 0,
         depositAmount: r.invoice?.depositAmount || 0,
         createdAt: r.createdAt ? new Date(r.createdAt).toLocaleDateString("vi-VN") : ""

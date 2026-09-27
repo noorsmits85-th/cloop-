@@ -158,7 +158,7 @@ export default async function AdminPage() {
       id: rent.id,
       code: `ORD-${rent.id.slice(0, 8).toUpperCase()}`,
       productTitle: rent.product?.title || "Trang phục CLOOP",
-      productImage: (rent.product?.images && rent.product.images.length > 0) ? rent.product.images[0].url : "/1.1.jpg",
+      productImage: (rent.product?.images && rent.product.images.length > 0) ? rent.product.images[0].url : "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530424/cloop_mobile_closet/pt4xccwmvrjsrnhrgnib.png",
       renterName: rent.renter_name || rent.renter?.name || "Khách thuê",
       renterPhone: rent.renter_phone || "0912345678",
       ownerName: rent.owner_name || "Chủ tủ CLOOP",

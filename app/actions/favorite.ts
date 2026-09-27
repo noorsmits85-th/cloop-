@@ -329,8 +329,8 @@ export async function getResaleProductsAction(limit: number = 12) {
         title: p.title,
         price: sellListing?.salePrice || sellListing?.basePrice || 0,
         origPrice: (sellListing?.salePrice || 0) * 2 || 1000000,
-        img: p.images[0]?.url || "/vintage_coat.jpg",
-        hoverImg: p.images[1]?.url || p.images[0]?.url || "/macro_fabric.jpg",
+        img: p.images[0]?.url || "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530424/cloop_mobile_closet/pt4xccwmvrjsrnhrgnib.png",
+        hoverImg: p.images[1]?.url || p.images[0]?.url || "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790243386/cloop_mobile_closet/xpirvpupmyfoxxneenve.jpg",
         owner: p.user?.name ? `@${p.user.name}` : "@cloop.member",
         discount: "-50%"
       };

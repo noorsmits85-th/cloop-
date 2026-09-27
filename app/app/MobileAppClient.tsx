@@ -23,6 +23,8 @@ import { getScrubbedReviewsAction } from "@/app/(dashboard)/my-closet/orders/act
 import { createBooking } from "@/app/actions/booking";
 import { maskPublicAddress } from "@/src/utils/shipping";
 
+const FALLBACK_CLOUDINARY_IMG = "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530424/cloop_mobile_closet/pt4xccwmvrjsrnhrgnib.png";
+
 // 🏷️ BỘ LỌC DANH MỤC & DỊP MẶC TRANG PHỤC TUẦN HOÀN
 const OCCASIONS_TABS = [
   { id: "all", name: "Tất cả" },
@@ -1149,7 +1151,7 @@ export default function MobileAppClient({
           endDate: checkoutEndDate,
           packageDays: checkoutDays,
           productTitle: checkoutProduct.title,
-          productImage: checkoutProduct.image || checkoutProduct.primaryImage || checkoutProduct.images?.[0] || "/1.1.jpg",
+          productImage: checkoutProduct.image || checkoutProduct.primaryImage || checkoutProduct.images?.[0] || FALLBACK_CLOUDINARY_IMG,
           ownerName: checkoutProduct.ownerName || "Chủ tủ CLOOP",
           shippingAddress: fullShippingAddress,
           isRental,
@@ -1747,7 +1749,7 @@ export default function MobileAppClient({
                     const isRent = p.listingTypeRaw !== "SELL";
                     const rentPrice = p.rentalPrice || p.price || 0;
                     const salePrice = p.salePrice || p.price || 0;
-                    const itemImg = p.image || p.primaryImage || p.images?.[0] || "/1.1.jpg";
+                    const itemImg = p.image || p.primaryImage || p.images?.[0] || FALLBACK_CLOUDINARY_IMG;
                     const ownerName = p.ownerName || "Chủ tủ CLOOP";
 
                     return (
@@ -1966,7 +1968,7 @@ export default function MobileAppClient({
                   const isRent = p.listingTypeRaw !== "SELL";
                   const rentPrice = p.rentalPrice || p.price || 0;
                   const salePrice = p.salePrice || p.price || 0;
-                  const itemImg = p.image || p.primaryImage || p.images?.[0] || "/1.1.jpg";
+                  const itemImg = p.image || p.primaryImage || p.images?.[0] || FALLBACK_CLOUDINARY_IMG;
                   const ownerName = p.ownerName || "Chủ tủ CLOOP";
 
                   return (
@@ -2173,7 +2175,7 @@ export default function MobileAppClient({
                         </div>
                         <div className="flex gap-3 items-center">
                           <div className="relative w-14 h-16 rounded-xl overflow-hidden bg-stone-100 shrink-0">
-                            <Image src={order.productImage || "/1.1.jpg"} alt={order.productTitle || "Trang phục"} fill className="object-cover" unoptimized />
+                            <Image src={order.productImage || FALLBACK_CLOUDINARY_IMG} alt={order.productTitle || "Trang phục"} fill className="object-cover" unoptimized />
                           </div>
                           <div className="flex-1 min-w-0 text-xs">
                             <h5 className="font-bold text-stone-900 truncate">{order.productTitle}</h5>
@@ -2218,7 +2220,7 @@ export default function MobileAppClient({
                         </div>
                         <div className="flex gap-3 items-center">
                           <div className="relative w-14 h-16 rounded-xl overflow-hidden bg-stone-100 shrink-0">
-                            <Image src={order.productImage || "/1.1.jpg"} alt={order.productTitle || "Trang phục"} fill className="object-cover" unoptimized />
+                            <Image src={order.productImage || FALLBACK_CLOUDINARY_IMG} alt={order.productTitle || "Trang phục"} fill className="object-cover" unoptimized />
                           </div>
                           <div className="flex-1 min-w-0 text-xs">
                             <h5 className="font-bold text-stone-900 truncate">{order.productTitle}</h5>
@@ -2265,7 +2267,7 @@ export default function MobileAppClient({
                     </div>
 
                     {cartItems.map((item, idx) => {
-                      const itemImg = item.image || item.primaryImage || item.images?.[0] || "/1.1.jpg";
+                      const itemImg = item.image || item.primaryImage || item.images?.[0] || FALLBACK_CLOUDINARY_IMG;
                       const packageFee = calculatePackageRentalFee(item, item.minDays || 3);
                       return (
                         <div key={idx} className="bg-white rounded-2xl p-3 border border-stone-200/80 shadow-2xs flex gap-3 items-center">
@@ -2671,7 +2673,7 @@ export default function MobileAppClient({
                                 >
                                   <div className="flex gap-3 items-center">
                                     <div className="relative w-16 h-20 rounded-xl overflow-hidden bg-stone-100 shrink-0 border border-stone-100">
-                                      <Image src={item.image || "/1.1.jpg"} alt={item.title || "Trang phục"} fill className="object-cover" unoptimized />
+                                      <Image src={item.image || FALLBACK_CLOUDINARY_IMG} alt={item.title || "Trang phục"} fill className="object-cover" unoptimized />
                                       {isHidden && (
                                         <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center">
                                           <span className="text-[8px] font-bold text-white bg-stone-900/80 px-1 py-0.5 rounded">
@@ -2821,7 +2823,7 @@ export default function MobileAppClient({
                                   </div>
                                   <div className="flex gap-3 items-center">
                                     <div className="relative w-14 h-16 rounded-xl overflow-hidden bg-stone-100 shrink-0">
-                                      <Image src={order.productImage || "/1.1.jpg"} alt={order.productTitle || "Trang phục"} fill className="object-cover" unoptimized />
+                                      <Image src={order.productImage || FALLBACK_CLOUDINARY_IMG} alt={order.productTitle || "Trang phục"} fill className="object-cover" unoptimized />
                                     </div>
                                     <div className="flex-1 min-w-0 text-xs">
                                       <h5 className="font-bold text-stone-900 truncate">{order.productTitle}</h5>
@@ -2853,7 +2855,7 @@ export default function MobileAppClient({
                                   </div>
                                   <div className="flex gap-3 items-center">
                                     <div className="relative w-14 h-16 rounded-xl overflow-hidden bg-stone-100 shrink-0">
-                                      <Image src={order.productImage || "/1.1.jpg"} alt={order.productTitle || "Trang phục"} fill className="object-cover" unoptimized />
+                                      <Image src={order.productImage || FALLBACK_CLOUDINARY_IMG} alt={order.productTitle || "Trang phục"} fill className="object-cover" unoptimized />
                                     </div>
                                     <div className="flex-1 min-w-0 text-xs">
                                       <h5 className="font-bold text-stone-900 truncate">{order.productTitle}</h5>
@@ -3679,7 +3681,7 @@ export default function MobileAppClient({
                           }
                         }
 
-                        const img = item.image || item.primaryImage || item.images?.[0] || "/1.1.jpg";
+                        const img = item.image || item.primaryImage || item.images?.[0] || FALLBACK_CLOUDINARY_IMG;
 
                         return (
                           <div
@@ -3769,7 +3771,7 @@ export default function MobileAppClient({
                     (selectedProduct.images && selectedProduct.images[activeDetailImgIndex]) ||
                     selectedProduct.image ||
                     selectedProduct.primaryImage ||
-                    "/1.1.jpg"
+                    FALLBACK_CLOUDINARY_IMG
                   }
                   alt={selectedProduct.title}
                   fill
@@ -5259,7 +5261,7 @@ export default function MobileAppClient({
                     <div className="p-3 rounded-2xl bg-stone-100/80 border border-stone-200/80 flex gap-3 items-center">
                       <div className="relative w-14 h-16 rounded-xl overflow-hidden bg-white shrink-0 shadow-2xs">
                         <Image
-                          src={checkoutProduct.image || checkoutProduct.primaryImage || checkoutProduct.images?.[0] || "/1.1.jpg"}
+                          src={checkoutProduct.image || checkoutProduct.primaryImage || checkoutProduct.images?.[0] || FALLBACK_CLOUDINARY_IMG}
                           alt={checkoutProduct.title}
                           fill
                           className="object-cover"

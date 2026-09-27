@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { 
@@ -18,194 +18,245 @@ import VisualSearchModal from "@/app/components/VisualSearchModal";
 import GoogleFlowFashionHero from "@/app/components/GoogleFlowFashionHero";
 import LivePulseTicker from "@/app/components/LivePulseTicker";
 import HowItWorksTabs from "@/app/components/HowItWorksTabs";
+import { getShopProductsAction } from "@/app/actions/product";
+
+const REAL_DEFAULT_PRODUCTS = [
+  {
+    id: "c3a4cea4-4735-44f7-a53f-5bb3f3323102",
+    title: "Áo sweater dài tay phối cổ sơ mi màu xám",
+    brand: "CLOOP Member",
+    price: 260000,
+    origPrice: 850000,
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530424/cloop_mobile_closet/pt4xccwmvrjsrnhrgnib.png",
+    hoverImg: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530424/cloop_mobile_closet/pt4xccwmvrjsrnhrgnib.png",
+    user: "@huyenlinhtinh555",
+    tag: "Dạo phố"
+  },
+  {
+    id: "13bc1fec-26a1-46d5-9b8e-66526af88faf",
+    title: "Set 2 món quần - áo thun trễ vai dạo phố",
+    brand: "CLOOP Member",
+    price: 120000,
+    origPrice: 650000,
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530309/cloop_mobile_closet/zvvo3mp0lrsa4mbvam60.jpg",
+    hoverImg: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530309/cloop_mobile_closet/zvvo3mp0lrsa4mbvam60.jpg",
+    user: "@quynhnguyentall",
+    tag: "Dạo phố"
+  },
+  {
+    id: "5ea5802a-6db6-49a8-8e39-756a386bdc60",
+    title: "Áo thun mỏng dài tay trắng",
+    brand: "CLOOP Member",
+    price: 100000,
+    origPrice: 450000,
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530134/cloop_mobile_closet/micrq9ewq00euoaqrmbo.jpg",
+    hoverImg: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530134/cloop_mobile_closet/micrq9ewq00euoaqrmbo.jpg",
+    user: "@quynhnguyentall",
+    tag: "Dạo phố"
+  },
+  {
+    id: "96fafd3d-60fa-4501-b7c1-4bb26390fb9d",
+    title: "Set 2 món quần jean - áo thun",
+    brand: "CLOOP Member",
+    price: 260000,
+    origPrice: 1100000,
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529947/cloop_mobile_closet/a50h6hajzvkxptxaj9go.jpg",
+    hoverImg: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529947/cloop_mobile_closet/a50h6hajzvkxptxaj9go.jpg",
+    user: "@quynhnguyentall",
+    tag: "Dạo phố"
+  },
+  {
+    id: "c9596782-8dd0-47d8-a339-5ef1a2254d38",
+    title: "Áo yếm trễ hai vai màu trắng",
+    brand: "CLOOP Member",
+    price: 120000,
+    origPrice: 520000,
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529824/cloop_mobile_closet/fm1wjeikdlxlxofjhby8.jpg",
+    hoverImg: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529824/cloop_mobile_closet/fm1wjeikdlxlxofjhby8.jpg",
+    user: "@huyenlinhtinh555",
+    tag: "Du lịch"
+  },
+  {
+    id: "70bd8e6e-d3ce-4bf3-8b71-77a4760025d3",
+    title: "Váy trắng dài trễ vai",
+    brand: "CLOOP Member",
+    price: 200000,
+    origPrice: 1200000,
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529633/cloop_mobile_closet/ekxdoqiw0ge05f9znmgj.jpg",
+    hoverImg: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529633/cloop_mobile_closet/ekxdoqiw0ge05f9znmgj.jpg",
+    user: "@quynhnguyentall",
+    tag: "Tiệc cưới"
+  },
+  {
+    id: "9c27a170-6daa-4765-b8ae-07e0666fae9e",
+    title: "Áo dạ Tweets siêu xinh",
+    brand: "CLOOP Member",
+    price: 200000,
+    origPrice: 1350000,
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529427/cloop_mobile_closet/axmg0f26jcktzy9pq0ak.jpg",
+    hoverImg: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529427/cloop_mobile_closet/axmg0f26jcktzy9pq0ak.jpg",
+    user: "@quynhnguyentall",
+    tag: "Sự kiện"
+  },
+  {
+    id: "e773470f-dada-428e-952f-452a8e925746",
+    title: "Váy ren đen quyến rũ sang trọng",
+    brand: "CLOOP Member",
+    price: 200000,
+    origPrice: 1500000,
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790243386/cloop_mobile_closet/xpirvpupmyfoxxneenve.jpg",
+    hoverImg: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790243386/cloop_mobile_closet/xpirvpupmyfoxxneenve.jpg",
+    user: "@tranthitrinh0501",
+    tag: "Dạ hội"
+  }
+];
 
 export default function Home() {
   const [activeCategory, setActiveCategory] = useState("Tất cả");
   const [isVisualSearchOpen, setIsVisualSearchOpen] = useState(false);
   const [activeClosetIndex, setActiveClosetIndex] = useState(0);
+  const [products, setProducts] = useState<any[]>(REAL_DEFAULT_PRODUCTS);
 
+  useEffect(() => {
+    let isMounted = true;
+    getShopProductsAction({ type: "all", limit: 32 })
+      .then((res) => {
+        if (isMounted && res.success && Array.isArray(res.products) && res.products.length > 0) {
+          const clean = res.products.filter((p: any) => {
+            const img = p.images?.[0]?.url || p.images?.[0] || p.image || p.img;
+            return img && typeof img === "string" && !img.startsWith("/");
+          });
+          if (clean.length > 0) {
+            setProducts(clean);
+          }
+        }
+      })
+      .catch((err) => console.error("Error loading storefront products:", err));
+    return () => { isMounted = false; };
+  }, []);
 
-  // 03 — OCCASION CURATIONS (5 Bộ Sưu Tập Ảnh Lớn Chuẩn By Rotation)
+  // 03 — OCCASION CURATIONS (5 Bộ Sưu Tập Ảnh Lớn Thật 100% Từ Cloudinary)
   const occasionCollections = [
     { 
       id: "wedding", 
       title: "Dự Tiệc Cưới & Prom", 
-      tag: "180+ Mẫu Thiết Kế",
-      desc: "Đầm lụa thướt tha, set dạ tweed sang trọng & sequin lấp lánh.", 
-      image: "/evening_dress.jpg",
+      tag: "Tuyển Chọn Nổi Bật",
+      desc: "Váy dài trễ vai thướt tha, set dạ thanh lịch cho ngày vui trọn vẹn.", 
+      image: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529633/cloop_mobile_closet/ekxdoqiw0ge05f9znmgj.jpg",
       link: "/shop?occasion=Tiệc cưới"
     },
     { 
       id: "gala", 
-      title: "Dạ Hội & Gala Night", 
+      title: "Dạ Hội & Sự Kiện", 
       tag: "Độc Quyền",
-      desc: "Thiết kế cao cấp, xẻ tà quyến rũ cho những đêm tiệc tỏa sáng.", 
-      image: "/1.1.jpg",
+      desc: "Thiết kế cao cấp, ren đen quyến rũ cho những đêm tiệc tỏa sáng.", 
+      image: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790243386/cloop_mobile_closet/xpirvpupmyfoxxneenve.jpg",
       link: "/shop?occasion=Dạ hội"
     },
     { 
       id: "heritage", 
-      title: "Áo Dài & Di Sản", 
-      tag: "Tơ Tằm Gấm Thêu",
-      desc: "Gấm dệt thủ công, phom dáng thanh tao cho ngày trọng đại.", 
-      image: "/anhbia.png",
+      title: "Áo Dài Truyền Thống", 
+      tag: "Duyên Dáng Việt",
+      desc: "Tà áo dài thướt tha, tôn vinh nét đẹp truyền thống Việt Nam.", 
+      image: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790159335/cloop_mobile_closet/s3lwl54qe2sjov5i4oaw.jpg",
       link: "/shop?occasion=Áo dài"
     },
     { 
       id: "minimal", 
-      title: "Tối Giản Thường Nhật", 
-      tag: "Clean Luxury",
-      desc: "Blazer linen, set đồ dạo phố thanh lịch và phong khoáng.", 
-      image: "/vintage_coat.jpg",
-      link: "/shop?occasion=Vintage"
+      title: "Dạo Phố & Hằng Ngày", 
+      tag: "Phong Cách Trẻ",
+      desc: "Sweater, áo thun & set đồ tôn dáng thoải mái cho ngày mới.", 
+      image: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530309/cloop_mobile_closet/zvvo3mp0lrsa4mbvam60.jpg",
+      link: "/shop?occasion=Dạo phố"
     },
     { 
-      id: "bags", 
-      title: "Túi Xách & Phụ Kiện Hiệu", 
-      tag: "Hàng Hiệu Tuyển Chọn",
-      desc: "Túi da cao cấp, boots và trang sức hoàn thiện outfit hoàn hảo.", 
-      image: "/step2_bag.jpg",
-      link: "/shop?occasion=Phụ kiện"
+      id: "travel", 
+      title: "Du Lịch & Dã Ngoại", 
+      tag: "Xu Hướng Mới",
+      desc: "Set đồ sọc phóng khoáng, váy xòe chụp ảnh du ngoạn cực chất.", 
+      image: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790160514/cloop_mobile_closet/u9te4xi7eh2dgi9u1b5h.jpg",
+      link: "/shop?occasion=Du lịch"
     }
   ];
 
-  // 04 — TRENDING ROTATIONS CATALOG
-  const trendingCatalog = [
-    { 
-      id: 101, 
-      title: "Váy Dạ Hội Xẻ Tà Lụa Satin Đỏ Rượu", 
-      brand: "House of CB",
-      price: 350000, 
-      origPrice: 3500000, 
-      img: "/1.1.jpg", 
-      hoverImg: "/1.1 (1).jpg", 
-      user: "@the.archive", 
-      tag: "Dạ Tiệc" 
-    },
-    { 
-      id: 102, 
-      title: "Set Dạ Tweed Cổ Điển Parisienne", 
-      brand: "Maje Paris",
-      price: 180000, 
-      origPrice: 2200000, 
-      img: "/1.2.jpeg", 
-      hoverImg: "/step2_bag.jpg", 
-      user: "@leena.vintage", 
-      tag: "Thanh Lịch" 
-    },
-    { 
-      id: 103, 
-      title: "Đầm Dạ Tiệc Tối Giản Cúp Ngực", 
-      brand: "Reformation",
-      price: 220000, 
-      origPrice: 2800000, 
-      img: "/2.1.jpg", 
-      hoverImg: "/2.1 (1).jpg", 
-      user: "@minimal.edit", 
-      tag: "Tối Giản" 
-    },
-    { 
-      id: 104, 
-      title: "Áo Dài Tơ Tằm Gấm Thêu Tay Sen Vàng", 
-      brand: "Heritage Silk",
-      price: 280000, 
-      origPrice: 3800000, 
-      img: "/anhbia.png", 
-      hoverImg: "/hero_warm.jpg", 
-      user: "@heritage.silk", 
-      tag: "Di Sản" 
-    },
-    { 
-      id: 105, 
-      title: "Áo Khoác Da Biker Hoài Cổ 90s", 
-      brand: "Vintage Archive",
-      price: 250000, 
-      origPrice: 4200000, 
-      img: "/1.2.jpg", 
-      hoverImg: "/step3_party.jpg", 
-      user: "@dustin.style", 
-      tag: "Hoài Cổ" 
-    },
-    { 
-      id: 106, 
-      title: "Đầm Sequin Kim Tuyến Đêm Dạ Vũ", 
-      brand: "Self-Portrait",
-      price: 320000, 
-      origPrice: 3900000, 
-      img: "/evening_dress.jpg", 
-      hoverImg: "/step1_phone.jpg", 
-      user: "@chloe.party", 
-      tag: "Dạ Hội" 
-    },
-    { 
-      id: 107, 
-      title: "Blazer Dạ Dáng Dài Vintage 1998", 
-      brand: "Yves Saint Laurent Vintage",
-      price: 210000, 
-      origPrice: 3200000, 
-      img: "/vintage_coat.jpg", 
-      hoverImg: "/macro_fabric.jpg", 
-      user: "@olivia.chic", 
-      tag: "Độc Bản" 
-    },
-    { 
-      id: 108, 
-      title: "Set Đồ Tái Sinh Denim Độc Bản Upcycle", 
-      brand: "CLOOP Studio",
-      price: 160000, 
-      origPrice: 2000000, 
-      img: "/hero_group.jpg", 
-      hoverImg: "/hero_warm.jpg", 
-      user: "@chic.street", 
-      tag: "Tái Sinh" 
-    }
-  ];
+  // 04 — TRENDING ROTATIONS CATALOG (Dữ Liệu Thật 100% Cập Nhật Mới Nhất)
+  const trendingCatalog = products.slice(0, 8).map((p: any, idx: number) => {
+    const img = p.images?.[0]?.url || p.images?.[0] || p.img || "";
+    const hoverImg = p.images?.[1]?.url || p.images?.[1] || img;
+    const priceVal = p.rentalPrice ?? p.listings?.[0]?.basePrice ?? (typeof p.price === "number" ? p.price : 100000);
+    const origPriceVal = p.salePrice ?? p.listings?.[0]?.salePrice ?? (typeof p.origPrice === "number" ? p.origPrice : 1000000);
+    const owner = p.user?.name || p.ownerName || "Thành viên CLOOP";
+    const tag = p.occasion || p.category || "Dạo phố";
+    return {
+      id: p.id || idx,
+      title: p.title || "Trang phục CLOOP",
+      brand: p.brand || owner,
+      price: typeof priceVal === "number" ? priceVal : parseInt(String(priceVal).replace(/\D/g, "")) || 100000,
+      origPrice: typeof origPriceVal === "number" ? origPriceVal : parseInt(String(origPriceVal).replace(/\D/g, "")) || 1000000,
+      img,
+      hoverImg,
+      user: `@${p.user?.username || (owner.toLowerCase().replace(/\s+/g, ''))}`,
+      tag
+    };
+  });
 
-  // 06 — MEET THE LENDERS (Top Rotators)
+  // 06 — MEET THE LENDERS (Top Rotators Thật 100% Từ Hệ Thống)
   const topLenders = [
     {
       id: 0,
-      username: 'the.archive',
-      name: 'Elena Vance',
-      tag: 'BỘ SƯU TẬP HIẾM',
+      username: 'tranthitrinh0501',
+      name: 'Trinh Trần',
+      tag: 'CHỦ TỦ TÍCH CỰC',
       trustScore: '99.8/100',
-      rating: '5.0 (48 lượt thuê)',
-      bio: 'Kho báu thời trang thập niên 90s và váy dạ hội thiết kế Pháp với đầy đủ câu chuyện và lịch sử du hành.',
-      itemsCount: '34 món đồ',
-      avatarImg: '/vintage_coat.jpg',
-      featuredImgs: ['/1.1.jpg', '/evening_dress.jpg', '/step2_bag.jpg'],
+      rating: '5.0 (14 món đồ)',
+      bio: 'Tủ đồ đa dạng phong cách từ đầm dạ hội sang trọng, áo dài truyền thống đến các set đồ du lịch biển trẻ trung.',
+      itemsCount: '14 món đồ',
+      avatarImg: 'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790243386/cloop_mobile_closet/xpirvpupmyfoxxneenve.jpg',
+      featuredImgs: [
+        'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790243386/cloop_mobile_closet/xpirvpupmyfoxxneenve.jpg',
+        'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790159416/cloop_mobile_closet/aefeq2587mrhrxn56udw.jpg',
+        'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790160514/cloop_mobile_closet/u9te4xi7eh2dgi9u1b5h.jpg'
+      ],
     },
     {
       id: 1,
-      username: 'leena.vintage',
-      name: 'Chloe Laurent',
-      tag: 'CHỦ TỦ TIÊU BIỂU',
-      trustScore: '99.4/100',
-      rating: '4.9 (62 lượt thuê)',
-      bio: 'Đam mê đồ Tweed & lụa tơ tằm. Tủ đồ phong cách tiểu thư thanh lịch dành cho các buổi tiệc trà và sự kiện.',
-      itemsCount: '28 món đồ',
-      avatarImg: '/1.2.jpeg',
-      featuredImgs: ['/macro_fabric.jpg', '/step2_bag.jpg', '/hero_warm.jpg'],
+      username: 'huyenlinhtinh555',
+      name: 'Huyền Linh',
+      tag: 'XU HƯỚNG MỚI',
+      trustScore: '99.5/100',
+      rating: '5.0 (10 món đồ)',
+      bio: 'Yêu thích phong cách trẻ trung năng động, đồ dạo phố nhẹ nhàng và set đồ cardigan cực xinh cho các bạn nữ.',
+      itemsCount: '10 món đồ',
+      avatarImg: 'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530424/cloop_mobile_closet/pt4xccwmvrjsrnhrgnib.png',
+      featuredImgs: [
+        'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530424/cloop_mobile_closet/pt4xccwmvrjsrnhrgnib.png',
+        'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529824/cloop_mobile_closet/fm1wjeikdlxlxofjhby8.jpg',
+        'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790528463/cloop_mobile_closet/lod8a8mhqifkmxsghevr.jpg'
+      ],
     },
     {
       id: 2,
-      username: 'minimal.edit',
-      name: 'Sophie Moreau',
-      tag: 'LỐI SỐNG BỀN VỮNG',
-      trustScore: '99.1/100',
-      rating: '5.0 (35 lượt thuê)',
-      bio: 'Tối giản, hiện đại và tinh tế. Tủ đồ xoay vòng tinh gọn giúp bạn mặc đẹp mà không cần mua sắm lãng phí.',
-      itemsCount: '22 món đồ',
-      avatarImg: '/2.1.jpg',
-      featuredImgs: ['/2.1 (1).jpg', '/vintage_coat.jpg', '/step1_phone.jpg'],
+      username: 'quynhnguyentall',
+      name: 'Quỳnh',
+      tag: 'THIẾT KẾ NỔI BẬT',
+      trustScore: '99.2/100',
+      rating: '5.0 (6 món đồ)',
+      bio: 'Gu thời trang nữ tính, sang xịn mịn với các mẫu váy đầm dự tiệc và áo dạ tweet phom dáng cực chuẩn.',
+      itemsCount: '6 món đồ',
+      avatarImg: 'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529633/cloop_mobile_closet/ekxdoqiw0ge05f9znmgj.jpg',
+      featuredImgs: [
+        'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529633/cloop_mobile_closet/ekxdoqiw0ge05f9znmgj.jpg',
+        'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530309/cloop_mobile_closet/zvvo3mp0lrsa4mbvam60.jpg',
+        'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529427/cloop_mobile_closet/axmg0f26jcktzy9pq0ak.jpg'
+      ],
     }
   ];
 
   return (
     <main className="min-h-screen overflow-x-hidden antialiased bg-[#FAF9F5] text-[#0A2517] pb-28 md:pb-0 font-body">
 
-      {/* 🌟 01 — HERO EDITORIAL */}
-      <GoogleFlowFashionHero />
+      {/* 01 — HERO EDITORIAL */}
+      <GoogleFlowFashionHero initialProducts={products} />
 
       {/* ⚡ 02 — NHỊP ĐẬP TUẦN HOÀN (CHÂN HERO HEADER) */}
       <LivePulseTicker />
@@ -496,13 +547,19 @@ export default function Home() {
 
                 <div className="flex gap-4 sm:gap-6 items-start">
                   <div className="relative w-24 sm:w-28 aspect-[3/4] rounded-2xl overflow-hidden shrink-0 border border-stone-200 shadow-xs">
-                    <Image src="/1.1.jpg" alt="Váy Dạ Hội" fill className="object-cover" unoptimized />
+                    <Image 
+                      src="https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790243386/cloop_mobile_closet/xpirvpupmyfoxxneenve.jpg" 
+                      alt="Váy Ren Đen Dạ Hội Sang Trọng" 
+                      fill 
+                      className="object-cover" 
+                      unoptimized 
+                    />
                   </div>
                   <div className="space-y-2 flex-1">
                     <h3 className="font-heading text-lg sm:text-xl font-bold text-[#183A2D] leading-tight">
-                      Váy Dạ Hội Xẻ Tà Lụa Satin
+                      Váy Ren Đen Dạ Hội Sang Trọng
                     </h3>
-                    <p className="text-xs text-stone-500">Chủ nhân ban đầu: <strong className="text-stone-800">@the.archive</strong></p>
+                    <p className="text-xs text-stone-500">Chủ nhân ban đầu: <strong className="text-stone-800">@tranthitrinh0501</strong></p>
                     <div className="flex flex-wrap gap-2 pt-1">
                       <span className="text-[11px] bg-emerald-50 text-emerald-900 px-2.5 py-1 rounded-lg font-mono font-bold">
                         🔄 8 Vòng đời

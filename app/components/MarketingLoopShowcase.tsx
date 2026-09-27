@@ -20,28 +20,28 @@ export default function MarketingLoopShowcase() {
       step: "01",
       title: "Lướt & Chọn Đồ",
       meta: "AI Stylist 24/7",
-      img: "/step1_phone.jpg",
+      img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530424/cloop_mobile_closet/pt4xccwmvrjsrnhrgnib.png",
       caption: "Ướm dáng chuẩn xác qua AI"
     },
     {
       step: "02",
       title: "Nhận Đồ Chuẩn Spa",
       meta: "Két Escrow 100%",
-      img: "/step2_bag.jpg",
+      img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530309/cloop_mobile_closet/zvvo3mp0lrsa4mbvam60.jpg",
       caption: "Giao tận tay, cọc an toàn"
     },
     {
       step: "03",
       title: "Tỏa Sáng Sự Kiện",
       meta: "Tiết Kiệm 90%",
-      img: "/evening_dress.jpg",
+      img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790243386/cloop_mobile_closet/xpirvpupmyfoxxneenve.jpg",
       caption: "Diện thiết kế cao cấp"
     },
     {
       step: "04",
       title: "Thu Hồi & Nhả Cọc",
       meta: "+50 Điểm Xanh",
-      img: "/hero_warm.jpg",
+      img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529633/cloop_mobile_closet/ekxdoqiw0ge05f9znmgj.jpg",
       caption: "Shipper nhận lại tận nơi"
     }
   ];
@@ -51,28 +51,28 @@ export default function MarketingLoopShowcase() {
       step: "01",
       title: "Đăng Tủ 30 Giây",
       meta: "AI Tự Động Điền",
-      img: "/vintage_coat.jpg",
+      img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529427/cloop_mobile_closet/axmg0f26jcktzy9pq0ak.jpg",
       caption: "Tự điền thông số & giá thuê"
     },
     {
       step: "02",
       title: "Lấy Hàng Tận Cửa",
       meta: "Shipper Thu Gom",
-      img: "/step2_bag.jpg",
+      img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530309/cloop_mobile_closet/zvvo3mp0lrsa4mbvam60.jpg",
       caption: "Chủ tủ không cần di chuyển"
     },
     {
       step: "03",
       title: "Thu Nhập Thụ Động",
       meta: "Rút Về STK 30s",
-      img: "/1.1.jpg",
+      img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790159416/cloop_mobile_closet/aefeq2587mrhrxn56udw.jpg",
       caption: "Tiền thuê cộng vào ví tức thì"
     },
     {
       step: "04",
       title: "Hạng Xanh ESG",
       meta: "Shop Uy Tín",
-      img: "/hero_group.jpg",
+      img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790160514/cloop_mobile_closet/u9te4xi7eh2dgi9u1b5h.jpg",
       caption: "Đo lường CO₂ giảm phát thải"
     }
   ];
