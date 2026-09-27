@@ -8,9 +8,11 @@ import { CldUploadWidget } from "next-cloudinary";
 import { createProductAction } from "@/app/actions/product";
 import { useRouter } from "next/navigation";
 import { ImagePlus, Loader2, X, Plus, Info } from "lucide-react";
+import { useAuthModal } from "@/app/AuthModalContext";
 
 export default function UploadForm() {
   const router = useRouter();
+  const { currentUser, setShowAuthModal } = useAuthModal();
   const [images, setImages] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -116,6 +118,11 @@ export default function UploadForm() {
   const isSale = watch("isSale");
 
   const onSubmit = async (data: any) => {
+    if (!currentUser) {
+      setShowAuthModal(true);
+      return;
+    }
+
     if (images.length === 0) {
       alert("Bạn ơi, chưa có ảnh nào được tải lên cả!");
       return;
@@ -146,6 +153,7 @@ export default function UploadForm() {
     
     // Convert form data to match the Server Action format
     const productPayload = {
+      userId: currentUser?.id,
       name: data.title,
       description: data.description,
       size: data.size,

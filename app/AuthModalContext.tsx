@@ -25,7 +25,33 @@ const AuthModalContext = createContext<AuthModalContextType | null>(null);
 export const AuthModalProvider = ({ children, initialUser = null }: { children: ReactNode, initialUser?: CurrentUser | null }) => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [activeFeatureName, setActiveFeatureName] = useState("");
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(initialUser);
+  const [currentUser, setCurrentUserState] = useState<CurrentUser | null>(() => {
+    if (initialUser) return initialUser;
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("cloop_auth_user");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && parsed.email) return parsed;
+        }
+      } catch (_) {}
+    }
+    return null;
+  });
+
+  const setCurrentUser = (user: CurrentUser | null) => {
+    setCurrentUserState(user);
+    if (typeof window !== "undefined") {
+      try {
+        if (user) {
+          localStorage.setItem("cloop_auth_user", JSON.stringify(user));
+        } else {
+          localStorage.removeItem("cloop_auth_user");
+        }
+      } catch (_) {}
+    }
+  };
+
   const supabase = createClient();
 
   // Tự động bật Modal nếu URL có ?auth=login hoặc ?auth=signup
@@ -38,32 +64,48 @@ export const AuthModalProvider = ({ children, initialUser = null }: { children: 
     }
   }, []);
 
-  // Lắng nghe và đồng bộ trạng thái đăng nhập từ Supabase Cookies
+  // Lắng nghe và đồng bộ trạng thái đăng nhập từ Supabase Cookies & LocalStorage
   useEffect(() => {
+    // 1. Phục hồi ngay lập tức từ LocalStorage nếu state hiện tại đang trống
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("cloop_auth_user");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && parsed.email) {
+            setCurrentUserState(prev => prev || parsed);
+          }
+        }
+      } catch (_) {}
+    }
+
+    // 2. Xác thực với Supabase Session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         const name = session.user.user_metadata?.name || session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "Thành viên";
-        setCurrentUser({
+        const uObj: CurrentUser = {
           name,
           email: session.user.email || "",
           isLoggedIn: true,
           id: session.user.id
-        });
+        };
+        setCurrentUser(uObj);
       }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (session?.user) {
+        if (event === "SIGNED_OUT") {
+          setCurrentUser(null);
+        } else if (session?.user) {
           let name = session.user.user_metadata?.name || session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "Thành viên";
-          setCurrentUser({
+          const uObj: CurrentUser = {
             name,
             email: session.user.email || "",
             isLoggedIn: true,
             id: session.user.id
-          });
-        } else {
-          setCurrentUser(null);
+          };
+          setCurrentUser(uObj);
         }
       }
     );

@@ -45,11 +45,87 @@ export async function createProductAction({
 }) {
   try {
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    let authUser: any = null;
 
-    if (authError || !user) {
+    // 1. Thử lấy user từ getUser()
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) authUser = user;
+    } catch (_) {}
+
+    // 2. Thử lấy user từ getSession()
+    if (!authUser) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) authUser = session.user;
+      } catch (_) {}
+    }
+
+    // 3. Phân tích token từ Cookies cục bộ
+    if (!authUser) {
+      try {
+        const { cookies } = await import('next/headers');
+        const cookieStore = await cookies();
+        const allCookies = cookieStore.getAll();
+        const authCookies = allCookies
+          .filter(c => c.name.includes('-auth-token'))
+          .sort((a, b) => a.name.localeCompare(b.name));
+        if (authCookies.length > 0) {
+          let rawVal = authCookies.map(c => c.value).join('');
+          if (rawVal.startsWith('base64-')) {
+            rawVal = Buffer.from(rawVal.slice(7), 'base64').toString('utf-8');
+          }
+          const parsed = JSON.parse(rawVal);
+          const token = parsed?.access_token || (Array.isArray(parsed) ? parsed[0] : null);
+          let extractedId = parsed?.user?.id;
+          if (!extractedId && typeof token === 'string' && token.includes('.')) {
+            const parts = token.split('.');
+            if (parts.length >= 2) {
+              const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));
+              extractedId = payload?.sub;
+            }
+          }
+          if (extractedId) {
+            authUser = { id: extractedId, email: parsed?.user?.email };
+          }
+        }
+      } catch (_) {}
+    }
+
+    // 4. Nếu client gửi kèm userId (từ currentUser đã lưu trên điện thoại)
+    if (!authUser && product.userId) {
+      try {
+        const existing = await prisma.user.findUnique({
+          where: { id: product.userId },
+          select: { id: true, email: true, name: true }
+        });
+        if (existing) {
+          authUser = existing;
+        }
+      } catch (_) {}
+    }
+
+    if (!authUser?.id) {
       return { success: false, error: "Cậu nhớ đăng nhập trước khi gửi đồ vào tủ nhé!" };
     }
+
+    // Đảm bảo user tồn tại trong Prisma để không bị lỗi Foreign Key khi tạo Product
+    try {
+      await prisma.user.upsert({
+        where: { id: authUser.id },
+        update: {},
+        create: {
+          id: authUser.id,
+          email: authUser.email || `${authUser.id}@cloop.vn`,
+          password: 'supabase_auth_managed',
+          name: authUser.user_metadata?.name || authUser.user_metadata?.full_name || authUser.name || "Thành viên CLOOP",
+          walletBalance: 0,
+          cloopCoins: 100,
+          role: 'USER',
+          isVerified: true
+        }
+      });
+    } catch (_) {}
 
     if (!uploadedImageUrls || uploadedImageUrls.length === 0) {
       return { success: false, error: "Chưa có ảnh món đồ mất rồi!" };
@@ -107,7 +183,7 @@ export async function createProductAction({
           specificAddress: fullAddress,
           category: "DRESSES",
           gender: GenderCategory.UNISEX,
-          userId: user.id,
+          userId: authUser.id,
           occasion: validData.occasion || null,
         }
       });

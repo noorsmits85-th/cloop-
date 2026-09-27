@@ -158,28 +158,25 @@ export async function middleware(request: NextRequest) {
     (pathname.startsWith('/my-closet') && !pathname.startsWith('/my-closet/create')) ||
     pathname.startsWith('/admin');
 
-  // Route công khai (Homepage, Shop, Product detail, Blog...) -> Cho qua tức thì
-  if (!isProtectedApi && !isProtectedPage) {
-    return NextResponse.next();
-  }
-
-  // 3. FAIL-CLOSED ENFORCEMENT: Xử lý bảo mật cho route được bảo vệ
+  // 3. Đồng bộ & làm mới phiên làm việc Supabase Cookie liên tục cho mọi yêu cầu
   try {
     const { response, user, error } = await updateSession(request);
 
-    // Nếu không có phiên đăng nhập hợp lệ hoặc Supabase gặp sự cố -> Chặn ngay lập tức (Fail-Closed)
-    if (!user || error) {
-      if (isProtectedApi) {
-        return NextResponse.json(
-          { success: false, error: "Unauthorized: Yêu cầu đăng nhập để truy cập tài nguyên này" },
-          { status: 401 }
-        );
-      }
+    // Chặn nghiêm ngặt các route yêu cầu bắt buộc đăng nhập (Fail-Closed)
+    if (isProtectedApi || isProtectedPage) {
+      if (!user || error) {
+        if (isProtectedApi) {
+          return NextResponse.json(
+            { success: false, error: "Unauthorized: Yêu cầu đăng nhập để truy cập tài nguyên này" },
+            { status: 401 }
+          );
+        }
 
-      if (isProtectedPage) {
-        const loginUrl = new URL('/login', request.url);
-        loginUrl.searchParams.set('redirectTo', `${pathname}${search}`);
-        return NextResponse.redirect(loginUrl);
+        if (isProtectedPage) {
+          const loginUrl = new URL('/login', request.url);
+          loginUrl.searchParams.set('redirectTo', `${pathname}${search}`);
+          return NextResponse.redirect(loginUrl);
+        }
       }
     }
 

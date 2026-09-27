@@ -16,6 +16,7 @@ import AiStylistChat from "./AiStylistChat";
 import PwaInstallPrompt from "./PwaInstallPrompt";
 import MobileBottomDock from "./MobileBottomDock";
 import { useAuthModal } from "../AuthModalContext";
+import { loginWithCredentials, registerWithCredentials } from "@/app/(storefront)/login/actions";
 
 const supabase = createClient();
 
@@ -483,8 +484,10 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                     }
 
                     const name = (fData.get("username") as string || "").trim(); 
+                    const cleanEmail = email.trim().toLowerCase();
+                    const cleanPassword = password.trim();
                     
-                    if (!email.trim() || !password.trim() || (authMode === 'register' && !name)) {
+                    if (!cleanEmail || !cleanPassword || (authMode === 'register' && !name)) {
                       setAuthModalError("Vui lòng điền đầy đủ các trường thông tin!");
                       return;
                     }
@@ -492,25 +495,40 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                     const redirectParam = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('redirectTo') || undefined : undefined;
 
                     if (authMode === 'login') {
-                      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-                        email: email.trim(),
-                        password: password.trim(),
+                      // 1. Xác thực qua Server Action (gỡ rào cản unconfirmed email, đồng bộ Prisma và gán Cookie Server 1 năm)
+                      const serverRes = await loginWithCredentials({
+                        email: cleanEmail,
+                        password: cleanPassword,
+                        redirectTo: redirectParam
                       });
 
-                      if (signInError) {
-                        setAuthModalError(translateAuthError(signInError.message));
+                      if (serverRes?.error) {
+                        setAuthModalError(translateAuthError(serverRes.error));
                         return;
                       }
 
-                      if (signInData?.user) {
-                        const userName = signInData.user.user_metadata?.name || signInData.user.user_metadata?.full_name || email.trim().split('@')[0];
-                        setCurrentUser({
-                          name: userName,
-                          email: signInData.user.email || email.trim(),
-                          isLoggedIn: true,
-                          id: signInData.user.id
+                      // 2. Đồng bộ luôn với Supabase Browser Client
+                      let finalUserId = serverRes?.user?.id;
+                      let finalUserName = serverRes?.user?.name;
+                      try {
+                        const { data: signInData } = await supabase.auth.signInWithPassword({
+                          email: cleanEmail,
+                          password: cleanPassword,
                         });
-                      }
+                        if (signInData?.user) {
+                          finalUserId = signInData.user.id;
+                          finalUserName = signInData.user.user_metadata?.name || signInData.user.user_metadata?.full_name || finalUserName;
+                        }
+                      } catch (_) {}
+
+                      const userName = finalUserName || cleanEmail.split('@')[0];
+                      const userObj = {
+                        name: userName,
+                        email: cleanEmail,
+                        isLoggedIn: true,
+                        id: finalUserId
+                      };
+                      setCurrentUser(userObj);
 
                       setShowAuthModal(false);
                       if (redirectParam && redirectParam !== '/') {
@@ -520,66 +538,41 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                       }
                       
                     } else if (authMode === 'register') {
-                      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-                        email: email.trim(),
-                        password: password.trim(),
-                        options: {
-                          data: {
-                            name: name,
-                            full_name: name,
-                          }
-                        }
+                      // 1. Đăng ký qua Server Action (tạo Supabase auth, tự động kích hoạt email_confirmed_at và ghi nhận Prisma User)
+                      const regRes = await registerWithCredentials({
+                        email: cleanEmail,
+                        password: cleanPassword,
+                        name,
+                        redirectTo: redirectParam
                       });
 
-                      if (signUpError) {
-                        if (signUpError.message?.includes("already registered") || signUpError.message?.includes("User already exists")) {
-                          // Nếu tài khoản đã tồn tại, tự động chuyển sang đăng nhập
-                          const { data: logData, error: logErr } = await supabase.auth.signInWithPassword({
-                            email: email.trim(),
-                            password: password.trim(),
-                          });
-                          if (logErr) {
-                            setAuthModalError("Tài khoản đã tồn tại trên hệ thống. Vui lòng kiểm tra mật khẩu hoặc đăng nhập.");
-                            switchAuthMode('login');
-                            return;
-                          }
-                          if (logData?.user) {
-                            const uName = logData.user.user_metadata?.name || logData.user.user_metadata?.full_name || name || email.trim().split('@')[0];
-                            setCurrentUser({
-                              name: uName,
-                              email: logData.user.email || email.trim(),
-                              isLoggedIn: true,
-                              id: logData.user.id
-                            });
-                          }
-                          setShowAuthModal(false);
-                          if (redirectParam && redirectParam !== '/') {
-                            router.push(redirectParam);
-                          } else {
-                            router.refresh();
-                          }
-                          return;
-                        }
-                        setAuthModalError(translateAuthError(signUpError.message));
+                      if (regRes?.error) {
+                        setAuthModalError(translateAuthError(regRes.error));
                         return;
                       }
 
-                      // Đăng nhập ngay sau khi đăng ký thành công
-                      const { data: signInData } = await supabase.auth.signInWithPassword({
-                        email: email.trim(),
-                        password: password.trim(),
-                      });
-
-                      const finalUser = signInData?.user || signUpData?.user;
-                      if (finalUser) {
-                        const uName = finalUser.user_metadata?.name || finalUser.user_metadata?.full_name || name || email.trim().split('@')[0];
-                        setCurrentUser({
-                          name: uName,
-                          email: finalUser.email || email.trim(),
-                          isLoggedIn: true,
-                          id: finalUser.id
+                      // 2. Đăng nhập trực tiếp trên browser client
+                      let finalUserId = regRes?.user?.id;
+                      let finalUserName = regRes?.user?.name;
+                      try {
+                        const { data: signInData } = await supabase.auth.signInWithPassword({
+                          email: cleanEmail,
+                          password: cleanPassword,
                         });
-                      }
+                        if (signInData?.user) {
+                          finalUserId = signInData.user.id;
+                          finalUserName = signInData.user.user_metadata?.name || signInData.user.user_metadata?.full_name || finalUserName;
+                        }
+                      } catch (_) {}
+
+                      const userName = finalUserName || name || cleanEmail.split('@')[0];
+                      const userObj = {
+                        name: userName,
+                        email: cleanEmail,
+                        isLoggedIn: true,
+                        id: finalUserId
+                      };
+                      setCurrentUser(userObj);
 
                       setShowAuthModal(false);
                       if (redirectParam && redirectParam !== '/') {

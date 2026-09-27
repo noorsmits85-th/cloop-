@@ -202,7 +202,7 @@ export default function MobileAppClient({
     setTimeout(() => setClosetToastMessage(null), 2500);
   };
 
-  // 📝 MODAL "UP BÀI CHIA SẺ TỦ ĐỒ" ĐỒNG BỘ ĐẦY ĐỦ VỚI BẢN WEB
+  // 📝 MODAL "ĐĂNG BÀI CHIA SẺ TỦ ĐỒ" ĐỒNG BỘ ĐẦY ĐỦ VỚI BẢN WEB
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadData, setUploadData] = useState({
@@ -541,7 +541,7 @@ export default function MobileAppClient({
   const refreshPersonalData = async () => {
     setIsRefreshingCloset(true);
     try {
-      const res = await getMyClosetMobileDataAction();
+      const res = await getMyClosetMobileDataAction(currentUser?.id);
       if (res.success) {
         setClosetData(res);
       }
@@ -1250,7 +1250,7 @@ export default function MobileAppClient({
     if (e.target) e.target.value = "";
   };
 
-  // 🚀 UP BÀI GHI THẲNG VÀO DATABASE THỰC TẾ
+  // 🚀 ĐĂNG BÀI GHI THẲNG VÀO DATABASE THỰC TẾ
   const handlePostSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPostError("");
@@ -1343,6 +1343,7 @@ export default function MobileAppClient({
 
       const res = await createProductAction({
         product: {
+          userId: currentUser?.id,
           name: uploadData.title.trim(),
           description: uploadData.description.trim() || uploadData.story.trim() || `Trang phục đi tiệc ${uploadData.occasion} chọn lọc từ tủ đồ cá nhân. Tình trạng ${uploadData.condition}%, chất liệu ${uploadData.material}.`,
           size: uploadData.size,
@@ -1595,10 +1596,16 @@ export default function MobileAppClient({
               </div>
 
               <button
-                onClick={() => setIsUploadModalOpen(true)}
+                onClick={() => {
+                  if (!currentUser) {
+                    setShowAuthModal(true);
+                  } else {
+                    setIsUploadModalOpen(true);
+                  }
+                }}
                 className="px-2.5 py-1.5 rounded-lg bg-[#0A2517] text-white text-[10px] font-bold shadow-2xs hover:bg-[#143E29] transition active:scale-95 shrink-0 cursor-pointer"
               >
-                {lang === "vi" ? "+ Up đồ" : "+ List"}
+                {lang === "vi" ? "+ Đăng đồ" : "+ List"}
               </button>
             </div>
 
@@ -2447,7 +2454,13 @@ export default function MobileAppClient({
 
                     {/* THANH 6: BANNER ĐĂNG MÓN ĐỒ MỚI (NỔI BẬT) */}
                     <button
-                      onClick={() => setIsUploadModalOpen(true)}
+                      onClick={() => {
+                        if (!currentUser) {
+                          setShowAuthModal(true);
+                        } else {
+                          setIsUploadModalOpen(true);
+                        }
+                      }}
                       className="w-full bg-[#0A2517] text-white rounded-2xl p-3.5 shadow-sm flex items-center justify-between hover:bg-[#143E29] transition active:scale-[0.99] cursor-pointer text-left mt-3"
                     >
                       <div>
@@ -2459,7 +2472,7 @@ export default function MobileAppClient({
                         </p>
                       </div>
                       <span className="text-[11px] font-bold bg-white text-[#0A2517] px-3 py-1.5 rounded-xl shrink-0 shadow-2xs">
-                        + Up ngay
+                        + Đăng ngay
                       </span>
                     </button>
                   </div>
@@ -2491,11 +2504,17 @@ export default function MobileAppClient({
                             </p>
                           </div>
                           <button
-                            onClick={() => setIsUploadModalOpen(true)}
+                            onClick={() => {
+                              if (!currentUser) {
+                                setShowAuthModal(true);
+                              } else {
+                                setIsUploadModalOpen(true);
+                              }
+                            }}
                             className="px-2.5 py-1.5 rounded-xl bg-[#0A2517] text-white text-xs font-bold shadow-xs hover:bg-[#143E29] transition flex items-center gap-1 cursor-pointer active:scale-95"
                           >
                             <Plus size={13} strokeWidth={3} />
-                            <span>Up đồ mới</span>
+                            <span>Đăng đồ mới</span>
                           </button>
                         </div>
 
@@ -2532,11 +2551,17 @@ export default function MobileAppClient({
                               {lang === "vi" ? "Đầm tiệc cưới, áo dài, đầm dạ hội của bạn chỉ mặc 1 lần? Hãy chia sẻ vào vòng tuần hoàn để nhận thu nhập thụ động!" : "Share your dresses and outfits into the circular loop to earn passive income!"}
                             </p>
                             <button
-                              onClick={() => setIsUploadModalOpen(true)}
+                              onClick={() => {
+                                if (!currentUser) {
+                                  setShowAuthModal(true);
+                                } else {
+                                  setIsUploadModalOpen(true);
+                                }
+                              }}
                               className="mt-2 px-4 py-2 bg-[#0A2517] text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer inline-flex items-center gap-1.5"
                             >
                               <Plus size={14} />
-                              <span>{lang === "vi" ? "Up bài chia sẻ trang phục đầu tiên" : "+ List First Outfit"}</span>
+                              <span>{lang === "vi" ? "Đăng món đồ đầu tiên vào tủ" : "+ List First Outfit"}</span>
                             </button>
                           </div>
                         ) : filteredMyProducts.length === 0 ? (
@@ -3032,7 +3057,13 @@ export default function MobileAppClient({
 
           {/* TAB 3: 🌟 NÚT "+ ĐĂNG ĐỒ" NỔI BẬT Ở GIỮA */}
           <button
-            onClick={() => setIsUploadModalOpen(true)}
+            onClick={() => {
+              if (!currentUser) {
+                setShowAuthModal(true);
+              } else {
+                setIsUploadModalOpen(true);
+              }
+            }}
             className="flex flex-col items-center justify-center flex-1 py-0.5 select-none cursor-pointer group"
           >
             <div className="w-8 h-8 rounded-full bg-[#0A2517] text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-all -mt-1.5 mb-0.5">
@@ -3170,11 +3201,18 @@ export default function MobileAppClient({
                     <span className="text-stone-400 font-normal">{(closetData?.ordersAsLender?.length || 0) + (closetData?.ordersAsRenter?.length || 0)} đơn</span>
                   </button>
                   <button
-                    onClick={() => { setIsUploadModalOpen(true); setIsDrawerMenuOpen(false); }}
+                    onClick={() => {
+                      setIsDrawerMenuOpen(false);
+                      if (!currentUser) {
+                        setShowAuthModal(true);
+                      } else {
+                        setIsUploadModalOpen(true);
+                      }
+                    }}
                     className="w-full p-2.5 flex items-center justify-between hover:text-emerald-800 transition cursor-pointer text-emerald-800"
                   >
                     <span>+ Đăng trang phục mới</span>
-                    <span className="text-[10px] bg-emerald-50 px-2 py-0.5 rounded-full font-bold">Up đồ</span>
+                    <span className="text-[10px] bg-emerald-50 px-2 py-0.5 rounded-full font-bold">Đăng đồ</span>
                   </button>
                 </div>
               </div>
@@ -4060,7 +4098,7 @@ export default function MobileAppClient({
         )}
 
         {/* ========================================================
-            👗 10. MODAL "UP BÀI CHIA SẺ TỦ ĐỒ" ĐỒNG BỘ 100% CẤU TRÚC VỚI BẢN WEB
+            👗 10. MODAL "ĐĂNG TRANG PHỤC VÀO TỦ ĐỒ" ĐỒNG BỘ 100% CẤU TRÚC VỚI BẢN WEB
             ======================================================== */}
         {isUploadModalOpen && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end justify-center p-0 sm:p-4 animate-in fade-in duration-200">
@@ -4072,7 +4110,7 @@ export default function MobileAppClient({
                   <div className="flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-emerald-600" />
                     <h3 className="font-heading font-black text-base text-[#0A2517]">
-                      Up Trang Phục Vào Tủ Đồ
+                      Đăng Trang Phục Vào Tủ Đồ
                     </h3>
                   </div>
                   <p className="text-[11px] text-stone-500 mt-0.5">

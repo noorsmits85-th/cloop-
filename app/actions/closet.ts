@@ -351,17 +351,75 @@ export async function getClosetProducts(userId: string, page: number = 1, take: 
   };
 }
 
-export async function getMyClosetMobileDataAction() {
+export async function getMyClosetMobileDataAction(clientUserId?: string) {
   try {
     const { createClient } = await import("@/src/utils/supabase/server");
     const supabase = await createClient();
-    const { data: { user }, error } = await supabase.auth.getUser();
+    let authUser: any = null;
 
-    if (error || !user) {
+    // 1. Thử getUser()
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) authUser = user;
+    } catch (_) {}
+
+    // 2. Thử getSession()
+    if (!authUser) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) authUser = session.user;
+      } catch (_) {}
+    }
+
+    // 3. Phân tích token từ Cookies cục bộ
+    if (!authUser) {
+      try {
+        const { cookies } = await import('next/headers');
+        const cookieStore = await cookies();
+        const allCookies = cookieStore.getAll();
+        const authCookies = allCookies
+          .filter(c => c.name.includes('-auth-token'))
+          .sort((a, b) => a.name.localeCompare(b.name));
+        if (authCookies.length > 0) {
+          let rawVal = authCookies.map(c => c.value).join('');
+          if (rawVal.startsWith('base64-')) {
+            rawVal = Buffer.from(rawVal.slice(7), 'base64').toString('utf-8');
+          }
+          const parsed = JSON.parse(rawVal);
+          const token = parsed?.access_token || (Array.isArray(parsed) ? parsed[0] : null);
+          let extractedId = parsed?.user?.id;
+          if (!extractedId && typeof token === 'string' && token.includes('.')) {
+            const parts = token.split('.');
+            if (parts.length >= 2) {
+              const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));
+              extractedId = payload?.sub;
+            }
+          }
+          if (extractedId) {
+            authUser = { id: extractedId };
+          }
+        }
+      } catch (_) {}
+    }
+
+    // 4. Nếu client gửi kèm clientUserId đã lưu trên điện thoại
+    if (!authUser && clientUserId) {
+      try {
+        const existing = await prisma.user.findUnique({
+          where: { id: clientUserId },
+          select: { id: true }
+        });
+        if (existing) {
+          authUser = { id: existing.id };
+        }
+      } catch (_) {}
+    }
+
+    if (!authUser?.id) {
       return { success: true, isLoggedIn: false };
     }
 
-    const userId = user.id;
+    const userId = authUser.id;
 
     const [dbUser, products, rentalsAsOwner, rentalsAsRenter, authMetaRows] = await Promise.all([
       prisma.user.findUnique({

@@ -32,7 +32,8 @@ export async function login(formData: FormData): Promise<AuthActionResult> {
   const supabase = await createClient();
 
   const email = getEmail(formData);
-  const password = getPassword(formData);
+  const rawPassword = getPassword(formData);
+  const password = rawPassword.trim();
 
   if (!email || !password) {
     return { error: 'Email và mật khẩu là bắt buộc.' };
@@ -44,26 +45,62 @@ export async function login(formData: FormData): Promise<AuthActionResult> {
     return { error: `Phát hiện quá nhiều lần thử đăng nhập không hợp lệ. Vui lòng thử lại sau ${rl.resetInSec} giây.` };
   }
 
-  // Đăng nhập trực tiếp qua Supabase Auth
+  // 1. Thử đăng nhập lần 1 với mật khẩu đã trim (loại bỏ khoảng trắng thừa do bàn phím di động)
   let { data: signInData, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
 
-  // Tự động gỡ rào cản email_confirmed_at CHỈ KHI tài khoản gặp lỗi chưa confirm
-  if (error && error.message?.toLowerCase().includes("email not confirmed")) {
+  // 2. Nếu thất bại và mật khẩu gốc khác mật khẩu trim (người dùng cố ý đặt space), thử mật khẩu gốc
+  if (error && rawPassword !== password) {
+    const rawAttempt = await supabase.auth.signInWithPassword({
+      email,
+      password: rawPassword,
+    });
+    if (!rawAttempt.error && rawAttempt.data?.user) {
+      signInData = rawAttempt.data;
+      error = null;
+    }
+  }
+
+  // 3. TỰ ĐỘNG GỠ KẸT "SAI MẬT KHẨU" DO EMAIL CHƯA CONFIRM HOẶC LỆCH HOA/THƯỜNG TRONG AUTH.USERS
+  // Supabase mặc định trả về "Invalid login credentials" khi tài khoản unconfirmed để tránh lộ email
+  if (error) {
     try {
       const { prisma } = await import('@/src/lib/prisma');
-      await prisma.$executeRawUnsafe(
-        `UPDATE auth.users SET email_confirmed_at = NOW() WHERE email = $1 AND email_confirmed_at IS NULL;`,
+      const matchingUsers: any = await prisma.$queryRawUnsafe(
+        `SELECT id, email, email_confirmed_at FROM auth.users WHERE LOWER(email) = LOWER($1) LIMIT 1;`,
         email
       );
-      const retry = await supabase.auth.signInWithPassword({ email, password });
-      if (!retry.error && retry.data?.user) {
-        signInData = retry.data;
-        error = null;
+
+      if (matchingUsers && matchingUsers.length > 0) {
+        const dbUser = matchingUsers[0];
+        const actualEmail = dbUser.email;
+
+        // Tự động kích hoạt email_confirmed_at nếu chưa confirm
+        if (!dbUser.email_confirmed_at) {
+          await prisma.$executeRawUnsafe(
+            `UPDATE auth.users SET email_confirmed_at = NOW() WHERE id = $1;`,
+            dbUser.id
+          );
+        }
+
+        // Thử lại với email chính xác lưu trong database
+        let retry = await supabase.auth.signInWithPassword({ email: actualEmail, password });
+        if (!retry.error && retry.data?.user) {
+          signInData = retry.data;
+          error = null;
+        } else if (rawPassword !== password) {
+          retry = await supabase.auth.signInWithPassword({ email: actualEmail, password: rawPassword });
+          if (!retry.error && retry.data?.user) {
+            signInData = retry.data;
+            error = null;
+          }
+        }
       }
-    } catch (_) {}
+    } catch (dbErr) {
+      console.error("Lỗi tự động gỡ khóa unconfirmed auth user:", dbErr);
+    }
   }
 
   if (error || !signInData?.user) {
@@ -301,7 +338,7 @@ export async function signup(formData: FormData): Promise<AuthActionResult> {
 
 export async function loginWithCredentials({ email, password, redirectTo }: { email: string; password: string; redirectTo?: string }): Promise<AuthActionResult> {
   const formData = new FormData();
-  formData.set('email', email);
+  formData.set('email', email.trim().toLowerCase());
   formData.set('password', password);
   if (redirectTo) formData.set('redirectTo', redirectTo);
   return login(formData);
@@ -309,9 +346,9 @@ export async function loginWithCredentials({ email, password, redirectTo }: { em
 
 export async function registerWithCredentials({ email, password, name, redirectTo }: { email: string; password: string; name?: string; redirectTo?: string }): Promise<AuthActionResult> {
   const formData = new FormData();
-  formData.set('email', email);
+  formData.set('email', email.trim().toLowerCase());
   formData.set('password', password);
-  if (name) formData.set('name', name);
+  if (name) formData.set('name', name.trim());
   if (redirectTo) formData.set('redirectTo', redirectTo);
   return signup(formData);
 }
