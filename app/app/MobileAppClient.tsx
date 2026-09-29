@@ -142,6 +142,84 @@ async function getCroppedImageBlob(imageSrc: string, cropPixels: any, maxSize = 
   });
 }
 
+// 🗜️ TỰ ĐỘNG NÉN VÀ TỐI ƯU ẢNH TRÊN THIẾT BỊ NGƯỜI DÙNG (GIẢM TẢI 4G & TRÁNH LỖI VERCEL 4.5MB)
+async function compressImageFile(file: File, maxDimension = 1600, quality = 0.85): Promise<File> {
+  if (typeof window === "undefined" || !file) return file;
+  
+  // Nếu file đã rất nhẹ (< 400KB) và là jpeg/webp chuẩn
+  if (file.size <= 400 * 1024 && (file.type === "image/jpeg" || file.type === "image/webp")) {
+    return file;
+  }
+
+  return new Promise<File>((resolve) => {
+    try {
+      const img = new window.Image();
+      const objectUrl = URL.createObjectURL(file);
+
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        try {
+          let { width, height } = img;
+          if (!width || !height) {
+            resolve(file);
+            return;
+          }
+
+          if (width > maxDimension || height > maxDimension) {
+            if (width > height) {
+              height = Math.round((height * maxDimension) / width);
+              width = maxDimension;
+            } else {
+              width = Math.round((width * maxDimension) / height);
+              height = maxDimension;
+            }
+          }
+
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            resolve(file);
+            return;
+          }
+
+          // Vẽ nền trắng để tránh ảnh PNG trong suốt bị đen nền
+          ctx.fillStyle = "#FFFFFF";
+          ctx.fillRect(0, 0, width, height);
+          ctx.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                resolve(file);
+                return;
+              }
+              const cleanName = (file.name || "outfit").replace(/\.[^/.]+$/, "") + ".jpg";
+              const compressedFile = new File([blob], cleanName, { type: "image/jpeg" });
+              resolve(compressedFile);
+            },
+            "image/jpeg",
+            quality
+          );
+        } catch (canvasErr) {
+          console.warn("Canvas compression failed, using original file:", canvasErr);
+          resolve(file);
+        }
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve(file);
+      };
+
+      img.src = objectUrl;
+    } catch (e) {
+      resolve(file);
+    }
+  });
+}
+
 interface MobileAppClientProps {
   initialProducts: any[];
   initialTotalCount: number;
@@ -1252,11 +1330,12 @@ export default function MobileAppClient({
     }
   };
 
-  const handleCropSkip = () => {
+  const handleCropSkip = async () => {
     if (currentCropSrc && cropQueue.length > 0) {
       const originalFile = cropQueue[0];
-      const previewUrl = currentCropSrc;
-      setUploadedImages((prev) => [...prev, { file: originalFile, previewUrl }]);
+      const compressed = await compressImageFile(originalFile);
+      const previewUrl = URL.createObjectURL(compressed);
+      setUploadedImages((prev) => [...prev, { file: compressed, previewUrl }]);
     }
     setCurrentCropSrc(null);
     setCropQueue((prev) => prev.slice(1));
@@ -1280,17 +1359,13 @@ export default function MobileAppClient({
     }
   };
 
-  // 📸 CHỌN NHIỀU ẢNH TỪ MÁY (TỐI ĐA 6 ẢNH) - NẠP NGAY TOÀN BỘ VÀO DANH SÁCH
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // 📸 CHỌN NHIỀU ẢNH TỪ MÁY (TỐI ĐA 6 ẢNH) - TỰ ĐỘNG NÉN & NẠP VÀO DANH SÁCH
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
       const validFiles: File[] = [];
       for (const file of Array.from(files)) {
-        if (file.size > 15 * 1024 * 1024) {
-          setPostError(`Ảnh "${file.name}" vượt quá 15MB. Vui lòng chọn ảnh nhỏ hơn!`);
-          continue;
-        }
-        if (!file.type.startsWith("image/")) {
+        if (!file.type.startsWith("image/") && !/\.(jpe?g|png|webp|heic|heif|avif)$/i.test(file.name)) {
           setPostError(`Tệp "${file.name}" không phải định dạng ảnh hợp lệ.`);
           continue;
         }
@@ -1300,11 +1375,19 @@ export default function MobileAppClient({
       if (validFiles.length > 0) {
         const remaining = 6 - uploadedImages.length;
         const toAdd = validFiles.slice(0, Math.max(0, remaining));
-        const newImages = toAdd.map((file) => ({
-          file,
-          previewUrl: URL.createObjectURL(file),
-        }));
-        setUploadedImages((prev) => [...prev, ...newImages]);
+        
+        // Tự động nén ảnh trên máy người dùng để tối ưu băng thông & tránh lỗi Vercel 4.5MB
+        const processedImages = await Promise.all(
+          toAdd.map(async (file) => {
+            const compressed = await compressImageFile(file);
+            return {
+              file: compressed,
+              previewUrl: URL.createObjectURL(compressed),
+            };
+          })
+        );
+
+        setUploadedImages((prev) => [...prev, ...processedImages]);
       }
     }
     if (e.target) e.target.value = "";
@@ -1367,10 +1450,12 @@ export default function MobileAppClient({
     setIsSubmittingPost(true);
 
     try {
-      // 1. Tải tất cả ảnh đã chọn/crop lên Cloudinary
+      // 1. Tải tất cả ảnh đã chọn/crop lên Cloudinary (đã được nén nhẹ)
       const uploadPromises = uploadedImages.map(async (imgItem) => {
+        const fileToUpload = await compressImageFile(imgItem.file);
+
         const formData = new FormData();
-        formData.append("file", imgItem.file);
+        formData.append("file", fileToUpload);
         formData.append("folder", "cloop_mobile_closet");
 
         const upRes = await fetch("/api/upload", {
@@ -1379,7 +1464,8 @@ export default function MobileAppClient({
         });
 
         if (!upRes.ok) {
-          throw new Error("Không thể tải ảnh lên hệ thống.");
+          const errData = await upRes.json().catch(() => null);
+          throw new Error(errData?.error || `Không thể tải ảnh lên hệ thống (Lỗi ${upRes.status}).`);
         }
         const upJson = await upRes.json();
         return upJson.url as string;

@@ -74,6 +74,82 @@ async function getCroppedImageBlob(imageSrc: string, cropPixels: any, maxSize = 
   });
 }
 
+// 🗜️ TỰ ĐỘNG NÉN VÀ TỐI ƯU ẢNH TRÊN THIẾT BỊ NGƯỜI DÙNG (GIẢM TẢI 4G & TRÁNH LỖI VERCEL 4.5MB)
+async function compressImageFile(file: File, maxDimension = 1600, quality = 0.85): Promise<File> {
+  if (typeof window === "undefined" || !file) return file;
+  
+  if (file.size <= 400 * 1024 && (file.type === "image/jpeg" || file.type === "image/webp")) {
+    return file;
+  }
+
+  return new Promise<File>((resolve) => {
+    try {
+      const img = new window.Image();
+      const objectUrl = URL.createObjectURL(file);
+
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        try {
+          let { width, height } = img;
+          if (!width || !height) {
+            resolve(file);
+            return;
+          }
+
+          if (width > maxDimension || height > maxDimension) {
+            if (width > height) {
+              height = Math.round((height * maxDimension) / width);
+              width = maxDimension;
+            } else {
+              width = Math.round((width * maxDimension) / height);
+              height = maxDimension;
+            }
+          }
+
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            resolve(file);
+            return;
+          }
+
+          ctx.fillStyle = "#FFFFFF";
+          ctx.fillRect(0, 0, width, height);
+          ctx.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                resolve(file);
+                return;
+              }
+              const cleanName = (file.name || "outfit").replace(/\.[^/.]+$/, "") + ".jpg";
+              const compressedFile = new File([blob], cleanName, { type: "image/jpeg" });
+              resolve(compressedFile);
+            },
+            "image/jpeg",
+            quality
+          );
+        } catch (canvasErr) {
+          console.warn("Canvas compression failed, using original file:", canvasErr);
+          resolve(file);
+        }
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve(file);
+      };
+
+      img.src = objectUrl;
+    } catch (e) {
+      resolve(file);
+    }
+  });
+}
+
 export default function CreateProductListingPage() {
   const router = useRouter();
   const { currentUser, setShowAuthModal } = useAuthModal();
@@ -293,10 +369,11 @@ export default function CreateProductListingPage() {
     submittingRef.current = true;
     setIsSubmitting(true);
     try {
-      // 1. Upload ảnh
+      // 1. Upload ảnh (tự động nén nhẹ trước khi gửi)
       const uploadPromises = images.map(async (imgItem) => {
+        const fileToUpload = await compressImageFile(imgItem.file);
         const formData = new FormData();
-        formData.append("file", imgItem.file);
+        formData.append("file", fileToUpload);
         formData.append("folder", "cloop_products");
 
         const response = await fetch("/api/upload", { 
@@ -305,7 +382,7 @@ export default function CreateProductListingPage() {
         });
         if (!response.ok) {
           const errorData = await response.json().catch(() => null);
-          throw new Error(errorData?.error || "Lỗi tải ảnh lên hệ thống.");
+          throw new Error(errorData?.error || `Lỗi tải ảnh lên hệ thống (${response.status}).`);
         }
         const imageData = await response.json();
         return imageData as UploadedImageMeta;

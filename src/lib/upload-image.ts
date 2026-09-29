@@ -1,13 +1,16 @@
 import { cloudinary, hasCloudinaryConfig } from "./cloudinary";
 
-export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 const ALLOWED_IMAGE_TYPES = new Set([
   "image/jpeg",
+  "image/jpg",
   "image/png",
   "image/webp",
   "image/heic",
   "image/heif",
+  "image/avif",
+  "image/pjpeg",
 ]);
 
 export type CloudinaryUploadResult = {
@@ -21,12 +24,16 @@ export type CloudinaryUploadResult = {
 };
 
 export const assertUploadableImage = (file: File) => {
-  if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
-    throw new Error("File khong dung dinh dang anh. CLOOP chi nhan JPG, PNG, WEBP hoac HEIC.");
+  const type = (file.type || "").toLowerCase();
+  const ext = (file.name ? file.name.split(".").pop() : "")?.toLowerCase() || "";
+  const isAllowedExt = ["jpg", "jpeg", "png", "webp", "heic", "heif", "avif"].includes(ext);
+
+  if (!ALLOWED_IMAGE_TYPES.has(type) && !isAllowedExt && !type.startsWith("image/")) {
+    throw new Error("File không đúng định dạng ảnh. CLOOP hỗ trợ JPG, PNG, WEBP, HEIC.");
   }
 
   if (file.size > MAX_UPLOAD_BYTES) {
-    throw new Error("Anh vuot qua 5MB. Hay chon anh nhe hon de tai len muot hon.");
+    throw new Error("Ảnh vượt quá 10MB. Vui lòng chọn ảnh nhẹ hơn để tải lên.");
   }
 };
 
@@ -41,7 +48,7 @@ export const uploadImage = async (
           .upload_stream(
             {
               folder,
-              resource_type: "image",
+              resource_type: "auto",
               quality: "auto:eco",
               fetch_format: "auto",
               transformation: [{ width: 1600, height: 2134, crop: "limit" }],

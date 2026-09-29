@@ -2,6 +2,9 @@
 import { NextResponse } from "next/server";
 import { assertUploadableImage, uploadImage } from "@/src/lib/upload-image";
 
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
@@ -9,7 +12,7 @@ export async function POST(request: Request) {
     const folder = String(formData.get("folder") || "cloop_marketplace");
 
     if (!file) {
-      return NextResponse.json({ error: "Khong tim thay tep tin upload." }, { status: 400 });
+      return NextResponse.json({ error: "Không tìm thấy tệp tin ảnh tải lên." }, { status: 400 });
     }
 
     assertUploadableImage(file);
@@ -20,8 +23,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json(uploadResult);
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Khong the tai anh len.";
-    console.error("Loi API Upload:", error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Không thể tải ảnh lên hệ thống.";
+    console.error("Lỗi API Upload:", error);
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }
