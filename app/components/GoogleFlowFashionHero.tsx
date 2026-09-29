@@ -31,6 +31,28 @@ interface FashionItem {
 
 const REAL_DEFAULT_PRODUCTS = [
   {
+    id: "05693149-132b-4515-990d-d7f1cbab34d0",
+    title: "Váy liền",
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790652964/cloop_mobile_closet/y6rpnangntxkue2itbrt.jpg",
+    tag: "Đầm & Váy",
+    occasion: "Dạo phố",
+    price: "200k (Mua sở hữu)",
+    originalPrice: "750.000đ",
+    ownerName: "hoyenvy76",
+    modelFit: "Size M • Thanh lịch"
+  },
+  {
+    id: "1a1081f1-bb9a-4f63-9e58-446d4ab7fae5",
+    title: "Áo trễ vai",
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790652406/cloop_mobile_closet/fpz9ndww574pxu14zz6r.jpg",
+    tag: "Áo",
+    occasion: "Dạo phố",
+    price: "50k (Mua sở hữu)",
+    originalPrice: "200.000đ",
+    ownerName: "hoyenvy76",
+    modelFit: "Size S-M • Dễ thương"
+  },
+  {
     id: "c3a4cea4-4735-44f7-a53f-5bb3f3323102",
     title: "Áo sweater dài tay phối cổ sơ mi màu xám",
     img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530424/cloop_mobile_closet/pt4xccwmvrjsrnhrgnib.png",
@@ -42,59 +64,15 @@ const REAL_DEFAULT_PRODUCTS = [
     modelFit: "Size M • Form trẻ trung"
   },
   {
-    id: "13bc1fec-26a1-46d5-9b8e-66526af88faf",
-    title: "Set 2 món quần - áo thun trễ vai dạo phố",
-    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530309/cloop_mobile_closet/zvvo3mp0lrsa4mbvam60.jpg",
-    tag: "Set đồ",
-    occasion: "Dạo phố",
-    price: "120k/ngày",
-    originalPrice: "650.000đ",
-    ownerName: "Quỳnh",
-    modelFit: "Size M • Tôn dáng"
-  },
-  {
-    id: "5ea5802a-6db6-49a8-8e39-756a386bdc60",
-    title: "Áo thun mỏng dài tay trắng",
-    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530134/cloop_mobile_closet/micrq9ewq00euoaqrmbo.jpg",
-    tag: "Áo",
-    occasion: "Dạo phố",
-    price: "100k/ngày",
-    originalPrice: "450.000đ",
-    ownerName: "Quỳnh",
-    modelFit: "Size M • Mềm mại"
-  },
-  {
-    id: "96fafd3d-60fa-4501-b7c1-4bb26390fb9d",
-    title: "Set 2 món quần jean - áo thun",
-    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529947/cloop_mobile_closet/a50h6hajzvkxptxaj9go.jpg",
-    tag: "Set đồ",
-    occasion: "Dạo phố",
-    price: "260k/ngày",
-    originalPrice: "1.100.000đ",
-    ownerName: "Quỳnh",
-    modelFit: "Size M • Phong cách"
-  },
-  {
-    id: "c9596782-8dd0-47d8-a339-5ef1a2254d38",
-    title: "Áo yếm trễ hai vai màu trắng",
-    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529824/cloop_mobile_closet/fm1wjeikdlxlxofjhby8.jpg",
-    tag: "Áo",
-    occasion: "Du lịch",
-    price: "120k/ngày",
-    originalPrice: "520.000đ",
-    ownerName: "huyenlinhtinh555",
-    modelFit: "Size S-M • Quyến rũ"
-  },
-  {
-    id: "70bd8e6e-d3ce-4bf3-8b71-77a4760025d3",
-    title: "Váy trắng dài trễ vai",
-    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529633/cloop_mobile_closet/ekxdoqiw0ge05f9znmgj.jpg",
-    tag: "Đầm & Váy",
+    id: "43aed30a-d2ae-4001-929c-3d3292375737",
+    title: "Áo dài xanh lụa satin",
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790158145/cloop_mobile_closet/amktbwdkwxb4swc32gry.jpg",
+    tag: "Áo dài",
     occasion: "Tiệc cưới",
-    price: "200k/ngày",
-    originalPrice: "1.200.000đ",
-    ownerName: "Quỳnh",
-    modelFit: "Size M • Sang trọng"
+    price: "60k/ngày",
+    originalPrice: "450.000đ",
+    ownerName: "Trinh Trần",
+    modelFit: "Size M • Duyên dáng"
   },
   {
     id: "9c27a170-6daa-4765-b8ae-07e0666fae9e",
@@ -106,6 +84,39 @@ const REAL_DEFAULT_PRODUCTS = [
     originalPrice: "1.350.000đ",
     ownerName: "Quỳnh",
     modelFit: "Size M • Chuẩn form"
+  },
+  {
+    id: "e773470f-dada-428e-952f-452a8e925746",
+    title: "Váy ren đen quyến rũ sang trọng",
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790243386/cloop_mobile_closet/xpirvpupmyfoxxneenve.jpg",
+    tag: "Đầm & Váy",
+    occasion: "Dạ hội",
+    price: "200k/ngày",
+    originalPrice: "1.500.000đ",
+    ownerName: "Trinh Trần",
+    modelFit: "Size M • Quyến rũ"
+  },
+  {
+    id: "cfc8b957-6090-40c6-ac1c-409aaa1bdf91",
+    title: "Áo dài hoa nhí xanh dịu dàng",
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790159335/cloop_mobile_closet/s3lwl54qe2sjov5i4oaw.jpg",
+    tag: "Áo dài",
+    occasion: "Tiệc cưới",
+    price: "70k/ngày",
+    originalPrice: "650.000đ",
+    ownerName: "Trinh Trần",
+    modelFit: "Size M • Dịu dàng"
+  },
+  {
+    id: "c9596782-8dd0-47d8-a339-5ef1a2254d38",
+    title: "Áo yếm trễ hai vai màu trắng",
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529824/cloop_mobile_closet/fm1wjeikdlxlxofjhby8.jpg",
+    tag: "Áo",
+    occasion: "Du lịch",
+    price: "32k/ngày",
+    originalPrice: "520.000đ",
+    ownerName: "huyenlinhtinh555",
+    modelFit: "Size S-M • Quyến rũ"
   },
   {
     id: "b631f003-aac7-474c-9c51-2b016483e980",

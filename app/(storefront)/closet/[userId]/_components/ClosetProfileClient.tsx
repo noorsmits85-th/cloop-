@@ -210,7 +210,7 @@ export default function ClosetProfileClient({
 
           <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left space-y-4 w-full">
             <div className="flex items-center gap-2">
-              <span className="font-handwriting text-2xl text-stone-500 -rotate-6">hello</span>
+              <span className="font-handwriting text-2xl text-stone-500 -rotate-6">Xin chào</span>
               <Heart size={16} className="text-stone-400 -rotate-12" />
             </div>
             
@@ -310,7 +310,7 @@ export default function ClosetProfileClient({
             <div className="tape w-12 h-4 -top-2 right-1/2 translate-x-1/2" />
             <div className="space-y-2">
               <div className="flex items-center justify-between text-[10px] font-bold tracking-widest text-amber-600 uppercase">
-                <span>Today's Memory</span>
+                <span>Kỷ Niệm Hôm Nay</span>
                 <span>★</span>
               </div>
               <p className="font-handwriting text-stone-600 text-sm leading-relaxed">
@@ -318,7 +318,7 @@ export default function ClosetProfileClient({
               </p>
             </div>
             <div className="text-right text-[10px] text-stone-400 font-mono mt-4">
-              ~ CLOOP Scrapbook ~
+              ~ Lưu Bút CLOOP ~
             </div>
           </div>
         </div>
@@ -385,26 +385,41 @@ export default function ClosetProfileClient({
               </Link>
             </div>
 
-            <div className="flex gap-4 overflow-x-auto no-scrollbar pb-6 pt-2 px-2 -mx-2">
-              {memories.slice(0, 3).map((mem, idx) => (
-                <div key={mem.id} className={`polaroid w-36 shrink-0 relative ${idx % 2 === 0 ? '-rotate-2' : 'rotate-3'} mt-${idx % 2 === 0 ? '0' : '4'}`}>
-                  <div className="tape w-8 h-3 -top-1.5 left-1/2 -translate-x-1/2" />
-                  <div className="w-full aspect-square bg-stone-100 overflow-hidden relative mb-3">
-                    <Image src={mem.image} alt={mem.title} fill unoptimized className="object-cover" />
+            {memories.length === 0 ? (
+              <div className="py-8 px-4 text-center text-stone-400 bg-[#F5F2EB]/50 rounded-2xl border border-dashed border-stone-200">
+                <p className="text-xs font-heading italic">Chủ tủ chưa đăng bài viết kỷ niệm nào.</p>
+                {isCurrentUser && (
+                  <Link href="/blog/create" className="inline-flex items-center gap-1.5 mt-3 text-xs font-bold text-[#183A2D] hover:underline cursor-pointer">
+                    <Plus size={14} /> Thêm bài viết kỷ niệm đầu tiên
+                  </Link>
+                )}
+              </div>
+            ) : (
+              <div className="flex gap-4 overflow-x-auto no-scrollbar pb-6 pt-2 px-2 -mx-2">
+                {memories.slice(0, 3).map((mem, idx) => (
+                  <div key={mem.id} className={`polaroid w-36 shrink-0 relative ${idx % 2 === 0 ? '-rotate-2' : 'rotate-3'} mt-${idx % 2 === 0 ? '0' : '4'}`}>
+                    <div className="tape w-8 h-3 -top-1.5 left-1/2 -translate-x-1/2" />
+                    <div className="w-full aspect-square bg-stone-100 overflow-hidden relative mb-3">
+                      {mem.image ? (
+                        <Image src={mem.image} alt={mem.title} fill unoptimized className="object-cover" />
+                      ) : (
+                        <div className="w-full h-full bg-stone-200 flex items-center justify-center text-stone-400 text-xs font-bold">CLOOP</div>
+                      )}
+                    </div>
+                    <h4 className="text-[10px] font-bold text-stone-800 text-center font-heading leading-tight line-clamp-2 mb-1">{mem.title}</h4>
+                    <p className="text-[8px] text-stone-400 text-center font-mono">{mem.date}</p>
                   </div>
-                  <h4 className="text-[10px] font-bold text-stone-800 text-center font-heading leading-tight line-clamp-2 mb-1">{mem.title}</h4>
-                  <p className="text-[8px] text-stone-400 text-center font-mono">{mem.date}</p>
-                </div>
-              ))}
-              {isCurrentUser && (
-                <Link href="/blog/create" className="polaroid w-36 shrink-0 border border-dashed border-stone-300 bg-[#F5F2EB]/50 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-[#F5F2EB]">
-                  <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-xs text-stone-400">
-                    <Plus size={16} />
-                  </div>
-                  <span className="text-[10px] font-medium text-stone-500 text-center">Thêm kỷ niệm<br/>của bạn</span>
-                </Link>
-              )}
-            </div>
+                ))}
+                {isCurrentUser && (
+                  <Link href="/blog/create" className="polaroid w-36 shrink-0 border border-dashed border-stone-300 bg-[#F5F2EB]/50 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-[#F5F2EB]">
+                    <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-xs text-stone-400">
+                      <Plus size={16} />
+                    </div>
+                    <span className="text-[10px] font-medium text-stone-500 text-center">Thêm kỷ niệm<br/>của bạn</span>
+                  </Link>
+                )}
+              </div>
+            )}
           </div>
 
           {/* 📸 LOOKBOOK */}
@@ -425,38 +440,44 @@ export default function ClosetProfileClient({
               </Link>
             </div>
 
-            <div className="grid grid-cols-3 grid-rows-2 gap-3 h-[220px]">
-              <div className="col-span-2 row-span-2 rounded-2xl overflow-hidden relative group bg-stone-50">
-                <Image 
-                  src={allProducts[0]?.image || "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=600"} 
-                  alt="Look 1" 
-                  fill 
-                  unoptimized 
-                  className="object-cover group-hover:scale-105 transition-transform duration-500" 
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-stone-900/60 to-transparent flex items-end p-4">
-                  <span className="font-handwriting text-2xl text-white">Summer Collection</span>
+            {allProducts.length === 0 ? (
+              <div className="h-[220px] flex items-center justify-center text-stone-400 bg-[#F5F2EB]/50 rounded-2xl border border-dashed border-stone-200 p-6 text-center">
+                <p className="text-xs font-heading italic">Tủ đồ hiện tại chưa có sản phẩm nào để hiển thị lookbook.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 grid-rows-2 gap-3 h-[220px]">
+                <div className="col-span-2 row-span-2 rounded-2xl overflow-hidden relative group bg-stone-50">
+                  <Image 
+                    src={allProducts[0]?.image} 
+                    alt="Look 1" 
+                    fill 
+                    unoptimized 
+                    className="object-cover group-hover:scale-105 transition-transform duration-500" 
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-stone-900/60 to-transparent flex items-end p-4">
+                    <span className="font-handwriting text-2xl text-white">Phong cách {ownerInfo.name}</span>
+                  </div>
+                </div>
+                <div className="col-span-1 row-span-1 rounded-2xl overflow-hidden relative group bg-stone-50">
+                  <Image 
+                    src={allProducts[1]?.image || allProducts[0]?.image} 
+                    alt="Look 2" 
+                    fill 
+                    unoptimized 
+                    className="object-cover group-hover:scale-105 transition-transform duration-500" 
+                  />
+                </div>
+                <div className="col-span-1 row-span-1 rounded-2xl overflow-hidden relative group bg-stone-50">
+                  <Image 
+                    src={allProducts[2]?.image || allProducts[0]?.image} 
+                    alt="Look 3" 
+                    fill 
+                    unoptimized 
+                    className="object-cover group-hover:scale-105 transition-transform duration-500" 
+                  />
                 </div>
               </div>
-              <div className="col-span-1 row-span-1 rounded-2xl overflow-hidden relative group bg-stone-50">
-                <Image 
-                  src={allProducts[1]?.image || allProducts[0]?.image || "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?q=80&w=400"} 
-                  alt="Look 2" 
-                  fill 
-                  unoptimized 
-                  className="object-cover group-hover:scale-105 transition-transform duration-500" 
-                />
-              </div>
-              <div className="col-span-1 row-span-1 rounded-2xl overflow-hidden relative group bg-stone-50">
-                <Image 
-                  src={allProducts[2]?.image || allProducts[0]?.image || "https://images.unsplash.com/photo-1595777457583-95e059d581b8?q=80&w=400"} 
-                  alt="Look 3" 
-                  fill 
-                  unoptimized 
-                  className="object-cover group-hover:scale-105 transition-transform duration-500" 
-                />
-              </div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -471,8 +492,8 @@ export default function ClosetProfileClient({
             <div className="flex flex-wrap items-center gap-2">
               {[
                 { id: "ALL", label: "Tất cả" },
-                { id: "RENT", label: "Đang cho thuê" },
-                { id: "SALE", label: "Đã bán/Thanh lý" }
+                { id: "RENT", label: "Cho thuê" },
+                { id: "SALE", label: "Mua sở hữu" }
               ].map(tab => (
                 <button 
                   key={tab.id}
@@ -508,8 +529,8 @@ export default function ClosetProfileClient({
                     />
                     
                     <span className={`absolute top-3 left-3 text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 rounded text-white shadow-xs font-heading
-                      ${p.type === 'Thuê' ? 'bg-[#183A2D]' : 'bg-blue-700'}`}>
-                      {p.type === 'Thuê' ? 'RENTAL' : 'BUY OUT'}
+                      ${p.type === 'Thuê' ? 'bg-[#183A2D]' : 'bg-[#1D4ED8]'}`}>
+                      {p.type === 'Thuê' ? 'THUÊ ĐỒ' : 'MUA SỞ HỮU'}
                     </span>
 
                     <button className="absolute top-3 right-3 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-stone-400 hover:text-red-500 shadow-sm transition-colors z-20">
@@ -517,7 +538,7 @@ export default function ClosetProfileClient({
                     </button>
                     
                     <span className="absolute bottom-3 left-3 bg-stone-900/70 backdrop-blur-md text-[9px] font-bold text-white px-2 py-0.5 rounded-md font-heading">
-                      SIZE {p.size}
+                      CỠ {p.size}
                     </span>
                   </div>
 
@@ -666,7 +687,7 @@ export default function ClosetProfileClient({
 
                 <div className="space-y-1.5 p-4 bg-[#FFFDF4] border border-[#EBE6D8] rounded-xl relative">
                   <div className="tape w-8 h-3 -top-1.5 left-6 -rotate-2" />
-                  <label className="text-[11px] font-bold text-amber-600 uppercase tracking-wider block mb-2">Lời ghi chú trên Note vàng (Today's Memory)</label>
+                  <label className="text-[11px] font-bold text-amber-600 uppercase tracking-wider block mb-2">Lời ghi chú trên giấy note (Kỷ niệm hôm nay)</label>
                   <textarea 
                     rows={2}
                     value={editForm.todaysMemory} 

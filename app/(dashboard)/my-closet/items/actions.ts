@@ -52,7 +52,7 @@ export async function deleteProductAction(productId: string, clientUserId?: stri
       await prisma.$transaction([
         prisma.product.update({
           where: { id: productId },
-          data: { isDeleted: true, status: "ARCHIVED" }
+          data: { isDeleted: true, status: "IN_CLOSET" }
         }),
         prisma.listing.updateMany({
           where: { productId },

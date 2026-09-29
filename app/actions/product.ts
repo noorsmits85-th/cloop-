@@ -26,10 +26,10 @@ function setCachedData(key: string, data: any) {
 export async function clearShopMemoryCache() {
   memoryCache.clear();
   try {
-    revalidateTag("shop-products");
+    (revalidateTag as any)("shop-products");
   } catch (e) {}
   try {
-    revalidateTag("shop-products-v1");
+    (revalidateTag as any)("shop-products-v1");
   } catch (e) {}
   try {
     revalidatePath("/", "layout");
@@ -265,7 +265,7 @@ export async function createProductAction({
         await prisma.$executeRawUnsafe(
           `UPDATE auth.users SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || $1::jsonb WHERE id = $2::uuid;`,
           JSON.stringify(metaPayload),
-          user.id
+          authUser.id
         );
       } catch (metaErr) {
         console.warn("Lưu metadata phone/pickup_address không bắt buộc:", metaErr);
@@ -338,170 +338,176 @@ export async function bumpProductAction(productId: string) {
   }
 }
 
-// ⚡ VERCEL GLOBAL DATA CACHE (unstable_cache): Shared across all serverless lambdas with SWR
-const fetchShopProductsCached = unstable_cache(
-  async (
-    type: string,
-    category: string | null,
-    occasion: string | null,
-    search: string,
-    size: string,
-    material: string,
-    page: number,
-    limit: number
-  ) => {
-    const where: any = {
-      isDeleted: false,
-      status: { in: ["ON_MARKET", "IN_CLOSET"] },
+async function fetchShopProductsDirect(
+  type: string,
+  category: string | null,
+  occasion: string | null,
+  search: string,
+  size: string,
+  material: string,
+  page: number,
+  limit: number
+) {
+  const where: any = {
+    isDeleted: false,
+    status: { in: ["ON_MARKET", "IN_CLOSET"] },
+    listings: {
+      some: {
+        isDeleted: false,
+        status: "AVAILABLE",
+        ...(type === "rent" ? { listingType: "RENT" } : {}),
+        ...(type === "sell" ? { listingType: { in: ["SELL", "RECYCLE"] } } : {}),
+      }
+    }
+  };
+
+  if (search && search.trim() !== "") {
+    const q = search.trim();
+    where.OR = [
+      { title: { contains: q, mode: "insensitive" } },
+      { description: { contains: q, mode: "insensitive" } },
+      { category: { contains: q, mode: "insensitive" } },
+      { occasion: { contains: q, mode: "insensitive" } },
+    ];
+  }
+
+  if (category && category !== "Tất cả" && category !== "all") {
+    where.OR = [
+      { category: { contains: category, mode: "insensitive" } },
+      { occasion: { contains: category, mode: "insensitive" } },
+      { title: { contains: category, mode: "insensitive" } },
+    ];
+  } else if (occasion && occasion !== "Tất cả" && occasion !== "all") {
+    where.OR = [
+      { occasion: { contains: occasion, mode: "insensitive" } },
+      { category: { contains: occasion, mode: "insensitive" } },
+      { title: { contains: occasion, mode: "insensitive" } },
+    ];
+  }
+
+  if (size && size !== "all") {
+    where.size = size;
+  }
+
+  if (material && material !== "all") {
+    where.material = { contains: material, mode: "insensitive" };
+  }
+
+  const skip = (page - 1) * limit;
+
+  // SINGLE DB HIT: Đẩy các sản phẩm mới nhất hoặc vừa được đẩy lên đầu bảng tin
+  const rawProducts = await prisma.product.findMany({
+    where,
+    skip,
+    take: limit + 1,
+    orderBy: [
+      { lastBumpedAt: { sort: "desc", nulls: "last" } },
+      { createdAt: "desc" },
+      { id: "desc" }
+    ],
+    include: {
+      images: {
+        orderBy: { sortOrder: "asc" }
+      },
       listings: {
-        some: {
-          isDeleted: false,
-          status: "AVAILABLE",
-          ...(type === "rent" ? { listingType: "RENT" } : {}),
-          ...(type === "sell" ? { listingType: { in: ["SELL", "RECYCLE"] } } : {}),
+        where: { isDeleted: false, status: "AVAILABLE" }
+      },
+      user: {
+        select: {
+          id: true,
+          name: true,
+          avatar: true,
+          rating: true,
+          reviewCount: true,
+          completedOrders: true,
+          isVerified: true
         }
       }
-    };
-
-    if (search && search.trim() !== "") {
-      const q = search.trim();
-      where.OR = [
-        { title: { contains: q, mode: "insensitive" } },
-        { description: { contains: q, mode: "insensitive" } },
-        { category: { contains: q, mode: "insensitive" } },
-        { occasion: { contains: q, mode: "insensitive" } },
-      ];
     }
+  });
 
-    if (category && category !== "Tất cả" && category !== "all") {
-      where.OR = [
-        { category: { contains: category, mode: "insensitive" } },
-        { occasion: { contains: category, mode: "insensitive" } },
-        { title: { contains: category, mode: "insensitive" } },
-      ];
-    } else if (occasion && occasion !== "Tất cả" && occasion !== "all") {
-      where.OR = [
-        { occasion: { contains: occasion, mode: "insensitive" } },
-        { category: { contains: occasion, mode: "insensitive" } },
-        { title: { contains: occasion, mode: "insensitive" } },
-      ];
+  const hasMore = rawProducts.length > limit;
+  const items = hasMore ? rawProducts.slice(0, limit) : rawProducts;
+
+  const products = items.map((p) => {
+    const rentListing = p.listings.find((l) => l.listingType === "RENT");
+    const sellListing = p.listings.find((l) => l.listingType === "SELL" || (l.listingType as any) === "SALE");
+
+    const rentPrice = rentListing?.basePrice ? Number(rentListing.basePrice) : 0;
+    const sellPrice = sellListing?.basePrice ? Number(sellListing.basePrice) : 0;
+    const depositAmount = rentListing?.deposit ? Number(rentListing.deposit) : 0;
+    const minDays = rentListing?.minDays || 3;
+
+    let primaryImg = p.images[0]?.url || "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530424/cloop_mobile_closet/pt4xccwmvrjsrnhrgnib.png";
+
+    let displayPrice = "";
+    let listingTypeRaw = "RENT";
+    let priceNumber = 0;
+
+    if (type === "rent" || (type === "all" && rentPrice > 0)) {
+      displayPrice = `${rentPrice.toLocaleString("vi-VN")}đ / ngày`;
+      listingTypeRaw = "RENT";
+      priceNumber = rentPrice;
+    } else if (type === "sell" || (type === "all" && sellPrice > 0)) {
+      displayPrice = `${sellPrice.toLocaleString("vi-VN")}đ`;
+      listingTypeRaw = "SELL";
+      priceNumber = sellPrice;
     }
-
-    if (size && size !== "all") {
-      where.size = size;
-    }
-
-    if (material && material !== "all") {
-      where.material = { contains: material, mode: "insensitive" };
-    }
-
-    const skip = (page - 1) * limit;
-
-    // ⚡ SINGLE DB HIT: Take limit + 1 to detect hasMore without running slow count()
-    const rawProducts = await prisma.product.findMany({
-      where,
-      skip,
-      take: limit + 1,
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      include: {
-        images: {
-          orderBy: { sortOrder: "asc" }
-        },
-        listings: {
-          where: { isDeleted: false, status: "AVAILABLE" }
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            avatar: true,
-            rating: true,
-            reviewCount: true,
-            completedOrders: true,
-            isVerified: true
-          }
-        }
-      }
-    });
-
-    const hasMore = rawProducts.length > limit;
-    const items = hasMore ? rawProducts.slice(0, limit) : rawProducts;
-
-    const products = items.map((p) => {
-      const rentListing = p.listings.find((l) => l.listingType === "RENT");
-      const sellListing = p.listings.find((l) => l.listingType === "SELL" || (l.listingType as any) === "SALE");
-
-      const rentPrice = rentListing?.basePrice ? Number(rentListing.basePrice) : 0;
-      const sellPrice = sellListing?.basePrice ? Number(sellListing.basePrice) : 0;
-      const depositAmount = rentListing?.deposit ? Number(rentListing.deposit) : 0;
-      const minDays = rentListing?.minDays || 3;
-
-      let primaryImg = p.images[0]?.url || "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530424/cloop_mobile_closet/pt4xccwmvrjsrnhrgnib.png";
-
-      let displayPrice = "";
-      let listingTypeRaw = "RENT";
-      let priceNumber = 0;
-
-      if (type === "rent" || (type === "all" && rentPrice > 0)) {
-        displayPrice = `${rentPrice.toLocaleString("vi-VN")}đ / ngày`;
-        listingTypeRaw = "RENT";
-        priceNumber = rentPrice;
-      } else if (type === "sell" || (type === "all" && sellPrice > 0)) {
-        displayPrice = `${sellPrice.toLocaleString("vi-VN")}đ`;
-        listingTypeRaw = "SELL";
-        priceNumber = sellPrice;
-      }
-
-      return {
-        id: p.id,
-        title: p.title,
-        description: p.description || "",
-        image: primaryImg,
-        images: p.images.map((img) => img.url),
-        type: listingTypeRaw === "RENT" ? "Thuê" : "Mua sắm",
-        listingTypeRaw,
-        price: priceNumber,
-        rentalPrice: rentPrice,
-        salePrice: sellPrice,
-        deposit: depositAmount,
-        minDays,
-        priceDisplay: displayPrice,
-        location: p.province || "Hà Nội",
-        province: p.province || "Hà Nội",
-        districtId: p.districtId || null,
-        wardCode: p.wardCode || null,
-        pricingTiers: (rentListing?.pricing_tiers as any) || null,
-        specificAddress: maskPublicAddress(p.specificAddress || p.province || "Hà Nội"),
-        rating: p.user?.rating ? Number(p.user.rating).toFixed(1) : "5.0",
-        reviewCount: p.user?.reviewCount || 0,
-        completedOrders: p.user?.completedOrders || 0,
-        condition: p.condition === "EXCELLENT" ? "Mới 98%" : (p.condition === "NEW_WITH_TAGS" ? "Mới 100%" : "Mới 95%"),
-        occasion: p.occasion || "Dạo phố",
-        category: p.category || "Áo",
-        ownerName: p.user?.name || "Thành viên CLOOP",
-        ownerAvatar: p.user?.avatar || null,
-        userId: p.userId || "anonymous",
-        size: p.size || "M",
-        material: p.material || "Lụa",
-        color: p.color || "",
-        style: p.style || "",
-        bust: p.bust || null,
-        waist: p.waist || null,
-        hips: p.hips || null,
-        createdAt: p.createdAt.toISOString(),
-        isBoosted: Boolean(p.isHighlighted)
-      };
-    });
 
     return {
-      products,
-      totalCount: hasMore ? 99 : skip + products.length,
-      hasMore
+      id: p.id,
+      title: p.title,
+      description: p.description || "",
+      image: primaryImg,
+      images: p.images.map((img) => img.url),
+      type: listingTypeRaw === "RENT" ? "Thuê" : "Mua sắm",
+      listingTypeRaw,
+      price: priceNumber,
+      rentalPrice: rentPrice,
+      salePrice: sellPrice,
+      deposit: depositAmount,
+      minDays,
+      priceDisplay: displayPrice,
+      location: maskPublicAddress(p.specificAddress || p.province, "Toàn quốc"),
+      province: p.province || "Toàn quốc",
+      districtId: p.districtId || null,
+      wardCode: p.wardCode || null,
+      pricingTiers: (rentListing?.pricing_tiers as any) || null,
+      specificAddress: maskPublicAddress(p.specificAddress || p.province, "Toàn quốc"),
+      rating: p.user?.rating ? Number(p.user.rating).toFixed(1) : "5.0",
+      reviewCount: p.user?.reviewCount || 0,
+      completedOrders: p.user?.completedOrders || 0,
+      condition: p.condition === "EXCELLENT" ? "Mới 98%" : (p.condition === "NEW_WITH_TAGS" ? "Mới 100%" : "Mới 95%"),
+      occasion: p.occasion || "Dạo phố",
+      category: p.category || "Áo",
+      ownerName: p.user?.name || "Thành viên CLOOP",
+      ownerAvatar: p.user?.avatar || null,
+      userId: p.userId || "anonymous",
+      size: p.size || "M",
+      material: p.material || "Lụa",
+      color: p.color || "",
+      style: p.style || "",
+      bust: p.bust || null,
+      waist: p.waist || null,
+      hips: p.hips || null,
+      createdAt: p.createdAt.toISOString(),
+      isBoosted: Boolean(p.isHighlighted)
     };
-  },
-  ["shop-products-v1"],
+  });
+
+  return {
+    products,
+    totalCount: hasMore ? 99 : skip + products.length,
+    hasMore
+  };
+}
+
+// VERCEL GLOBAL DATA CACHE (unstable_cache): Shared across all serverless lambdas with SWR
+const fetchShopProductsCached = unstable_cache(
+  fetchShopProductsDirect,
+  ["shop-products-v2"],
   {
-    revalidate: 60, // SWR cache 60s
+    revalidate: 15,
     tags: ["shop-products"]
   }
 );
@@ -532,16 +538,30 @@ export async function getShopProductsAction({
       return cachedResult;
     }
 
-    const res = await fetchShopProductsCached(
-      type,
-      category,
-      occasion,
-      search,
-      size,
-      material,
-      page,
-      limit
-    );
+    let res: any;
+    try {
+      res = await fetchShopProductsCached(
+        type,
+        category,
+        occasion,
+        search,
+        size,
+        material,
+        page,
+        limit
+      );
+    } catch (_cacheErr) {
+      res = await fetchShopProductsDirect(
+        type,
+        category,
+        occasion,
+        search,
+        size,
+        material,
+        page,
+        limit
+      );
+    }
 
     const response = {
       success: true,
@@ -554,6 +574,25 @@ export async function getShopProductsAction({
     return response;
   } catch (error: any) {
     console.error("getShopProductsAction error:", error);
-    return { success: false, error: error.message, products: [] };
+    try {
+      const fallbackRes = await fetchShopProductsDirect(
+        type,
+        category,
+        occasion,
+        search,
+        size,
+        material,
+        page,
+        limit
+      );
+      return {
+        success: true,
+        products: fallbackRes.products,
+        totalCount: fallbackRes.totalCount,
+        hasMore: fallbackRes.hasMore
+      };
+    } catch (directErr: any) {
+      return { success: false, error: directErr.message || error.message, products: [] };
+    }
   }
 }

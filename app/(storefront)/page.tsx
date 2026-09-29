@@ -22,9 +22,34 @@ import { getShopProductsAction } from "@/app/actions/product";
 
 const REAL_DEFAULT_PRODUCTS = [
   {
+    id: "05693149-132b-4515-990d-d7f1cbab34d0",
+    userId: "98758235-4ece-40a6-9e70-1a4a7f5cd62b",
+    title: "Váy liền",
+    brand: "HOYENVY76",
+    price: 200000,
+    origPrice: 750000,
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790652964/cloop_mobile_closet/y6rpnangntxkue2itbrt.jpg",
+    hoverImg: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790652964/cloop_mobile_closet/y6rpnangntxkue2itbrt.jpg",
+    user: "@hoyenvy76",
+    tag: "Dạo phố"
+  },
+  {
+    id: "1a1081f1-bb9a-4f63-9e58-446d4ab7fae5",
+    userId: "98758235-4ece-40a6-9e70-1a4a7f5cd62b",
+    title: "Áo trễ vai",
+    brand: "HOYENVY76",
+    price: 50000,
+    origPrice: 200000,
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790652406/cloop_mobile_closet/fpz9ndww574pxu14zz6r.jpg",
+    hoverImg: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790652406/cloop_mobile_closet/fpz9ndww574pxu14zz6r.jpg",
+    user: "@hoyenvy76",
+    tag: "Dạo phố"
+  },
+  {
     id: "c3a4cea4-4735-44f7-a53f-5bb3f3323102",
+    userId: "451835b1-cfe5-4350-a6d9-fba0d8027f00",
     title: "Áo sweater dài tay phối cổ sơ mi màu xám",
-    brand: "CLOOP Member",
+    brand: "HUYENLINH",
     price: 260000,
     origPrice: 850000,
     img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530424/cloop_mobile_closet/pt4xccwmvrjsrnhrgnib.png",
@@ -33,64 +58,22 @@ const REAL_DEFAULT_PRODUCTS = [
     tag: "Dạo phố"
   },
   {
-    id: "13bc1fec-26a1-46d5-9b8e-66526af88faf",
-    title: "Set 2 món quần - áo thun trễ vai dạo phố",
-    brand: "CLOOP Member",
-    price: 120000,
-    origPrice: 650000,
-    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530309/cloop_mobile_closet/zvvo3mp0lrsa4mbvam60.jpg",
-    hoverImg: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530309/cloop_mobile_closet/zvvo3mp0lrsa4mbvam60.jpg",
-    user: "@quynhnguyentall",
-    tag: "Dạo phố"
-  },
-  {
-    id: "5ea5802a-6db6-49a8-8e39-756a386bdc60",
-    title: "Áo thun mỏng dài tay trắng",
-    brand: "CLOOP Member",
-    price: 100000,
+    id: "43aed30a-d2ae-4001-929c-3d3292375737",
+    userId: "b391e374-0506-46c1-86e3-edb9589eb4b0",
+    title: "Áo dài xanh lụa satin",
+    brand: "TRINHTRAN",
+    price: 60000,
     origPrice: 450000,
-    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530134/cloop_mobile_closet/micrq9ewq00euoaqrmbo.jpg",
-    hoverImg: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530134/cloop_mobile_closet/micrq9ewq00euoaqrmbo.jpg",
-    user: "@quynhnguyentall",
-    tag: "Dạo phố"
-  },
-  {
-    id: "96fafd3d-60fa-4501-b7c1-4bb26390fb9d",
-    title: "Set 2 món quần jean - áo thun",
-    brand: "CLOOP Member",
-    price: 260000,
-    origPrice: 1100000,
-    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529947/cloop_mobile_closet/a50h6hajzvkxptxaj9go.jpg",
-    hoverImg: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529947/cloop_mobile_closet/a50h6hajzvkxptxaj9go.jpg",
-    user: "@quynhnguyentall",
-    tag: "Dạo phố"
-  },
-  {
-    id: "c9596782-8dd0-47d8-a339-5ef1a2254d38",
-    title: "Áo yếm trễ hai vai màu trắng",
-    brand: "CLOOP Member",
-    price: 120000,
-    origPrice: 520000,
-    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529824/cloop_mobile_closet/fm1wjeikdlxlxofjhby8.jpg",
-    hoverImg: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529824/cloop_mobile_closet/fm1wjeikdlxlxofjhby8.jpg",
-    user: "@huyenlinhtinh555",
-    tag: "Du lịch"
-  },
-  {
-    id: "70bd8e6e-d3ce-4bf3-8b71-77a4760025d3",
-    title: "Váy trắng dài trễ vai",
-    brand: "CLOOP Member",
-    price: 200000,
-    origPrice: 1200000,
-    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529633/cloop_mobile_closet/ekxdoqiw0ge05f9znmgj.jpg",
-    hoverImg: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529633/cloop_mobile_closet/ekxdoqiw0ge05f9znmgj.jpg",
-    user: "@quynhnguyentall",
-    tag: "Tiệc cưới"
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790158145/cloop_mobile_closet/amktbwdkwxb4swc32gry.jpg",
+    hoverImg: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790158145/cloop_mobile_closet/amktbwdkwxb4swc32gry.jpg",
+    user: "@tranthitrinh0501",
+    tag: "Áo dài"
   },
   {
     id: "9c27a170-6daa-4765-b8ae-07e0666fae9e",
+    userId: "cac12d82-2c0f-40d0-9a69-b3daee2584c6",
     title: "Áo dạ Tweets siêu xinh",
-    brand: "CLOOP Member",
+    brand: "QUYNH",
     price: 200000,
     origPrice: 1350000,
     img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529427/cloop_mobile_closet/axmg0f26jcktzy9pq0ak.jpg",
@@ -100,14 +83,39 @@ const REAL_DEFAULT_PRODUCTS = [
   },
   {
     id: "e773470f-dada-428e-952f-452a8e925746",
+    userId: "b391e374-0506-46c1-86e3-edb9589eb4b0",
     title: "Váy ren đen quyến rũ sang trọng",
-    brand: "CLOOP Member",
+    brand: "TRINHTRAN",
     price: 200000,
     origPrice: 1500000,
     img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790243386/cloop_mobile_closet/xpirvpupmyfoxxneenve.jpg",
     hoverImg: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790243386/cloop_mobile_closet/xpirvpupmyfoxxneenve.jpg",
     user: "@tranthitrinh0501",
     tag: "Dạ hội"
+  },
+  {
+    id: "cfc8b957-6090-40c6-ac1c-409aaa1bdf91",
+    userId: "b391e374-0506-46c1-86e3-edb9589eb4b0",
+    title: "Áo dài hoa nhí xanh dịu dàng",
+    brand: "TRINHTRAN",
+    price: 70000,
+    origPrice: 500000,
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790159335/cloop_mobile_closet/s3lwl54qe2sjov5i4oaw.jpg",
+    hoverImg: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790159335/cloop_mobile_closet/s3lwl54qe2sjov5i4oaw.jpg",
+    user: "@tranthitrinh0501",
+    tag: "Áo dài"
+  },
+  {
+    id: "c9596782-8dd0-47d8-a339-5ef1a2254d38",
+    userId: "451835b1-cfe5-4350-a6d9-fba0d8027f00",
+    title: "Áo yếm trễ hai vai màu trắng",
+    brand: "HUYENLINH",
+    price: 32000,
+    origPrice: 520000,
+    img: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529824/cloop_mobile_closet/fm1wjeikdlxlxofjhby8.jpg",
+    hoverImg: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529824/cloop_mobile_closet/fm1wjeikdlxlxofjhby8.jpg",
+    user: "@huyenlinhtinh555",
+    tag: "Du lịch"
   }
 ];
 
@@ -135,41 +143,64 @@ export default function Home() {
     return () => { isMounted = false; };
   }, []);
 
-  // 03 — OCCASION CURATIONS (5 Bộ Sưu Tập Ảnh Lớn Thật 100% Từ Cloudinary)
+  // Trích xuất linh hoạt ảnh mới nhất từ database chung cho từng dịp
+  const getLatestOccasionImage = (keywords: string[], fallback: string) => {
+    const found = products.find((p: any) => {
+      const occasion = (p.occasion || "").toLowerCase();
+      const category = (p.category || "").toLowerCase();
+      const title = (p.title || "").toLowerCase();
+      const tag = (p.tag || "").toLowerCase();
+      return keywords.some((k) => occasion.includes(k) || category.includes(k) || title.includes(k) || tag.includes(k));
+    });
+    const url = found?.images?.[0]?.url || found?.images?.[0] || found?.img || found?.image;
+    return (url && typeof url === "string" && !url.startsWith("/")) ? url : fallback;
+  };
+
+  // 03 — OCCASION CURATIONS (5 Bộ Sưu Tập Lấy Ảnh Mới Nhất Từ Database Chung)
   const occasionCollections = [
     { 
       id: "wedding", 
-      title: "Dự Tiệc Cưới & Prom", 
-      tag: "Tuyển Chọn Nổi Bật",
-      image: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529633/cloop_mobile_closet/ekxdoqiw0ge05f9znmgj.jpg",
+      title: "Dự Tiệc Cưới", 
+      image: getLatestOccasionImage(
+        ["cưới", "tiệc", "đầm dự tiệc", "váy ren"],
+        "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529633/cloop_mobile_closet/ekxdoqiw0ge05f9znmgj.jpg"
+      ),
       link: "/shop?occasion=Tiệc cưới"
     },
     { 
       id: "gala", 
-      title: "Dạ Hội & Sự Kiện", 
-      tag: "Độc Quyền",
-      image: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790243386/cloop_mobile_closet/xpirvpupmyfoxxneenve.jpg",
+      title: "Dạ Hội", 
+      image: getLatestOccasionImage(
+        ["dạ hội", "sự kiện", "prom", "sang trọng"],
+        "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790243386/cloop_mobile_closet/xpirvpupmyfoxxneenve.jpg"
+      ),
       link: "/shop?occasion=Dạ hội"
     },
     { 
       id: "heritage", 
-      title: "Áo Dài Truyền Thống", 
-      tag: "Duyên Dáng Việt",
-      image: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790159335/cloop_mobile_closet/s3lwl54qe2sjov5i4oaw.jpg",
+      title: "Áo Dài", 
+      image: getLatestOccasionImage(
+        ["áo dài", "cách tân", "truyền thống"],
+        "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790159335/cloop_mobile_closet/s3lwl54qe2sjov5i4oaw.jpg"
+      ),
       link: "/shop?occasion=Áo dài"
     },
     { 
       id: "minimal", 
-      title: "Dạo Phố & Hằng Ngày", 
-      tag: "Phong Cách Trẻ",
-      image: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530309/cloop_mobile_closet/zvvo3mp0lrsa4mbvam60.jpg",
+      title: "Dạo Phố", 
+      image: getLatestOccasionImage(
+        ["dạo phố", "hằng ngày", "phố", "áo thun", "sweater"],
+        "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530309/cloop_mobile_closet/zvvo3mp0lrsa4mbvam60.jpg"
+      ),
       link: "/shop?occasion=Dạo phố"
     },
     { 
       id: "travel", 
-      title: "Du Lịch & Dã Ngoại", 
-      tag: "Xu Hướng Mới",
-      image: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790160514/cloop_mobile_closet/u9te4xi7eh2dgi9u1b5h.jpg",
+      title: "Du Lịch", 
+      image: getLatestOccasionImage(
+        ["du lịch", "dã ngoại", "biển", "váy maxi", "yếm"],
+        "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790160514/cloop_mobile_closet/u9te4xi7eh2dgi9u1b5h.jpg"
+      ),
       link: "/shop?occasion=Du lịch"
     }
   ];
@@ -178,8 +209,10 @@ export default function Home() {
   const trendingCatalog = products.slice(0, 8).map((p: any, idx: number) => {
     const img = p.images?.[0]?.url || p.images?.[0] || p.img || "";
     const hoverImg = p.images?.[1]?.url || p.images?.[1] || img;
-    const owner = p.user?.name || p.ownerName || "Thành viên CLOOP";
+    const owner = p.user?.name || p.ownerName || (typeof p.user === 'string' ? p.user.replace('@', '') : "Thành viên CLOOP");
     const tag = p.occasion || p.category || "Dạo phố";
+    const userHandle = typeof p.user === "string" ? p.user.replace(/^@/, "") : (p.user?.username || p.user?.name || p.ownerName || "");
+    const userId = p.userId || p.user?.id || userHandle || (owner.toLowerCase().replace(/\s+/g, ''));
 
     // Phân biệt chính xác giữa Thuê đồ và Mua sở hữu (bán lại)
     const rentPrice = p.rentalPrice && Number(p.rentalPrice) > 0 ? Number(p.rentalPrice) : 0;
@@ -223,6 +256,7 @@ export default function Home() {
 
     return {
       id: p.id || idx,
+      userId,
       title: p.title || "Trang phục CLOOP",
       brand: p.brand || owner,
       price,
@@ -234,60 +268,72 @@ export default function Home() {
       origPrice,
       img,
       hoverImg,
-      user: `@${p.user?.username || (owner.toLowerCase().replace(/\s+/g, ''))}`,
+      user: typeof p.user === "string" ? p.user : `@${p.user?.username || (owner.toLowerCase().replace(/\s+/g, ''))}`,
       tag
     };
   });
 
-  // 06 — MEET THE LENDERS (Top Rotators Thật 100% Từ Hệ Thống)
+  const getLenderFeaturedImgs = (userId: string, fallbacks: string[]) => {
+    const userProds = products.filter((p: any) => p.userId === userId);
+    const imgs = userProds.map((p: any) => p.images?.[0]?.url || p.images?.[0] || p.img).filter(Boolean);
+    if (imgs.length >= 3) return imgs.slice(0, 3);
+    return Array.from(new Set([...imgs, ...fallbacks])).slice(0, 3);
+  };
+
+  const getLenderItemCount = (userId: string, defaultCount: number) => {
+    const count = products.filter((p: any) => p.userId === userId).length;
+    return count > 0 ? count : defaultCount;
+  };
+
+  // 06 — MEET THE LENDERS (Top 3 Chủ Tủ CLOOP Uy Tín Nhất Từ Hệ Thống)
   const topLenders = [
     {
       id: 0,
+      userId: 'b391e374-0506-46c1-86e3-edb9589eb4b0',
       username: 'tranthitrinh0501',
       name: 'Trinh Trần',
       tag: 'CHỦ TỦ TÍCH CỰC',
-      trustScore: '99.8/100',
-      rating: '5.0 (14 món đồ)',
+      rating: '5.0 ★',
       bio: 'Tủ đồ đa dạng phong cách từ đầm dạ hội sang trọng, áo dài truyền thống đến các set đồ du lịch biển trẻ trung.',
-      itemsCount: '14 món đồ',
+      itemsCount: `${getLenderItemCount('b391e374-0506-46c1-86e3-edb9589eb4b0', 14)} món đồ`,
       avatarImg: 'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790243386/cloop_mobile_closet/xpirvpupmyfoxxneenve.jpg',
-      featuredImgs: [
+      featuredImgs: getLenderFeaturedImgs('b391e374-0506-46c1-86e3-edb9589eb4b0', [
         'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790243386/cloop_mobile_closet/xpirvpupmyfoxxneenve.jpg',
         'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790159416/cloop_mobile_closet/aefeq2587mrhrxn56udw.jpg',
         'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790160514/cloop_mobile_closet/u9te4xi7eh2dgi9u1b5h.jpg'
-      ],
+      ]),
     },
     {
       id: 1,
+      userId: '451835b1-cfe5-4350-a6d9-fba0d8027f00',
       username: 'huyenlinhtinh555',
       name: 'Huyền Linh',
       tag: 'XU HƯỚNG MỚI',
-      trustScore: '99.5/100',
-      rating: '5.0 (10 món đồ)',
+      rating: '5.0 ★',
       bio: 'Yêu thích phong cách trẻ trung năng động, đồ dạo phố nhẹ nhàng và set đồ cardigan cực xinh cho các bạn nữ.',
-      itemsCount: '10 món đồ',
+      itemsCount: `${getLenderItemCount('451835b1-cfe5-4350-a6d9-fba0d8027f00', 13)} món đồ`,
       avatarImg: 'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530424/cloop_mobile_closet/pt4xccwmvrjsrnhrgnib.png',
-      featuredImgs: [
+      featuredImgs: getLenderFeaturedImgs('451835b1-cfe5-4350-a6d9-fba0d8027f00', [
         'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530424/cloop_mobile_closet/pt4xccwmvrjsrnhrgnib.png',
         'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529824/cloop_mobile_closet/fm1wjeikdlxlxofjhby8.jpg',
         'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790528463/cloop_mobile_closet/lod8a8mhqifkmxsghevr.jpg'
-      ],
+      ]),
     },
     {
       id: 2,
+      userId: 'cac12d82-2c0f-40d0-9a69-b3daee2584c6',
       username: 'quynhnguyentall',
       name: 'Quỳnh',
       tag: 'THIẾT KẾ NỔI BẬT',
-      trustScore: '99.2/100',
-      rating: '5.0 (6 món đồ)',
+      rating: '5.0 ★',
       bio: 'Gu thời trang nữ tính, sang xịn mịn với các mẫu váy đầm dự tiệc và áo dạ tweet phom dáng cực chuẩn.',
-      itemsCount: '6 món đồ',
+      itemsCount: `${getLenderItemCount('cac12d82-2c0f-40d0-9a69-b3daee2584c6', 6)} món đồ`,
       avatarImg: 'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529633/cloop_mobile_closet/ekxdoqiw0ge05f9znmgj.jpg',
-      featuredImgs: [
+      featuredImgs: getLenderFeaturedImgs('cac12d82-2c0f-40d0-9a69-b3daee2584c6', [
         'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529633/cloop_mobile_closet/ekxdoqiw0ge05f9znmgj.jpg',
         'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530309/cloop_mobile_closet/zvvo3mp0lrsa4mbvam60.jpg',
         'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529427/cloop_mobile_closet/axmg0f26jcktzy9pq0ak.jpg'
-      ],
+      ]),
     }
   ];
 
@@ -301,8 +347,8 @@ export default function Home() {
       <LivePulseTicker />
 
       {/* 👗 03 — OCCASION CURATIONS (KHÁM PHÁ THEO DỊP) */}
-      <section className="w-full max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-12 md:py-16">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-2 mb-8">
+      <section className="w-full max-w-7xl xl:max-w-[1380px] mx-auto px-4 md:px-6 lg:px-8 pt-8 pb-12 md:pt-10 md:pb-16">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-2 mb-6 sm:mb-8">
           <div>
             <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200/80 font-ui">
               BỘ SƯU TẬP TUYỂN CHỌN
@@ -322,37 +368,31 @@ export default function Home() {
           </Link>
         </div>
 
-        {/* 5 High-Fashion Visual Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        {/* 5 High-Fashion Visual Cards (Kích thước lớn, phom đứng sang trọng) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 lg:gap-5">
           {occasionCollections.map((col) => (
             <Link
               key={col.id}
               href={col.link}
               prefetch={true}
-              className="group relative aspect-[3/4] sm:aspect-[4/5] rounded-2xl overflow-hidden shadow-xs hover:shadow-xl transition-all duration-700 flex flex-col justify-end p-5 cursor-pointer border border-stone-200/80"
+              className="group relative aspect-[3/4] sm:aspect-[3/4] md:aspect-[9/13] lg:aspect-[9/14] min-h-[380px] sm:min-h-[420px] lg:min-h-[460px] rounded-2xl lg:rounded-3xl overflow-hidden shadow-xs hover:shadow-2xl transition-all duration-700 flex flex-col justify-end p-5 lg:p-6 cursor-pointer border border-stone-200/80"
             >
               <Image 
                 src={col.image} 
                 alt={col.title} 
                 fill 
-                className="object-cover transition-transform duration-1000 ease-out group-hover:scale-108 brightness-[0.85] group-hover:brightness-[0.75]" 
+                className="object-cover transition-transform duration-1000 ease-out group-hover:scale-108 brightness-[0.9] group-hover:brightness-[0.8]" 
                 unoptimized 
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent pointer-events-none" />
-
-              <div className="absolute top-3.5 left-3.5 z-10">
-                <span className="text-[9px] uppercase tracking-wider font-bold text-[#183A2D] bg-white/95 backdrop-blur-xs px-2.5 py-0.5 rounded-full border border-stone-200 shadow-xs font-ui">
-                  {col.tag}
-                </span>
-              </div>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent pointer-events-none" />
 
               <div className="relative z-10 space-y-1.5 transform translate-y-1 group-hover:translate-y-0 transition-transform duration-500">
-                <h3 className="font-heading text-lg font-bold text-white leading-snug">
+                <h3 className="font-heading text-xl lg:text-2xl font-bold text-white leading-tight">
                   {col.title}
                 </h3>
-                <div className="pt-1.5 flex items-center gap-1 text-[11px] font-semibold text-[#A3E39F] group-hover:text-white transition-colors font-ui">
+                <div className="pt-1.5 flex items-center gap-1 text-xs font-semibold text-[#A3E39F] group-hover:text-white transition-colors font-ui">
                   <span className="uppercase text-[10px] tracking-wider">Khám Phá Ngay</span>
-                  <ArrowRight size={11} className="group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
                 </div>
               </div>
             </Link>
@@ -416,12 +456,12 @@ export default function Home() {
                 />
                 
                 {/* Top Left Tag */}
-                <div className="absolute top-2.5 left-2.5 bg-black/75 backdrop-blur-xs text-white font-ui text-[8.5px] font-bold uppercase px-2 py-0.5 rounded-full tracking-wider shadow-xs z-10">
+                <div className="absolute top-2.5 left-2.5 bg-black/75 backdrop-blur-xs text-white font-ui text-[8.5px] font-bold uppercase px-2 py-0.5 rounded-full tracking-wider shadow-xs z-10 pointer-events-none">
                   {product.tag}
                 </div>
 
                 {/* Bottom Left Mode Badge (Thuê đồ / Mua sở hữu) */}
-                <div className="absolute bottom-2.5 left-2.5 z-10">
+                <div className="absolute bottom-2.5 left-2.5 z-10 pointer-events-none">
                   <span className={`text-[8.5px] uppercase font-bold px-2 py-0.5 rounded-md shadow-xs font-ui ${
                     product.mode === "SELL" 
                       ? "bg-amber-600 text-white" 
@@ -451,7 +491,13 @@ export default function Home() {
               <div className="flex flex-col flex-1 justify-between space-y-2">
                 <div className="space-y-1">
                   <div className="flex justify-between items-center text-[10.5px]">
-                    <span className="text-stone-500 font-ui font-semibold uppercase tracking-wider">{product.brand}</span>
+                    <Link
+                      href={`/closet/${product.userId}`}
+                      prefetch={true}
+                      className="text-stone-500 hover:text-emerald-800 font-ui font-semibold uppercase tracking-wider transition-colors hover:underline"
+                    >
+                      {product.brand}
+                    </Link>
                     <span className="text-emerald-700 font-bold font-mono text-[9.5px] bg-emerald-50 px-1.5 py-0.5 rounded">
                       Tiết kiệm 90%
                     </span>
@@ -484,7 +530,16 @@ export default function Home() {
 
                 {/* Owner Tag & CTA */}
                 <div className="pt-1 flex items-center justify-between text-[11px] font-ui">
-                  <span className="text-stone-400 text-[10px]">Chủ tủ: <strong className="text-stone-700">{product.user}</strong></span>
+                  <span className="text-stone-400 text-[10px]">
+                    Chủ tủ:{" "}
+                    <Link
+                      href={`/closet/${product.userId}`}
+                      prefetch={true}
+                      className="text-stone-700 hover:text-emerald-800 font-bold hover:underline"
+                    >
+                      {product.user}
+                    </Link>
+                  </span>
                   <Link 
                     href={`/product/${product.id}`}
                     prefetch={true}
@@ -504,28 +559,19 @@ export default function Home() {
       {/* 🔄 05 — CÁCH CLOOP HOẠT ĐỘNG (DUAL TABS THEO CHUẨN BY ROTATION) */}
       <HowItWorksTabs />
 
-      {/* 👑 06 — MEET THE LENDERS (CỘNG ĐỒNG CHỦ TỦ TIÊU BIỂU) */}
+      {/* 06 — MEET THE LENDERS (CỘNG ĐỒNG CLOOP TIÊU BIỂU) */}
       <section className="w-full max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-16 md:py-20">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-2">
-          <div>
-            <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200/80 font-ui">
-              CỘNG ĐỒNG ROTATORS
-            </span>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-heading font-extrabold text-[#0A2517] tracking-tight mt-1.5">
-              Khám Phá Tủ Đồ Của Các Chủ Tủ Hàng Đầu
-            </h2>
-            <p className="text-xs sm:text-sm text-stone-600 font-body font-light mt-1">
-              Gặp gỡ những người yêu thời trang đang chia sẻ hàng trăm món đồ thiết kế mỗi ngày.
-            </p>
-          </div>
-
-          <Link 
-            href="/shop" 
-            className="group font-ui text-xs font-bold text-[#0A2517] hover:text-emerald-800 uppercase tracking-widest flex items-center gap-1.5 shrink-0"
-          >
-            <span>Xem Tất Cả Chủ Tủ</span>
-            <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-          </Link>
+        {/* Header centered */}
+        <div className="flex flex-col items-center text-center max-w-2xl mx-auto mb-10 space-y-2">
+          <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200/80 font-ui">
+            CỘNG ĐỒNG CLOOP
+          </span>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-heading font-extrabold text-[#0A2517] tracking-tight">
+            Chủ Tủ Hàng Đầu
+          </h2>
+          <p className="text-xs sm:text-sm text-stone-600 font-body font-light">
+            Gặp gỡ những người yêu thời trang chia sẻ tủ đồ uy tín nhất CLOOP.
+          </p>
         </div>
 
         {/* 3 Prominent Lenders Cards */}
@@ -536,46 +582,56 @@ export default function Home() {
               className="bg-white rounded-3xl p-6 border border-stone-200/80 shadow-xs hover:shadow-xl hover:border-[#183A2D]/40 transition-all flex flex-col justify-between space-y-5"
             >
               <div className="space-y-4">
-                {/* Header with Avatar & Badge */}
-                <div className="flex items-center gap-3.5">
-                  <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-[#183A2D]/30 shrink-0">
-                    <Image src={lender.avatarImg} alt={lender.username} fill className="object-cover" unoptimized />
+                {/* Header with Avatar & Badge - Clickable to public closet */}
+                <Link 
+                  href={`/closet/${lender.userId}`}
+                  prefetch={true}
+                  className="flex items-center gap-3.5 group/lender block cursor-pointer"
+                >
+                  <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-[#183A2D]/30 group-hover/lender:border-[#183A2D] transition-colors shrink-0">
+                    <Image src={lender.avatarImg} alt={lender.username} fill className="object-cover group-hover/lender:scale-105 transition-transform" unoptimized />
                   </div>
                   <div>
                     <div className="flex items-center gap-1.5">
-                      <h3 className="font-heading font-bold text-base text-[#0A2517]">{lender.name}</h3>
+                      <h3 className="font-heading font-bold text-base text-[#0A2517] group-hover/lender:text-emerald-800 transition-colors">{lender.name}</h3>
                       <span className="text-xs text-stone-400 font-ui">({lender.username})</span>
                     </div>
                     <span className="text-[10px] font-bold text-emerald-800 font-mono flex items-center gap-1 mt-0.5">
-                      <ShieldCheck size={12} className="text-emerald-600" /> Tín nhiệm {lender.trustScore} • {lender.rating}
+                      <ShieldCheck size={12} className="text-emerald-600" /> Đã xác thực eKYC • Đánh giá {lender.rating}
                     </span>
                   </div>
-                </div>
+                </Link>
 
                 <p className="text-xs sm:text-sm text-stone-600 font-body font-light leading-relaxed">
                   "{lender.bio}"
                 </p>
 
-                {/* Wardrobe Preview Thumbnails */}
+                {/* Wardrobe Preview Thumbnails - Clickable to public closet */}
                 <div className="pt-2">
                   <span className="text-[10.5px] uppercase font-bold text-stone-400 font-ui tracking-wider block mb-2">
                     Tủ đồ ({lender.itemsCount}):
                   </span>
                   <div className="grid grid-cols-3 gap-2">
                     {lender.featuredImgs.map((img, idx) => (
-                      <div key={idx} className="relative aspect-[3/4] rounded-lg overflow-hidden border border-stone-200 bg-stone-100">
-                        <Image src={img} alt="Closet item" fill className="object-cover hover:scale-110 transition-transform duration-500" unoptimized />
-                      </div>
+                      <Link 
+                        key={idx} 
+                        href={`/closet/${lender.userId}`}
+                        prefetch={true}
+                        className="relative aspect-[3/4] rounded-lg overflow-hidden border border-stone-200 bg-stone-100 block group/thumb cursor-pointer"
+                      >
+                        <Image src={img} alt="Closet item" fill className="object-cover group-hover/thumb:scale-110 transition-transform duration-500" unoptimized />
+                      </Link>
                     ))}
                   </div>
                 </div>
               </div>
 
-              {/* Action Link */}
+              {/* Action Link to public closet */}
               <div className="pt-3 border-t border-stone-100">
                 <Link
-                  href="/shop?type=rent"
-                  className="w-full py-2.5 rounded-xl bg-stone-100 hover:bg-[#183A2D] text-[#183A2D] hover:text-white font-ui text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5"
+                  href={`/closet/${lender.userId}`}
+                  prefetch={true}
+                  className="w-full py-2.5 rounded-xl bg-stone-100 hover:bg-[#183A2D] text-[#183A2D] hover:text-white font-ui text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <span>Khám Phá Tủ Đồ Của {lender.name}</span>
                   <ArrowRight size={12} />
@@ -583,6 +639,18 @@ export default function Home() {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Bottom CTA centered */}
+        <div className="mt-10 text-center">
+          <Link 
+            href="/shop" 
+            prefetch={true}
+            className="group font-ui text-xs font-bold text-[#0A2517] hover:text-emerald-800 uppercase tracking-widest inline-flex items-center gap-1.5 px-6 py-3 rounded-full border border-stone-300/80 bg-white hover:bg-stone-50 transition-all shadow-xs cursor-pointer"
+          >
+            <span>Xem Tất Cả Chủ Tủ</span>
+            <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+          </Link>
         </div>
       </section>
 

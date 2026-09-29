@@ -1892,7 +1892,7 @@ export default function MobileAppClient({
                                 rating: p.rating || 5.0,
                                 reviewCount: p.reviewCount || 0,
                                 completedOrders: p.completedOrders || 0,
-                                location: p.location || p.province || "Hà Nội",
+                                location: p.location || p.province || "Toàn quốc",
                               });
                             }}
                             className="flex items-center gap-1.5 text-[10.5px] text-stone-500 truncate cursor-pointer hover:text-emerald-800 transition"
@@ -2111,7 +2111,7 @@ export default function MobileAppClient({
                               rating: p.rating || 5.0,
                               reviewCount: p.reviewCount || 0,
                               completedOrders: p.completedOrders || 0,
-                              location: p.location || p.province || "Hà Nội",
+                              location: p.location || p.province || "Toàn quốc",
                             });
                           }}
                           className="flex items-center gap-1.5 text-[10.5px] text-stone-500 truncate cursor-pointer hover:text-emerald-800 transition"
@@ -3528,7 +3528,7 @@ export default function MobileAppClient({
                     
                     <div className="flex items-center gap-1.5 text-[11px] text-emerald-200/90 mt-0.5">
                       <MapPin size={12} className="shrink-0 text-emerald-300" />
-                      <span className="truncate">{maskPublicAddress(viewingClosetOwner.location || "Hà Nội, Việt Nam")}</span>
+                      <span className="truncate">{maskPublicAddress(viewingClosetOwner.location, "Việt Nam")}</span>
                     </div>
 
                     {/* Bio / Quote */}
@@ -4091,7 +4091,7 @@ export default function MobileAppClient({
                         rating: Number(selectedProduct.rating || 5.0),
                         reviewCount: Number(selectedProduct.reviewCount || 0),
                         completedOrders: selectedProduct.completedOrders || 0,
-                        location: selectedProduct.location || selectedProduct.province || "Hà Nội",
+                        location: selectedProduct.location || selectedProduct.province || "Toàn quốc",
                       });
                       setSelectedProduct(null);
                     }}
@@ -4151,7 +4151,7 @@ export default function MobileAppClient({
                         rating: Number(selectedProduct.rating || 5.0),
                         reviewCount: Number(selectedProduct.reviewCount || 0),
                         completedOrders: selectedProduct.completedOrders || 0,
-                        location: selectedProduct.location || selectedProduct.province || "Hà Nội",
+                        location: selectedProduct.location || selectedProduct.province || "Toàn quốc",
                       });
                       setSelectedProduct(null);
                     }}
@@ -4170,7 +4170,7 @@ export default function MobileAppClient({
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-bold text-[#0A2517] text-xs">
-                          Khu vực: {maskPublicAddress(selectedProduct.specificAddress || selectedProduct.location || selectedProduct.province || "Hà Nội")}
+                          Khu vực: {maskPublicAddress(selectedProduct.specificAddress || selectedProduct.location || selectedProduct.province, "Toàn quốc")}
                         </span>
                         <span className="text-[9.5px] font-semibold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded-full border border-emerald-200/60 flex items-center gap-0.5 shrink-0">
                           <ShieldCheck size={10} className="text-emerald-600" />
@@ -5497,7 +5497,7 @@ export default function MobileAppClient({
                       {checkoutShippingMode === "SELF_BOOK" && (
                         <div className="text-[11px] text-stone-700 bg-stone-50 p-2.5 rounded-xl border border-stone-200/80 space-y-1">
                           <p>
-                            <strong>Khu vực lấy đồ:</strong> {maskPublicAddress(checkoutProduct.specificAddress || checkoutProduct.location || "Hà Nội")}
+                            <strong>Khu vực lấy đồ:</strong> {maskPublicAddress(checkoutProduct.specificAddress || checkoutProduct.location || checkoutProduct.province, "Toàn quốc")}
                           </p>
                           <p className="text-[10px] text-emerald-800 flex items-center gap-1 font-medium">
                             <ShieldCheck size={11} className="text-emerald-600 shrink-0" />

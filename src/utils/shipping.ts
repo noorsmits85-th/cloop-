@@ -73,12 +73,12 @@ export function extractProvince(address: string): string {
  * Chỉ công khai Quận/Huyện/Thị xã/Thành phố & Tỉnh (Ví dụ: "TP. Vinh, Nghệ An", "Quận Ba Đình, Hà Nội").
  * Ẩn hoàn toàn số nhà, ngõ ngách và Phường/Xã để tránh lộ vị trí cư trú cá nhân của chủ tủ.
  */
-export function maskPublicAddress(fullAddress?: string | null): string {
-  if (!fullAddress || typeof fullAddress !== "string") return "Hà Nội, Việt Nam";
+export function maskPublicAddress(fullAddress?: string | null, fallback: string = "Chưa cập nhật"): string {
+  if (!fullAddress || typeof fullAddress !== "string") return fallback;
 
   // 1. Loại bỏ các phần chú thích riêng tư trong ngoặc đơn (VD: "(Ghi chú: gọi 0912...)")
   let cleaned = fullAddress.replace(/\s*\([^)]*\)/g, "").trim();
-  if (!cleaned) return "Hà Nội, Việt Nam";
+  if (!cleaned) return fallback;
 
   // 2. Tách các thành phần theo dấu phẩy
   const parts = cleaned.split(",").map(p => p.trim()).filter(Boolean);

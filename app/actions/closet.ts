@@ -3,6 +3,7 @@
 import { prisma } from "@/src/lib/prisma";
 import { requireUser } from "@/src/lib/auth";
 import { revalidatePath } from "next/cache";
+import { maskPublicAddress } from "@/src/utils/shipping";
 
 export interface FormattedClosetProduct {
   id: string;
@@ -42,21 +43,33 @@ export interface ClosetMemory {
 
 export async function getClosetFullDataAction(userId: string) {
   try {
-    const [user, products, completedCount, blogPosts, authMetaRows] = await Promise.all([
-      prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-          id: true,
-          name: true,
-          avatar: true,
-          rating: true,
-          reviewCount: true,
-          completedOrders: true,
-          createdAt: true
-        }
-      }),
+    const cleanId = (userId || "").trim().replace(/^@/, "");
+
+    // 1. Tìm user theo id hoặc theo name/email
+    let activeUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: cleanId },
+          { name: { equals: cleanId, mode: "insensitive" } },
+          { email: { startsWith: cleanId, mode: "insensitive" } }
+        ]
+      },
+      select: {
+        id: true,
+        name: true,
+        avatar: true,
+        rating: true,
+        reviewCount: true,
+        completedOrders: true,
+        createdAt: true
+      }
+    });
+
+    const targetUserId = activeUser?.id || cleanId;
+
+    const [products, completedCount, blogPosts, authMetaRows] = await Promise.all([
       prisma.product.findMany({
-        where: { userId, isDeleted: false },
+        where: { userId: targetUserId, isDeleted: false },
         orderBy: { createdAt: "desc" },
         include: {
           images: {
@@ -69,29 +82,28 @@ export async function getClosetFullDataAction(userId: string) {
         }
       }),
       prisma.rentalHistory.count({
-        where: { ownerId: userId, status: "LENDER_COMPLETED" }
+        where: { ownerId: targetUserId, status: "LENDER_COMPLETED" }
       }),
       prisma.blogPost.findMany({
-        where: { userId, status: "PUBLIC" },
+        where: { userId: targetUserId, status: "PUBLIC" },
         orderBy: { createdAt: "desc" },
         take: 8
       }),
       prisma.$queryRawUnsafe<any[]>(
         `SELECT raw_user_meta_data FROM auth.users WHERE id = $1::uuid;`,
-        userId
+        targetUserId
       ).catch(() => [])
     ]);
 
     const authMeta = authMetaRows?.[0]?.raw_user_meta_data || {};
 
-    let activeUser = user;
     if (!activeUser) {
-      // 🌟 Tự động phục hồi/khởi tạo người dùng nếu có ID hợp lệ để không bao giờ bị lỗi 404 khi truy cập link tủ đồ
+      // Tự động phục hồi/khởi tạo người dùng nếu có ID hợp lệ để không bao giờ bị lỗi 404 khi truy cập link tủ đồ
       try {
         activeUser = await prisma.user.create({
           data: {
-            id: userId,
-            email: `${userId}@cloop.vn`,
+            id: targetUserId,
+            email: `${targetUserId}@cloop.vn`,
             name: "Thành viên CLOOP",
             password: "supabase_auth_managed",
             walletBalance: 0,
@@ -138,6 +150,7 @@ export async function getClosetFullDataAction(userId: string) {
       const rentPrice = rentListing ? Number(rentListing.basePrice) : 0;
       const sellPrice = sellListing ? Number(sellListing.basePrice) : 0;
       const image = item.images[0]?.url || PLACEHOLDER_IMG;
+      const productLoc = maskPublicAddress(item.specificAddress || item.province, "Chưa cập nhật");
 
       if (rentPrice > 0) {
         formattedProducts.push({
@@ -147,7 +160,7 @@ export async function getClosetFullDataAction(userId: string) {
           image,
           type: "Thuê",
           priceText: `${rentPrice.toLocaleString()}đ / ngày`,
-          location: item.province || "Nghệ An",
+          location: productLoc,
           size: item.size || "M",
           category: item.category,
           createdAt: item.createdAt.toISOString()
@@ -162,7 +175,7 @@ export async function getClosetFullDataAction(userId: string) {
           image,
           type: "Mua sắm",
           priceText: `${sellPrice.toLocaleString()}đ`,
-          location: item.province || "Nghệ An",
+          location: productLoc,
           size: item.size || "M",
           category: item.category,
           createdAt: item.createdAt.toISOString()
@@ -177,7 +190,7 @@ export async function getClosetFullDataAction(userId: string) {
           image,
           type: "Thuê",
           priceText: "Liên hệ thuê",
-          location: item.province || "Nghệ An",
+          location: productLoc,
           size: item.size || "M",
           category: item.category,
           createdAt: item.createdAt.toISOString()
@@ -187,6 +200,7 @@ export async function getClosetFullDataAction(userId: string) {
 
     const joinDateObj = activeUser.createdAt ? new Date(activeUser.createdAt) : new Date();
     const joinDateStr = `${String(joinDateObj.getMonth() + 1).padStart(2, '0')}/${joinDateObj.getFullYear()}`;
+    const userLoc = maskPublicAddress(authMeta.location || products[0]?.specificAddress || products[0]?.province, "Việt Nam");
 
     const ownerInfo: ClosetUserProfile = {
       id: activeUser.id,
@@ -196,7 +210,7 @@ export async function getClosetFullDataAction(userId: string) {
       bio: authMeta.bio || "Mình là một người yêu thời trang vintage và những chuyến đi. Mình tin rằng mỗi món đồ đều có một câu chuyện đẹp để kể lại.",
       quote: authMeta.quote || "Lưu giữ ký ức qua từng chiếc váy.",
       coverImage: authMeta.coverImage || null,
-      location: authMeta.location || products[0]?.province || "Nghệ An, Việt Nam",
+      location: userLoc,
       todaysMemory: authMeta.todaysMemory || "Hôm nay mình vừa thêm đồ mới vào tủ đồ CLOOP. Cùng chia sẻ để sống xanh!",
       rating: activeUser.rating !== undefined ? Number(activeUser.rating) : 5.0,
       reviewCount: activeUser.reviewCount ? Number(activeUser.reviewCount) : 0,
@@ -210,16 +224,11 @@ export async function getClosetFullDataAction(userId: string) {
           return {
             id: b.id,
             title: b.title,
-            image: b.cover_image || "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?q=80&w=400",
+            image: b.cover_image || products[0]?.images[0]?.url || "",
             date: `${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`
           };
         })
-      : [
-          { id: '1', title: "Chuyến đi cùng chiếc váy hoa nhí đầu tiên", image: "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?q=80&w=400", date: "05.2025" },
-          { id: '2', title: "Chiếc váy lụa mình đã mặc trong buổi hoàng hôn", image: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=400", date: "04.2025" },
-          { id: '3', title: "Nhận chiếc váy vintage mình yêu thích nhất", image: "https://images.unsplash.com/photo-1485968579580-b6d095142e6e?q=80&w=400", date: "03.2025" },
-          { id: '4', title: "Kỷ niệm đáng nhớ ngày khai trương CLOOP", image: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?q=80&w=400", date: "02.2025" }
-        ];
+      : [];
 
     return {
       success: true,
@@ -531,8 +540,8 @@ export async function getMyClosetMobileDataAction(clientUserId?: string) {
       isLoggedIn: true,
       user: {
         id: userId,
-        name: dbUser?.name || authMeta.name || authMeta.full_name || user.email?.split("@")[0] || "Thành viên CLOOP",
-        email: dbUser?.email || user.email || "",
+        name: dbUser?.name || authMeta.name || authMeta.full_name || dbUser?.email?.split("@")[0] || "Thành viên CLOOP",
+        email: dbUser?.email || authMeta.email || "",
         avatar: dbUser?.avatar || authMeta.avatar || authMeta.avatar_url || null,
         bio: authMeta.bio || "Thành viên cộng đồng thời trang tuần hoàn CLOOP.",
         quote: authMeta.quote || "Lưu giữ ký ức qua từng chiếc váy.",
