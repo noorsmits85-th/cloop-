@@ -9,7 +9,7 @@ import { maskPublicAddress } from "@/src/utils/shipping";
 
 // ⚡ HIGH-SPEED SWR IN-MEMORY CACHE (1ms Response Time, 100% Crash-Proof)
 const memoryCache = new Map<string, { data: any; expiry: number }>();
-const CACHE_TTL_MS = 60 * 1000; // 60 seconds
+const CACHE_TTL_MS = 10 * 1000; // 10 seconds
 
 function getCachedData(key: string) {
   const cached = memoryCache.get(key);
@@ -26,7 +26,16 @@ function setCachedData(key: string, data: any) {
 export async function clearShopMemoryCache() {
   memoryCache.clear();
   try {
-    (revalidateTag as any)("shop-products");
+    revalidateTag("shop-products");
+  } catch (e) {}
+  try {
+    revalidateTag("shop-products-v1");
+  } catch (e) {}
+  try {
+    revalidatePath("/", "layout");
+    revalidatePath("/shop", "layout");
+    revalidatePath("/app", "layout");
+    revalidatePath("/my-closet", "layout");
   } catch (e) {}
 }
 
@@ -346,6 +355,7 @@ const fetchShopProductsCached = unstable_cache(
       status: { in: ["ON_MARKET", "IN_CLOSET"] },
       listings: {
         some: {
+          isDeleted: false,
           status: "AVAILABLE",
           ...(type === "rent" ? { listingType: "RENT" } : {}),
           ...(type === "sell" ? { listingType: { in: ["SELL", "RECYCLE"] } } : {}),

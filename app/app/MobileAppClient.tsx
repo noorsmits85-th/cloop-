@@ -848,7 +848,7 @@ export default function MobileAppClient({
 
     setDeletingProductId(productId);
     try {
-      const res = await deleteProductAction(productId);
+      const res = await deleteProductAction(productId, currentUser?.id);
       if (!res.success) {
         showClosetToast("Lỗi khi xóa: " + (res.error || "Thao tác không thành công"));
         return;
@@ -878,7 +878,7 @@ export default function MobileAppClient({
   const handleToggleHideProduct = async (productId: string, currentIsHidden: boolean) => {
     setTogglingProductId(productId);
     try {
-      const res = await toggleProductHideAction(productId, currentIsHidden);
+      const res = await toggleProductHideAction(productId, currentIsHidden, currentUser?.id);
       if (!res.success) {
         showClosetToast("Lỗi: " + (res.error || "Không thể đổi trạng thái"));
         return;
