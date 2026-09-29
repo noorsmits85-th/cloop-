@@ -141,7 +141,6 @@ export default function Home() {
       id: "wedding", 
       title: "Dự Tiệc Cưới & Prom", 
       tag: "Tuyển Chọn Nổi Bật",
-      desc: "Váy dài trễ vai thướt tha, set dạ thanh lịch cho ngày vui trọn vẹn.", 
       image: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529633/cloop_mobile_closet/ekxdoqiw0ge05f9znmgj.jpg",
       link: "/shop?occasion=Tiệc cưới"
     },
@@ -149,7 +148,6 @@ export default function Home() {
       id: "gala", 
       title: "Dạ Hội & Sự Kiện", 
       tag: "Độc Quyền",
-      desc: "Thiết kế cao cấp, ren đen quyến rũ cho những đêm tiệc tỏa sáng.", 
       image: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790243386/cloop_mobile_closet/xpirvpupmyfoxxneenve.jpg",
       link: "/shop?occasion=Dạ hội"
     },
@@ -157,7 +155,6 @@ export default function Home() {
       id: "heritage", 
       title: "Áo Dài Truyền Thống", 
       tag: "Duyên Dáng Việt",
-      desc: "Tà áo dài thướt tha, tôn vinh nét đẹp truyền thống Việt Nam.", 
       image: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790159335/cloop_mobile_closet/s3lwl54qe2sjov5i4oaw.jpg",
       link: "/shop?occasion=Áo dài"
     },
@@ -165,7 +162,6 @@ export default function Home() {
       id: "minimal", 
       title: "Dạo Phố & Hằng Ngày", 
       tag: "Phong Cách Trẻ",
-      desc: "Sweater, áo thun & set đồ tôn dáng thoải mái cho ngày mới.", 
       image: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530309/cloop_mobile_closet/zvvo3mp0lrsa4mbvam60.jpg",
       link: "/shop?occasion=Dạo phố"
     },
@@ -173,7 +169,6 @@ export default function Home() {
       id: "travel", 
       title: "Du Lịch & Dã Ngoại", 
       tag: "Xu Hướng Mới",
-      desc: "Set đồ sọc phóng khoáng, váy xòe chụp ảnh du ngoạn cực chất.", 
       image: "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790160514/cloop_mobile_closet/u9te4xi7eh2dgi9u1b5h.jpg",
       link: "/shop?occasion=Du lịch"
     }
@@ -183,16 +178,60 @@ export default function Home() {
   const trendingCatalog = products.slice(0, 8).map((p: any, idx: number) => {
     const img = p.images?.[0]?.url || p.images?.[0] || p.img || "";
     const hoverImg = p.images?.[1]?.url || p.images?.[1] || img;
-    const priceVal = p.rentalPrice ?? p.listings?.[0]?.basePrice ?? (typeof p.price === "number" ? p.price : 100000);
-    const origPriceVal = p.salePrice ?? p.listings?.[0]?.salePrice ?? (typeof p.origPrice === "number" ? p.origPrice : 1000000);
     const owner = p.user?.name || p.ownerName || "Thành viên CLOOP";
     const tag = p.occasion || p.category || "Dạo phố";
+
+    // Phân biệt chính xác giữa Thuê đồ và Mua sở hữu (bán lại)
+    const rentPrice = p.rentalPrice && Number(p.rentalPrice) > 0 ? Number(p.rentalPrice) : 0;
+    const sellPrice = p.salePrice && Number(p.salePrice) > 0 ? Number(p.salePrice) : 0;
+    const isSellOnly = (p.listingTypeRaw === "SELL" || sellPrice > 0) && rentPrice === 0;
+    const isBoth = rentPrice > 0 && sellPrice > 0;
+
+    let mode = "RENT";
+    let modeBadge = "Thuê đồ";
+    let priceLabel = "Giá thuê";
+    let price = rentPrice || 50000;
+    let priceUnit = "/ ngày";
+    let ctaText = "Thuê Ngay";
+    let origPrice = sellPrice > 0 ? sellPrice : (price * 5);
+
+    if (isSellOnly) {
+      mode = "SELL";
+      modeBadge = "Mua sở hữu";
+      priceLabel = "Giá bán";
+      price = sellPrice || (typeof p.price === "number" && p.price > 0 ? p.price : 100000);
+      priceUnit = "";
+      ctaText = "Mua Ngay";
+      origPrice = p.origPrice || (price > 150000 ? Math.round(price * 1.5) : Math.round(price * 2.5));
+    } else if (isBoth) {
+      mode = "BOTH";
+      modeBadge = "Thuê & Mua";
+      priceLabel = "Giá thuê";
+      price = rentPrice;
+      priceUnit = "/ ngày";
+      ctaText = "Chi Tiết";
+      origPrice = sellPrice;
+    } else {
+      // Thuê đồ thuần túy
+      price = rentPrice || (typeof p.price === "number" && p.price > 0 ? p.price : 50000);
+      origPrice = sellPrice > 0 ? sellPrice : (p.origPrice || price * 5);
+    }
+
+    if (origPrice <= price) {
+      origPrice = Math.round(price * 1.8);
+    }
+
     return {
       id: p.id || idx,
       title: p.title || "Trang phục CLOOP",
       brand: p.brand || owner,
-      price: typeof priceVal === "number" ? priceVal : parseInt(String(priceVal).replace(/\D/g, "")) || 100000,
-      origPrice: typeof origPriceVal === "number" ? origPriceVal : parseInt(String(origPriceVal).replace(/\D/g, "")) || 1000000,
+      price,
+      priceLabel,
+      priceUnit,
+      mode,
+      modeBadge,
+      ctaText,
+      origPrice,
       img,
       hoverImg,
       user: `@${p.user?.username || (owner.toLowerCase().replace(/\s+/g, ''))}`,
@@ -307,14 +346,11 @@ export default function Home() {
                 </span>
               </div>
 
-              <div className="relative z-10 space-y-1 transform translate-y-1 group-hover:translate-y-0 transition-transform duration-500">
+              <div className="relative z-10 space-y-1.5 transform translate-y-1 group-hover:translate-y-0 transition-transform duration-500">
                 <h3 className="font-heading text-lg font-bold text-white leading-snug">
                   {col.title}
                 </h3>
-                <p className="text-[11px] text-stone-200 font-body font-light leading-relaxed line-clamp-2">
-                  {col.desc}
-                </p>
-                <div className="pt-2 flex items-center gap-1 text-[11px] font-semibold text-[#A3E39F] group-hover:text-white transition-colors font-ui">
+                <div className="pt-1.5 flex items-center gap-1 text-[11px] font-semibold text-[#A3E39F] group-hover:text-white transition-colors font-ui">
                   <span className="uppercase text-[10px] tracking-wider">Khám Phá Ngay</span>
                   <ArrowRight size={11} className="group-hover:translate-x-1 transition-transform" />
                 </div>
@@ -324,7 +360,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 🌟 04 — TRENDING ROTATIONS (SẢN PHẨM NỔI BẬT ĐANG ĐƯỢC THUÊ) */}
+      {/* 🌟 04 — TRENDING ROTATIONS (SẢN PHẨM NỔI BẬT ĐANG ĐƯỢC THUÊ / MUA SỞ HỮU) */}
       <section className="w-full max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-12 md:py-16 border-t border-stone-200/80">
         
         {/* Header & Filter Row */}
@@ -342,24 +378,28 @@ export default function Home() {
           </div>
 
           <Link 
-            href="/shop?type=rent" 
+            href="/shop" 
             prefetch={true}
             className="group font-ui text-xs font-bold text-[#0A2517] hover:text-emerald-800 uppercase tracking-widest flex items-center gap-1.5 shrink-0"
           >
-            <span>Xem Toàn Bộ Sàn Thuê</span>
+            <span>Xem Toàn Bộ Sàn</span>
             <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
           </Link>
         </div>
 
-        {/* 4-Column Clean Editorial Product Grid */}
+        {/* 4-Column Clean Editorial Product Grid - 100% Clickable Directly into Product */}
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
           {trendingCatalog.map((product) => (
             <div 
               key={product.id} 
               className="group flex flex-col bg-white rounded-2xl p-3 border border-stone-200/80 hover:border-[#183A2D]/40 hover:shadow-lg transition-all"
             >
-              {/* Product Image Frame */}
-              <div className="relative w-full aspect-[3/4] bg-stone-100 overflow-hidden rounded-xl mb-3">
+              {/* Product Image Frame - Clickable Link to Product Details */}
+              <Link
+                href={`/product/${product.id}`}
+                prefetch={true}
+                className="relative w-full aspect-[3/4] bg-stone-100 overflow-hidden rounded-xl mb-3 cursor-pointer group/img block"
+              >
                 <Image 
                   src={product.img} 
                   alt={product.title} 
@@ -380,15 +420,32 @@ export default function Home() {
                   {product.tag}
                 </div>
 
+                {/* Bottom Left Mode Badge (Thuê đồ / Mua sở hữu) */}
+                <div className="absolute bottom-2.5 left-2.5 z-10">
+                  <span className={`text-[8.5px] uppercase font-bold px-2 py-0.5 rounded-md shadow-xs font-ui ${
+                    product.mode === "SELL" 
+                      ? "bg-amber-600 text-white" 
+                      : product.mode === "BOTH" 
+                        ? "bg-teal-700 text-white" 
+                        : "bg-emerald-700 text-white"
+                  }`}>
+                    {product.modeBadge}
+                  </span>
+                </div>
+
                 {/* Top Right Save/Heart */}
                 <button 
                   type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
                   className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white/90 backdrop-blur-xs text-stone-600 hover:text-rose-500 hover:scale-110 transition-all flex items-center justify-center shadow-sm z-10 cursor-pointer"
                   title="Lưu vào yêu thích"
                 >
                   <Heart size={14} />
                 </button>
-              </div>
+              </Link>
 
               {/* Product Details */}
               <div className="flex flex-col flex-1 justify-between space-y-2">
@@ -400,7 +457,7 @@ export default function Home() {
                     </span>
                   </div>
 
-                  <Link href="/shop?type=rent">
+                  <Link href={`/product/${product.id}`} prefetch={true}>
                     <h4 className="text-sm font-heading font-bold text-[#0A2517] line-clamp-1 hover:text-emerald-800 transition-colors">
                       {product.title}
                     </h4>
@@ -409,10 +466,12 @@ export default function Home() {
 
                 <div className="pt-2 border-t border-stone-100 flex items-baseline justify-between">
                   <div>
-                    <span className="text-[10px] text-stone-400 font-ui block">Giá thuê:</span>
+                    <span className="text-[10px] text-stone-400 font-ui block">{product.priceLabel}:</span>
                     <p className="text-base font-extrabold text-[#183A2D] font-mono leading-none">
                       {product.price.toLocaleString('vi-VN')}đ
-                      <span className="text-[10px] text-stone-400 font-normal font-sans ml-1">/ ngày</span>
+                      {product.priceUnit && (
+                        <span className="text-[10px] text-stone-400 font-normal font-sans ml-1">{product.priceUnit}</span>
+                      )}
                     </p>
                   </div>
                   <div className="text-right">
@@ -427,10 +486,12 @@ export default function Home() {
                 <div className="pt-1 flex items-center justify-between text-[11px] font-ui">
                   <span className="text-stone-400 text-[10px]">Chủ tủ: <strong className="text-stone-700">{product.user}</strong></span>
                   <Link 
-                    href="/shop?type=rent"
-                    className="text-emerald-800 font-bold uppercase text-[10px] hover:underline"
+                    href={`/product/${product.id}`}
+                    prefetch={true}
+                    className="text-emerald-800 font-bold uppercase text-[10px] hover:underline flex items-center gap-0.5"
                   >
-                    Thuê Ngay &rarr;
+                    <span>{product.ctaText}</span>
+                    <ArrowRight size={11} />
                   </Link>
                 </div>
 

@@ -248,7 +248,7 @@ export function ShopClient({
         {/* Title */}
         <div className="text-left space-y-1.5">
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-[#183A2D] font-heading">
-            {urlType === "rent" ? "Kho Trang Phục Thuê Đồ" : urlType === "sell" ? "Kệ Hàng Mua Sắm Tuần Hoàn" : "Sàn Thời Trang Tuần Hoàn"}
+            {urlType === "rent" ? "Kho Trang Phục Thuê Đồ" : urlType === "sell" ? "Kệ Hàng Mua Sở Hữu Tuần Hoàn" : "Sàn Thời Trang Tuần Hoàn"}
           </h1>
           <p className="text-xs sm:text-[13px] font-medium text-stone-500 max-w-[800px] leading-relaxed">
             Kéo dài vòng đời trang phục, nâng niu phong cách và trải nghiệm hàng ngàn mẫu thiết kế với giá cực hời.
@@ -348,7 +348,7 @@ export function ShopClient({
                       />
                       <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-20">
                         <span className={`text-[8.5px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-md text-white shadow-xs font-ui ${prod.listingTypeRaw === "RENT" ? "bg-[#183A2D]" : "bg-amber-800"}`}>
-                          {prod.listingTypeRaw === "RENT" ? "THUÊ ĐỒ" : "MUA SẮM"}
+                          {prod.listingTypeRaw === "RENT" ? "THUÊ ĐỒ" : "MUA SỞ HỮU"}
                         </span>
                         <div className="flex gap-1">
                           <span className="text-[8px] font-bold bg-white/95 backdrop-blur-xs text-stone-700 px-2 py-0.5 rounded shadow-2xs font-ui border border-stone-200/60">

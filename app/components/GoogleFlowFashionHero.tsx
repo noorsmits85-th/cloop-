@@ -26,6 +26,7 @@ interface FashionItem {
   modelFit: string;
   description: string;
   occasion: string;
+  isSale?: boolean;
 }
 
 const REAL_DEFAULT_PRODUCTS = [
@@ -286,13 +287,22 @@ function buildMosaicColumns(rawItems: any[]): FashionItem[][] {
       if (!imgUrl || typeof imgUrl !== "string" || imgUrl.startsWith("/")) return null;
 
       const title = p.title || "Trang phục CLOOP";
-      const priceVal = p.price || p.rentalPrice || 100000;
-      const priceDisplay = typeof priceVal === "number" ? `${Math.round(priceVal / 1000)}k/ngày` : `${priceVal}`;
+      const isSale = p.listingTypeRaw === "SELL" || (p.rentalPrice === 0 && p.salePrice > 0);
+      const isRent = p.listingTypeRaw === "RENT" || (p.rentalPrice && Number(p.rentalPrice) > 0);
+
+      let priceDisplay = "100k/ngày";
+      if (isSale && !isRent) {
+        const sPrice = p.salePrice || p.price || 100000;
+        priceDisplay = `${Math.round(sPrice / 1000)}k (Mua sở hữu)`;
+      } else {
+        const rPrice = p.rentalPrice || p.price || 80000;
+        priceDisplay = `${Math.round(rPrice / 1000)}k/ngày (Thuê đồ)`;
+      }
 
       return {
         id: p.id || `real-${idx}`,
         img: imgUrl,
-        tag: p.category && p.category !== "DRESSES" ? p.category : (p.occasion || "Thời trang"),
+        tag: isSale && !isRent ? "Mua sở hữu" : (p.category && p.category !== "DRESSES" ? p.category : (p.occasion || "Thuê đồ")),
         title,
         price: priceDisplay,
         originalPrice: p.originalPrice || (p.salePrice ? `${Number(p.salePrice).toLocaleString("vi-VN")}đ` : "Tuyển chọn"),
@@ -303,7 +313,8 @@ function buildMosaicColumns(rawItems: any[]): FashionItem[][] {
         rating: `${p.rating || "5.0"}★`,
         modelFit: p.modelFit || p.style || `Size ${p.size || "M"}`,
         description: p.description || `Món đồ tuyển chọn thực tế từ tủ đồ của ${p.ownerName || "thành viên CLOOP"}.`,
-        occasion: p.occasion || "Dạo phố"
+        occasion: p.occasion || "Dạo phố",
+        isSale: isSale && !isRent
       };
     })
     .filter(Boolean) as FashionItem[];
@@ -551,23 +562,30 @@ export default function GoogleFlowFashionHero({ initialProducts }: GoogleFlowFas
       {/* 👗 INSTANT FIT-CHECK & DIGITAL PASSPORT MODAL */}
       <AnimatePresence>
         {selectedItem && (
-          <div className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 animate-fade-in">
+          <div 
+            className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-md overflow-y-auto p-4 sm:p-6 flex items-center justify-center animate-fade-in"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setSelectedItem(null);
+            }}
+          >
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl relative border border-stone-200"
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-white rounded-3xl max-w-lg w-full max-h-[92vh] flex flex-col overflow-hidden shadow-2xl relative border border-stone-200 my-auto text-left"
+              onClick={(e) => e.stopPropagation()}
             >
               {/* Close button */}
               <button
                 onClick={() => setSelectedItem(null)}
-                className="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/60 hover:bg-black text-white flex items-center justify-center transition-colors z-30 shadow-md cursor-pointer"
+                className="absolute top-3.5 right-3.5 w-8 h-8 rounded-full bg-black/60 hover:bg-black text-white flex items-center justify-center transition-colors z-30 shadow-md cursor-pointer"
+                title="Đóng"
               >
-                <X size={18} />
+                <X size={16} />
               </button>
 
               {/* Photo & Badge */}
-              <div className="relative aspect-[16/10] w-full bg-stone-900">
+              <div className="relative h-48 sm:h-56 w-full bg-stone-900 shrink-0">
                 <Image
                   src={selectedItem.img}
                   alt={selectedItem.title}
@@ -575,28 +593,32 @@ export default function GoogleFlowFashionHero({ initialProducts }: GoogleFlowFas
                   className="object-cover"
                   unoptimized
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
                 
-                <div className="absolute top-4 left-4 flex gap-2">
-                  <span className="px-3 py-1 rounded-full bg-[#183A2D] text-[#A3E39F] text-[10px] font-bold uppercase tracking-wider font-ui border border-[#A3E39F]/40 shadow-xs">
+                <div className="absolute top-3.5 left-3.5 flex gap-2">
+                  <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider font-ui border shadow-xs ${
+                    selectedItem.isSale 
+                      ? "bg-amber-600 text-white border-amber-400" 
+                      : "bg-[#183A2D] text-[#A3E39F] border-[#A3E39F]/40"
+                  }`}>
                     {selectedItem.tag}
                   </span>
-                  <span className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider font-ui">
+                  <span className="px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-white text-[9px] font-bold uppercase tracking-wider font-ui">
                     Hộ Chiếu {selectedItem.passport}
                   </span>
                 </div>
 
-                <div className="absolute bottom-3 left-4 text-white">
-                  <h3 className="font-heading text-lg sm:text-xl font-extrabold">{selectedItem.title}</h3>
+                <div className="absolute bottom-3 left-4 right-4 text-white">
+                  <h3 className="font-heading text-lg sm:text-xl font-extrabold line-clamp-1">{selectedItem.title}</h3>
                   <p className="text-xs text-[#A3E39F] font-mono font-bold">{selectedItem.price} • {selectedItem.rentals}</p>
                 </div>
               </div>
 
               {/* Specs & Digital Passport details */}
-              <div className="p-6 space-y-4">
+              <div className="p-5 sm:p-6 space-y-3.5 overflow-y-auto flex-1">
                 
                 {/* Fit Check Stats */}
-                <div className="p-3.5 bg-[#F5F8F4] rounded-2xl border border-[#D5E5D2] space-y-1.5">
+                <div className="p-3 bg-[#F5F8F4] rounded-2xl border border-[#D5E5D2] space-y-1">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-[#183A2D] font-ui flex items-center gap-1.5">
                       <ShieldCheck size={13} className="text-[#2A6E46]" /> Thông Số Fit Check Chuẩn
@@ -608,15 +630,15 @@ export default function GoogleFlowFashionHero({ initialProducts }: GoogleFlowFas
                 </div>
 
                 {/* ESG Impact Bar */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 bg-stone-50 rounded-xl border border-stone-200">
-                    <p className="text-[9px] uppercase font-bold text-stone-400 font-ui">Tác Động Sinh Thái</p>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="p-2.5 bg-stone-50 rounded-xl border border-stone-200">
+                    <p className="text-[8.5px] uppercase font-bold text-stone-400 font-ui">Tác Động Sinh Thái</p>
                     <p className="text-xs font-extrabold text-[#183A2D] flex items-center gap-1 mt-0.5">
                       <Leaf size={12} className="text-emerald-600" /> Giảm {selectedItem.eco}
                     </p>
                   </div>
-                  <div className="p-3 bg-stone-50 rounded-xl border border-stone-200">
-                    <p className="text-[9px] uppercase font-bold text-stone-400 font-ui">Vòng Đời Tuần Hoàn</p>
+                  <div className="p-2.5 bg-stone-50 rounded-xl border border-stone-200">
+                    <p className="text-[8.5px] uppercase font-bold text-stone-400 font-ui">Vòng Đời Tuần Hoàn</p>
                     <p className="text-xs font-extrabold text-[#183A2D] flex items-center gap-1 mt-0.5">
                       <ShieldCheck size={12} className="text-emerald-600" /> {selectedItem.rentals}
                     </p>
@@ -624,23 +646,30 @@ export default function GoogleFlowFashionHero({ initialProducts }: GoogleFlowFas
                 </div>
 
                 {/* Description */}
-                <p className="text-xs text-stone-600 leading-relaxed font-body">
+                <p className="text-xs text-stone-600 leading-relaxed font-body line-clamp-3">
                   {selectedItem.description}
                 </p>
 
                 {/* Action CTA */}
                 <div className="pt-2 flex items-center gap-3">
-                  <Link
-                    href={`/shop?search=${encodeURIComponent(selectedItem.title)}`}
-                    className="flex-1 py-3.5 rounded-full bg-[#0A2517] hover:bg-[#183A2D] text-white font-heading font-extrabold text-xs uppercase tracking-wider text-center transition-all shadow-md flex items-center justify-center gap-2 font-ui cursor-pointer"
-                  >
-                    Xem Chi Tiết & Thuê Ngay
-                    <ArrowRight size={14} />
-                  </Link>
+                  {(() => {
+                    const realId = selectedItem.id.replace(/-c\d+-i\d+$/, '');
+                    return (
+                      <Link
+                        href={`/product/${realId}`}
+                        prefetch={true}
+                        className="flex-1 py-3 rounded-full bg-[#0A2517] hover:bg-[#183A2D] text-white font-heading font-extrabold text-xs uppercase tracking-wider text-center transition-all shadow-md flex items-center justify-center gap-2 font-ui cursor-pointer"
+                      >
+                        <span>{selectedItem.isSale ? "Xem Chi Tiết & Mua Ngay" : "Xem Chi Tiết & Thuê Ngay"}</span>
+                        <ArrowRight size={14} />
+                      </Link>
+                    );
+                  })()}
 
                   <Link
                     href="/shop"
-                    className="px-5 py-3.5 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-heading font-bold text-xs uppercase tracking-wider transition-all font-ui text-center cursor-pointer"
+                    prefetch={true}
+                    className="px-5 py-3 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-heading font-bold text-xs uppercase tracking-wider transition-all font-ui text-center cursor-pointer"
                   >
                     Xem Thêm
                   </Link>
