@@ -5,8 +5,8 @@ import MobileAppClient from "./MobileAppClient";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "CLOOP App - Tủ Đồ Tuần Hoàn",
-  description: "Trải nghiệm ứng dụng chia sẻ tủ đồ tuần hoàn CLOOP",
+  title: "CLOOP - Ứng Dụng Thời Trang",
+  description: "Trải nghiệm ứng dụng thời trang CLOOP",
 };
 
 export default async function MobileAppPage() {

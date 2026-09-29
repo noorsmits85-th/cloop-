@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { RefreshCw, Sparkles, Home } from "lucide-react";
+import { RefreshCw, ShieldCheck, Home } from "lucide-react";
 
 export default function AppError({
   error,
@@ -32,7 +32,7 @@ export default function AppError({
     <div className="min-h-screen bg-[#FAF8F5] py-12 px-4 flex flex-col items-center justify-center font-ui text-[#0A2517] selection:bg-[#0A2517] selection:text-white">
       <div className="w-full max-w-[390px] bg-white rounded-3xl p-7 border border-stone-200 shadow-xl text-center space-y-5">
         <div className="w-16 h-16 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center justify-center mx-auto shadow-xs">
-          <Sparkles size={28} />
+          <ShieldCheck size={28} />
         </div>
 
         <div className="space-y-1.5">
@@ -65,13 +65,13 @@ export default function AppError({
             type="button"
             onClick={() => {
               if (typeof window !== "undefined") {
-                window.location.href = "/?desktop=1&t=" + Date.now();
+                window.location.href = "/app";
               }
             }}
             className="w-full flex items-center justify-center gap-2 bg-stone-100 hover:bg-stone-200 active:scale-95 text-stone-700 py-3 px-4 rounded-xl text-xs font-bold transition cursor-pointer"
           >
             <Home size={15} />
-            Mở bản Web đầy đủ
+            Về trang chủ CLOOP App
           </button>
         </div>
       </div>

@@ -10,12 +10,12 @@ import {
   Leaf, ArrowRight, Shirt, Calendar, ShieldCheck, Check,
   ChevronRight, ArrowLeft, Wallet, Droplet, Award,
   MapPin, Edit3, Menu, HelpCircle, LogOut, Package, Crop, Truck,
-  Zap, CreditCard, QrCode, Sparkles, Loader2, ExternalLink, Copy,
+  Zap, CreditCard, QrCode, Loader2, ExternalLink, Copy,
   Trash2, Eye, EyeOff, Edit, PackageX, Share2, MessageCircle
 } from "lucide-react";
 import Cropper from "react-easy-crop";
 import { useAuthModal } from "@/app/AuthModalContext";
-import { getShopProductsAction, createProductAction } from "@/app/actions/product";
+import { getShopProductsAction, createProductAction, updateProductFromAppAction } from "@/app/actions/product";
 import { toggleProductInteractionAction } from "@/app/actions/favorite";
 import { getMyClosetMobileDataAction, updateClosetProfileAction, getClosetFullDataAction } from "@/app/actions/closet";
 import { deleteProductAction, toggleProductHideAction } from "@/app/(dashboard)/my-closet/items/actions";
@@ -332,6 +332,7 @@ export default function MobileAppClient({
 
   // 📝 MODAL "ĐĂNG BÀI CHIA SẺ TỦ ĐỒ" ĐỒNG BỘ ĐẦY ĐỦ VỚI BẢN WEB
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadData, setUploadData] = useState({
     title: "",
@@ -354,7 +355,10 @@ export default function MobileAppClient({
     ownerPhone: "",
     saveLocationAsDefault: true,
     isRental: true,
-    rentalPrice: "280.000",
+    rentalPrice: "80.000",
+    price1Day: "80.000",
+    price3Days: "200.000",
+    price7Days: "400.000",
     deposit: "500.000",
     isSale: false,
     salePrice: "",
@@ -933,17 +937,18 @@ export default function MobileAppClient({
     
     // Lọc theo chế độ Thuê đồ / Sở hữu
     if (listingMode === "rent") {
-      list = list.filter((p: any) => 
-        p.listingTypeRaw === "RENT" || 
-        (p.type && p.type.toLowerCase().includes("thuê")) || 
-        p.isRental !== false
-      );
+      list = list.filter((p: any) => {
+        const rentP = Number(p.rentalPrice) || 0;
+        const isRentType = p.listingTypeRaw === "RENT" || (p.type && p.type.toLowerCase().includes("thuê"));
+        const isSellOnly = p.listingTypeRaw === "SELL" && rentP === 0;
+        return (rentP > 0 || isRentType) && !isSellOnly;
+      });
     } else if (listingMode === "sell") {
-      list = list.filter((p: any) => 
-        p.listingTypeRaw === "SELL" || 
-        (p.type && (p.type.toLowerCase().includes("mua") || p.type.toLowerCase().includes("sở hữu"))) || 
-        p.isSale === true
-      );
+      list = list.filter((p: any) => {
+        const sellP = Number(p.salePrice) || 0;
+        const isSellType = p.listingTypeRaw === "SELL" || (p.type && (p.type.toLowerCase().includes("mua") || p.type.toLowerCase().includes("sở hữu")));
+        return sellP > 0 || isSellType;
+      });
     }
 
     if (selectedOccasion !== "Tất cả") {
@@ -1433,7 +1438,10 @@ export default function MobileAppClient({
       return;
     }
 
-    const parsedRentPrice = parseInt(uploadData.rentalPrice.replace(/\D/g, "")) || 0;
+    const parsed1DayPrice = parseInt((uploadData.price1Day || uploadData.rentalPrice || "").replace(/\D/g, "")) || 0;
+    const parsed3DaysPrice = parseInt((uploadData.price3Days || "").replace(/\D/g, "")) || (parsed1DayPrice > 0 ? Math.round(parsed1DayPrice * 3 * 0.85 / 1000) * 1000 : 0);
+    const parsed7DaysPrice = parseInt((uploadData.price7Days || "").replace(/\D/g, "")) || (parsed1DayPrice > 0 ? Math.round(parsed1DayPrice * 7 * 0.70 / 1000) * 1000 : 0);
+    const parsedRentPrice = parsed1DayPrice;
     if (uploadData.isRental && parsedRentPrice <= 0) {
       setPostError("Vui lòng nhập giá thuê / ngày hợp lệ!");
       return;
@@ -1452,6 +1460,9 @@ export default function MobileAppClient({
     try {
       // 1. Tải tất cả ảnh đã chọn/crop lên Cloudinary (đã được nén nhẹ)
       const uploadPromises = uploadedImages.map(async (imgItem) => {
+        if (!imgItem.file || imgItem.file.size === 0 || imgItem.previewUrl.startsWith("http")) {
+          return imgItem.previewUrl;
+        }
         const fileToUpload = await compressImageFile(imgItem.file);
 
         const formData = new FormData();
@@ -1497,7 +1508,42 @@ export default function MobileAppClient({
         }
       } catch (_) {}
 
-      const res = await createProductAction({
+      let res: { success: boolean; error?: string };
+      if (editingProductId) {
+        res = await updateProductFromAppAction(
+          editingProductId,
+          {
+            title: uploadData.title.trim(),
+            description: uploadData.description.trim() || uploadData.story.trim(),
+            category: uploadData.category,
+            color: uploadData.color,
+            size: uploadData.size,
+            material: uploadData.material,
+            condition: uploadData.condition,
+            occasion: uploadData.occasion,
+            province: uploadData.province.trim(),
+            districtId: selectedGhnDistrictId || null,
+            wardCode: selectedGhnWardCode || null,
+            address: uploadData.note?.trim() ? `${uploadData.address.trim()} (Ghi chú: ${uploadData.note.trim()})` : uploadData.address.trim(),
+            ownerPhone: uploadData.ownerPhone.trim(),
+            isRental: uploadData.isRental,
+            price1Day: parsed1DayPrice,
+            price3Days: parsed3DaysPrice,
+            price7Days: parsed7DaysPrice,
+            pricingTiers: [
+              { days: 1, price: parsed1DayPrice },
+              { days: 3, price: parsed3DaysPrice },
+              { days: 7, price: parsed7DaysPrice }
+            ],
+            isSale: uploadData.isSale,
+            salePrice: parsedSalePrice,
+            deposit: parsedDeposit,
+            images: finalImageUrls
+          },
+          currentUser?.id
+        );
+      } else {
+        res = await createProductAction({
         product: {
           userId: currentUser?.id,
           name: uploadData.title.trim(),
@@ -1524,15 +1570,24 @@ export default function MobileAppClient({
         listings: {
           isRental: uploadData.isRental,
           isSale: uploadData.isSale,
-          rentalPrice: parsedRentPrice,
+          rentalPrice: parsed1DayPrice,
+          price1Day: parsed1DayPrice,
+          price3Days: parsed3DaysPrice,
+          price7Days: parsed7DaysPrice,
+          pricingTiers: [
+            { days: 1, price: parsed1DayPrice },
+            { days: 3, price: parsed3DaysPrice },
+            { days: 7, price: parsed7DaysPrice }
+          ],
           salePrice: parsedSalePrice,
           deposit: parsedDeposit,
-          minDays: 3
+          minDays: 1
         },
         uploadedImageUrls: finalImageUrls,
         hasStory: Boolean(uploadData.story.trim()),
         storyText: uploadData.story.trim()
       });
+      }
 
       if (res.success) {
         setPostSuccess(true);
@@ -1550,6 +1605,7 @@ export default function MobileAppClient({
         setTimeout(() => {
           setPostSuccess(false);
           setIsUploadModalOpen(false);
+          setEditingProductId(null);
           setUploadedImages([]);
           // Giữ nguyên trạm gửi đã lưu để các lần đăng sau không cần gõ lại!
           setUploadData(prev => ({
@@ -1586,6 +1642,100 @@ export default function MobileAppClient({
     } finally {
       setIsSubmittingPost(false);
     }
+  };
+
+  // ➕ MỞ MODAL ĐĂNG ĐỒ MỚI (RESET VỀ TRẠNG THÁI TẠO MỚI)
+  const handleOpenCreateModal = () => {
+    setEditingProductId(null);
+    setUploadData(prev => ({
+      ...prev,
+      title: "",
+      category: "Áo",
+      occasion: "Dạo phố",
+      color: "Trắng",
+      size: "M",
+      condition: "99",
+      targetHeight: "",
+      targetWeight: "",
+      bust: "",
+      waist: "",
+      hips: "",
+      material: "Lụa tơ tằm cao cấp",
+      isRental: true,
+      rentalPrice: "80.000",
+      price1Day: "80.000",
+      price3Days: "200.000",
+      price7Days: "400.000",
+      deposit: "500.000",
+      isSale: false,
+      salePrice: "",
+      originalPrice: "3.200.000",
+      description: "",
+      story: "",
+      imageFile: null,
+      imagePreview: "",
+    }));
+    setUploadedImages([]);
+    setPostError("");
+    setPostSuccess(false);
+    setIsUploadModalOpen(true);
+  };
+
+  // ✏️ MỞ MODAL CHỈNH SỬA TRANG PHỤC NGAY TRONG BẢN APP (TRÁNH BỊ ĐIỀU HƯỚNG RA BẢN WEB GÂY LỖI 404)
+  const handleOpenEditModal = (item: any) => {
+    setEditingProductId(item.id);
+    const p1 = item.price1Day || item.rentalPrice || 0;
+    const p3 = item.price3Days || (p1 > 0 ? Math.round(p1 * 3 * 0.85 / 1000) * 1000 : 0);
+    const p7 = item.price7Days || (p1 > 0 ? Math.round(p1 * 7 * 0.70 / 1000) * 1000 : 0);
+    const dep = item.deposit || 0;
+    const sale = item.salePrice || 0;
+    const orig = item.originalPrice || 0;
+
+    setUploadData(prev => ({
+      ...prev,
+      title: item.title || item.name || "",
+      category: item.category || "Áo",
+      occasion: item.occasion || "Dạo phố",
+      color: item.color || "Trắng",
+      size: item.size || "M",
+      condition: item.condition || "99",
+      targetHeight: item.targetHeight || "",
+      targetWeight: item.targetWeight || "",
+      bust: item.bust ? String(item.bust) : "",
+      waist: item.waist ? String(item.waist) : "",
+      hips: item.hips ? String(item.hips) : "",
+      material: item.material || "Lụa tơ tằm cao cấp",
+      province: item.province || prev.province || "Hà Nội",
+      district: item.district || prev.district || "Quận Hoàn Kiếm",
+      ward: item.ward || prev.ward || "Phường Hàng Đào",
+      address: item.address || item.specificAddress || prev.address || "",
+      note: item.note || "",
+      ownerPhone: item.ownerPhone || prev.ownerPhone || "",
+      saveLocationAsDefault: true,
+      isRental: item.isRental !== false,
+      rentalPrice: p1 > 0 ? Number(p1).toLocaleString("vi-VN") : "80.000",
+      price1Day: p1 > 0 ? Number(p1).toLocaleString("vi-VN") : "80.000",
+      price3Days: p3 > 0 ? Number(p3).toLocaleString("vi-VN") : "200.000",
+      price7Days: p7 > 0 ? Number(p7).toLocaleString("vi-VN") : "400.000",
+      deposit: dep > 0 ? Number(dep).toLocaleString("vi-VN") : "0",
+      isSale: !!item.isSale,
+      salePrice: sale > 0 ? Number(sale).toLocaleString("vi-VN") : "",
+      originalPrice: orig > 0 ? Number(orig).toLocaleString("vi-VN") : "3.200.000",
+      description: item.description || "",
+      story: item.story || item.storyText || "",
+      imageFile: null,
+      imagePreview: item.image || (item.images && item.images[0]) || "",
+    }));
+
+    const imgs: string[] = item.images && item.images.length > 0 ? item.images : (item.image ? [item.image] : []);
+    setUploadedImages(imgs.map((url: string, i: number) => ({
+      previewUrl: url,
+      file: new File([""], `existing_${i}.jpg`, { type: "image/jpeg" })
+    })));
+
+    setPostError("");
+    setPostSuccess(false);
+    setIsUploadModalOpen(true);
   };
 
   // 💾 CẬP NHẬT HỒ SƠ CÁ NHÂN
@@ -1635,12 +1785,12 @@ export default function MobileAppClient({
 
   return (
     // 🏛️ KHUNG NGOÀI THOÁNG ĐÃNG
-    <div className="min-h-screen bg-[#FAF8F5] sm:bg-[#EAE7E1] py-0 sm:py-8 flex justify-center selection:bg-[#0A2517] selection:text-white">
+    <div className="min-h-screen bg-[#FAF8F5] sm:bg-[#EAE7E1] py-0 sm:py-8 flex justify-center selection:bg-[#1E5638] selection:text-white">
       
       {/* 📱 KHUNG MÁY APP: TRẢI NGHIỆM 100% NATIVE MOBILE APP */}
       <div 
         ref={scrollContainerRef}
-        className="w-full sm:max-w-[430px] min-h-screen sm:min-h-[890px] sm:max-h-[920px] bg-[#FBF9F5] text-[#0A2517] antialiased sm:shadow-[0_25px_60px_rgba(0,0,0,0.18)] sm:rounded-[44px] sm:border-[6px] border-stone-800/80 relative overflow-y-auto overflow-x-hidden select-none pb-24 no-scrollbar flex flex-col"
+        className="w-full sm:max-w-[430px] min-h-screen sm:min-h-[890px] sm:max-h-[920px] bg-[#FBF9F5] text-[#16442C] antialiased sm:shadow-[0_25px_60px_rgba(0,0,0,0.18)] sm:rounded-[44px] sm:border-[6px] border-stone-800/80 relative overflow-y-auto overflow-x-hidden select-none pb-24 no-scrollbar flex flex-col"
       >
         
         {/* ========================================================
@@ -1660,7 +1810,7 @@ export default function MobileAppClient({
                   className="mix-blend-multiply drop-shadow-xs" 
                 />
               </div>
-              <span className="font-brand-title text-[22px] font-black tracking-[0.14em] text-[#183A2D] leading-none">
+              <span className="font-brand-title text-[22px] font-black tracking-[0.14em] text-[#1E5638] leading-none">
                 CLOOP
               </span>
             </div>
@@ -1691,7 +1841,7 @@ export default function MobileAppClient({
                   </g>
                 </svg>
               )}
-              <span className="text-[11px] font-bold text-[#0A2517] tracking-tight">
+              <span className="text-[11px] font-bold text-[#16442C] tracking-tight">
                 {lang === "vi" ? "Vie" : "Eng"}
               </span>
             </button>
@@ -1705,11 +1855,11 @@ export default function MobileAppClient({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={lang === "vi" ? "Tìm đầm tiệc cưới, dạ hội, áo dài..." : "Search dresses, gala, wedding outfits..."}
-                className="w-full h-10 bg-white text-stone-900 placeholder-stone-400 pl-4 pr-10 rounded-xl text-xs font-medium outline-none border border-stone-200/90 shadow-2xs focus:border-[#0A2517] focus:ring-1 focus:ring-[#0A2517]"
+                className="w-full h-10 bg-white text-stone-900 placeholder-stone-400 pl-4 pr-10 rounded-xl text-xs font-medium outline-none border border-stone-200/90 shadow-2xs focus:border-[#1E5638] focus:ring-1 focus:ring-[#1E5638]"
               />
               <button
                 type="button"
-                className="absolute right-3.5 text-stone-400 hover:text-[#0A2517] transition"
+                className="absolute right-3.5 text-stone-400 hover:text-[#1E5638] transition"
               >
                 <Search size={16} />
               </button>
@@ -1718,7 +1868,7 @@ export default function MobileAppClient({
 
           {/* TOAST THÔNG BÁO CHUYỂN ĐỔI NGÔN NGỮ */}
           {langToast && (
-            <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-[#0A2517] text-white text-[11px] font-bold px-3 py-1 rounded-full shadow-md border border-emerald-600/60 animate-bounce">
+            <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-[#1E5638] text-white text-[11px] font-bold px-3 py-1 rounded-full shadow-md border border-emerald-600/60 animate-bounce">
               {langToast}
             </div>
           )}
@@ -1750,12 +1900,12 @@ export default function MobileAppClient({
             {/* THÔNG SỐ TÁC ĐỘNG TUẦN HOÀN */}
             <div className="mx-3 mt-3 bg-white rounded-xl p-2.5 border border-stone-200/70 shadow-2xs flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-emerald-700 shrink-0 ml-1" />
+                <div className="w-2.5 h-2.5 rounded-full bg-[#1E5638] ring-2 ring-red-300/80 shrink-0 ml-1" />
                 <div>
-                  <p className="text-[11px] font-bold text-[#0A2517]">
+                  <p className="text-[11px] font-bold text-[#16442C]">
                     {totalProductsCount > 0 
                       ? (lang === "vi" ? `${totalProductsCount * 120}+ lượt mặc tuần hoàn` : `${totalProductsCount * 120}+ circular rotations`) 
-                      : (lang === "vi" ? "Tủ đồ tuần hoàn CLOOP" : "CLOOP Circular Closet")}
+                      : (lang === "vi" ? "Cộng đồng thời trang CLOOP" : "CLOOP Fashion Community")}
                   </p>
                   <p className="text-[9.5px] text-stone-500">
                     {lang === "vi" ? "Đã giảm 65 tấn khí thải CO2e cùng cộng đồng" : "Saved 65 tons of CO2e with community"}
@@ -1768,10 +1918,10 @@ export default function MobileAppClient({
                   if (!currentUser) {
                     setShowAuthModal(true);
                   } else {
-                    setIsUploadModalOpen(true);
+                    handleOpenCreateModal();
                   }
                 }}
-                className="px-2.5 py-1.5 rounded-lg bg-[#0A2517] text-white text-[10px] font-bold shadow-2xs hover:bg-[#143E29] transition active:scale-95 shrink-0 cursor-pointer"
+                className="px-2.5 py-1.5 rounded-lg bg-[#1E5638] text-white text-[10px] font-bold shadow-2xs hover:bg-[#236341] transition active:scale-95 shrink-0 cursor-pointer"
               >
                 {lang === "vi" ? "+ Đăng đồ" : "+ List"}
               </button>
@@ -1781,12 +1931,12 @@ export default function MobileAppClient({
             {/* DÃY DANH MỤC LỰA CHỌN ĐI TIỆC */}
             <div className="px-3 pt-2 pb-2">
               <div className="flex items-center justify-between mb-2 px-1">
-                <h2 className="font-heading font-black text-sm uppercase tracking-wider text-[#0A2517]">
+                <h2 className="font-heading font-black text-sm uppercase tracking-wider text-[#16442C]">
                   {lang === "vi" ? "Gợi Ý Trang Phục Nổi Bật" : "Featured Outfits"}
                 </h2>
                 <button
                   onClick={() => setActiveTab("shop")}
-                  className="text-[11px] font-bold text-emerald-800 hover:underline cursor-pointer"
+                  className="text-[11px] font-bold text-[#C92A2A] hover:underline cursor-pointer flex items-center gap-0.5"
                 >
                   {lang === "vi" ? "Xem tất cả →" : "View all →"}
                 </button>
@@ -1805,7 +1955,7 @@ export default function MobileAppClient({
                       onClick={() => setSelectedOccasion(tab.name)}
                       className={`px-3.5 py-1.5 rounded-full text-[11.5px] font-bold whitespace-nowrap transition-all cursor-pointer ${
                         isActive
-                          ? "bg-[#0A2517] text-white shadow-xs"
+                          ? "bg-[#1E5638] text-white shadow-xs"
                           : "bg-white text-stone-700 hover:bg-stone-100 border border-stone-200/80"
                       }`}
                     >
@@ -1823,7 +1973,7 @@ export default function MobileAppClient({
                   <p className="text-xs font-bold text-stone-700">Chưa có trang phục trong dịp &ldquo;{selectedOccasion}&rdquo;</p>
                   <button
                     onClick={() => { setSelectedOccasion("Tất cả"); setSearchQuery(""); }}
-                    className="mt-1 px-3.5 py-1.5 bg-[#0A2517] text-white text-xs font-bold rounded-full cursor-pointer"
+                    className="mt-1 px-3.5 py-1.5 bg-[#1E5638] text-white text-xs font-bold rounded-full cursor-pointer"
                   >
                     Xem tất cả trang phục
                   </button>
@@ -1835,14 +1985,23 @@ export default function MobileAppClient({
                     const isRent = p.listingTypeRaw !== "SELL";
                     const rentPrice = p.rentalPrice || p.price || 0;
                     const salePrice = p.salePrice || p.price || 0;
+                    const currentPrice = isRent ? rentPrice : salePrice;
                     const itemImg = p.image || p.primaryImage || p.images?.[0] || FALLBACK_CLOUDINARY_IMG;
                     const ownerName = p.ownerName || "Chủ tủ CLOOP";
+
+                    const dbOrigPrice = Number(p.originalPrice || p.storeRetailPrice || 0);
+                    const retailPrice = dbOrigPrice > currentPrice 
+                      ? dbOrigPrice 
+                      : (isRent && currentPrice > 0 ? currentPrice * 9 : (currentPrice > 0 ? Math.round(currentPrice * 1.6) : 0));
+                    const savedPercent = retailPrice > currentPrice 
+                      ? Math.min(95, Math.max(10, Math.round(((retailPrice - currentPrice) / retailPrice) * 100))) 
+                      : 0;
 
                     return (
                       <div
                         key={p.id || idx}
                         onClick={() => setSelectedProduct(p)}
-                        className="bg-white rounded-2xl overflow-hidden shadow-xs hover:shadow-md border border-stone-200/80 flex flex-col justify-between relative group text-[#0A2517] cursor-pointer active:scale-[0.98] transition-all"
+                        className="bg-white rounded-2xl overflow-hidden shadow-xs hover:shadow-md border border-stone-200/80 flex flex-col justify-between relative group text-[#16442C] cursor-pointer active:scale-[0.98] transition-all"
                       >
                         {/* Khung ảnh trang phục to nổi bật tràn viền trên */}
                         <div className="relative w-full aspect-[4/5] bg-stone-100 overflow-hidden">
@@ -1856,11 +2015,18 @@ export default function MobileAppClient({
                           />
 
                           {/* Tag phân loại: Thuê đồ / Mua sở hữu thật */}
-                          <span className={`absolute top-2 left-2 text-white text-[9.5px] font-bold px-2 py-0.5 rounded-md shadow-xs z-10 ${
-                            isRent ? "bg-[#0A2517]/90 backdrop-blur-xs" : "bg-amber-800/90 backdrop-blur-xs"
-                          }`}>
-                            {isRent ? "Thuê đồ" : "Mua sở hữu"}
-                          </span>
+                          <div className="absolute top-2 left-2 flex items-center gap-1 z-10">
+                            <span className={`text-white text-[9.5px] font-bold px-2 py-0.5 rounded-md shadow-xs ${
+                              isRent ? "bg-[#1E5638]/95 backdrop-blur-xs" : "bg-[#C92A2A]/95 backdrop-blur-xs"
+                            }`}>
+                              {isRent ? "Thuê đồ" : "Mua sở hữu"}
+                            </span>
+                            {savedPercent > 0 && (
+                              <span className="bg-[#C92A2A] text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs font-mono tracking-tight">
+                                -{savedPercent}%
+                              </span>
+                            )}
+                          </div>
 
                           {/* Nút tim lưu DB thật */}
                           <button
@@ -1868,7 +2034,7 @@ export default function MobileAppClient({
                             onClick={(e) => handleToggleLike(p.id, e)}
                             className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 backdrop-blur-xs flex items-center justify-center text-stone-500 hover:text-red-500 transition shadow-2xs z-10 cursor-pointer"
                           >
-                            <Heart size={14} className={isLiked ? "fill-red-500 text-red-500" : "text-stone-400"} />
+                            <Heart size={14} className={isLiked ? "fill-[#C92A2A] text-[#C92A2A]" : "text-stone-400"} />
                           </button>
 
                           {/* Tag dịp tiệc thật từ database */}
@@ -1913,33 +2079,33 @@ export default function MobileAppClient({
                           </div>
 
                           {/* Tên trang phục */}
-                          <h3 className="font-heading font-black text-xs text-[#0A2517] line-clamp-1 leading-snug">
+                          <h3 className="font-heading font-black text-xs text-[#16442C] line-clamp-1 leading-snug">
                             {p.title}
                           </h3>
 
-                          {/* Giá tiền thật (không bịa số) */}
+                          {/* Giá thuê / sở hữu & Giá gốc gạch ngang & Tiết kiệm % như bản web */}
                           <div className="space-y-0.5">
-                            <div className="flex items-baseline gap-1">
-                              <span className="font-black text-sm text-[#0A2517]">
-                                {(isRent ? rentPrice : salePrice).toLocaleString("vi-VN")}đ
+                            <div className="flex items-baseline gap-1.5 flex-wrap">
+                              <span className="font-heading font-black text-sm text-[#1E5638]">
+                                {currentPrice.toLocaleString("vi-VN")}đ
                               </span>
-                              <span className="text-[10px] text-stone-500 font-normal">
-                                {isRent ? "/ ngày" : ""}
-                              </span>
+                              {isRent && (
+                                <span className="text-[10px] text-stone-500 font-normal">/ ngày</span>
+                              )}
+                              {retailPrice > 0 && (
+                                <span className="text-[10px] text-stone-400 line-through font-mono">
+                                  {retailPrice.toLocaleString("vi-VN")}đ
+                                </span>
+                              )}
                             </div>
 
-                            {/* Gói thuê theo ngày thực tế (Đồng bộ 100% Web) */}
-                            {isRent && rentPrice > 0 && (
-                              <p className="text-[10px] text-emerald-800 font-medium">
-                                Gói {p.minDays || 3} ngày: {(calculatePackageRentalFee(p, p.minDays || 3)).toLocaleString("vi-VN")}đ
-                              </p>
-                            )}
-
-                            {/* Giá mua mới nếu chủ tủ có cung cấp thật trong DB */}
-                            {p.originalPrice && p.originalPrice > 0 && (
-                              <p className="text-[9.5px] text-stone-400">
-                                Giá mua mới: {Number(p.originalPrice).toLocaleString("vi-VN")}đ
-                              </p>
+                            {/* Tag Tiết kiệm % như bản web & GOYA */}
+                            {savedPercent > 0 && (
+                              <div className="flex items-center gap-1 pt-0.5">
+                                <span className="text-[9px] font-bold text-[#C92A2A] bg-red-50 border border-red-200/80 px-1.5 py-0.2 rounded font-mono">
+                                  Tiết kiệm {savedPercent}%
+                                </span>
+                              </div>
                             )}
                           </div>
 
@@ -1955,7 +2121,7 @@ export default function MobileAppClient({
                                 e.stopPropagation();
                                 handleAddToCart(p);
                               }}
-                              className="w-7 h-7 rounded-lg bg-stone-100 hover:bg-[#0A2517] text-stone-700 hover:text-white flex items-center justify-center transition cursor-pointer shrink-0"
+                              className="w-7 h-7 rounded-lg bg-stone-100 hover:bg-[#1E5638] text-stone-700 hover:text-white flex items-center justify-center transition cursor-pointer shrink-0"
                               title="Thêm vào giỏ hàng"
                             >
                               <ShoppingBag size={13} />
@@ -1982,7 +2148,7 @@ export default function MobileAppClient({
                 onClick={() => setListingMode("all")}
                 className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center ${
                   listingMode === "all" 
-                    ? "bg-[#0A2517] text-white shadow-xs" 
+                    ? "bg-[#1E5638] text-white shadow-xs" 
                     : "text-stone-600 hover:text-stone-900"
                 }`}
               >
@@ -1992,7 +2158,7 @@ export default function MobileAppClient({
                 onClick={() => setListingMode("rent")}
                 className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center ${
                   listingMode === "rent" 
-                    ? "bg-[#0A2517] text-white shadow-xs" 
+                    ? "bg-[#1E5638] text-white shadow-xs" 
                     : "text-stone-600 hover:text-stone-900"
                 }`}
               >
@@ -2001,8 +2167,7 @@ export default function MobileAppClient({
               <button
                 onClick={() => setListingMode("sell")}
                 className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center ${
-                  listingMode === "sell" 
-                    ? "bg-[#0A2517] text-white shadow-xs" 
+                  listingMode === "sell" ? "bg-[#C92A2A] text-white shadow-xs" 
                     : "text-stone-600 hover:text-stone-900"
                 }`}
               >
@@ -2020,7 +2185,7 @@ export default function MobileAppClient({
                     onClick={() => setSelectedOccasion(tab.name)}
                     className={`px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer ${
                       isActive
-                        ? "bg-[#0A2517] text-white shadow-xs"
+                        ? "bg-[#1E5638] text-white shadow-xs"
                         : "bg-white text-stone-700 hover:bg-stone-100 border border-stone-200/80"
                     }`}
                   >
@@ -2042,7 +2207,7 @@ export default function MobileAppClient({
                 <p className="text-xs font-bold text-stone-700">Không tìm thấy trang phục phù hợp</p>
                 <button
                   onClick={() => { setListingMode("all"); setSelectedOccasion("Tất cả"); setSearchQuery(""); }}
-                  className="mt-1 px-3.5 py-1.5 bg-[#0A2517] text-white text-xs font-bold rounded-full cursor-pointer"
+                  className="mt-1 px-3.5 py-1.5 bg-[#1E5638] text-white text-xs font-bold rounded-full cursor-pointer"
                 >
                   Đặt lại bộ lọc
                 </button>
@@ -2053,15 +2218,24 @@ export default function MobileAppClient({
                   const isLiked = !!likedItems[p.id];
                   const isRent = p.listingTypeRaw !== "SELL";
                   const rentPrice = p.rentalPrice || p.price || 0;
-                  const salePrice = p.salePrice || p.price || 0;
-                  const itemImg = p.image || p.primaryImage || p.images?.[0] || FALLBACK_CLOUDINARY_IMG;
-                  const ownerName = p.ownerName || "Chủ tủ CLOOP";
+                    const salePrice = p.salePrice || p.price || 0;
+                    const currentPrice = isRent ? rentPrice : salePrice;
+                    const itemImg = p.image || p.primaryImage || p.images?.[0] || FALLBACK_CLOUDINARY_IMG;
+                    const ownerName = p.ownerName || "Chủ tủ CLOOP";
+
+                    const dbOrigPrice = Number(p.originalPrice || p.storeRetailPrice || 0);
+                    const retailPrice = dbOrigPrice > currentPrice 
+                      ? dbOrigPrice 
+                      : (isRent && currentPrice > 0 ? currentPrice * 9 : (currentPrice > 0 ? Math.round(currentPrice * 1.6) : 0));
+                    const savedPercent = retailPrice > currentPrice 
+                      ? Math.min(95, Math.max(10, Math.round(((retailPrice - currentPrice) / retailPrice) * 100))) 
+                      : 0;
 
                   return (
                     <div
                       key={p.id || idx}
                       onClick={() => setSelectedProduct(p)}
-                      className="bg-white rounded-2xl overflow-hidden shadow-xs hover:shadow-md border border-stone-200/80 flex flex-col justify-between relative group text-[#0A2517] cursor-pointer active:scale-[0.98] transition-all"
+                      className="bg-white rounded-2xl overflow-hidden shadow-xs hover:shadow-md border border-stone-200/80 flex flex-col justify-between relative group text-[#16442C] cursor-pointer active:scale-[0.98] transition-all"
                     >
                       {/* Khung ảnh trang phục to nổi bật tràn viền trên */}
                       <div className="relative w-full aspect-[4/5] bg-stone-100 overflow-hidden">
@@ -2075,11 +2249,18 @@ export default function MobileAppClient({
                         />
 
                         {/* Tag phân loại: Thuê đồ / Mua sở hữu thật */}
-                        <span className={`absolute top-2 left-2 text-white text-[9.5px] font-bold px-2 py-0.5 rounded-md shadow-xs z-10 ${
-                          isRent ? "bg-[#0A2517]/90 backdrop-blur-xs" : "bg-amber-800/90 backdrop-blur-xs"
-                        }`}>
-                          {isRent ? "Thuê đồ" : "Mua sở hữu"}
-                        </span>
+                        <div className="absolute top-2 left-2 flex items-center gap-1 z-10">
+                            <span className={`text-white text-[9.5px] font-bold px-2 py-0.5 rounded-md shadow-xs ${
+                              isRent ? "bg-[#1E5638]/95 backdrop-blur-xs" : "bg-[#C92A2A]/95 backdrop-blur-xs"
+                            }`}>
+                              {isRent ? "Thuê đồ" : "Mua sở hữu"}
+                            </span>
+                            {savedPercent > 0 && (
+                              <span className="bg-[#C92A2A] text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs font-mono tracking-tight">
+                                -{savedPercent}%
+                              </span>
+                            )}
+                          </div>
 
                         {/* Nút tim lưu DB thật */}
                         <button
@@ -2087,7 +2268,7 @@ export default function MobileAppClient({
                           onClick={(e) => handleToggleLike(p.id, e)}
                           className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 backdrop-blur-xs flex items-center justify-center text-stone-500 hover:text-red-500 transition shadow-2xs z-10 cursor-pointer"
                         >
-                          <Heart size={14} className={isLiked ? "fill-red-500 text-red-500" : "text-stone-400"} />
+                          <Heart size={14} className={isLiked ? "fill-[#C92A2A] text-[#C92A2A]" : "text-stone-400"} />
                         </button>
 
                         {/* Tag dịp tiệc thật từ database */}
@@ -2132,37 +2313,37 @@ export default function MobileAppClient({
                         </div>
 
                         {/* Tên trang phục */}
-                        <h3 className="font-heading font-black text-xs text-[#0A2517] line-clamp-1 leading-snug">
+                        <h3 className="font-heading font-black text-xs text-[#16442C] line-clamp-1 leading-snug">
                           {p.title}
                         </h3>
 
-                        {/* Giá tiền thật (không bịa số) */}
-                        <div className="space-y-0.5">
-                          <div className="flex items-baseline gap-1">
-                            <span className="font-black text-sm text-[#0A2517]">
-                              {(isRent ? rentPrice : salePrice).toLocaleString("vi-VN")}đ
-                            </span>
-                            <span className="text-[10px] text-stone-500 font-normal">
-                              {isRent ? "/ ngày" : ""}
-                            </span>
+                        {/* Giá thuê / sở hữu & Giá gốc gạch ngang & Tiết kiệm % như bản web */}
+                          <div className="space-y-0.5">
+                            <div className="flex items-baseline gap-1.5 flex-wrap">
+                              <span className="font-heading font-black text-sm text-[#1E5638]">
+                                {currentPrice.toLocaleString("vi-VN")}đ
+                              </span>
+                              {isRent && (
+                                <span className="text-[10px] text-stone-500 font-normal">/ ngày</span>
+                              )}
+                              {retailPrice > 0 && (
+                                <span className="text-[10px] text-stone-400 line-through font-mono">
+                                  {retailPrice.toLocaleString("vi-VN")}đ
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Tag Tiết kiệm % như bản web & GOYA */}
+                            {savedPercent > 0 && (
+                              <div className="flex items-center gap-1 pt-0.5">
+                                <span className="text-[9px] font-bold text-[#C92A2A] bg-red-50 border border-red-200/80 px-1.5 py-0.2 rounded font-mono">
+                                  Tiết kiệm {savedPercent}%
+                                </span>
+                              </div>
+                            )}
                           </div>
 
-                          {/* Gói thuê theo ngày thực tế (Đồng bộ 100% Web) */}
-                          {isRent && rentPrice > 0 && (
-                            <p className="text-[10px] text-emerald-800 font-medium">
-                              Gói {p.minDays || 3} ngày: {(calculatePackageRentalFee(p, p.minDays || 3)).toLocaleString("vi-VN")}đ
-                            </p>
-                          )}
-
-                          {/* Giá mua mới nếu chủ tủ có cung cấp thật trong DB */}
-                          {p.originalPrice && p.originalPrice > 0 && (
-                            <p className="text-[9.5px] text-stone-400">
-                              Giá mua mới: {Number(p.originalPrice).toLocaleString("vi-VN")}đ
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Thông số Size, Tình trạng thật & Nút giỏ hàng */}
+                          {/* Thông số Size, Tình trạng thật & Nút giỏ hàng */}
                         <div className="flex items-center justify-between pt-1.5 border-t border-stone-100 text-[10px] text-stone-500">
                           <span className="text-stone-500 font-medium truncate">
                             Size {p.size || "M"}{p.condition ? ` • ${p.condition}` : ""}
@@ -2174,7 +2355,7 @@ export default function MobileAppClient({
                               e.stopPropagation();
                               handleAddToCart(p);
                             }}
-                            className="w-7 h-7 rounded-lg bg-stone-100 hover:bg-[#0A2517] text-stone-700 hover:text-white flex items-center justify-center transition cursor-pointer shrink-0"
+                            className="w-7 h-7 rounded-lg bg-stone-100 hover:bg-[#1E5638] text-stone-700 hover:text-white flex items-center justify-center transition cursor-pointer shrink-0"
                             title="Thêm vào giỏ hàng"
                           >
                             <ShoppingBag size={13} />
@@ -2200,7 +2381,7 @@ export default function MobileAppClient({
                 onClick={() => setOrderSubTab("renter")}
                 className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-1 ${
                   orderSubTab === "renter" 
-                    ? "bg-[#0A2517] text-white shadow-xs" 
+                    ? "bg-[#1E5638] text-white shadow-xs" 
                     : "text-stone-600 hover:text-stone-900"
                 }`}
               >
@@ -2210,7 +2391,7 @@ export default function MobileAppClient({
                 onClick={() => setOrderSubTab("lender")}
                 className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-1 ${
                   orderSubTab === "lender" 
-                    ? "bg-[#0A2517] text-white shadow-xs" 
+                    ? "bg-[#1E5638] text-white shadow-xs" 
                     : "text-stone-600 hover:text-stone-900"
                 }`}
               >
@@ -2220,7 +2401,7 @@ export default function MobileAppClient({
                 onClick={() => setOrderSubTab("cart")}
                 className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-1 relative ${
                   orderSubTab === "cart" 
-                    ? "bg-[#0A2517] text-white shadow-xs" 
+                    ? "bg-[#1E5638] text-white shadow-xs" 
                     : "text-stone-600 hover:text-stone-900"
                 }`}
               >
@@ -2244,7 +2425,7 @@ export default function MobileAppClient({
                     </p>
                     <button
                       onClick={() => setActiveTab("shop")}
-                      className="px-4 py-2 bg-[#0A2517] text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer"
+                      className="px-4 py-2 bg-[#1E5638] text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer"
                     >
                       {lang === "vi" ? "Dạo Sàn Đồ Ngay" : "Browse Shop Now"}
                     </button>
@@ -2266,7 +2447,7 @@ export default function MobileAppClient({
                           <div className="flex-1 min-w-0 text-xs">
                             <h5 className="font-bold text-stone-900 truncate">{order.productTitle}</h5>
                             <p className="text-stone-500 text-[11px] mt-0.5">Lịch thuê: {order.startDate} - {order.endDate}</p>
-                            <p className="font-black text-[#0A2517] mt-1">{(Number(order.amount) || 0).toLocaleString("vi-VN")}đ</p>
+                            <p className="font-black text-[#16442C] mt-1">{(Number(order.amount) || 0).toLocaleString("vi-VN")}đ</p>
                           </div>
                         </div>
                       </div>
@@ -2288,8 +2469,8 @@ export default function MobileAppClient({
                       {lang === "vi" ? "Đăng thêm đầm tiệc vào kệ đồ để bắt đầu tạo thu nhập thụ động tuần hoàn." : "Add more dresses to your closet to start earning passive income."}
                     </p>
                     <button
-                      onClick={() => setIsUploadModalOpen(true)}
-                      className="px-4 py-2 bg-[#0A2517] text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer"
+                      onClick={handleOpenCreateModal}
+                      className="px-4 py-2 bg-[#1E5638] text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer"
                     >
                       {lang === "vi" ? "+ Đăng Trang Phục Mới" : "+ List New Outfit"}
                     </button>
@@ -2312,7 +2493,7 @@ export default function MobileAppClient({
                             <h5 className="font-bold text-stone-900 truncate">{order.productTitle}</h5>
                             <p className="text-stone-500 text-[11px] mt-0.5">Lịch: {order.startDate} - {order.endDate}</p>
                             <div className="flex items-center justify-between mt-1">
-                              <span className="font-black text-[#0A2517]">{(Number(order.amount) || 0).toLocaleString("vi-VN")}đ</span>
+                              <span className="font-black text-[#16442C]">{(Number(order.amount) || 0).toLocaleString("vi-VN")}đ</span>
                               <span className="text-[10px] text-stone-400">Cọc: {(Number(order.depositAmount) || 0).toLocaleString("vi-VN")}đ</span>
                             </div>
                           </div>
@@ -2335,7 +2516,7 @@ export default function MobileAppClient({
                     </p>
                     <button
                       onClick={() => setActiveTab("shop")}
-                      className="px-4 py-2 bg-[#0A2517] text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer"
+                      className="px-4 py-2 bg-[#1E5638] text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer"
                     >
                       Dạo Sàn Đồ Ngay
                     </button>
@@ -2364,7 +2545,7 @@ export default function MobileAppClient({
                             <span className="text-[9.5px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded">
                               {item.occasion || "Đi tiệc"}
                             </span>
-                            <p className="text-xs font-black text-[#0A2517] mt-1">
+                            <p className="text-xs font-black text-[#16442C] mt-1">
                               {(item.rentalPrice || item.price || 0).toLocaleString("vi-VN")}đ <span className="text-[10px] font-normal text-stone-500">/ ngày</span>
                             </p>
                             <p className="text-[10px] text-emerald-800 font-medium">
@@ -2393,8 +2574,8 @@ export default function MobileAppClient({
                         <span className="text-emerald-700 font-bold">Miễn phí</span>
                       </div>
                       <div className="pt-2 border-t border-stone-100 flex justify-between items-center">
-                        <span className="font-bold text-sm text-[#0A2517]">Tổng thanh toán:</span>
-                        <span className="font-heading font-black text-base text-[#0A2517]">
+                        <span className="font-bold text-sm text-[#16442C]">Tổng thanh toán:</span>
+                        <span className="font-heading font-black text-base text-[#16442C]">
                           {cartItems.reduce((sum, item) => sum + calculatePackageRentalFee(item, item.minDays || 3), 0).toLocaleString("vi-VN")}đ
                         </span>
                       </div>
@@ -2404,7 +2585,7 @@ export default function MobileAppClient({
                             handleOpenCheckout(cartItems[0]);
                           }
                         }}
-                        className="w-full h-11 bg-[#0A2517] text-white font-bold text-xs rounded-xl shadow-md mt-2 flex items-center justify-center gap-2 cursor-pointer hover:bg-[#15462D] transition"
+                        className="w-full h-11 bg-[#1E5638] text-white font-bold text-xs rounded-xl shadow-md mt-2 flex items-center justify-center gap-2 cursor-pointer hover:bg-[#236341] transition"
                       >
                         <span>Tiến hành đặt cọc &amp; giữ lịch ({cartItems.length} món)</span>
                       </button>
@@ -2424,7 +2605,7 @@ export default function MobileAppClient({
             
             {/* THẺ ĐĂNG NHẬP / ĐĂNG KÝ (NẾU CHƯA CÓ SESSION) */}
             {!currentUser && !closetData?.isLoggedIn ? (
-              <div className="bg-[#0A2517] text-white rounded-3xl p-5 space-y-4 relative overflow-hidden shadow-lg border border-emerald-800">
+              <div className="bg-gradient-to-br from-[#1E5638] via-[#236341] to-[#15462D] text-white rounded-3xl p-5 space-y-4 relative overflow-hidden shadow-lg border border-red-500/20">
                 <div>
                   <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-300">
                     ĐỒNG BỘ TỦ ĐỒ THỜI TRANG TUẦN HOÀN
@@ -2439,7 +2620,7 @@ export default function MobileAppClient({
                 <div className="grid grid-cols-2 gap-2.5">
                   <button
                     onClick={() => openAuthModal ? openAuthModal('register') : setShowAuthModal(true)}
-                    className="py-3 px-2 rounded-xl bg-white text-[#0A2517] font-bold text-xs tracking-wider uppercase shadow-sm hover:bg-stone-100 transition cursor-pointer text-center flex items-center justify-center gap-1"
+                    className="py-3 px-2 rounded-xl bg-white text-[#16442C] font-bold text-xs tracking-wider uppercase shadow-sm hover:bg-stone-100 transition cursor-pointer text-center flex items-center justify-center gap-1"
                   >
                     <span>Đăng Ký Mới</span>
                   </button>
@@ -2454,7 +2635,7 @@ export default function MobileAppClient({
             ) : (
               <>
                 {/* 1. THẺ HỒ SƠ TÓM TẮT TINH TẾ (GỌN GÀNG, KHÔNG BỊ NHỒI NHÉT) */}
-                <div className="bg-[#0A2517] text-white rounded-3xl p-4 space-y-3 shadow-md border border-emerald-900/60 relative overflow-hidden">
+                <div className="bg-gradient-to-br from-[#1E5638] via-[#236341] to-[#15462D] text-white rounded-3xl p-4 space-y-3 shadow-md border border-red-500/20 relative overflow-hidden">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-full bg-emerald-800 text-white flex items-center justify-center font-heading font-black text-lg border-2 border-emerald-400 overflow-hidden shrink-0 shadow-xs">
@@ -2521,7 +2702,7 @@ export default function MobileAppClient({
                 {activeClosetView === "menu" ? (
                   <div className="space-y-2 pt-1">
                     <div className="flex items-center justify-between px-1">
-                      <h3 className="font-heading font-black text-xs uppercase tracking-wider text-[#0A2517]">
+                      <h3 className="font-heading font-black text-xs uppercase tracking-wider text-[#16442C]">
                         Danh Mục Quản Lý Tủ Đồ
                       </h3>
                     </div>
@@ -2529,10 +2710,10 @@ export default function MobileAppClient({
                     {/* THANH 1: KỆ ĐỒ CÁ NHÂN */}
                     <button
                       onClick={() => setActiveClosetView("items")}
-                      className="w-full bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs flex items-center justify-between hover:border-[#0A2517] hover:shadow-xs transition active:scale-[0.99] cursor-pointer text-left group"
+                      className="w-full bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs flex items-center justify-between hover:border-[#1E5638] hover:shadow-xs transition active:scale-[0.99] cursor-pointer text-left group"
                     >
                       <div>
-                        <h4 className="text-xs font-bold text-stone-900 group-hover:text-[#0A2517]">
+                        <h4 className="text-xs font-bold text-stone-900 group-hover:text-[#1E5638]">
                           Kệ Đồ Của Tôi
                         </h4>
                         <p className="text-[11px] text-stone-500 mt-0.5">
@@ -2543,17 +2724,17 @@ export default function MobileAppClient({
                         <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full">
                           {closetData?.myProducts?.length || 0} món
                         </span>
-                        <ChevronRight size={16} className="text-stone-400 group-hover:text-[#0A2517] transition-transform group-hover:translate-x-0.5" />
+                        <ChevronRight size={16} className="text-stone-400 group-hover:text-[#1E5638] transition-transform group-hover:translate-x-0.5" />
                       </div>
                     </button>
 
                     {/* THANH 2: ĐƠN HÀNG & LỊCH THUÊ */}
                     <button
                       onClick={() => setActiveClosetView("orders")}
-                      className="w-full bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs flex items-center justify-between hover:border-[#0A2517] hover:shadow-xs transition active:scale-[0.99] cursor-pointer text-left group"
+                      className="w-full bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs flex items-center justify-between hover:border-[#1E5638] hover:shadow-xs transition active:scale-[0.99] cursor-pointer text-left group"
                     >
                       <div>
-                        <h4 className="text-xs font-bold text-stone-900 group-hover:text-[#0A2517]">
+                        <h4 className="text-xs font-bold text-stone-900 group-hover:text-[#1E5638]">
                           Đơn Hàng &amp; Lịch Hẹn Thuê
                         </h4>
                         <p className="text-[11px] text-stone-500 mt-0.5">
@@ -2564,17 +2745,17 @@ export default function MobileAppClient({
                         <span className="text-[11px] font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded-full">
                           {(closetData?.ordersAsLender?.length || 0) + (closetData?.ordersAsRenter?.length || 0)} đơn
                         </span>
-                        <ChevronRight size={16} className="text-stone-400 group-hover:text-[#0A2517] transition-transform group-hover:translate-x-0.5" />
+                        <ChevronRight size={16} className="text-stone-400 group-hover:text-[#1E5638] transition-transform group-hover:translate-x-0.5" />
                       </div>
                     </button>
 
                     {/* THANH 3: VÍ THU NHẬP & SỐ DƯ */}
                     <button
                       onClick={() => setActiveClosetView("wallet")}
-                      className="w-full bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs flex items-center justify-between hover:border-[#0A2517] hover:shadow-xs transition active:scale-[0.99] cursor-pointer text-left group"
+                      className="w-full bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs flex items-center justify-between hover:border-[#1E5638] hover:shadow-xs transition active:scale-[0.99] cursor-pointer text-left group"
                     >
                       <div>
-                        <h4 className="text-xs font-bold text-stone-900 group-hover:text-[#0A2517]">
+                        <h4 className="text-xs font-bold text-stone-900 group-hover:text-[#1E5638]">
                           Ví Thu Nhập &amp; Doanh Thu
                         </h4>
                         <p className="text-[11px] text-stone-500 mt-0.5">
@@ -2585,17 +2766,17 @@ export default function MobileAppClient({
                         <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full">
                           {(closetData?.user?.walletBalance || 0).toLocaleString("vi-VN")}đ
                         </span>
-                        <ChevronRight size={16} className="text-stone-400 group-hover:text-[#0A2517] transition-transform group-hover:translate-x-0.5" />
+                        <ChevronRight size={16} className="text-stone-400 group-hover:text-[#1E5638] transition-transform group-hover:translate-x-0.5" />
                       </div>
                     </button>
 
                     {/* THANH 4: TÁC ĐỘNG SINH THÁI (ECO STATS) */}
                     <button
                       onClick={() => setActiveClosetView("eco")}
-                      className="w-full bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs flex items-center justify-between hover:border-[#0A2517] hover:shadow-xs transition active:scale-[0.99] cursor-pointer text-left group"
+                      className="w-full bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs flex items-center justify-between hover:border-[#1E5638] hover:shadow-xs transition active:scale-[0.99] cursor-pointer text-left group"
                     >
                       <div>
-                        <h4 className="text-xs font-bold text-stone-900 group-hover:text-[#0A2517]">
+                        <h4 className="text-xs font-bold text-stone-900 group-hover:text-[#1E5638]">
                           Thống Kê Sinh Thái &amp; Điểm Xanh
                         </h4>
                         <p className="text-[11px] text-stone-500 mt-0.5">
@@ -2606,17 +2787,17 @@ export default function MobileAppClient({
                         <span className="text-[11px] font-bold text-teal-900 bg-teal-50 px-2 py-0.5 rounded-full">
                           {closetData?.stats?.greenPoints || 120} pts
                         </span>
-                        <ChevronRight size={16} className="text-stone-400 group-hover:text-[#0A2517] transition-transform group-hover:translate-x-0.5" />
+                        <ChevronRight size={16} className="text-stone-400 group-hover:text-[#1E5638] transition-transform group-hover:translate-x-0.5" />
                       </div>
                     </button>
 
                     {/* THANH 5: HỒ SƠ & ĐỊA CHỈ GIAO NHẬN */}
                     <button
                       onClick={() => setActiveClosetView("profile")}
-                      className="w-full bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs flex items-center justify-between hover:border-[#0A2517] hover:shadow-xs transition active:scale-[0.99] cursor-pointer text-left group"
+                      className="w-full bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs flex items-center justify-between hover:border-[#1E5638] hover:shadow-xs transition active:scale-[0.99] cursor-pointer text-left group"
                     >
                       <div>
-                        <h4 className="text-xs font-bold text-stone-900 group-hover:text-[#0A2517]">
+                        <h4 className="text-xs font-bold text-stone-900 group-hover:text-[#1E5638]">
                           Hồ Sơ &amp; Địa Chỉ Giao Nhận
                         </h4>
                         <p className="text-[11px] text-stone-500 mt-0.5 truncate max-w-[210px]">
@@ -2624,7 +2805,7 @@ export default function MobileAppClient({
                         </p>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        <ChevronRight size={16} className="text-stone-400 group-hover:text-[#0A2517] transition-transform group-hover:translate-x-0.5" />
+                        <ChevronRight size={16} className="text-stone-400 group-hover:text-[#1E5638] transition-transform group-hover:translate-x-0.5" />
                       </div>
                     </button>
 
@@ -2634,10 +2815,10 @@ export default function MobileAppClient({
                         if (!currentUser) {
                           setShowAuthModal(true);
                         } else {
-                          setIsUploadModalOpen(true);
+                          handleOpenCreateModal();
                         }
                       }}
-                      className="w-full bg-[#0A2517] text-white rounded-2xl p-3.5 shadow-sm flex items-center justify-between hover:bg-[#143E29] transition active:scale-[0.99] cursor-pointer text-left mt-3"
+                      className="w-full bg-[#1E5638] text-white rounded-2xl p-3.5 shadow-sm flex items-center justify-between hover:bg-[#236341] transition active:scale-[0.99] cursor-pointer text-left mt-3"
                     >
                       <div>
                         <h4 className="text-xs font-black text-white uppercase tracking-wide">
@@ -2647,7 +2828,7 @@ export default function MobileAppClient({
                           Váy tiệc chỉ mặc 1 lần? Chia sẻ để nhận thu nhập
                         </p>
                       </div>
-                      <span className="text-[11px] font-bold bg-white text-[#0A2517] px-3 py-1.5 rounded-xl shrink-0 shadow-2xs">
+                      <span className="text-[11px] font-bold bg-white text-[#16442C] px-3 py-1.5 rounded-xl shrink-0 shadow-2xs">
                         + Đăng ngay
                       </span>
                     </button>
@@ -2660,7 +2841,7 @@ export default function MobileAppClient({
                     {/* Nút quay lại Menu danh mục */}
                     <button
                       onClick={() => setActiveClosetView("menu")}
-                      className="flex items-center gap-1.5 text-xs font-bold text-[#0A2517] hover:underline cursor-pointer py-1"
+                      className="flex items-center gap-1.5 text-xs font-bold text-[#16442C] hover:underline cursor-pointer py-1"
                     >
                       <ArrowLeft size={16} />
                       <span>Quay lại danh mục quản lý</span>
@@ -2672,7 +2853,7 @@ export default function MobileAppClient({
                       <div className="space-y-3">
                         <div className="flex items-center justify-between px-1">
                           <div>
-                            <h4 className="font-heading font-black text-sm uppercase tracking-wider text-[#0A2517]">
+                            <h4 className="font-heading font-black text-sm uppercase tracking-wider text-[#16442C]">
                               Kệ Đồ Của Bạn ({safeMyProducts.length})
                             </h4>
                             <p className="text-[10px] text-stone-500">
@@ -2684,10 +2865,10 @@ export default function MobileAppClient({
                               if (!currentUser) {
                                 setShowAuthModal(true);
                               } else {
-                                setIsUploadModalOpen(true);
+                                handleOpenCreateModal();
                               }
                             }}
-                            className="px-2.5 py-1.5 rounded-xl bg-[#0A2517] text-white text-xs font-bold shadow-xs hover:bg-[#143E29] transition flex items-center gap-1 cursor-pointer active:scale-95"
+                            className="px-2.5 py-1.5 rounded-xl bg-[#1E5638] text-white text-xs font-bold shadow-xs hover:bg-[#236341] transition flex items-center gap-1 cursor-pointer active:scale-95"
                           >
                             <Plus size={13} strokeWidth={3} />
                             <span>Đăng đồ mới</span>
@@ -2698,9 +2879,9 @@ export default function MobileAppClient({
                         <div className="flex bg-stone-200/70 p-1 rounded-2xl gap-1 overflow-x-auto no-scrollbar">
                           {[
                             { id: "ALL", label: `Tất cả (${safeMyProducts.length})` },
-                            { id: "RENTING", label: `Cho thuê (${safeMyProducts.filter(p => (p.rentalPrice > 0 || p.isRentalActive) && !p.isShopHidden).length})` },
-                            { id: "SELLING", label: `Đang bán (${safeMyProducts.filter(p => (p.salePrice > 0 || p.isSaleActive) && !p.isShopHidden).length})` },
-                            { id: "HIDDEN", label: `Đã ẩn (${safeMyProducts.filter(p => p.isShopHidden).length})` },
+                            { id: "RENTING", label: `Cho thuê (${safeMyProducts.filter((p: any) => (p.rentalPrice > 0 || p.isRentalActive) && !p.isShopHidden).length})` },
+                            { id: "SELLING", label: `Đang bán (${safeMyProducts.filter((p: any) => (p.salePrice > 0 || p.isSaleActive) && !p.isShopHidden).length})` },
+                            { id: "HIDDEN", label: `Đã ẩn (${safeMyProducts.filter((p: any) => p.isShopHidden).length})` },
                           ].map(tab => (
                             <button
                               key={tab.id}
@@ -2708,7 +2889,7 @@ export default function MobileAppClient({
                               onClick={() => setMyItemsFilterTab(tab.id as any)}
                               className={`flex-1 py-1.5 px-2 text-[10.5px] font-bold rounded-xl transition whitespace-nowrap cursor-pointer text-center ${
                                 myItemsFilterTab === tab.id
-                                  ? "bg-[#0A2517] text-white shadow-xs"
+                                  ? "bg-[#1E5638] text-white shadow-xs"
                                   : "text-stone-600 hover:text-stone-900"
                               }`}
                             >
@@ -2731,10 +2912,10 @@ export default function MobileAppClient({
                                 if (!currentUser) {
                                   setShowAuthModal(true);
                                 } else {
-                                  setIsUploadModalOpen(true);
+                                  handleOpenCreateModal();
                                 }
                               }}
-                              className="mt-2 px-4 py-2 bg-[#0A2517] text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer inline-flex items-center gap-1.5"
+                              className="mt-2 px-4 py-2 bg-[#1E5638] text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer inline-flex items-center gap-1.5"
                             >
                               <Plus size={14} />
                               <span>{lang === "vi" ? "Đăng món đồ đầu tiên vào tủ" : "+ List First Outfit"}</span>
@@ -2787,14 +2968,14 @@ export default function MobileAppClient({
                                         )}
                                       </div>
                                       <h4 className="text-xs font-bold text-stone-900 truncate mt-1">{item.title}</h4>
-                                      <p className="text-xs font-black text-[#0A2517] mt-0.5">
+                                      <p className="text-xs font-black text-[#16442C] mt-0.5">
                                         {item.rentalPrice ? `${item.rentalPrice.toLocaleString("vi-VN")}đ / ngày` : (item.salePrice ? `${item.salePrice.toLocaleString("vi-VN")}đ` : "Liên hệ thuê")}
                                       </p>
-                                      {item.rentalPrice > 0 && (
-                                        <p className="text-[9.5px] text-emerald-800 font-medium">
-                                          • Gói 3 ngày: {(calculatePackageRentalFee(item, 3)).toLocaleString("vi-VN")}đ
-                                        </p>
-                                      )}
+                                      {Number(item.originalPrice || 0) > 0 ? (
+                                         <p className="text-[9.5px] text-stone-400">
+                                           Giá gốc: <span className="line-through">{Number(item.originalPrice).toLocaleString("vi-VN")}đ</span>
+                                         </p>
+                                       ) : null}
                                       <p className="text-[9.5px] text-stone-400 mt-0.5">
                                         Cọc: {Number(item.deposit || 0) > 0 ? `${Number(item.deposit).toLocaleString("vi-VN")}đ` : "0đ (Miễn cọc)"}
                                       </p>
@@ -2806,7 +2987,7 @@ export default function MobileAppClient({
                                     <button
                                       type="button"
                                       onClick={() => {
-                                        window.location.href = `/shop/${item.id}/edit`;
+                                        handleOpenEditModal(item);
                                       }}
                                       className="flex-1 py-1.5 px-2 bg-stone-100 hover:bg-stone-200 active:scale-95 rounded-xl text-[11px] font-bold text-stone-700 flex items-center justify-center gap-1 transition cursor-pointer"
                                       title="Chỉnh sửa thông tin món đồ"
@@ -2874,7 +3055,7 @@ export default function MobileAppClient({
                             onClick={() => setOrderSubTab("lender")}
                             className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-1 ${
                               orderSubTab === "lender" 
-                                ? "bg-[#0A2517] text-white shadow-xs" 
+                                ? "bg-[#1E5638] text-white shadow-xs" 
                                 : "text-stone-600 hover:text-stone-900"
                             }`}
                           >
@@ -2884,7 +3065,7 @@ export default function MobileAppClient({
                             onClick={() => setOrderSubTab("renter")}
                             className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-1 ${
                               orderSubTab === "renter" 
-                                ? "bg-[#0A2517] text-white shadow-xs" 
+                                ? "bg-[#1E5638] text-white shadow-xs" 
                                 : "text-stone-600 hover:text-stone-900"
                             }`}
                           >
@@ -2915,7 +3096,7 @@ export default function MobileAppClient({
                                       <h5 className="font-bold text-stone-900 truncate">{order.productTitle}</h5>
                                       <p className="text-stone-500 text-[11px] mt-0.5">Lịch: {order.startDate} - {order.endDate}</p>
                                       <div className="flex items-center justify-between mt-1">
-                                        <span className="font-black text-[#0A2517]">{(Number(order.amount) || 0).toLocaleString("vi-VN")}đ</span>
+                                        <span className="font-black text-[#16442C]">{(Number(order.amount) || 0).toLocaleString("vi-VN")}đ</span>
                                         <span className="text-[10px] text-stone-400">Cọc: {(Number(order.depositAmount) || 0).toLocaleString("vi-VN")}đ</span>
                                       </div>
                                     </div>
@@ -2946,7 +3127,7 @@ export default function MobileAppClient({
                                     <div className="flex-1 min-w-0 text-xs">
                                       <h5 className="font-bold text-stone-900 truncate">{order.productTitle}</h5>
                                       <p className="text-stone-500 text-[11px] mt-0.5">Thời gian: {order.startDate} - {order.endDate}</p>
-                                      <p className="font-black text-[#0A2517] mt-1">{(Number(order.amount) || 0).toLocaleString("vi-VN")}đ</p>
+                                      <p className="font-black text-[#16442C] mt-1">{(Number(order.amount) || 0).toLocaleString("vi-VN")}đ</p>
                                     </div>
                                   </div>
                                 </div>
@@ -2963,7 +3144,7 @@ export default function MobileAppClient({
                         <div className="bg-white rounded-2xl p-4 border border-stone-200/80 shadow-2xs space-y-3">
                           <span className="text-[11px] text-stone-500 uppercase font-bold tracking-wider">Số Dư Khả Dụng</span>
                           <div className="flex items-baseline gap-2">
-                            <span className="font-heading font-black text-2xl text-[#0A2517]">
+                            <span className="font-heading font-black text-2xl text-[#16442C]">
                               {(closetData?.user?.walletBalance || 0).toLocaleString("vi-VN")}đ
                             </span>
                             <span className="text-xs text-emerald-700 font-bold">Ví Lá CLOOP</span>
@@ -2973,7 +3154,7 @@ export default function MobileAppClient({
                           </p>
                           <button
                             onClick={() => alert("Chức năng liên kết ngân hàng và rút tiền đã sẵn sàng trên bản web!")}
-                            className="w-full py-2.5 bg-[#0A2517] text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer"
+                            className="w-full py-2.5 bg-[#1E5638] text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer"
                           >
                             Yêu Cầu Rút Tiền Về Tài Khoản
                           </button>
@@ -2987,7 +3168,7 @@ export default function MobileAppClient({
                         <div className="bg-white rounded-2xl p-4 border border-stone-200/80 shadow-2xs space-y-3">
                           <div className="flex items-center gap-2">
                             <Award className="text-emerald-700" size={20} />
-                            <h4 className="font-heading font-black text-sm uppercase tracking-wide text-[#0A2517]">
+                            <h4 className="font-heading font-black text-sm uppercase tracking-wide text-[#16442C]">
                               Huy Hiệu Tuần Hoàn: Hạng Bạc
                             </h4>
                           </div>
@@ -3016,7 +3197,7 @@ export default function MobileAppClient({
                     {activeClosetView === "profile" && (
                       <form onSubmit={handleSaveProfile} className="bg-white rounded-2xl p-4 border border-stone-200/80 shadow-2xs space-y-3">
                         <div className="flex items-center justify-between pb-2 border-b border-stone-100">
-                          <h4 className="font-heading font-black text-xs uppercase tracking-wider text-[#0A2517]">
+                          <h4 className="font-heading font-black text-xs uppercase tracking-wider text-[#16442C]">
                             Cài Đặt Hồ Sơ Tủ Đồ
                           </h4>
                           {profileSaveSuccess && (
@@ -3034,7 +3215,7 @@ export default function MobileAppClient({
                             type="text"
                             value={profileForm.name}
                             onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
-                            className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-stone-50/50 text-xs font-medium outline-none focus:border-[#0A2517] focus:bg-white"
+                            className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-stone-50/50 text-xs font-medium outline-none focus:border-[#1E5638] focus:bg-white"
                             placeholder="VD: Nguyễn Mai Anh"
                           />
                         </div>
@@ -3053,7 +3234,7 @@ export default function MobileAppClient({
                               setSelectedGhnWardCode("");
                               handleApplyGhnAddress(val, "", "", specificAddressDetail, addressNote);
                             }}
-                            className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-stone-50/50 text-xs font-medium outline-none focus:border-[#0A2517] focus:bg-white cursor-pointer"
+                            className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-stone-50/50 text-xs font-medium outline-none focus:border-[#1E5638] focus:bg-white cursor-pointer"
                           >
                             <option value="">-- Chọn Tỉnh / Thành phố --</option>
                             {ghnProvinces.map((prov) => (
@@ -3078,7 +3259,7 @@ export default function MobileAppClient({
                                 setSelectedGhnWardCode("");
                                 handleApplyGhnAddress(selectedGhnProvinceId, val, "", specificAddressDetail, addressNote);
                               }}
-                              className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-stone-50/50 text-xs font-medium outline-none focus:border-[#0A2517] focus:bg-white disabled:opacity-50 cursor-pointer"
+                              className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-stone-50/50 text-xs font-medium outline-none focus:border-[#1E5638] focus:bg-white disabled:opacity-50 cursor-pointer"
                             >
                               <option value="">-- Chọn Quận / Huyện --</option>
                               {ghnDistricts.map((dist) => (
@@ -3101,7 +3282,7 @@ export default function MobileAppClient({
                                 setSelectedGhnWardCode(val);
                                 handleApplyGhnAddress(selectedGhnProvinceId, selectedGhnDistrictId, val, specificAddressDetail, addressNote);
                               }}
-                              className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-stone-50/50 text-xs font-medium outline-none focus:border-[#0A2517] focus:bg-white disabled:opacity-50 cursor-pointer"
+                              className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-stone-50/50 text-xs font-medium outline-none focus:border-[#1E5638] focus:bg-white disabled:opacity-50 cursor-pointer"
                             >
                               <option value="">-- Chọn Phường / Xã --</option>
                               {ghnWards.map((ward) => (
@@ -3126,7 +3307,7 @@ export default function MobileAppClient({
                               setSpecificAddressDetail(val);
                               handleApplyGhnAddress(selectedGhnProvinceId, selectedGhnDistrictId, selectedGhnWardCode, val, addressNote);
                             }}
-                            className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-stone-50/50 text-xs font-medium outline-none focus:border-[#0A2517] focus:bg-white"
+                            className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-stone-50/50 text-xs font-medium outline-none focus:border-[#1E5638] focus:bg-white"
                           />
                         </div>
 
@@ -3143,7 +3324,7 @@ export default function MobileAppClient({
                               setAddressNote(val);
                               handleApplyGhnAddress(selectedGhnProvinceId, selectedGhnDistrictId, selectedGhnWardCode, specificAddressDetail, val);
                             }}
-                            className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-stone-50/50 text-xs font-medium outline-none focus:border-[#0A2517] focus:bg-white"
+                            className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-stone-50/50 text-xs font-medium outline-none focus:border-[#1E5638] focus:bg-white"
                           />
                         </div>
 
@@ -3155,7 +3336,7 @@ export default function MobileAppClient({
                             type="text"
                             value={profileForm.quote}
                             onChange={(e) => setProfileForm({ ...profileForm, quote: e.target.value })}
-                            className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-stone-50/50 text-xs font-medium outline-none focus:border-[#0A2517] focus:bg-white"
+                            className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-stone-50/50 text-xs font-medium outline-none focus:border-[#1E5638] focus:bg-white"
                             placeholder="VD: Lưu giữ ký ức qua từng chiếc váy."
                           />
                         </div>
@@ -3168,7 +3349,7 @@ export default function MobileAppClient({
                             rows={2}
                             value={profileForm.bio}
                             onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
-                            className="w-full p-2.5 rounded-xl border border-stone-300 bg-stone-50/50 text-xs font-medium outline-none resize-none focus:border-[#0A2517] focus:bg-white"
+                            className="w-full p-2.5 rounded-xl border border-stone-300 bg-stone-50/50 text-xs font-medium outline-none resize-none focus:border-[#1E5638] focus:bg-white"
                             placeholder="Mô tả phong cách tủ đồ và lưu ý cho người thuê..."
                           />
                         </div>
@@ -3176,7 +3357,7 @@ export default function MobileAppClient({
                         <button
                           type="submit"
                           disabled={isSavingProfile}
-                          className="w-full h-10 rounded-xl bg-[#0A2517] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm hover:bg-[#15462D] transition disabled:opacity-50 cursor-pointer"
+                          className="w-full h-10 rounded-xl bg-[#1E5638] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm hover:bg-[#236341] transition disabled:opacity-50 cursor-pointer"
                         >
                           {isSavingProfile ? (
                             <>
@@ -3209,7 +3390,7 @@ export default function MobileAppClient({
           <button
             onClick={() => { setActiveTab("home"); }}
             className={`flex flex-col items-center justify-center flex-1 py-0.5 select-none transition-colors cursor-pointer ${
-              activeTab === "home" ? "text-[#0A2517] font-bold" : "text-stone-400 hover:text-stone-700 font-medium"
+              activeTab === "home" ? "text-[#1E5638] font-bold" : "text-stone-400 hover:text-stone-700 font-medium"
             }`}
           >
             <Compass size={20} strokeWidth={activeTab === "home" ? 2.5 : 1.8} />
@@ -3222,7 +3403,7 @@ export default function MobileAppClient({
           <button
             onClick={() => { setActiveTab("shop"); }}
             className={`flex flex-col items-center justify-center flex-1 py-0.5 select-none transition-colors cursor-pointer ${
-              activeTab === "shop" ? "text-[#0A2517] font-bold" : "text-stone-400 hover:text-stone-700 font-medium"
+              activeTab === "shop" ? "text-[#1E5638] font-bold" : "text-stone-400 hover:text-stone-700 font-medium"
             }`}
           >
             <ShoppingBag size={20} strokeWidth={activeTab === "shop" ? 2.5 : 1.8} />
@@ -3237,15 +3418,15 @@ export default function MobileAppClient({
               if (!currentUser) {
                 setShowAuthModal(true);
               } else {
-                setIsUploadModalOpen(true);
+                handleOpenCreateModal();
               }
             }}
             className="flex flex-col items-center justify-center flex-1 py-0.5 select-none cursor-pointer group"
           >
-            <div className="w-8 h-8 rounded-full bg-[#0A2517] text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-all -mt-1.5 mb-0.5">
+            <div className="w-8.5 h-8.5 rounded-full bg-gradient-to-tr from-[#1E5638] via-[#236341] to-[#2D7A51] ring-2 ring-red-100 text-white flex items-center justify-center shadow-[0_4px_12px_rgba(30,86,56,0.35)] group-hover:scale-105 transition-all -mt-2 mb-0.5">
               <Plus size={18} strokeWidth={2.5} />
             </div>
-            <span className="text-[9.5px] font-bold text-[#0A2517] tracking-tight">
+            <span className="text-[9.5px] font-bold text-[#1E5638] tracking-tight">
               {lang === "vi" ? "Đăng đồ" : "+ List"}
             </span>
           </button>
@@ -3254,34 +3435,36 @@ export default function MobileAppClient({
           <button
             onClick={() => setActiveTab("orders")}
             className={`flex flex-col items-center justify-center flex-1 py-0.5 select-none transition-colors cursor-pointer relative ${
-              activeTab === "orders" ? "text-[#0A2517] font-bold" : "text-stone-400 hover:text-stone-700 font-medium"
+              activeTab === "orders" ? "text-[#1E5638] font-bold" : "text-stone-400 hover:text-stone-700 font-medium"
             }`}
           >
             <Package size={20} strokeWidth={activeTab === "orders" ? 2.5 : 1.8} />
             {(cartItems.length > 0 || (safeOrdersAsRenter.length + safeOrdersAsLender.length) > 0) && (
-              <span className="absolute top-0 right-3 min-w-[14px] h-[14px] px-0.5 rounded-full bg-emerald-700 text-white text-[8.5px] font-extrabold flex items-center justify-center">
+              <span className="absolute top-0 right-3 min-w-[14px] h-[14px] px-0.5 rounded-full bg-[#C92A2A] text-white text-[8.5px] font-extrabold flex items-center justify-center shadow-xs">
                 {cartItems.length + safeOrdersAsRenter.length + safeOrdersAsLender.length}
               </span>
             )}
             <span className="text-[10px] tracking-tight mt-0.5">
               {lang === "vi" ? "Đơn hàng" : "Orders"}
             </span>
+            {activeTab === "orders" && <span className="w-1.5 h-1.5 rounded-full bg-[#C92A2A] -mb-1 mt-0.5" />}
           </button>
 
           {/* TAB 5: TỦ ĐỒ (Đồng bộ /my-closet) */}
           <button
             onClick={() => { setActiveTab("closet"); setActiveClosetView("menu"); }}
             className={`flex flex-col items-center justify-center flex-1 py-0.5 select-none transition-colors cursor-pointer relative ${
-              activeTab === "closet" ? "text-[#0A2517] font-bold" : "text-stone-400 hover:text-stone-700 font-medium"
+              activeTab === "closet" ? "text-[#1E5638] font-bold" : "text-stone-400 hover:text-stone-700 font-medium"
             }`}
           >
             <User size={20} strokeWidth={activeTab === "closet" ? 2.5 : 1.8} />
             {safeMyProducts.length > 0 && (
-              <span className="absolute top-0 right-3 w-2 h-2 rounded-full bg-emerald-600 ring-2 ring-white" />
+              <span className="absolute top-0 right-3 w-2 h-2 rounded-full bg-[#C92A2A] ring-2 ring-white" />
             )}
             <span className="text-[10px] tracking-tight mt-0.5">
               {lang === "vi" ? "Tủ đồ" : "Closet"}
             </span>
+            {activeTab === "closet" && <span className="w-1.5 h-1.5 rounded-full bg-[#C92A2A] -mb-1 mt-0.5" />}
           </button>
 
         </nav>
@@ -3306,11 +3489,11 @@ export default function MobileAppClient({
             ======================================================== */}
         {isDrawerMenuOpen && (
           <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-end justify-center animate-in fade-in duration-200">
-            <div className="w-full max-w-[430px] bg-[#FAF9F5] rounded-t-[32px] p-5 text-[#0A2517] shadow-2xl relative animate-in slide-in-from-bottom duration-300 border border-stone-200 space-y-4 max-h-[85vh] overflow-y-auto no-scrollbar">
+            <div className="w-full max-w-[430px] bg-[#FAF9F5] rounded-t-[32px] p-5 text-[#16442C] shadow-2xl relative animate-in slide-in-from-bottom duration-300 border border-stone-200 space-y-4 max-h-[85vh] overflow-y-auto no-scrollbar">
               <div className="flex items-center justify-between pb-2 border-b border-stone-200">
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-emerald-700" />
-                  <h4 className="font-heading font-black text-sm uppercase tracking-wide text-[#0A2517]">
+                  <div className="w-2.5 h-2.5 rounded-full bg-[#1E5638] ring-2 ring-red-300/80" />
+                  <h4 className="font-heading font-black text-sm uppercase tracking-wide text-[#16442C]">
                     Danh Mục Chức Năng CLOOP
                   </h4>
                 </div>
@@ -3382,7 +3565,7 @@ export default function MobileAppClient({
                       if (!currentUser) {
                         setShowAuthModal(true);
                       } else {
-                        setIsUploadModalOpen(true);
+                        handleOpenCreateModal();
                       }
                     }}
                     className="w-full p-2.5 flex items-center justify-between hover:text-emerald-800 transition cursor-pointer text-emerald-800"
@@ -3455,7 +3638,7 @@ export default function MobileAppClient({
             <div className="w-full max-w-[430px] h-[100dvh] h-screen sm:h-auto sm:max-h-[88vh] bg-[#FBF9F5] rounded-none sm:rounded-[36px] overflow-y-auto shadow-2xl relative animate-in slide-in-from-bottom duration-300 overscroll-contain flex flex-col mobile-app-root font-sans no-scrollbar">
               
               {/* STICKY TOP BAR (Z-30 TRÁNH BỊ CHE BỞI CÁC PHẦN TỬ CON, AN TOÀN NOTCH IPHONE) */}
-              <div className="sticky top-0 z-30 bg-[#0A2517] text-white px-4 py-3 sm:py-3 pt-[max(0.75rem,env(safe-area-inset-top))] flex items-center justify-between border-b border-emerald-900/40 shadow-xs shrink-0">
+              <div className="sticky top-0 z-30 bg-[#1E5638] text-white px-4 py-3 sm:py-3 pt-[max(0.75rem,env(safe-area-inset-top))] flex items-center justify-between border-b border-emerald-900/40 shadow-xs shrink-0">
                 <div className="flex items-center gap-2.5">
                   <button
                     type="button"
@@ -3503,7 +3686,7 @@ export default function MobileAppClient({
               </div>
 
               {/* BANNER & PROFILE CARD (SHOPEE / TIKTOK STYLE) */}
-              <div className="relative bg-gradient-to-b from-[#0A2517] via-[#123824] to-[#FBF9F5] pt-3 pb-4 px-4 text-white shrink-0">
+              <div className="relative bg-gradient-to-b from-[#1E5638] via-[#236341] to-[#FBF9F5] pt-3 pb-4 px-4 text-white shrink-0">
                 
                 <div className="flex items-start gap-3.5 mb-3">
                   {/* Avatar to có viền */}
@@ -3511,7 +3694,7 @@ export default function MobileAppClient({
                     {viewingClosetOwner.avatar ? (
                       <Image src={viewingClosetOwner.avatar} alt={viewingClosetOwner.name} fill className="object-cover" unoptimized />
                     ) : (
-                      <div className="w-full h-full bg-[#0A2517] text-white text-xl font-bold flex items-center justify-center">
+                      <div className="w-full h-full bg-[#1E5638] text-white text-xl font-bold flex items-center justify-center">
                         {(viewingClosetOwner.name || "C")[0].toUpperCase()}
                       </div>
                     )}
@@ -3616,7 +3799,7 @@ export default function MobileAppClient({
                     onClick={() => setClosetOwnerFilter(tab.id as any)}
                     className={`px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer whitespace-nowrap ${
                       closetOwnerFilter === tab.id
-                        ? "bg-[#0A2517] text-white shadow-xs"
+                        ? "bg-[#1E5638] text-white shadow-xs"
                         : "bg-white text-stone-600 hover:bg-stone-100 border border-stone-200/80"
                     }`}
                   >
@@ -3632,7 +3815,7 @@ export default function MobileAppClient({
                     <div className="flex items-center gap-2">
                       <Star size={18} className="fill-amber-400 text-amber-400" />
                       <div>
-                        <div className="font-heading font-black text-sm text-[#0A2517]">
+                        <div className="font-heading font-black text-sm text-[#16442C]">
                           Đánh giá cộng đồng
                         </div>
                         <div className="text-[10px] text-stone-400 font-medium">
@@ -3668,7 +3851,7 @@ export default function MobileAppClient({
                                 {rev.reviewer?.avatar ? (
                                   <Image src={rev.reviewer.avatar} alt="" fill className="object-cover" unoptimized />
                                 ) : (
-                                  <div className="w-full h-full bg-[#0A2517] text-white text-xs font-bold flex items-center justify-center">
+                                  <div className="w-full h-full bg-[#1E5638] text-white text-xs font-bold flex items-center justify-center">
                                     {(rev.reviewer?.name || "K")[0].toUpperCase()}
                                   </div>
                                 )}
@@ -3720,7 +3903,7 @@ export default function MobileAppClient({
                       <button
                         type="button"
                         onClick={() => setClosetOwnerFilter("all")}
-                        className="mt-2 px-3.5 py-1.5 bg-[#0A2517] text-white text-xs font-bold rounded-full cursor-pointer"
+                        className="mt-2 px-3.5 py-1.5 bg-[#1E5638] text-white text-xs font-bold rounded-full cursor-pointer"
                       >
                         Xem tất cả đồ của tủ
                       </button>
@@ -3799,7 +3982,7 @@ export default function MobileAppClient({
                                 badgeText === "Thuê & Mua" 
                                   ? "bg-emerald-700/90 backdrop-blur-xs"
                                   : isRent 
-                                    ? "bg-[#0A2517]/90 backdrop-blur-xs" 
+                                    ? "bg-[#1E5638]/90 backdrop-blur-xs" 
                                     : "bg-amber-800/90 backdrop-blur-xs"
                               }`}>
                                 {badgeText}
@@ -3812,10 +3995,10 @@ export default function MobileAppClient({
                             </div>
 
                             <div className="p-2.5 space-y-1">
-                              <h4 className="font-bold text-xs text-[#0A2517] line-clamp-1 leading-snug">
+                              <h4 className="font-bold text-xs text-[#16442C] line-clamp-1 leading-snug">
                                 {item.title}
                               </h4>
-                              <div className="text-[12px] font-black text-[#0A2517]">
+                              <div className="text-[12px] font-black text-[#16442C]">
                                 {priceDisplay}
                               </div>
                               <div className="flex items-center justify-between pt-0.5 text-[10px] text-stone-500">
@@ -3837,7 +4020,7 @@ export default function MobileAppClient({
 
         {/* TOAST THÔNG BÁO TỦ ĐỒ */}
         {closetToastMessage && (
-          <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[70] bg-[#0A2517] text-white px-4 py-2 rounded-full text-xs font-bold shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[70] bg-[#1E5638] text-white px-4 py-2 rounded-full text-xs font-bold shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
             <CheckCircle2 size={14} className="text-emerald-400" />
             <span>{closetToastMessage}</span>
           </div>
@@ -3848,7 +4031,7 @@ export default function MobileAppClient({
             ======================================================== */}
         {selectedProduct && (
           <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-xs flex items-stretch sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200 mobile-app-root font-sans">
-            <div className="w-full max-w-[430px] bg-[#FBF9F5] rounded-none sm:rounded-[32px] h-[100dvh] h-screen sm:h-auto sm:max-h-[90vh] overflow-y-auto p-0 text-[#0A2517] shadow-2xl relative animate-in slide-in-from-bottom duration-300 no-scrollbar flex flex-col mobile-app-root font-sans">
+            <div className="w-full max-w-[430px] bg-[#FBF9F5] rounded-none sm:rounded-[32px] h-[100dvh] h-screen sm:h-auto sm:max-h-[90vh] overflow-y-auto p-0 text-[#16442C] shadow-2xl relative animate-in slide-in-from-bottom duration-300 no-scrollbar flex flex-col mobile-app-root font-sans">
               
               {/* 📸 HERO ẢNH TRÀN VIỀN 100% (TIKTOK SHOP / FACEBOOK MARKETPLACE STYLE) */}
               <div className="relative w-full aspect-[4/5] bg-stone-900 select-none overflow-hidden shrink-0">
@@ -3908,7 +4091,7 @@ export default function MobileAppClient({
                       }`}
                       title="Yêu thích"
                     >
-                      <Heart size={18} className={likedItems[selectedProduct.id] ? "fill-red-500 text-red-500" : "fill-none"} />
+                      <Heart size={18} className={likedItems[selectedProduct.id] ? "fill-[#C92A2A] text-[#C92A2A]" : "fill-none"} />
                     </button>
                   </div>
                 </div>
@@ -3935,7 +4118,7 @@ export default function MobileAppClient({
                       type="button"
                       onClick={() => setActiveDetailImgIndex(i)}
                       className={`relative w-14 aspect-[3/4] rounded-xl overflow-hidden border-2 shrink-0 transition cursor-pointer ${
-                        activeDetailImgIndex === i ? "border-[#0A2517] ring-1 ring-[#0A2517]" : "border-stone-200 opacity-60 hover:opacity-100"
+                        activeDetailImgIndex === i ? "border-[#1E5638] ring-1 ring-[#1E5638]" : "border-stone-200 opacity-60 hover:opacity-100"
                       }`}
                     >
                       <Image src={imgUrl} alt={`Ảnh ${i + 1}`} fill className="object-cover" unoptimized />
@@ -3954,18 +4137,29 @@ export default function MobileAppClient({
                       {selectedProduct.listingTypeRaw === "SELL" ? "Giá chuyển nhượng" : "Chi phí thuê trang phục"}
                     </span>
                     <div className="flex items-baseline gap-1.5 mt-0.5">
-                      <span className="font-heading font-black text-2xl text-[#0A2517]">
+                      <span className="font-heading font-black text-2xl text-[#1E5638]">
                         {(selectedProduct.price || selectedProduct.rentalPrice || selectedProduct.salePrice || 0).toLocaleString("vi-VN")}đ
                       </span>
                       {selectedProduct.listingTypeRaw !== "SELL" && (
                         <span className="text-xs text-stone-500 font-medium">/ ngày</span>
                       )}
+                      {(Number(selectedProduct.originalPrice || selectedProduct.storeRetailPrice || 0) > (selectedProduct.price || selectedProduct.rentalPrice || selectedProduct.salePrice || 0) || (selectedProduct.listingTypeRaw !== "SELL" && (selectedProduct.price || selectedProduct.rentalPrice || 0) > 0)) && (
+                        <span className="text-sm text-stone-400 line-through font-mono">
+                          {(Number(selectedProduct.originalPrice || selectedProduct.storeRetailPrice || 0) > 0 
+                            ? Number(selectedProduct.originalPrice || selectedProduct.storeRetailPrice) 
+                            : (Number(selectedProduct.price || selectedProduct.rentalPrice || 0) * 9)
+                          ).toLocaleString("vi-VN")}đ
+                        </span>
+                      )}
                     </div>
-                    {selectedProduct.listingTypeRaw !== "SELL" && (
-                      <p className="text-[11px] text-emerald-800 font-medium mt-1">
-                        • Gói {selectedProduct.minDays || 3} ngày: <strong>{(calculatePackageRentalFee(selectedProduct, selectedProduct.minDays || 3)).toLocaleString("vi-VN")}đ</strong>
-                      </p>
-                    )}
+                    {/* Tag Tiết kiệm % như bản web */}
+                    <div className="pt-1">
+                      <span className="text-[10px] font-bold text-[#C92A2A] bg-red-50 border border-red-200/80 px-2 py-0.5 rounded-md font-mono inline-flex items-center gap-1">
+                        <span>🏷️</span> Tiết kiệm {
+                          Math.round((1 - (Number(selectedProduct.price || selectedProduct.rentalPrice || selectedProduct.salePrice || 0) / (Number(selectedProduct.originalPrice || selectedProduct.storeRetailPrice || 0) > 0 ? Number(selectedProduct.originalPrice || selectedProduct.storeRetailPrice) : (Number(selectedProduct.price || selectedProduct.rentalPrice || 0) * 9)))) * 100)
+                        }% so với giá mua mới
+                      </span>
+                    </div>
 
                     {/* 🔀 TOGGLE CHUYỂN ĐỔI THUÊ HOẶC MUA (NẾU MÓN ĐỒ CÓ CẢ 2 HÌNH THỨC) */}
                     {Number(selectedProduct.rentalPrice || 0) > 0 && Number(selectedProduct.salePrice || 0) > 0 && (
@@ -3979,7 +4173,7 @@ export default function MobileAppClient({
                           }))}
                           className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
                             selectedProduct.listingTypeRaw !== "SELL"
-                              ? "bg-[#0A2517] text-white shadow-xs"
+                              ? "bg-[#1E5638] text-white shadow-xs"
                               : "text-stone-600 hover:text-stone-900"
                           }`}
                         >
@@ -3994,7 +4188,7 @@ export default function MobileAppClient({
                           }))}
                           className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
                             selectedProduct.listingTypeRaw === "SELL"
-                              ? "bg-[#0A2517] text-white shadow-xs"
+                              ? "bg-[#1E5638] text-white shadow-xs"
                               : "text-stone-600 hover:text-stone-900"
                           }`}
                         >
@@ -4017,7 +4211,7 @@ export default function MobileAppClient({
 
                 {/* 2. TIÊU ĐỀ TRANG PHỤC */}
                 <div>
-                  <h2 className="font-heading font-black text-lg text-[#0A2517] leading-snug">
+                  <h2 className="font-heading font-black text-lg text-[#16442C] leading-snug">
                     {selectedProduct.title}
                   </h2>
                 </div>
@@ -4026,7 +4220,7 @@ export default function MobileAppClient({
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center gap-1.5">
                     {selectedProduct.category && (
-                      <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#0A2517] text-white">
+                      <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#1E5638] text-white">
                         {selectedProduct.category}
                       </span>
                     )}
@@ -4102,14 +4296,14 @@ export default function MobileAppClient({
                       {selectedProduct.ownerAvatar ? (
                         <Image src={selectedProduct.ownerAvatar} alt="" fill className="object-cover" unoptimized />
                       ) : (
-                        <div className="w-full h-full bg-[#0A2517] text-white text-xs font-bold flex items-center justify-center">
+                        <div className="w-full h-full bg-[#1E5638] text-white text-xs font-bold flex items-center justify-center">
                           {(selectedProduct.ownerName || "C")[0].toUpperCase()}
                         </div>
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-bold text-xs text-[#0A2517] leading-tight group-hover:underline truncate">
+                        <span className="font-bold text-xs text-[#16442C] leading-tight group-hover:underline truncate">
                           {selectedProduct.ownerName || "Thành viên CLOOP"}
                         </span>
                         <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
@@ -4155,7 +4349,7 @@ export default function MobileAppClient({
                       });
                       setSelectedProduct(null);
                     }}
-                    className="text-[11px] font-bold text-[#0A2517] bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 px-3 py-1.5 rounded-full transition cursor-pointer shrink-0 active:scale-95 ml-2"
+                    className="text-[11px] font-bold text-[#16442C] bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 px-3 py-1.5 rounded-full transition cursor-pointer shrink-0 active:scale-95 ml-2"
                   >
                     Ghé tủ đồ →
                   </button>
@@ -4169,7 +4363,7 @@ export default function MobileAppClient({
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-bold text-[#0A2517] text-xs">
+                        <span className="font-bold text-[#16442C] text-xs">
                           Khu vực: {maskPublicAddress(selectedProduct.specificAddress || selectedProduct.location || selectedProduct.province, "Toàn quốc")}
                         </span>
                         <span className="text-[9.5px] font-semibold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded-full border border-emerald-200/60 flex items-center gap-0.5 shrink-0">
@@ -4209,7 +4403,7 @@ export default function MobileAppClient({
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                       <Star size={14} className="fill-amber-400 text-amber-400" />
-                      <h4 className="font-heading font-black text-xs uppercase tracking-wider text-[#0A2517]">
+                      <h4 className="font-heading font-black text-xs uppercase tracking-wider text-[#16442C]">
                         Đánh giá cộng đồng ({productReviews.length})
                       </h4>
                     </div>
@@ -4242,7 +4436,7 @@ export default function MobileAppClient({
                                 {rev.reviewer?.avatar ? (
                                   <Image src={rev.reviewer.avatar} alt="" fill className="object-cover" unoptimized />
                                 ) : (
-                                  <div className="w-full h-full bg-[#0A2517] text-white text-[8px] font-bold flex items-center justify-center">
+                                  <div className="w-full h-full bg-[#1E5638] text-white text-[8px] font-bold flex items-center justify-center">
                                     {(rev.reviewer?.name || "K")[0].toUpperCase()}
                                   </div>
                                 )}
@@ -4291,7 +4485,7 @@ export default function MobileAppClient({
                     setSelectedProduct(null);
                     handleOpenCheckout(prod);
                   }}
-                  className="flex-1 h-11 rounded-xl bg-[#0A2517] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md hover:bg-[#15462D] transition cursor-pointer active:scale-95"
+                  className="flex-1 h-11 rounded-xl bg-[#1E5638] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md hover:bg-[#236341] transition cursor-pointer active:scale-95"
                 >
                   <span>{selectedProduct.listingTypeRaw === "SELL" ? "Mua Ngay" : "Thuê Ngay"}</span>
                   <span>•</span>
@@ -4305,7 +4499,7 @@ export default function MobileAppClient({
 
         {/* TOAST THÔNG BÁO THÊM GIỎ HÀNG */}
         {addedToCartToast && (
-          <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-[#0A2517] text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg flex items-center gap-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-[#1E5638] text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg flex items-center gap-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
             <Check size={14} className="text-emerald-400" />
             <span>Đã thêm vào giỏ thuê!</span>
           </div>
@@ -4316,25 +4510,25 @@ export default function MobileAppClient({
             ======================================================== */}
         {isUploadModalOpen && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end justify-center p-0 sm:p-4 animate-in fade-in duration-200">
-            <div className="w-full max-w-[430px] bg-[#FAF9F5] rounded-t-[32px] sm:rounded-[32px] max-h-[88vh] overflow-y-auto p-5 text-[#0A2517] shadow-2xl relative animate-in slide-in-from-bottom duration-300 border border-stone-200 no-scrollbar">
+            <div className="w-full max-w-[430px] bg-[#FAF9F5] rounded-t-[32px] sm:rounded-[32px] max-h-[88vh] overflow-y-auto p-5 text-[#16442C] shadow-2xl relative animate-in slide-in-from-bottom duration-300 border border-stone-200 no-scrollbar">
               
               {/* Header Modal */}
               <div className="flex items-center justify-between pb-3 border-b border-stone-200 mb-4 sticky top-0 bg-[#FAF9F5] z-10">
                 <div>
                   <div className="flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-emerald-600" />
-                    <h3 className="font-heading font-black text-base text-[#0A2517]">
-                      Đăng Trang Phục Vào Tủ Đồ
+                    <h3 className="font-heading font-black text-base text-[#16442C]">
+                      {editingProductId ? "Chỉnh Sửa Món Đồ" : "Đăng Trang Phục Vào Tủ Đồ"}
                     </h3>
                   </div>
                   <p className="text-[11px] text-stone-500 mt-0.5">
-                    Chia sẻ trang phục vào vòng tuần hoàn • Nhận thu nhập thụ động
+                    {editingProductId ? "Cập nhật giá thuê, ảnh và thông tin chi tiết" : "Chia sẻ trang phục vào vòng tuần hoàn • Nhận thu nhập thụ động"}
                   </p>
                 </div>
 
                 <button
                   type="button"
-                  onClick={() => setIsUploadModalOpen(false)}
+                  onClick={() => { setIsUploadModalOpen(false); setEditingProductId(null); }}
                   className="w-8 h-8 rounded-full bg-stone-200/70 hover:bg-stone-300 flex items-center justify-center text-stone-600 transition cursor-pointer"
                 >
                   <X size={16} />
@@ -4347,10 +4541,10 @@ export default function MobileAppClient({
                     <CheckCircle2 size={36} />
                   </div>
                   <h4 className="font-heading font-black text-lg text-emerald-950">
-                    Đăng Tủ Đồ Thành Công!
+                    {editingProductId ? "Cập Nhật Thành Công!" : "Đăng Tủ Đồ Thành Công!"}
                   </h4>
                   <p className="text-xs text-stone-600 max-w-xs mx-auto">
-                    Trang phục của bạn đã có mặt trên hệ thống CLOOP và được đồng bộ vào tủ đồ cá nhân.
+                    {editingProductId ? "Thông tin món đồ đã được lưu và cập nhật trên toàn hệ thống." : "Trang phục của bạn đã có mặt trên hệ thống CLOOP và được đồng bộ vào tủ đồ cá nhân."}
                   </p>
                 </div>
               ) : (
@@ -4386,7 +4580,7 @@ export default function MobileAppClient({
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="w-full aspect-[16/10] rounded-2xl border-2 border-dashed border-stone-300 hover:border-[#0A2517] bg-white flex flex-col items-center justify-center gap-2 text-stone-500 transition cursor-pointer p-4 group shadow-2xs"
+                        className="w-full aspect-[16/10] rounded-2xl border-2 border-dashed border-stone-300 hover:border-[#1E5638] bg-white flex flex-col items-center justify-center gap-2 text-stone-500 transition cursor-pointer p-4 group shadow-2xs"
                       >
                         <div className="text-center space-y-1">
                           <span className="text-xs font-bold text-stone-800 block">
@@ -4408,7 +4602,7 @@ export default function MobileAppClient({
                             <div 
                               key={idx} 
                               className={`relative aspect-[3/4] rounded-xl overflow-hidden border bg-stone-100 group shadow-2xs ${
-                                idx === 0 ? "border-[#0A2517] ring-2 ring-[#0A2517]/20" : "border-stone-200"
+                                idx === 0 ? "border-[#1E5638] ring-2 ring-[#1E5638]/20" : "border-stone-200"
                               }`}
                             >
                               <Image 
@@ -4421,7 +4615,7 @@ export default function MobileAppClient({
                               
                               {/* Huy hiệu Ảnh bìa */}
                               {idx === 0 && (
-                                <span className="absolute top-1.5 left-1.5 bg-[#0A2517] text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow">
+                                <span className="absolute top-1.5 left-1.5 bg-[#1E5638] text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow">
                                   Ảnh bìa
                                 </span>
                               )}
@@ -4453,7 +4647,7 @@ export default function MobileAppClient({
                             <button
                               type="button"
                               onClick={() => fileInputRef.current?.click()}
-                              className="aspect-[3/4] rounded-xl border-2 border-dashed border-stone-300 hover:border-[#0A2517] bg-white flex flex-col items-center justify-center gap-1 text-stone-500 hover:text-stone-800 transition cursor-pointer"
+                              className="aspect-[3/4] rounded-xl border-2 border-dashed border-stone-300 hover:border-[#1E5638] bg-white flex flex-col items-center justify-center gap-1 text-stone-500 hover:text-stone-800 transition cursor-pointer"
                             >
                               <span className="text-sm font-bold text-stone-600">+</span>
                               <span className="text-[10px] font-bold">Thêm ảnh</span>
@@ -4487,11 +4681,11 @@ export default function MobileAppClient({
                         onClick={() => setUploadData({ ...uploadData, isRental: !uploadData.isRental })}
                         className={`p-2.5 rounded-xl text-left border transition cursor-pointer ${
                           uploadData.isRental 
-                            ? "bg-white border-[#0A2517] ring-1 ring-[#0A2517] shadow-xs" 
+                            ? "bg-white border-[#1E5638] ring-1 ring-[#1E5638] shadow-xs" 
                             : "bg-stone-50 border-stone-300 text-stone-500"
                         }`}
                       >
-                        <span className="text-xs font-bold text-[#0A2517] block">Cho Thuê</span>
+                        <span className="text-xs font-bold text-[#16442C] block">Cho Thuê</span>
                         <span className="text-[10px] text-stone-500 mt-0.5 block">Nhận thu nhập theo đợt</span>
                       </button>
 
@@ -4500,11 +4694,11 @@ export default function MobileAppClient({
                         onClick={() => setUploadData({ ...uploadData, isSale: !uploadData.isSale })}
                         className={`p-2.5 rounded-xl text-left border transition cursor-pointer ${
                           uploadData.isSale 
-                            ? "bg-white border-[#0A2517] ring-1 ring-[#0A2517] shadow-xs" 
+                            ? "bg-white border-[#1E5638] ring-1 ring-[#1E5638] shadow-xs" 
                             : "bg-stone-50 border-stone-300 text-stone-500"
                         }`}
                       >
-                        <span className="text-xs font-bold text-[#0A2517] block">Pass Đồ / Bán</span>
+                        <span className="text-xs font-bold text-[#16442C] block">Pass Đồ / Bán</span>
                         <span className="text-[10px] text-stone-500 mt-0.5 block">Chuyển nhượng dứt điểm</span>
                       </button>
                     </div>
@@ -4521,7 +4715,7 @@ export default function MobileAppClient({
                       placeholder="VD: Đầm dạ hội lụa satin xẻ tà, Set áo dài gấm..."
                       value={uploadData.title}
                       onChange={(e) => setUploadData({ ...uploadData, title: e.target.value })}
-                      className="w-full h-11 px-3.5 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#0A2517]"
+                      className="w-full h-11 px-3.5 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
                     />
                   </div>
 
@@ -4534,7 +4728,7 @@ export default function MobileAppClient({
                       <select
                         value={uploadData.category}
                         onChange={(e) => setUploadData({ ...uploadData, category: e.target.value })}
-                        className="w-full h-10 px-2.5 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#0A2517]"
+                        className="w-full h-10 px-2.5 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
                       >
                         {CATEGORIES_LIST.map(c => (
                           <option key={c} value={c}>{c}</option>
@@ -4549,7 +4743,7 @@ export default function MobileAppClient({
                       <select
                         value={uploadData.occasion}
                         onChange={(e) => setUploadData({ ...uploadData, occasion: e.target.value })}
-                        className="w-full h-10 px-2.5 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#0A2517]"
+                        className="w-full h-10 px-2.5 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
                       >
                         {OCCASIONS_LIST.map(o => (
                           <option key={o} value={o}>{o}</option>
@@ -4567,7 +4761,7 @@ export default function MobileAppClient({
                       <select
                         value={uploadData.color}
                         onChange={(e) => setUploadData({ ...uploadData, color: e.target.value })}
-                        className="w-full h-10 px-2 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#0A2517]"
+                        className="w-full h-10 px-2 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
                       >
                         {COLORS_LIST.map(col => (
                           <option key={col} value={col}>{col}</option>
@@ -4582,7 +4776,7 @@ export default function MobileAppClient({
                       <select
                         value={uploadData.size}
                         onChange={(e) => setUploadData({ ...uploadData, size: e.target.value })}
-                        className="w-full h-10 px-2 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#0A2517]"
+                        className="w-full h-10 px-2 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
                       >
                         {SIZES_LIST.map(s => (
                           <option key={s} value={s}>{s}</option>
@@ -4597,7 +4791,7 @@ export default function MobileAppClient({
                       <select
                         value={uploadData.condition}
                         onChange={(e) => setUploadData({ ...uploadData, condition: e.target.value })}
-                        className="w-full h-10 px-2 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#0A2517]"
+                        className="w-full h-10 px-2 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
                       >
                         {CONDITIONS_LIST.map(c => (
                           <option key={c.id} value={c.id}>{c.label}</option>
@@ -4609,7 +4803,7 @@ export default function MobileAppClient({
                   {/* 5B. THÔNG SỐ NGƯỜI MẶC (BẮT BUỘC CHIỀU CAO & CÂN NẶNG, 3 VÒNG LINH HOẠT) */}
                   <div className="p-3 rounded-2xl bg-amber-50/50 border border-amber-200/80 space-y-2.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-[#0A2517]">
+                      <span className="text-xs font-bold text-[#16442C]">
                         Thông số người mặc chuẩn form
                       </span>
                       <span className="text-[10px] text-amber-800 font-semibold bg-amber-100/80 px-2 py-0.5 rounded-full">
@@ -4629,7 +4823,7 @@ export default function MobileAppClient({
                           placeholder="VD: 1m55 - 1m65"
                           value={uploadData.targetHeight}
                           onChange={(e) => setUploadData({ ...uploadData, targetHeight: e.target.value })}
-                          className="w-full h-9 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#0A2517]"
+                          className="w-full h-9 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
                         />
                       </div>
                       <div>
@@ -4642,7 +4836,7 @@ export default function MobileAppClient({
                           placeholder="VD: 45 - 52 kg"
                           value={uploadData.targetWeight}
                           onChange={(e) => setUploadData({ ...uploadData, targetWeight: e.target.value })}
-                          className="w-full h-9 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#0A2517]"
+                          className="w-full h-9 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
                         />
                       </div>
                     </div>
@@ -4663,21 +4857,21 @@ export default function MobileAppClient({
                           placeholder="V1 Ngực: 84"
                           value={uploadData.bust}
                           onChange={(e) => setUploadData({ ...uploadData, bust: e.target.value })}
-                          className="w-full h-8 px-2 rounded-lg border border-stone-200 bg-white text-[11px] text-center font-medium outline-none focus:border-[#0A2517]"
+                          className="w-full h-8 px-2 rounded-lg border border-stone-200 bg-white text-[11px] text-center font-medium outline-none focus:border-[#1E5638]"
                         />
                         <input
                           type="text"
                           placeholder="V2 Eo: 64"
                           value={uploadData.waist}
                           onChange={(e) => setUploadData({ ...uploadData, waist: e.target.value })}
-                          className="w-full h-8 px-2 rounded-lg border border-stone-200 bg-white text-[11px] text-center font-medium outline-none focus:border-[#0A2517]"
+                          className="w-full h-8 px-2 rounded-lg border border-stone-200 bg-white text-[11px] text-center font-medium outline-none focus:border-[#1E5638]"
                         />
                         <input
                           type="text"
                           placeholder="V3 Mông: 90"
                           value={uploadData.hips}
                           onChange={(e) => setUploadData({ ...uploadData, hips: e.target.value })}
-                          className="w-full h-8 px-2 rounded-lg border border-stone-200 bg-white text-[11px] text-center font-medium outline-none focus:border-[#0A2517]"
+                          className="w-full h-8 px-2 rounded-lg border border-stone-200 bg-white text-[11px] text-center font-medium outline-none focus:border-[#1E5638]"
                         />
                       </div>
                     </div>
@@ -4693,50 +4887,94 @@ export default function MobileAppClient({
                       placeholder="VD: Lụa tơ tằm, Dạ tweed, Linen, Cotton..."
                       value={uploadData.material}
                       onChange={(e) => setUploadData({ ...uploadData, material: e.target.value })}
-                      className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#0A2517]"
+                      className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
                     />
                   </div>
 
-                  {/* 6. GIÁ THUÊ & TIỀN CỌC (NẾU CHỌN CHO THUÊ) */}
+                  {/* 6. GIÁ THUÊ 1 NGÀY, 3 NGÀY, 7 NGÀY & TIỀN CỌC (CHỦ TỦ TỰ ĐỊNH GIÁ) */}
                   {uploadData.isRental && (
-                    <div className="grid grid-cols-2 gap-2.5 p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200/80">
-                      <div>
-                        <label className="block text-[11px] font-bold text-emerald-950 mb-1">
-                          Giá thuê / ngày (đ) *
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="50.000"
-                          value={uploadData.rentalPrice}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            const num = parseInt(val.replace(/\D/g, "")) || 0;
-                            setUploadData(prev => ({
-                              ...prev,
-                              rentalPrice: val,
-                              deposit: prev.deposit ? prev.deposit : (num > 0 ? `${num * 2}` : "")
-                            }));
-                          }}
-                          className="w-full h-10 px-3 rounded-xl border border-emerald-300 bg-white text-xs font-bold outline-none"
-                        />
-                        <p className="text-[10px] text-emerald-800 font-medium mt-1">
-                          • Gói 3 ngày (-15%): {uploadData.rentalPrice ? `${(Math.round((parseInt(uploadData.rentalPrice.replace(/\D/g, "")) || 0) * 3 * 0.85 / 1000) * 1000).toLocaleString("vi-VN")}đ` : "0đ"}
-                        </p>
+                    <div className="space-y-3 p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200/80">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-emerald-950 uppercase tracking-wider">
+                          Định giá thuê theo thời gian
+                        </span>
+                        <span className="text-[9.5px] px-2 py-0.5 rounded-full bg-emerald-100/80 text-emerald-800 font-semibold">
+                          Chủ tủ tự quyết
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-emerald-900/80 leading-relaxed font-medium">
+                        Bạn toàn quyền thiết lập giá cho từng mốc 1 ngày, 3 ngày, 7 ngày. CLOOP không tự áp đặt chiết khấu.
+                      </p>
+
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-bold text-emerald-950 mb-1">
+                            Thuê 1 ngày (đ) *
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="80.000"
+                            value={uploadData.price1Day || uploadData.rentalPrice}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              const num = parseInt(val.replace(/\D/g, "")) || 0;
+                              setUploadData(prev => ({
+                                ...prev,
+                                price1Day: val,
+                                rentalPrice: val,
+                                price3Days: (!prev.price3Days || prev.price3Days === "0" || prev.price3Days === "200.000") && num > 0
+                                  ? `${(Math.round(num * 3 * 0.85 / 1000) * 1000).toLocaleString("vi-VN")}`
+                                  : prev.price3Days,
+                                price7Days: (!prev.price7Days || prev.price7Days === "0" || prev.price7Days === "400.000") && num > 0
+                                  ? `${(Math.round(num * 7 * 0.70 / 1000) * 1000).toLocaleString("vi-VN")}`
+                                  : prev.price7Days,
+                                deposit: prev.deposit ? prev.deposit : (num > 0 ? `${(num * 3).toLocaleString("vi-VN")}` : "")
+                              }));
+                            }}
+                            className="w-full h-9 px-2.5 rounded-xl border border-emerald-300 bg-white text-xs font-bold outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-emerald-950 mb-1">
+                            Gói 3 ngày (đ) *
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="200.000"
+                            value={uploadData.price3Days}
+                            onChange={(e) => setUploadData({ ...uploadData, price3Days: e.target.value })}
+                            className="w-full h-9 px-2.5 rounded-xl border border-emerald-300 bg-white text-xs font-bold outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-emerald-950 mb-1">
+                            Gói 7 ngày (đ) *
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="400.000"
+                            value={uploadData.price7Days}
+                            onChange={(e) => setUploadData({ ...uploadData, price7Days: e.target.value })}
+                            className="w-full h-9 px-2.5 rounded-xl border border-emerald-300 bg-white text-xs font-bold outline-none"
+                          />
+                        </div>
                       </div>
 
                       <div>
-                        <label className="block text-[11px] font-bold text-emerald-950 mb-1">
+                        <label className="block text-[10.5px] font-bold text-emerald-950 mb-1">
                           Tiền cọc đảm bảo (đ) *
                         </label>
                         <input
                           type="text"
-                          placeholder="200.000"
+                          placeholder="500.000"
                           value={uploadData.deposit}
                           onChange={(e) => setUploadData({ ...uploadData, deposit: e.target.value })}
                           className="w-full h-10 px-3 rounded-xl border border-emerald-300 bg-white text-xs font-bold outline-none"
                         />
                         <p className="text-[9.5px] text-stone-500 mt-1">
-                          Hoàn lại 100% khi người thuê trả đồ
+                          Khoản bảo chứng tài sản, được hoàn trả 100% khi người thuê trả đồ nguyên vẹn.
                         </p>
                       </div>
                     </div>
@@ -4778,7 +5016,7 @@ export default function MobileAppClient({
                       ======================================================== */}
                   <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-stone-200/90 space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-[#0A2517] tracking-wider uppercase">
+                      <span className="text-xs font-bold text-[#16442C] tracking-wider uppercase">
                         04. Tọa độ &amp; trạm gửi
                       </span>
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-stone-100 text-stone-700 font-semibold border border-stone-200">
@@ -4809,7 +5047,7 @@ export default function MobileAppClient({
                                 ward: "",
                               }));
                             }}
-                            className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#0A2517] cursor-pointer"
+                            className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638] cursor-pointer"
                           >
                             <option value="">-- Chọn Tỉnh / Thành phố --</option>
                             {ghnProvinces.map((prov) => (
@@ -4825,7 +5063,7 @@ export default function MobileAppClient({
                             placeholder="VD: Hà Nội..."
                             value={uploadData.province}
                             onChange={(e) => setUploadData({ ...uploadData, province: e.target.value })}
-                            className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#0A2517]"
+                            className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
                           />
                         )}
                       </div>
@@ -4847,7 +5085,7 @@ export default function MobileAppClient({
                                 ward: "",
                               }));
                             }}
-                            className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#0A2517] disabled:opacity-50 cursor-pointer"
+                            className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638] disabled:opacity-50 cursor-pointer"
                           >
                             <option value="">-- Chọn Quận / Huyện --</option>
                             {ghnDistricts.map((dist) => (
@@ -4863,7 +5101,7 @@ export default function MobileAppClient({
                             placeholder="VD: Quận Hoàn Kiếm..."
                             value={uploadData.district}
                             onChange={(e) => setUploadData({ ...uploadData, district: e.target.value })}
-                            className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#0A2517]"
+                            className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
                           />
                         )}
                       </div>
@@ -4885,7 +5123,7 @@ export default function MobileAppClient({
                                 ward: ward?.WardName || "",
                               }));
                             }}
-                            className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#0A2517] disabled:opacity-50 cursor-pointer"
+                            className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638] disabled:opacity-50 cursor-pointer"
                           >
                             <option value="">-- Chọn Phường / Xã --</option>
                             {ghnWards.map((ward) => (
@@ -4901,7 +5139,7 @@ export default function MobileAppClient({
                             placeholder="VD: Phường Hàng Đào..."
                             value={uploadData.ward}
                             onChange={(e) => setUploadData({ ...uploadData, ward: e.target.value })}
-                            className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#0A2517]"
+                            className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
                           />
                         )}
                       </div>
@@ -4914,7 +5152,7 @@ export default function MobileAppClient({
                           placeholder="VD: 0912345678"
                           value={uploadData.ownerPhone}
                           onChange={(e) => setUploadData({ ...uploadData, ownerPhone: e.target.value })}
-                          className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-white text-xs font-mono font-medium outline-none focus:border-[#0A2517]"
+                          className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-white text-xs font-mono font-medium outline-none focus:border-[#1E5638]"
                         />
                       </div>
                     </div>
@@ -4929,7 +5167,7 @@ export default function MobileAppClient({
                         placeholder="VD: Số 123 Phố Huế..."
                         value={uploadData.address}
                         onChange={(e) => setUploadData({ ...uploadData, address: e.target.value })}
-                        className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#0A2517]"
+                        className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
                       />
                     </div>
 
@@ -4942,7 +5180,7 @@ export default function MobileAppClient({
                         placeholder="VD: Cạnh cửa hàng Circle K, ngõ đối diện..."
                         value={uploadData.note}
                         onChange={(e) => setUploadData({ ...uploadData, note: e.target.value })}
-                        className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#0A2517]"
+                        className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
                       />
                     </div>
 
@@ -4953,7 +5191,7 @@ export default function MobileAppClient({
                         id="saveLocationAsDefault"
                         checked={uploadData.saveLocationAsDefault}
                         onChange={(e) => setUploadData({ ...uploadData, saveLocationAsDefault: e.target.checked })}
-                        className="w-4 h-4 rounded border-stone-300 text-[#0A2517] focus:ring-[#0A2517] cursor-pointer"
+                        className="w-4 h-4 rounded border-stone-300 text-[#16442C] focus:ring-[#1E5638] cursor-pointer"
                       />
                       <label htmlFor="saveLocationAsDefault" className="text-[11px] text-stone-600 font-medium cursor-pointer">
                         Lưu trạm gửi này làm mặc định (tự nạp cho các món đồ sau)
@@ -4979,7 +5217,7 @@ export default function MobileAppClient({
                       placeholder="Chiếc đầm này đã đồng hành cùng bạn trong bữa tiệc đáng nhớ nào?..."
                       value={uploadData.story}
                       onChange={(e) => setUploadData({ ...uploadData, story: e.target.value })}
-                      className="w-full p-3 rounded-xl border border-stone-300 bg-white text-xs outline-none resize-none focus:border-[#0A2517]"
+                      className="w-full p-3 rounded-xl border border-stone-300 bg-white text-xs outline-none resize-none focus:border-[#1E5638]"
                     />
                   </div>
 
@@ -4993,15 +5231,15 @@ export default function MobileAppClient({
                     <button
                       type="submit"
                       disabled={isSubmittingPost}
-                      className="w-full h-12 rounded-xl bg-[#0A2517] text-white font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 shadow-md hover:bg-[#15462D] transition disabled:opacity-50 cursor-pointer"
+                      className="w-full h-12 rounded-xl bg-[#1E5638] text-white font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 shadow-md hover:bg-[#236341] transition disabled:opacity-50 cursor-pointer"
                     >
                       {isSubmittingPost ? (
                         <>
                           <RefreshCw size={15} className="animate-spin" />
-                          <span>Đang đăng vào tủ đồ...</span>
+                          <span>{editingProductId ? "Đang lưu thay đổi..." : "Đang đăng vào tủ đồ..."}</span>
                         </>
                       ) : (
-                        <span>Lưu &amp; Chia Sẻ Lên Tủ Đồ CLOOP</span>
+                        <span>{editingProductId ? "Lưu Thay Đổi Món Đồ" : "Lưu & Chia Sẻ Lên Tủ Đồ CLOOP"}</span>
                       )}
                     </button>
                   </div>
@@ -5067,7 +5305,7 @@ export default function MobileAppClient({
               <button
                 type="button"
                 onClick={handleCropConfirm}
-                className="flex-1 py-3 bg-[#0A2517] hover:bg-[#15462D] text-white font-bold text-xs rounded-xl transition cursor-pointer text-center border border-emerald-600/50 shadow-lg"
+                className="flex-1 py-3 bg-[#1E5638] hover:bg-[#236341] text-white font-bold text-xs rounded-xl transition cursor-pointer text-center border border-emerald-600/50 shadow-lg"
               >
                 Cắt &amp; Lưu ảnh
               </button>
@@ -5080,12 +5318,12 @@ export default function MobileAppClient({
             ======================================================== */}
         {checkoutProduct && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end justify-center p-0 sm:p-4 animate-in fade-in duration-200">
-            <div className="w-full max-w-[430px] bg-[#FAF9F5] rounded-t-[32px] sm:rounded-[32px] max-h-[90vh] overflow-y-auto text-[#0A2517] shadow-2xl relative animate-in slide-in-from-bottom duration-300 border border-stone-200 no-scrollbar flex flex-col">
+            <div className="w-full max-w-[430px] bg-[#FAF9F5] rounded-t-[32px] sm:rounded-[32px] max-h-[90vh] overflow-y-auto text-[#16442C] shadow-2xl relative animate-in slide-in-from-bottom duration-300 border border-stone-200 no-scrollbar flex flex-col">
               
               {/* Header Modal - Cố định không bị trôi khi cuộn */}
               <div className="flex items-center justify-between p-5 pb-3.5 border-b border-stone-200 sticky top-0 bg-[#FAF9F5] z-20 shrink-0">
                 <div>
-                  <h3 className="font-heading font-black text-base text-[#0A2517] leading-tight">
+                  <h3 className="font-heading font-black text-base text-[#16442C] leading-tight">
                     {bookingSuccessData ? (isPaidSuccess ? "Thanh Toán Thành Công" : "Cổng Thanh Toán PayOS") : (checkoutProduct.listingTypeRaw === "SELL" ? "Xác Nhận Mua Trang Phục" : "Xác Nhận Thuê Trang Phục")}
                   </h3>
                   <p className="text-[11px] text-stone-500 mt-0.5">
@@ -5098,7 +5336,7 @@ export default function MobileAppClient({
                   onClick={() => {
                     setCheckoutProduct(null);
                     setBookingSuccessData(null);
-                    setBookingError(null);
+                    setBookingError("");
                     setIsPaidSuccess(false);
                     setIsCheckingPayment(false);
                     setPaymentCheckMsg(null);
@@ -5129,7 +5367,7 @@ export default function MobileAppClient({
                             Két bảo chứng CLOOP Escrow đã nhận tiền cọc & xác nhận đơn hàng.
                           </p>
                         </div>
-                        <div className="inline-block bg-white px-3 py-1.5 rounded-full border border-emerald-300 font-mono text-xs font-black text-[#0A2517]">
+                        <div className="inline-block bg-white px-3 py-1.5 rounded-full border border-emerald-300 font-mono text-xs font-black text-[#16442C]">
                           Mã đơn: #{bookingSuccessData.orderCode}
                         </div>
                       </div>
@@ -5169,7 +5407,7 @@ export default function MobileAppClient({
                             setActiveClosetView("orders");
                             setOrderSubTab("renter");
                           }}
-                          className="py-3 px-3 rounded-xl bg-[#0A2517] hover:bg-[#15462D] text-white font-bold text-xs shadow-xs transition cursor-pointer text-center"
+                          className="py-3 px-3 rounded-xl bg-[#1E5638] hover:bg-[#236341] text-white font-bold text-xs shadow-xs transition cursor-pointer text-center"
                         >
                           Xem đơn của tôi
                         </button>
@@ -5193,11 +5431,11 @@ export default function MobileAppClient({
                         <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200/80 inline-block">
                           KÉT BẢO CHỨNG TỰ ĐỘNG KHÓA TIỀN CỌC
                         </span>
-                        <h4 className="font-heading font-black text-base text-[#0A2517] pt-0.5">
+                        <h4 className="font-heading font-black text-base text-[#16442C] pt-0.5">
                           Quét Mã QR Chuyển Khoản PayOS
                         </h4>
                         <p className="text-[11px] text-stone-500">
-                          Mã đơn: <strong className="font-mono text-xs font-black text-[#0A2517]">#{bookingSuccessData.orderCode}</strong>
+                          Mã đơn: <strong className="font-mono text-xs font-black text-[#16442C]">#{bookingSuccessData.orderCode}</strong>
                         </p>
                       </div>
 
@@ -5270,7 +5508,7 @@ export default function MobileAppClient({
                         <div className="flex justify-between items-center py-0.5">
                           <span className="text-stone-500 font-sans">Nội dung CK:</span>
                           <div className="flex items-center gap-1.5">
-                            <strong className="text-[#0A2517] bg-amber-50 text-amber-900 border border-amber-200 px-1 rounded font-bold">
+                            <strong className="text-[#16442C] bg-amber-50 text-amber-900 border border-amber-200 px-1 rounded font-bold">
                               {bookingSuccessData.description || `CLOOP GD ${bookingSuccessData.orderCode}`}
                             </strong>
                             <button
@@ -5289,7 +5527,7 @@ export default function MobileAppClient({
                         type="button"
                         disabled={isCheckingPayment}
                         onClick={handleCheckPayment}
-                        className="w-full py-3 bg-[#0A2517] hover:bg-[#15462D] text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                        className="w-full py-3 bg-[#1E5638] hover:bg-[#236341] text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer disabled:opacity-50"
                       >
                         {isCheckingPayment ? (
                           <>
@@ -5363,10 +5601,10 @@ export default function MobileAppClient({
                             Chủ tủ: {checkoutProduct.ownerName || "CLOOP"}
                           </span>
                         </div>
-                        <h4 className="font-heading font-black text-xs text-[#0A2517] truncate mt-0.5">
+                        <h4 className="font-heading font-black text-xs text-[#16442C] truncate mt-0.5">
                           {checkoutProduct.title}
                         </h4>
-                        <p className="text-xs font-bold text-[#0A2517] mt-0.5">
+                        <p className="text-xs font-bold text-[#16442C] mt-0.5">
                           {((checkoutProduct.listingTypeRaw === "SELL" ? checkoutProduct.salePrice : checkoutProduct.rentalPrice) || checkoutProduct.price || 0).toLocaleString("vi-VN")}đ
                           {checkoutProduct.listingTypeRaw !== "SELL" && <span className="text-[10px] font-normal text-stone-500"> / ngày</span>}
                         </p>
@@ -5377,7 +5615,7 @@ export default function MobileAppClient({
                     {checkoutProduct.listingTypeRaw !== "SELL" && (
                       <div className="p-3.5 rounded-2xl bg-white border border-stone-200/90 space-y-2.5">
                         <div className="flex justify-between items-center">
-                          <label className="block text-xs font-bold text-[#0A2517]">
+                          <label className="block text-xs font-bold text-[#16442C]">
                             1. Gói thuê trải nghiệm
                           </label>
                           <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
@@ -5402,7 +5640,7 @@ export default function MobileAppClient({
                                 onClick={() => setCheckoutDays(pkg.days)}
                                 className={`relative p-2 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
                                   isSelected
-                                    ? "bg-[#0A2517] text-white border-[#0A2517] shadow-xs"
+                                    ? "bg-[#1E5638] text-white border-[#1E5638] shadow-xs"
                                     : "bg-stone-50 text-stone-700 border-stone-200 hover:border-stone-300"
                                 }`}
                               >
@@ -5419,7 +5657,7 @@ export default function MobileAppClient({
                                     {pkg.sub}
                                   </span>
                                 </div>
-                                <span className={`text-[10.5px] font-bold font-mono mt-1 ${isSelected ? "text-white" : "text-[#0A2517]"}`}>
+                                <span className={`text-[10.5px] font-bold font-mono mt-1 ${isSelected ? "text-white" : "text-[#16442C]"}`}>
                                   {pkgPrice.toLocaleString("vi-VN")}đ
                                 </span>
                               </button>
@@ -5437,12 +5675,12 @@ export default function MobileAppClient({
                               min={new Date().toISOString().slice(0, 10)}
                               value={checkoutStartDate}
                               onChange={(e) => setCheckoutStartDate(e.target.value)}
-                              className="w-full h-8 px-2 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#0A2517]"
+                              className="w-full h-8 px-2 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
                             />
                           </div>
                           <div>
                             <span className="text-[10px] text-stone-500 block mb-0.5">Lịch dự kiến:</span>
-                            <div className="h-8 px-2 rounded-xl bg-stone-100 border border-stone-200 flex items-center justify-between text-[10px] font-mono font-bold text-[#0A2517]">
+                            <div className="h-8 px-2 rounded-xl bg-stone-100 border border-stone-200 flex items-center justify-between text-[10px] font-mono font-bold text-[#16442C]">
                               <span>{checkoutStartDate ? checkoutStartDate.slice(5) : ""}</span>
                               <span>➔</span>
                               <span>{checkoutEndDate ? checkoutEndDate.slice(5) : ""} ({checkoutDays}d)</span>
@@ -5454,7 +5692,7 @@ export default function MobileAppClient({
 
                     {/* 2. HÌNH THỨC NHẬN HÀNG */}
                     <div className="p-3.5 rounded-2xl bg-white border border-stone-200/90 space-y-2.5">
-                      <label className="block text-xs font-bold text-[#0A2517]">
+                      <label className="block text-xs font-bold text-[#16442C]">
                         Phương thức giao nhận
                       </label>
 
@@ -5464,7 +5702,7 @@ export default function MobileAppClient({
                           onClick={() => setCheckoutShippingMode("CLOOP_BOOK")}
                           className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
                             checkoutShippingMode === "CLOOP_BOOK"
-                              ? "border-[#0A2517] bg-stone-100 ring-1 ring-[#0A2517]"
+                              ? "border-[#1E5638] bg-stone-100 ring-1 ring-[#1E5638]"
                               : "border-stone-200 bg-white hover:bg-stone-50"
                           }`}
                         >
@@ -5485,7 +5723,7 @@ export default function MobileAppClient({
                           onClick={() => setCheckoutShippingMode("SELF_BOOK")}
                           className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
                             checkoutShippingMode === "SELF_BOOK"
-                              ? "border-[#0A2517] bg-stone-100 ring-1 ring-[#0A2517]"
+                              ? "border-[#1E5638] bg-stone-100 ring-1 ring-[#1E5638]"
                               : "border-stone-200 bg-white hover:bg-stone-50"
                           }`}
                         >
@@ -5510,7 +5748,7 @@ export default function MobileAppClient({
                     {/* 3. THÔNG TIN NGƯỜI NHẬN & ĐỊA CHỈ GHN */}
                     <div className="p-3.5 rounded-2xl bg-white border border-stone-200/90 space-y-2.5">
                       <div className="flex items-center justify-between">
-                        <label className="block text-xs font-bold text-[#0A2517]">
+                        <label className="block text-xs font-bold text-[#16442C]">
                           Thông tin người nhận
                         </label>
                         <span className="text-[10px] text-stone-400">
@@ -5537,7 +5775,7 @@ export default function MobileAppClient({
                                 }
                               } catch (_) {}
                             }}
-                            className="w-full h-9 px-2.5 rounded-xl border border-stone-300 bg-white text-xs outline-none focus:border-[#0A2517]"
+                            className="w-full h-9 px-2.5 rounded-xl border border-stone-300 bg-white text-xs outline-none focus:border-[#1E5638]"
                           />
                         </div>
                         <div>
@@ -5558,7 +5796,7 @@ export default function MobileAppClient({
                                 }
                               } catch (_) {}
                             }}
-                            className="w-full h-9 px-2.5 rounded-xl border border-stone-300 bg-white text-xs font-mono outline-none focus:border-[#0A2517]"
+                            className="w-full h-9 px-2.5 rounded-xl border border-stone-300 bg-white text-xs font-mono outline-none focus:border-[#1E5638]"
                           />
                         </div>
                       </div>
@@ -5566,7 +5804,7 @@ export default function MobileAppClient({
                       {checkoutShippingMode === "CLOOP_BOOK" && (
                         <div className="space-y-2 pt-1 border-t border-stone-100">
                           <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-bold text-[#0A2517] flex items-center gap-1">
+                            <span className="text-[11px] font-bold text-[#16442C] flex items-center gap-1">
                               <MapPin size={12} className="text-emerald-700" />
                               Địa chỉ giao nhận (GHN) *
                             </span>
@@ -5586,7 +5824,7 @@ export default function MobileAppClient({
                                 required
                                 value={checkoutProvinceId}
                                 onChange={(e) => handleCheckoutProvinceChange(e.target.value ? Number(e.target.value) : "")}
-                                className="w-full h-8 px-2 rounded-xl border border-stone-300 bg-white text-[11px] font-medium outline-none focus:border-[#0A2517]"
+                                className="w-full h-8 px-2 rounded-xl border border-stone-300 bg-white text-[11px] font-medium outline-none focus:border-[#1E5638]"
                               >
                                 <option value="">-- Chọn Tỉnh/TP --</option>
                                 {ghnProvinces.map((p: any) => (
@@ -5604,7 +5842,7 @@ export default function MobileAppClient({
                                 disabled={!checkoutProvinceId}
                                 value={checkoutDistrictId}
                                 onChange={(e) => handleCheckoutDistrictChange(e.target.value ? Number(e.target.value) : "")}
-                                className="w-full h-8 px-2 rounded-xl border border-stone-300 bg-white text-[11px] font-medium outline-none focus:border-[#0A2517] disabled:bg-stone-100 disabled:text-stone-400"
+                                className="w-full h-8 px-2 rounded-xl border border-stone-300 bg-white text-[11px] font-medium outline-none focus:border-[#1E5638] disabled:bg-stone-100 disabled:text-stone-400"
                               >
                                 <option value="">-- Chọn Quận/Huyện --</option>
                                 {checkoutDistricts.map((d: any) => (
@@ -5622,7 +5860,7 @@ export default function MobileAppClient({
                                 disabled={!checkoutDistrictId}
                                 value={checkoutWardCode}
                                 onChange={(e) => handleCheckoutWardChange(e.target.value)}
-                                className="w-full h-8 px-2 rounded-xl border border-stone-300 bg-white text-[11px] font-medium outline-none focus:border-[#0A2517] disabled:bg-stone-100 disabled:text-stone-400"
+                                className="w-full h-8 px-2 rounded-xl border border-stone-300 bg-white text-[11px] font-medium outline-none focus:border-[#1E5638] disabled:bg-stone-100 disabled:text-stone-400"
                               >
                                 <option value="">-- Chọn Phường/Xã --</option>
                                 {checkoutWards.map((w: any) => (
@@ -5642,7 +5880,7 @@ export default function MobileAppClient({
                               placeholder="VD: Số 18, Ngõ 45, Đường Láng..."
                               value={checkoutAddressDetail}
                               onChange={(e) => setCheckoutAddressDetail(e.target.value)}
-                              className="w-full h-9 px-2.5 rounded-xl border border-stone-300 bg-white text-xs outline-none focus:border-[#0A2517]"
+                              className="w-full h-9 px-2.5 rounded-xl border border-stone-300 bg-white text-xs outline-none focus:border-[#1E5638]"
                             />
                           </div>
 
@@ -5653,7 +5891,7 @@ export default function MobileAppClient({
                               placeholder="VD: Chung cư Star Tower, tầng 12, gọi trước khi giao..."
                               value={checkoutRenterNote}
                               onChange={(e) => setCheckoutRenterNote(e.target.value)}
-                              className="w-full h-9 px-2.5 rounded-xl border border-stone-300 bg-white text-xs outline-none focus:border-[#0A2517]"
+                              className="w-full h-9 px-2.5 rounded-xl border border-stone-300 bg-white text-xs outline-none focus:border-[#1E5638]"
                             />
                           </div>
 
@@ -5687,7 +5925,7 @@ export default function MobileAppClient({
                           id="saveRenterInfo"
                           checked={saveRenterInfo}
                           onChange={(e) => setSaveRenterInfo(e.target.checked)}
-                          className="w-3.5 h-3.5 rounded border-stone-300 text-[#0A2517] focus:ring-[#0A2517] cursor-pointer"
+                          className="w-3.5 h-3.5 rounded border-stone-300 text-[#16442C] focus:ring-[#1E5638] cursor-pointer"
                         />
                         <label htmlFor="saveRenterInfo" className="text-[11px] text-stone-600 cursor-pointer">
                           Ghi nhớ thông tin này (tự nạp cho các lần thuê sau)
@@ -5740,14 +5978,14 @@ export default function MobileAppClient({
 
                       <div className="pt-2 border-t border-stone-200 flex justify-between items-baseline">
                         <div>
-                          <span className="font-bold text-xs text-[#0A2517] block">Tổng thanh toán:</span>
+                          <span className="font-bold text-xs text-[#16442C] block">Tổng thanh toán:</span>
                           {checkoutShippingMode === "CLOOP_BOOK" && checkoutShippingFee === null ? (
                             <span className="text-[10px] text-amber-700 italic">* Chưa gồm cước vận chuyển GHN</span>
                           ) : checkoutProduct.listingTypeRaw !== "SELL" && calculatedDeposit > 0 ? (
                             <span className="text-[10px] text-stone-500 italic">* Đã gồm cọc (Hoàn lại 100% khi trả đồ)</span>
                           ) : null}
                         </div>
-                        <span className="font-heading font-black text-lg text-[#0A2517] font-mono">
+                        <span className="font-heading font-black text-lg text-[#16442C] font-mono">
                           {(
                             calculatedRentalFee + 
                             calculatedDeposit + 
@@ -5762,7 +6000,7 @@ export default function MobileAppClient({
                       <button
                         type="submit"
                         disabled={isSubmittingBooking}
-                        className="w-full h-12 rounded-xl bg-[#0A2517] text-white font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 shadow-md hover:bg-[#15462D] transition disabled:opacity-50 cursor-pointer"
+                        className="w-full h-12 rounded-xl bg-[#1E5638] text-white font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 shadow-md hover:bg-[#236341] transition disabled:opacity-50 cursor-pointer"
                       >
                         {isSubmittingBooking ? (
                           <>
@@ -5792,7 +6030,7 @@ export default function MobileAppClient({
         {isBlogModalOpen && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200 mobile-app-root font-sans">
             <div className="w-full max-w-[430px] max-h-[88vh] bg-[#FBF9F5] rounded-t-[32px] sm:rounded-[36px] overflow-y-auto shadow-2xl relative animate-in slide-in-from-bottom duration-300 flex flex-col no-scrollbar">
-              <div className="sticky top-0 z-20 bg-[#0A2517] text-white px-4 py-3 flex items-center justify-between border-b border-emerald-900/40 shrink-0">
+              <div className="sticky top-0 z-20 bg-[#1E5638] text-white px-4 py-3 flex items-center justify-between border-b border-emerald-900/40 shrink-0">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-emerald-400" />
                   <span className="font-bold text-sm tracking-wide">Cẩm Nang Thời Trang Tuần Hoàn</span>
@@ -5811,7 +6049,7 @@ export default function MobileAppClient({
                   <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full uppercase">
                     Xu hướng 2026
                   </span>
-                  <h3 className="font-heading font-black text-sm text-[#0A2517]">
+                  <h3 className="font-heading font-black text-sm text-[#16442C]">
                     Chia sẻ tủ đồ: Mặc mới mỗi tuần, chi tiêu thông minh
                   </h3>
                   <p className="text-xs text-stone-600 leading-relaxed">
@@ -5823,7 +6061,7 @@ export default function MobileAppClient({
                   <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full uppercase">
                     Bí quyết chọn size
                   </span>
-                  <h3 className="font-heading font-black text-sm text-[#0A2517]">
+                  <h3 className="font-heading font-black text-sm text-[#16442C]">
                     Cách đo 3 vòng chuẩn xác để thuê đầm vừa in
                   </h3>
                   <p className="text-xs text-stone-600 leading-relaxed">
@@ -5835,7 +6073,7 @@ export default function MobileAppClient({
                   <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full uppercase">
                     Chính sách vệ sinh
                   </span>
-                  <h3 className="font-heading font-black text-sm text-[#0A2517]">
+                  <h3 className="font-heading font-black text-sm text-[#16442C]">
                     Quy trình giặt hấp &amp; bảo quản chuẩn 5 sao
                   </h3>
                   <p className="text-xs text-stone-600 leading-relaxed">
@@ -5853,7 +6091,7 @@ export default function MobileAppClient({
         {isHelpModalOpen && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200 mobile-app-root font-sans">
             <div className="w-full max-w-[430px] max-h-[88vh] bg-[#FBF9F5] rounded-t-[32px] sm:rounded-[36px] overflow-y-auto shadow-2xl relative animate-in slide-in-from-bottom duration-300 flex flex-col no-scrollbar">
-              <div className="sticky top-0 z-20 bg-[#0A2517] text-white px-4 py-3 flex items-center justify-between border-b border-emerald-900/40 shrink-0">
+              <div className="sticky top-0 z-20 bg-[#1E5638] text-white px-4 py-3 flex items-center justify-between border-b border-emerald-900/40 shrink-0">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-emerald-400" />
                   <span className="font-bold text-sm tracking-wide">Trung Tâm Trợ Giúp &amp; CSKH</span>

@@ -1,5 +1,5 @@
 import React from "react";
-import { redirect, notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import { requireUser } from "@/src/lib/auth";
 import { getProductForEditAction } from "@/app/(dashboard)/my-closet/create/actions";
 import EditProductClient from "./EditProductClient";
@@ -23,7 +23,7 @@ export default async function EditProductPage({
 
   const res = await getProductForEditAction(productId);
   if (!res.success || !res.product) {
-    notFound();
+    redirect("/app");
   }
 
   return (

@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import VisualSearchModal from "@/app/components/VisualSearchModal";
 import { getShopProductsAction } from "@/app/actions/product";
+import { getOptimizedCloudinaryUrl } from "@/lib/cloudinary-optimize";
 
 interface FashionItem {
   id: string;
@@ -288,14 +289,15 @@ const REAL_DEFAULT_PRODUCTS = [
 const aspects = ["aspect-[3/4]", "aspect-[4/5]", "aspect-[3/4]", "aspect-square"];
 
 function buildMosaicColumns(rawItems: any[]): FashionItem[][] {
-  const columns: FashionItem[][] = [[], [], [], [], [], []];
+  const columns: FashionItem[][] = [[], [], [], [], []];
   
   const valid = rawItems && rawItems.length > 0 ? rawItems : REAL_DEFAULT_PRODUCTS;
   
   const formatted: FashionItem[] = valid
     .map((p, idx) => {
-      const imgUrl = p.img || p.image || (Array.isArray(p.images) ? (p.images[0]?.url || p.images[0]) : "");
-      if (!imgUrl || typeof imgUrl !== "string" || imgUrl.startsWith("/")) return null;
+      const rawImgUrl = p.img || p.image || (Array.isArray(p.images) ? (p.images[0]?.url || p.images[0]) : "");
+      if (!rawImgUrl || typeof rawImgUrl !== "string" || rawImgUrl.startsWith("/")) return null;
+      const imgUrl = getOptimizedCloudinaryUrl(rawImgUrl, 420);
 
       const title = p.title || "Trang phục CLOOP";
       const isSale = p.listingTypeRaw === "SELL" || (p.rentalPrice === 0 && p.salePrice > 0);
@@ -332,8 +334,8 @@ function buildMosaicColumns(rawItems: any[]): FashionItem[][] {
 
   const safeList = formatted.length > 0 ? formatted : (REAL_DEFAULT_PRODUCTS as any);
 
-  const minPerCol = 4;
-  for (let c = 0; c < 6; c++) {
+  const minPerCol = 3;
+  for (let c = 0; c < 5; c++) {
     for (let i = 0; i < minPerCol; i++) {
       const itemIdx = (c * minPerCol + i) % safeList.length;
       const baseItem = safeList[itemIdx];

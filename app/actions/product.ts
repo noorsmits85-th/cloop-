@@ -159,6 +159,9 @@ export async function createProductAction({
       isRental: listings.isRental,
       isSale: listings.isSale,
       rentalPrice: listings.rentalPrice,
+      price1Day: (listings as any).price1Day || listings.rentalPrice,
+      price3Days: (listings as any).price3Days,
+      price7Days: (listings as any).price7Days,
       salePrice: listings.salePrice,
       deposit: listings.deposit,
       minDays: listings.minDays,
@@ -217,12 +220,23 @@ export async function createProductAction({
 
       const listingsData = [];
       if (validData.isRental) {
+        const p1 = Number((listings as any).price1Day || validData.rentalPrice || 0);
+        const p3 = Number((listings as any).price3Days || (p1 > 0 ? Math.round(p1 * 3 * 0.85 / 1000) * 1000 : 0));
+        const p7 = Number((listings as any).price7Days || (p1 > 0 ? Math.round(p1 * 7 * 0.70 / 1000) * 1000 : 0));
+
+        const customTiers = (listings as any).pricingTiers || (listings as any).pricing_tiers || [
+          { days: 1, price: p1 },
+          { days: 3, price: p3 },
+          { days: 7, price: p7 }
+        ];
+
         listingsData.push({
           productId: newProduct.id,
           listingType: ListingType.RENT,
-          basePrice: validData.rentalPrice || 0,
+          basePrice: p1,
+          pricing_tiers: customTiers,
           deposit: validData.deposit || null,
-          minDays: validData.minDays,
+          minDays: validData.minDays || 1,
           turnaround_days: 2
         });
       }
@@ -594,5 +608,130 @@ export async function getShopProductsAction({
     } catch (directErr: any) {
       return { success: false, error: directErr.message || error.message, products: [] };
     }
+  }
+}
+
+export async function updateProductFromAppAction(productId: string, data: any, clientUserId?: string) {
+  try {
+    const supabase = await createClient();
+    let authUser: any = null;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) authUser = user;
+    } catch (_) {}
+    if (!authUser) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) authUser = session.user;
+      } catch (_) {}
+    }
+    if (!authUser && clientUserId) {
+      authUser = { id: clientUserId };
+    }
+
+    const existingProduct = await prisma.product.findUnique({
+      where: { id: productId },
+      include: { listings: true }
+    });
+
+    if (!existingProduct) {
+      return { success: false, error: "Không tìm thấy món đồ." };
+    }
+
+    const p1 = Number(data.price1Day || data.rentalPrice || 0);
+    const p3 = Number(data.price3Days || (p1 > 0 ? Math.round(p1 * 3 * 0.85 / 1000) * 1000 : 0));
+    const p7 = Number(data.price7Days || (p1 > 0 ? Math.round(p1 * 7 * 0.70 / 1000) * 1000 : 0));
+
+    const customTiers = data.pricingTiers || [
+      { days: 1, price: p1 },
+      { days: 3, price: p3 },
+      { days: 7, price: p7 }
+    ];
+
+    await prisma.$transaction(async (tx) => {
+      await tx.product.update({
+        where: { id: productId },
+        data: {
+          title: data.title || existingProduct.title,
+          category: data.category || existingProduct.category,
+          size: data.size || existingProduct.size,
+          material: data.material || existingProduct.material,
+          color: data.color || existingProduct.color,
+          condition: data.condition === "99" ? ItemCondition.EXCELLENT : data.condition === "NEW" ? ItemCondition.NEW_WITH_TAGS : ItemCondition.GOOD,
+          description: data.description ?? existingProduct.description,
+          occasion: data.occasion || existingProduct.occasion,
+          ...(data.province ? { province: data.province } : {}),
+          ...(data.address ? { specificAddress: data.address } : {}),
+          ...(data.districtId ? { districtId: Number(data.districtId) } : {}),
+          ...(data.wardCode ? { wardCode: String(data.wardCode) } : {}),
+        }
+      });
+
+      if (data.images && Array.isArray(data.images) && data.images.length > 0) {
+        await tx.productImage.deleteMany({
+          where: { productId }
+        });
+        await tx.productImage.createMany({
+          data: data.images.map((url: string, idx: number) => ({
+            productId,
+            url,
+            isPrimary: idx === 0,
+            sortOrder: idx,
+            storageProvider: "cloudinary"
+          }))
+        });
+      }
+
+      const rentListing = existingProduct.listings.find(l => l.listingType === "RENT");
+      if (rentListing) {
+        await tx.listing.update({
+          where: { id: rentListing.id },
+          data: {
+            basePrice: p1,
+            pricing_tiers: customTiers,
+            deposit: data.deposit ? Number(data.deposit) : rentListing.deposit,
+          }
+        });
+      } else if (data.isRental && p1 > 0) {
+        await tx.listing.create({
+          data: {
+            productId,
+            listingType: ListingType.RENT,
+            basePrice: p1,
+            pricing_tiers: customTiers,
+            deposit: data.deposit ? Number(data.deposit) : null,
+            minDays: 1,
+            turnaround_days: 2
+          }
+        });
+      }
+
+      const saleListing = existingProduct.listings.find(l => l.listingType === "SELL");
+      if (saleListing) {
+        await tx.listing.update({
+          where: { id: saleListing.id },
+          data: {
+            basePrice: data.salePrice ? Number(data.salePrice) : saleListing.basePrice,
+            salePrice: data.salePrice ? Number(data.salePrice) : saleListing.salePrice,
+          }
+        });
+      } else if (data.isSale && Number(data.salePrice) > 0) {
+        await tx.listing.create({
+          data: {
+            productId,
+            listingType: ListingType.SELL,
+            basePrice: Number(data.salePrice),
+            salePrice: Number(data.salePrice),
+            turnaround_days: 2
+          }
+        });
+      }
+    });
+
+    await clearShopMemoryCache();
+    return { success: true };
+  } catch (err: any) {
+    console.error("Lỗi updateProductFromAppAction:", err);
+    return { success: false, error: err?.message || "Lỗi cập nhật sản phẩm." };
   }
 }

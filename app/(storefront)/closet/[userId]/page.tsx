@@ -2,7 +2,7 @@ import { getClosetFullDataAction } from "@/app/actions/closet";
 import { getScrubbedReviewsAction } from "@/app/(dashboard)/my-closet/orders/actions";
 import { requireUser } from "@/src/lib/auth";
 import ClosetProfileClient from "./_components/ClosetProfileClient";
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 
 export const revalidate = 60; // ⚡ SWR CACHE 60s (Giảm 90% DB query khi nhiều người xem tủ đồ)
 
@@ -12,7 +12,7 @@ export default async function ClosetProfilePage({
   params: Promise<{ userId: string }> 
 }) {
   const { userId } = await params;
-  if (!userId) notFound();
+  if (!userId) redirect("/shop");
 
   let currentUserId: string | null = null;
   let currentUserMeta: any = null;
@@ -31,7 +31,7 @@ export default async function ClosetProfilePage({
   ]);
 
   if (!res.success || !res.ownerInfo) {
-    notFound();
+    redirect("/shop");
   }
 
   const isCurrentUser = !!currentUserId && (

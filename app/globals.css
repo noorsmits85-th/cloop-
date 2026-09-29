@@ -112,33 +112,39 @@
   animation-play-state: paused;
 }
 
-/* 🚀 GPU-Accelerated Fluid Hero Floating Columns (Zero Main-Thread / RAF Overhead) */
+/* 🚀 Ultra-Smooth 60fps Hero Floating Columns with CSS Paint/Layout Containment */
 @keyframes heroFloatOdd {
   0%, 100% {
-    transform: translate3d(0, -18px, 0);
+    transform: translateY(-8px);
   }
   50% {
-    transform: translate3d(0, 18px, 0);
+    transform: translateY(8px);
   }
 }
 
 @keyframes heroFloatEven {
   0%, 100% {
-    transform: translate3d(0, 18px, 0);
+    transform: translateY(8px);
   }
   50% {
-    transform: translate3d(0, -18px, 0);
+    transform: translateY(-8px);
   }
 }
 
 .hero-col-odd {
-  animation: heroFloatOdd ease-in-out infinite;
-  will-change: transform;
+  animation: heroFloatOdd 26s ease-in-out infinite;
+  contain: layout paint;
 }
 
 .hero-col-even {
-  animation: heroFloatEven ease-in-out infinite;
-  will-change: transform;
+  animation: heroFloatEven 30s ease-in-out infinite;
+  contain: layout paint;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-col-odd, .hero-col-even {
+    animation: none !important;
+  }
 }
 
 /* 🌿 Silky Smooth Scrolling & Rendering Performance */

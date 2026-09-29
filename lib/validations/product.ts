@@ -20,7 +20,10 @@ export const uploadProductSchema = z.object({
   // Tùy chọn cho thuê
   isRental: z.boolean().default(true),
   rentalPrice: z.number().int().nonnegative().optional(),
-  minDays: z.number().int().min(1).default(3),
+  price1Day: z.number().int().nonnegative().optional(),
+  price3Days: z.number().int().nonnegative().optional(),
+  price7Days: z.number().int().nonnegative().optional(),
+  minDays: z.number().int().min(1).default(1),
   
   // Tùy chọn bán đứt
   isSale: z.boolean().default(false),
@@ -41,8 +44,11 @@ export const uploadProductSchema = z.object({
 )
 .refine(
   (data) => {
-    if (data.isRental && (data.rentalPrice === undefined || data.rentalPrice <= 0)) {
-      return false;
+    if (data.isRental) {
+      const p = data.rentalPrice ?? data.price1Day ?? data.price3Days;
+      if (p === undefined || p <= 0) {
+        return false;
+      }
     }
     return true;
   },
@@ -91,13 +97,14 @@ export const uploadProductSchema = z.object({
 .refine(
   (data) => {
     // Giá thuê phải >= 10% Giá Sở Hữu (nếu có bán đứt)
-    if (data.isRental && data.isSale && data.rentalPrice !== undefined && data.salePrice !== undefined) {
-      return data.rentalPrice >= data.salePrice * 0.1;
+    const effectiveRent = data.price3Days || (data.price1Day ? data.price1Day * 3 : undefined) || data.rentalPrice;
+    if (data.isRental && data.isSale && effectiveRent !== undefined && data.salePrice !== undefined) {
+      return effectiveRent >= data.salePrice * 0.1;
     }
     return true;
   },
   {
-    message: "Lỗi nhập liệu: Giá thuê 3 ngày quá rẻ (phải >= 10% Giá Sở Hữu). Bạn có gõ thiếu số 0 không?",
+    message: "Lỗi nhập liệu: Giá thuê quá rẻ (phải >= 10% Giá Sở Hữu). Bạn có gõ thiếu số 0 không?",
     path: ["rentalPrice"]
   }
 );

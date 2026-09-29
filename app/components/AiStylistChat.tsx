@@ -503,13 +503,13 @@ export default function AiStylistChat({
                 : "flex h-[460px] max-h-[75vh] w-[320px] sm:w-[350px] flex-col overflow-hidden rounded-2xl border border-stone-300/90 bg-[#FAF8F3] text-[#142A1E] shadow-[0_16px_48px_rgba(0,0,0,0.35)] relative z-[9999]"
             }
           >
-            {/* 👑 REFINED FOREST GREEN HEADER */}
-            <div className="bg-[#122D20] p-2.5 px-3 text-white border-b border-[#1C4431] shadow-2xs">
+            {/* 👑 REFINED CHRISTMAS PINE GREEN HEADER */}
+            <div className="bg-[#1E5638] p-2.5 px-3 text-white border-b border-[#2D7A51] shadow-2xs">
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2">
                   <div className="relative flex h-6.5 w-6.5 items-center justify-center rounded-md bg-white/10 text-white border border-white/20 p-0.5">
                     <CloopChatBotIcon className="w-5 h-5" />
-                    <span className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400 border border-[#122D20]" />
+                    <span className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400 border border-[#1E5638]" />
                   </div>
                   <div className="text-left">
                     <h3 className="text-[11px] font-heading font-extrabold uppercase tracking-wider text-white leading-tight">
@@ -538,7 +538,7 @@ export default function AiStylistChat({
                   onClick={() => setActiveTab("stylist")}
                   className={`py-0.5 rounded transition-all flex items-center justify-center gap-1 cursor-pointer ${
                     activeTab === "stylist"
-                      ? "bg-white text-[#122D20] shadow-2xs font-extrabold"
+                      ? "bg-white text-[#1E5638] shadow-2xs font-extrabold"
                       : "text-stone-300 hover:text-white"
                   }`}
                 >
@@ -551,7 +551,7 @@ export default function AiStylistChat({
                   onClick={() => setActiveTab("cskh")}
                   className={`py-0.5 rounded transition-all flex items-center justify-center gap-1 cursor-pointer ${
                     activeTab === "cskh"
-                      ? "bg-white text-[#122D20] shadow-2xs font-extrabold"
+                      ? "bg-white text-[#1E5638] shadow-2xs font-extrabold"
                       : "text-stone-300 hover:text-white"
                   }`}
                 >
@@ -757,11 +757,11 @@ export default function AiStylistChat({
         onClick={() => setShowChat(!showChat)}
         whileHover={{ scale: 1.08 }}
         whileTap={{ scale: 0.92 }}
-        className="relative flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gradient-to-br from-[#183A2D] to-[#0A1F15] text-white shadow-[0_4px_16px_rgba(10,31,22,0.38)] border border-[#A3E39F]/50 transition-all duration-200 cursor-pointer group"
+        className="relative flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gradient-to-br from-[#1E5638] to-[#2D7A51] ring-2 ring-red-100/90 text-white shadow-[0_4px_16px_rgba(30,86,56,0.38)] border border-white/20 transition-all duration-200 cursor-pointer group"
         title="Trợ lý AI Stylist CLOOP"
       >
         <CloopChatBotIcon className="w-5.5 h-5.5 transition-transform duration-200 group-hover:scale-105" />
-        <span className="absolute -top-1 -right-1 px-1 py-0.2 rounded-full bg-emerald-400 text-[#0A2517] text-[7.5px] font-extrabold shadow-2xs font-ui tracking-tight">
+        <span className="absolute -top-1 -right-1 px-1 py-0.2 rounded-full bg-[#C92A2A] text-white text-[7.5px] font-extrabold shadow-2xs font-ui tracking-tight border border-white/40">
           AI
         </span>
       </motion.button>

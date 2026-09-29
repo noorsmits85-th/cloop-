@@ -151,7 +151,7 @@ export async function createBooking({
       : (subTotal + serviceFee + shippingFee);
 
     // 2. Chặn trùng lịch (Overlap check) trên Server (Sử dụng Prisma Transaction để an toàn)
-    return await prisma.$transaction(async (tx) => {
+    const txResult = await prisma.$transaction(async (tx) => {
       // 🚀 BƯỚC KHÓA BẢNG PESSIMISTIC LOCK: NGĂN CHẶN DOUBLE BOOKING
       // Gọi lệnh này TRƯỚC khi thực hiện bất kỳ lệnh check hay create nào!
       try {
@@ -242,7 +242,7 @@ export async function createBooking({
 
     if (payos) {
       try {
-        paymentLinkRes = await payos.paymentRequests.create({
+        paymentLinkRes = await (payos as any).paymentRequests.create({
           orderCode: txResult.orderCode,
           amount: totalAmount,
           description: `CLOOP GD ${String(txResult.orderCode).slice(-15)}`,
@@ -273,6 +273,7 @@ export async function createBooking({
       description: paymentLinkRes?.description || `CLOOP GD ${String(txResult.orderCode).slice(-15)}`,
       totalAmount,
       depositAmount: deposit,
+      rentalFee: subTotal,
       depositDiscount: depositCalculation.discountAmount,
       trustTier: trustBreakdown.tier,
       trustScore: trustBreakdown.score,

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { getOptimizedCloudinaryUrl } from "@/lib/cloudinary-optimize";
 import Image from "next/image";
 import Link from "next/link";
 import { 
@@ -157,53 +158,68 @@ export default function Home() {
   };
 
   // 03 — OCCASION CURATIONS (5 Bộ Sưu Tập Lấy Ảnh Mới Nhất Từ Database Chung)
-  const occasionCollections = [
+  const occasionCollections = useMemo(() => [
     { 
       id: "wedding", 
       title: "Dự Tiệc Cưới", 
-      image: getLatestOccasionImage(
-        ["cưới", "tiệc", "đầm dự tiệc", "váy ren"],
-        "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529633/cloop_mobile_closet/ekxdoqiw0ge05f9znmgj.jpg"
+      image: getOptimizedCloudinaryUrl(
+        getLatestOccasionImage(
+          ["cưới", "tiệc", "đầm dự tiệc", "váy ren"],
+          "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529633/cloop_mobile_closet/ekxdoqiw0ge05f9znmgj.jpg"
+        ),
+        600
       ),
       link: "/shop?occasion=Tiệc cưới"
     },
     { 
       id: "gala", 
       title: "Dạ Hội", 
-      image: getLatestOccasionImage(
-        ["dạ hội", "sự kiện", "prom", "sang trọng"],
-        "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790243386/cloop_mobile_closet/xpirvpupmyfoxxneenve.jpg"
+      image: getOptimizedCloudinaryUrl(
+        getLatestOccasionImage(
+          ["dạ hội", "sự kiện", "prom", "sang trọng"],
+          "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790243386/cloop_mobile_closet/xpirvpupmyfoxxneenve.jpg"
+        ),
+        600
       ),
       link: "/shop?occasion=Dạ hội"
     },
     { 
       id: "heritage", 
       title: "Áo Dài", 
-      image: getLatestOccasionImage(
-        ["áo dài", "cách tân", "truyền thống"],
-        "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790159335/cloop_mobile_closet/s3lwl54qe2sjov5i4oaw.jpg"
+      image: getOptimizedCloudinaryUrl(
+        getLatestOccasionImage(
+          ["áo dài", "cách tân", "truyền thống"],
+          "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790159335/cloop_mobile_closet/s3lwl54qe2sjov5i4oaw.jpg"
+        ),
+        600
       ),
       link: "/shop?occasion=Áo dài"
     },
     { 
       id: "minimal", 
       title: "Dạo Phố", 
-      image: getLatestOccasionImage(
-        ["dạo phố", "hằng ngày", "phố", "áo thun", "sweater"],
-        "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530309/cloop_mobile_closet/zvvo3mp0lrsa4mbvam60.jpg"
+      image: getOptimizedCloudinaryUrl(
+        getLatestOccasionImage(
+          ["dạo phố", "hằng ngày", "phố", "áo thun", "sweater"],
+          "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530309/cloop_mobile_closet/zvvo3mp0lrsa4mbvam60.jpg"
+        ),
+        600
       ),
       link: "/shop?occasion=Dạo phố"
     },
     { 
       id: "travel", 
       title: "Du Lịch", 
-      image: getLatestOccasionImage(
-        ["du lịch", "dã ngoại", "biển", "váy maxi", "yếm"],
-        "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790160514/cloop_mobile_closet/u9te4xi7eh2dgi9u1b5h.jpg"
+      image: getOptimizedCloudinaryUrl(
+        getLatestOccasionImage(
+          ["du lịch", "dã ngoại", "biển", "váy maxi", "yếm"],
+          "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790160514/cloop_mobile_closet/u9te4xi7eh2dgi9u1b5h.jpg"
+        ),
+        600
       ),
       link: "/shop?occasion=Du lịch"
     }
-  ];
+  ], [products]);
 
   // 04 — TRENDING ROTATIONS CATALOG (Dữ Liệu Thật 100% Cập Nhật Mới Nhất)
   const trendingCatalog = products.slice(0, 8).map((p: any, idx: number) => {
@@ -286,7 +302,7 @@ export default function Home() {
   };
 
   // 06 — MEET THE LENDERS (Top 3 Chủ Tủ CLOOP Uy Tín Nhất Từ Hệ Thống)
-  const topLenders = [
+  const topLenders = useMemo(() => [
     {
       id: 0,
       userId: 'b391e374-0506-46c1-86e3-edb9589eb4b0',
@@ -296,12 +312,12 @@ export default function Home() {
       rating: '5.0 ★',
       bio: 'Tủ đồ đa dạng phong cách từ đầm dạ hội sang trọng, áo dài truyền thống đến các set đồ du lịch biển trẻ trung.',
       itemsCount: `${getLenderItemCount('b391e374-0506-46c1-86e3-edb9589eb4b0', 14)} món đồ`,
-      avatarImg: 'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790243386/cloop_mobile_closet/xpirvpupmyfoxxneenve.jpg',
+      avatarImg: getOptimizedCloudinaryUrl('https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790243386/cloop_mobile_closet/xpirvpupmyfoxxneenve.jpg', 300),
       featuredImgs: getLenderFeaturedImgs('b391e374-0506-46c1-86e3-edb9589eb4b0', [
         'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790243386/cloop_mobile_closet/xpirvpupmyfoxxneenve.jpg',
         'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790159416/cloop_mobile_closet/aefeq2587mrhrxn56udw.jpg',
         'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790160514/cloop_mobile_closet/u9te4xi7eh2dgi9u1b5h.jpg'
-      ]),
+      ]).map(url => getOptimizedCloudinaryUrl(url, 400)),
     },
     {
       id: 1,
@@ -312,12 +328,12 @@ export default function Home() {
       rating: '5.0 ★',
       bio: 'Yêu thích phong cách trẻ trung năng động, đồ dạo phố nhẹ nhàng và set đồ cardigan cực xinh cho các bạn nữ.',
       itemsCount: `${getLenderItemCount('451835b1-cfe5-4350-a6d9-fba0d8027f00', 13)} món đồ`,
-      avatarImg: 'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530424/cloop_mobile_closet/pt4xccwmvrjsrnhrgnib.png',
+      avatarImg: getOptimizedCloudinaryUrl('https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530424/cloop_mobile_closet/pt4xccwmvrjsrnhrgnib.png', 300),
       featuredImgs: getLenderFeaturedImgs('451835b1-cfe5-4350-a6d9-fba0d8027f00', [
         'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530424/cloop_mobile_closet/pt4xccwmvrjsrnhrgnib.png',
         'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529824/cloop_mobile_closet/fm1wjeikdlxlxofjhby8.jpg',
         'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790528463/cloop_mobile_closet/lod8a8mhqifkmxsghevr.jpg'
-      ]),
+      ]).map(url => getOptimizedCloudinaryUrl(url, 400)),
     },
     {
       id: 2,
@@ -328,14 +344,14 @@ export default function Home() {
       rating: '5.0 ★',
       bio: 'Gu thời trang nữ tính, sang xịn mịn với các mẫu váy đầm dự tiệc và áo dạ tweet phom dáng cực chuẩn.',
       itemsCount: `${getLenderItemCount('cac12d82-2c0f-40d0-9a69-b3daee2584c6', 6)} món đồ`,
-      avatarImg: 'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529633/cloop_mobile_closet/ekxdoqiw0ge05f9znmgj.jpg',
+      avatarImg: getOptimizedCloudinaryUrl('https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529633/cloop_mobile_closet/ekxdoqiw0ge05f9znmgj.jpg', 300),
       featuredImgs: getLenderFeaturedImgs('cac12d82-2c0f-40d0-9a69-b3daee2584c6', [
         'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529633/cloop_mobile_closet/ekxdoqiw0ge05f9znmgj.jpg',
         'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530309/cloop_mobile_closet/zvvo3mp0lrsa4mbvam60.jpg',
         'https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529427/cloop_mobile_closet/axmg0f26jcktzy9pq0ak.jpg'
-      ]),
+      ]).map(url => getOptimizedCloudinaryUrl(url, 400)),
     }
-  ];
+  ], [products]);
 
   return (
     <main className="min-h-screen overflow-x-hidden antialiased bg-[#FAF9F5] text-[#0A2517] pb-28 md:pb-0 font-body">

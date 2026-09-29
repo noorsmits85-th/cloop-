@@ -40,7 +40,11 @@ export default function UploadForm() {
       isRental: true,
       isSale: false,
       condition: "99",
-      minDays: 3,
+      minDays: 1,
+      price1Day: 80000,
+      price3Days: 200000,
+      price7Days: 400000,
+      deposit: 500000,
       images: []
     }
   });
@@ -169,13 +173,25 @@ export default function UploadForm() {
       occasion: data.occasion || "",
     };
 
+    const p1 = Number(data.price1Day || data.rentalPrice || 0);
+    const p3 = Number(data.price3Days || (p1 > 0 ? Math.round(p1 * 3 * 0.85 / 1000) * 1000 : 0));
+    const p7 = Number(data.price7Days || (p1 > 0 ? Math.round(p1 * 7 * 0.70 / 1000) * 1000 : 0));
+
     const listingsPayload = {
       isRental: data.isRental,
       isSale: data.isSale,
-      rentalPrice: data.rentalPrice,
+      rentalPrice: p1,
+      price1Day: p1,
+      price3Days: p3,
+      price7Days: p7,
+      pricingTiers: [
+        { days: 1, price: p1 },
+        { days: 3, price: p3 },
+        { days: 7, price: p7 }
+      ],
       salePrice: data.salePrice,
       deposit: data.deposit,
-      minDays: data.minDays
+      minDays: 1
     };
 
     try {
@@ -468,28 +484,80 @@ export default function UploadForm() {
           <div className="bg-emerald-50/50 border border-emerald-200 rounded-2xl p-5 space-y-4">
             <div className="flex items-center gap-3">
               <input type="checkbox" {...register("isRental")} id="isRental" className="w-5 h-5 text-emerald-600 rounded border-stone-300 focus:ring-emerald-500" />
-              <label htmlFor="isRental" className="text-sm font-bold text-stone-800">Cho Thuê Tuần Hoàn (3 Ngày)</label>
+              <label htmlFor="isRental" className="text-sm font-bold text-stone-800">Cho Thuê Trang Phục (Tự do đặt giá theo ngày)</label>
             </div>
             {isRental && (
               <div className="pl-8 space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Giá Thuê (VNĐ)</label>
-                  <div className="relative">
-                    <input type="number" {...register("rentalPrice", { valueAsNumber: true })} className="w-full px-4 py-3 bg-white border border-emerald-200 rounded-xl text-sm font-mono font-bold focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none" placeholder="300000" />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-mono text-xs">VND</span>
+                <p className="text-xs text-emerald-900/80 font-medium">
+                  Chủ tủ toàn quyền tự quyết định mức giá cho thuê cho từng mốc thời gian. CLOOP không tự động can thiệp hay ép mức chiết khấu.
+                </p>
+
+                {/* 3 mốc thời gian do người cho thuê tự cấu hình */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Thuê 1 ngày (VNĐ) *</label>
+                    <div className="relative">
+                      <input 
+                        type="number" 
+                        {...register("price1Day", { 
+                          valueAsNumber: true,
+                          onChange: (e) => {
+                            const val = Number(e.target.value) || 0;
+                            if (val > 0) {
+                              const p3 = Math.round(val * 3 * 0.85 / 1000) * 1000;
+                              const p7 = Math.round(val * 7 * 0.70 / 1000) * 1000;
+                              const cur3 = watch("price3Days");
+                              const cur7 = watch("price7Days");
+                              if (!cur3 || cur3 === 0) setValue("price3Days", p3);
+                              if (!cur7 || cur7 === 0) setValue("price7Days", p7);
+                              setValue("rentalPrice", val);
+                            }
+                          }
+                        })} 
+                        className="w-full px-3.5 py-2.5 bg-white border border-emerald-200 rounded-xl text-sm font-mono font-bold focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none" 
+                        placeholder="80000" 
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 font-mono text-[11px]">đ/ngày</span>
+                    </div>
                   </div>
-                  {errors.rentalPrice && <p className="text-red-500 text-xs">{errors.rentalPrice.message}</p>}
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Gói 3 ngày (VNĐ) *</label>
+                    <div className="relative">
+                      <input 
+                        type="number" 
+                        {...register("price3Days", { valueAsNumber: true })} 
+                        className="w-full px-3.5 py-2.5 bg-white border border-emerald-200 rounded-xl text-sm font-mono font-bold focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none" 
+                        placeholder="200000" 
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 font-mono text-[11px]">đ/3 ngày</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Gói 7 ngày (VNĐ) *</label>
+                    <div className="relative">
+                      <input 
+                        type="number" 
+                        {...register("price7Days", { valueAsNumber: true })} 
+                        className="w-full px-3.5 py-2.5 bg-white border border-emerald-200 rounded-xl text-sm font-mono font-bold focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none" 
+                        placeholder="400000" 
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 font-mono text-[11px]">đ/tuần</span>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 pt-1">
                   <div className="flex items-center gap-1.5">
-                    <label className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Tiền Cọc Bảo Chứng</label>
+                    <label className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Tiền Cọc Bảo Chứng (VNĐ) *</label>
                     <Info size={12} className="text-emerald-500" />
                   </div>
                   <div className="relative">
-                    <input type="number" {...register("deposit", { valueAsNumber: true })} className="w-full px-4 py-3 bg-white border border-emerald-200 rounded-xl text-sm font-mono font-bold focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none" placeholder="2500000" />
+                    <input type="number" {...register("deposit", { valueAsNumber: true })} className="w-full px-4 py-3 bg-white border border-emerald-200 rounded-xl text-sm font-mono font-bold focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none" placeholder="500000" />
                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-mono text-xs">VND</span>
                   </div>
+                  <p className="text-[11px] text-stone-500">Khoản bảo vệ tài sản, hoàn trả 100% khi người thuê trả đồ nguyên vẹn.</p>
                   {errors.deposit && <p className="text-red-500 text-xs">{errors.deposit.message}</p>}
                 </div>
               </div>

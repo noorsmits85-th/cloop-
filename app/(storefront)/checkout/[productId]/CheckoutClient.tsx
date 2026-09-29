@@ -1212,7 +1212,7 @@ export default function CheckoutClient({
                     const id = e.target.value;
                     const prov = provinces.find((p) => String(p.ProvinceID) === String(id));
                     if (prov) {
-                      handleSelectProvince(prov.ProvinceID, prov.ProvinceName);
+                      setSelectedProvince({ id: prov.ProvinceID, name: prov.ProvinceName });
                     } else {
                       setSelectedProvince(null);
                       setDistricts([]);
@@ -1233,7 +1233,7 @@ export default function CheckoutClient({
                     const id = e.target.value;
                     const dist = districts.find((d) => String(d.DistrictID) === String(id));
                     if (dist) {
-                      handleSelectDistrict(dist.DistrictID, dist.DistrictName);
+                      setSelectedDistrict({ id: dist.DistrictID, name: dist.DistrictName });
                     } else {
                       setSelectedDistrict(null);
                       setWards([]);
@@ -1254,7 +1254,7 @@ export default function CheckoutClient({
                     const code = e.target.value;
                     const wd = wards.find((w) => String(w.WardCode) === String(code));
                     if (wd) {
-                      handleSelectWard(wd.WardCode, wd.WardName);
+                      setSelectedWard({ id: wd.WardCode, name: wd.WardName });
                     } else {
                       setSelectedWard(null);
                     }

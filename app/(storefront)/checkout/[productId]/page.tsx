@@ -1,5 +1,5 @@
 import { prisma } from "@/src/lib/prisma";
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import CheckoutClient from "./CheckoutClient";
 
 export const revalidate = 0;
@@ -26,7 +26,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ produ
   });
 
   if (!product || product.listings.length === 0) {
-    return notFound();
+    redirect("/shop");
   }
 
   const listing = product.listings[0];
