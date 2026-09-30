@@ -261,7 +261,7 @@ export default function ClosetProfileClient({
             </div>
 
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-xs font-medium text-stone-500">
-              <span className="flex items-center gap-1.5"><MapPin size={14} className="text-stone-400" /> {normalizeProvince(ownerInfo.location)}</span>
+              <span className="flex items-center gap-1.5"><MapPin size={14} className="text-stone-400" /> {ownerInfo.location || "Việt Nam"}</span>
               <span className="flex items-center gap-1.5"><Calendar size={14} className="text-stone-400" /> Thành viên từ {ownerInfo.joinDate}</span>
             </div>
 

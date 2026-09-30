@@ -43,7 +43,7 @@ export default async function ClosetProfilePage({
     ...res.ownerInfo,
     ...(isCurrentUser && currentUserMeta?.name && { name: currentUserMeta.name }),
     ...(isCurrentUser && currentUserMeta?.avatar && { avatar: currentUserMeta.avatar }),
-    ...(isCurrentUser && currentUserMeta?.location && { location: currentUserMeta.location }),
+    ...(isCurrentUser && !res.ownerInfo?.location && currentUserMeta?.location && { location: currentUserMeta.location }),
     ...(isCurrentUser && currentUserMeta?.bio && { bio: currentUserMeta.bio }),
     ...(isCurrentUser && currentUserMeta?.quote && { quote: currentUserMeta.quote }),
     ...(isCurrentUser && currentUserMeta?.todaysMemory && { todaysMemory: currentUserMeta.todaysMemory }),

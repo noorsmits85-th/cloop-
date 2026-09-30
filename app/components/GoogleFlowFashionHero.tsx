@@ -289,7 +289,7 @@ const REAL_DEFAULT_PRODUCTS = [
 const aspects = ["aspect-[3/4]", "aspect-[4/5]", "aspect-[3/4]", "aspect-square"];
 
 function buildMosaicColumns(rawItems: any[]): FashionItem[][] {
-  const columns: FashionItem[][] = [[], [], [], [], []];
+  const columns: FashionItem[][] = [[], [], [], [], [], []];
   
   const valid = rawItems && rawItems.length > 0 ? rawItems : REAL_DEFAULT_PRODUCTS;
   
@@ -334,8 +334,8 @@ function buildMosaicColumns(rawItems: any[]): FashionItem[][] {
 
   const safeList = formatted.length > 0 ? formatted : (REAL_DEFAULT_PRODUCTS as any);
 
-  const minPerCol = 3;
-  for (let c = 0; c < 5; c++) {
+  const minPerCol = 4;
+  for (let c = 0; c < 6; c++) {
     for (let i = 0; i < minPerCol; i++) {
       const itemIdx = (c * minPerCol + i) % safeList.length;
       const baseItem = safeList[itemIdx];
@@ -481,15 +481,15 @@ export default function GoogleFlowFashionHero({ initialProducts }: GoogleFlowFas
                       alt={card.title}
                       fill
                       sizes="(max-width: 640px) 33vw, (max-width: 1024px) 25vw, 18vw"
-                      className="object-cover transition-all duration-500 group-hover:scale-108 brightness-105 group-hover:brightness-125 opacity-90 group-hover:opacity-100"
+                      className="object-cover transition-all duration-500 group-hover:scale-108 brightness-105 group-hover:brightness-120 opacity-95 group-hover:opacity-100"
                       unoptimized
                     />
 
                     {/* LUMINOUS GLASS SHIMMER OVERLAY */}
-                    <div className="absolute inset-0 bg-gradient-to-tr from-[#A3E39F]/30 via-white/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none mix-blend-overlay" />
+                    <div className="absolute inset-0 bg-gradient-to-tr from-[#A3E39F]/25 via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none mix-blend-overlay" />
 
                     {/* Gradient Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent pointer-events-none group-hover:opacity-50 transition-opacity" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none group-hover:opacity-40 transition-opacity" />
 
                     {/* Top Left: Tag Pill */}
                     <div className="absolute top-2 left-2 z-20">
@@ -528,8 +528,8 @@ export default function GoogleFlowFashionHero({ initialProducts }: GoogleFlowFas
         })}
       </div>
 
-      {/* 🍵 DEEP CENTER SPOTLIGHT MASK */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(7,24,15,0.92)_0%,_rgba(7,24,15,0.82)_35%,_rgba(7,24,15,0.35)_70%,_rgba(5,18,10,0.85)_100%)] pointer-events-none z-20" />
+      {/* 🍵 BALANCED CENTER AMBIENT MASK (Tối ưu ánh sáng, không làm đen/lủng ảnh xung quanh) */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(7,24,15,0.72)_0%,_rgba(7,24,15,0.50)_38%,_rgba(7,24,15,0.20)_75%,_rgba(5,18,10,0.55)_100%)] pointer-events-none z-20" />
 
       {/* 🌟 CENTERPIECE CONTENT */}
       <div className="relative z-30 max-w-3xl mx-auto px-4 text-center flex flex-col items-center justify-center pointer-events-auto my-auto py-8">

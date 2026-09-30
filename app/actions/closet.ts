@@ -200,7 +200,21 @@ export async function getClosetFullDataAction(userId: string) {
 
     const joinDateObj = activeUser.createdAt ? new Date(activeUser.createdAt) : new Date();
     const joinDateStr = `${String(joinDateObj.getMonth() + 1).padStart(2, '0')}/${joinDateObj.getFullYear()}`;
-    const userLoc = maskPublicAddress(authMeta.location || products[0]?.specificAddress || products[0]?.province, "Việt Nam");
+    
+    // 🛡️ ĐỒNG BỘ 100% NGUỒN ĐỊA CHỈ THEO CHUẨN GHN:
+    // Ưu tiên 1: Địa chỉ trạm kho thực tế của các sản phẩm đang có trong tủ đồ (products[0].specificAddress / province)
+    // Ưu tiên 2: Địa chỉ bưu tá GHN lấy hàng của tủ đồ (authMeta.pickup_address / full_address)
+    // Ưu tiên 3: Tỉnh/Thành & Quận/Huyện GHN đã lưu (authMeta.district, authMeta.province)
+    // Fallback: authMeta.location hoặc Việt Nam
+    const ghnAddressCandidate = 
+      products[0]?.specificAddress ||
+      authMeta.pickup_address ||
+      authMeta.full_address ||
+      (authMeta.province ? [authMeta.district, authMeta.province].filter(Boolean).join(", ") : null) ||
+      authMeta.location ||
+      products[0]?.province;
+
+    const userLoc = maskPublicAddress(ghnAddressCandidate, "Việt Nam");
 
     const ownerInfo: ClosetUserProfile = {
       id: activeUser.id,

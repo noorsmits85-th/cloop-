@@ -270,12 +270,17 @@ export async function createProductAction({
       return newProduct.id;
     });
 
-    // 📱 TỰ ĐỘNG ĐỒNG BỘ SĐT & TRẠM GỬI VÀO METADATA TÀI KHOẢN
+    // 📱 TỰ ĐỘNG ĐỒNG BỘ SĐT & TRẠM GỬI GHN VÀO METADATA TÀI KHOẢN
     if (product.ownerPhone || product.address) {
       try {
         const metaPayload: Record<string, any> = {};
         if (product.ownerPhone) metaPayload.phone = product.ownerPhone;
-        if (fullAddress) metaPayload.pickup_address = fullAddress;
+        if (fullAddress) {
+          metaPayload.pickup_address = fullAddress;
+          metaPayload.full_address = fullAddress;
+          metaPayload.location = maskPublicAddress(fullAddress, product.province || "Việt Nam");
+          if (product.province) metaPayload.province = product.province;
+        }
         await prisma.$executeRawUnsafe(
           `UPDATE auth.users SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || $1::jsonb WHERE id = $2::uuid;`,
           JSON.stringify(metaPayload),
