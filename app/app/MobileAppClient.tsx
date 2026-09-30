@@ -17,7 +17,7 @@ import Cropper from "react-easy-crop";
 import { useAuthModal } from "@/app/AuthModalContext";
 import { getShopProductsAction, createProductAction, updateProductFromAppAction } from "@/app/actions/product";
 import { toggleProductInteractionAction } from "@/app/actions/favorite";
-import { getMyClosetMobileDataAction, updateClosetProfileAction, getClosetFullDataAction } from "@/app/actions/closet";
+import { getMyClosetMobileDataAction, updateClosetProfileAction, getClosetFullDataAction, saveUnifiedUserAddressAction } from "@/app/actions/closet";
 import { deleteProductAction, toggleProductHideAction } from "@/app/(dashboard)/my-closet/items/actions";
 import { getScrubbedReviewsAction } from "@/app/(dashboard)/my-closet/orders/actions";
 import { createBooking } from "@/app/actions/booking";
@@ -437,6 +437,153 @@ export default function MobileAppClient({
   const [isLoadingGhnDistricts, setIsLoadingGhnDistricts] = useState<boolean>(false);
   const [isLoadingGhnWards, setIsLoadingGhnWards] = useState<boolean>(false);
 
+  // 📍 ĐỊA CHỈ ĐỒNG NHẤT DUY NHẤT (CHUẨN GHN) TOÀN APP
+  const [unifiedAddress, setUnifiedAddress] = useState<{
+    provinceId: number | "";
+    districtId: number | "";
+    wardCode: string;
+    province: string;
+    district: string;
+    ward: string;
+    specificAddress: string;
+    addressNote: string;
+    fullAddress: string;
+    phone?: string;
+    recipientName?: string;
+  }>({
+    provinceId: "",
+    districtId: "",
+    wardCode: "",
+    province: "",
+    district: "",
+    ward: "",
+    specificAddress: "",
+    addressNote: "",
+    fullAddress: "",
+    phone: "",
+    recipientName: "",
+  });
+
+  // 🔄 Hàm đồng bộ hai chiều địa chỉ chuẩn GHN: Checkout <-> Hồ Sơ Tủ Đồ <-> Trạm Đăng Đồ Mới
+  const syncUnifiedAddress = (
+    newAddr: Partial<{
+      provinceId: number | "";
+      districtId: number | "";
+      wardCode: string;
+      province: string;
+      district: string;
+      ward: string;
+      specificAddress: string;
+      addressNote: string;
+      fullAddress: string;
+      phone: string;
+      recipientName: string;
+    }>,
+    syncToBackend: boolean = false
+  ) => {
+    setUnifiedAddress(prev => {
+      const merged = { ...prev, ...newAddr };
+
+      const parts = [
+        merged.specificAddress?.trim(),
+        merged.ward?.trim(),
+        merged.district?.trim(),
+        merged.province?.trim()
+      ].filter(Boolean);
+      
+      let full = merged.fullAddress;
+      if (parts.length > 0) {
+        full = parts.join(", ") + (merged.addressNote?.trim() ? ` (Ghi chú: ${merged.addressNote.trim()})` : "");
+        merged.fullAddress = full;
+      }
+
+      // 1. Đồng bộ sang Form Hồ sơ Tủ đồ
+      if (merged.provinceId !== undefined) setSelectedGhnProvinceId(merged.provinceId);
+      if (merged.districtId !== undefined) setSelectedGhnDistrictId(merged.districtId);
+      if (merged.wardCode !== undefined) setSelectedGhnWardCode(merged.wardCode);
+      if (merged.specificAddress !== undefined) setSpecificAddressDetail(merged.specificAddress);
+      if (merged.addressNote !== undefined) setAddressNote(merged.addressNote);
+      setProfileForm(p => ({
+        ...p,
+        pickupAddress: full || p.pickupAddress,
+        ...(merged.phone ? { phone: merged.phone } : {}),
+        ...(merged.recipientName ? { name: merged.recipientName } : {})
+      }));
+
+      // 2. Đồng bộ sang Form Checkout mua / thuê
+      if (merged.provinceId !== undefined) setCheckoutProvinceId(merged.provinceId);
+      if (merged.districtId !== undefined) setCheckoutDistrictId(merged.districtId);
+      if (merged.wardCode !== undefined) setCheckoutWardCode(merged.wardCode);
+      if (merged.specificAddress !== undefined) setCheckoutAddressDetail(merged.specificAddress);
+      if (merged.addressNote !== undefined) setCheckoutRenterNote(merged.addressNote);
+      if (merged.phone) setCheckoutRenterPhone(merged.phone);
+      if (merged.recipientName) setCheckoutRenterName(merged.recipientName);
+
+      // 3. Đồng bộ sang Form Đăng đồ mới (Upload Data)
+      setUploadData(u => ({
+        ...u,
+        province: merged.province || u.province,
+        district: merged.district || u.district,
+        ward: merged.ward || u.ward,
+        address: merged.specificAddress || u.address,
+        note: merged.addressNote || u.note,
+        ...(merged.phone ? { ownerPhone: merged.phone } : {})
+      }));
+
+      // 4. Lưu đồng bộ vào LocalStorage cho các lần truy cập tiếp theo
+      try {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("cloop_unified_ghn_address", JSON.stringify(merged));
+          localStorage.setItem("cloop_saved_renter_info", JSON.stringify({
+            name: merged.recipientName || "",
+            phone: merged.phone || "",
+            provinceId: merged.provinceId,
+            districtId: merged.districtId,
+            wardCode: merged.wardCode,
+            province: merged.province,
+            district: merged.district,
+            ward: merged.ward,
+            addressDetail: merged.specificAddress,
+            note: merged.addressNote,
+            fullAddress: full
+          }));
+          localStorage.setItem("cloop_saved_pickup_location", JSON.stringify({
+            province: merged.province,
+            district: merged.district,
+            ward: merged.ward,
+            address: merged.specificAddress,
+            note: merged.addressNote,
+            phone: merged.phone || "",
+            provinceId: merged.provinceId,
+            districtId: merged.districtId,
+            wardCode: merged.wardCode,
+            fullAddress: full
+          }));
+        }
+      } catch (_) {}
+
+      // 5. Lưu vào Database (auth.users metadata) nếu người dùng đã đăng nhập
+      if (syncToBackend && (currentUser?.id || closetData?.user?.id)) {
+        saveUnifiedUserAddressAction({
+          userId: currentUser?.id || closetData?.user?.id,
+          name: merged.recipientName,
+          phone: merged.phone,
+          provinceId: merged.provinceId,
+          districtId: merged.districtId,
+          wardCode: merged.wardCode,
+          province: merged.province,
+          district: merged.district,
+          ward: merged.ward,
+          specificAddress: merged.specificAddress,
+          addressNote: merged.addressNote,
+          fullAddress: full
+        }).catch(err => console.error("Lỗi lưu đồng bộ địa chỉ GHN:", err));
+      }
+
+      return merged;
+    });
+  };
+
   // 1. Tải danh sách Tỉnh/Thành phố từ API GHN
   useEffect(() => {
     fetch("/api/shipping/address?type=province")
@@ -597,82 +744,127 @@ export default function MobileAppClient({
     if (dist?.DistrictName) parts.push(dist.DistrictName);
     if (prov?.ProvinceName) parts.push(prov.ProvinceName);
 
-    if (parts.length > 0) {
-      let full = parts.join(", ");
-      if (effectiveNote.trim()) {
-        full += ` (Ghi chú: ${effectiveNote.trim()})`;
-      }
-      setProfileForm(prev => ({ ...prev, pickupAddress: full }));
-      
-      // Đồng bộ sang cả uploadData để khi đăng đồ mới cũng dùng đúng địa chỉ này
-      setUploadData(prev => ({
-        ...prev,
-        province: prov?.ProvinceName || prev.province,
-        district: dist?.DistrictName || prev.district,
-        ward: ward?.WardName || prev.ward,
-        address: detail.trim() || prev.address,
-        note: effectiveNote.trim() || prev.note
-      }));
+    const full = parts.length > 0
+      ? (parts.join(", ") + (effectiveNote.trim() ? ` (Ghi chú: ${effectiveNote.trim()})` : ""))
+      : "";
 
-      // Lưu trữ cấu trúc vào LocalStorage
-      try {
-        localStorage.setItem("cloop_saved_pickup_location", JSON.stringify({
-          province: prov?.ProvinceName || "",
-          district: dist?.DistrictName || "",
-          ward: ward?.WardName || "",
-          address: detail.trim() || "",
-          note: effectiveNote.trim() || "",
-          phone: profileForm.phone || "",
-          provinceId,
-          districtId,
-          wardCode,
-          fullAddress: full
-        }));
-      } catch (_) {}
-    }
+    syncUnifiedAddress({
+      provinceId,
+      districtId,
+      wardCode,
+      province: prov?.ProvinceName || "",
+      district: dist?.DistrictName || "",
+      ward: ward?.WardName || "",
+      specificAddress: detail.trim(),
+      addressNote: effectiveNote.trim(),
+      fullAddress: full,
+    }, false);
   };
 
-  // 🔄 CẬP NHẬT FORM KHI CÓ USER DATA & TỰ ĐỘNG NẠP TỌA ĐỘ TRẠM GỬI ĐÃ LƯU
+  // 🔄 CẬP NHẬT FORM KHI CÓ USER DATA & TỰ ĐỘNG NẠP ĐỊA CHỈ ĐỒNG NHẤT
   useEffect(() => {
+    let initialAddr: any = null;
+
+    // 1. Ưu tiên số 1: Lấy địa chỉ chuẩn GHN từ Supabase Database (raw_user_meta_data)
+    if (closetData?.user?.province || closetData?.user?.provinceId) {
+      initialAddr = {
+        provinceId: closetData.user.provinceId || "",
+        districtId: closetData.user.districtId || "",
+        wardCode: closetData.user.wardCode || "",
+        province: closetData.user.province || "",
+        district: closetData.user.district || "",
+        ward: closetData.user.ward || "",
+        specificAddress: closetData.user.specificAddress || "",
+        addressNote: closetData.user.addressNote || "",
+        fullAddress: closetData.user.fullAddress || closetData.user.pickupAddress || "",
+        phone: closetData.user.phone || "",
+        recipientName: closetData.user.name || "",
+      };
+    } else {
+      // 2. Ưu tiên số 2: Lấy từ LocalStorage đã lưu đồng nhất
+      try {
+        if (typeof window !== "undefined") {
+          const rawUnified = localStorage.getItem("cloop_unified_ghn_address");
+          if (rawUnified) {
+            initialAddr = JSON.parse(rawUnified);
+          } else {
+            const rawRenter = localStorage.getItem("cloop_saved_renter_info");
+            if (rawRenter) {
+              const p = JSON.parse(rawRenter);
+              initialAddr = {
+                provinceId: p.provinceId || "",
+                districtId: p.districtId || "",
+                wardCode: p.wardCode || "",
+                province: p.province || "",
+                district: p.district || "",
+                ward: p.ward || "",
+                specificAddress: p.addressDetail || p.address || "",
+                addressNote: p.note || "",
+                fullAddress: p.fullAddress || "",
+                phone: p.phone || "",
+                recipientName: p.name || "",
+              };
+            } else {
+              const rawLoc = localStorage.getItem("cloop_saved_pickup_location");
+              if (rawLoc) {
+                const l = JSON.parse(rawLoc);
+                initialAddr = {
+                  provinceId: l.provinceId || "",
+                  districtId: l.districtId || "",
+                  wardCode: l.wardCode || "",
+                  province: l.province || "",
+                  district: l.district || "",
+                  ward: l.ward || "",
+                  specificAddress: l.address || "",
+                  addressNote: l.note || "",
+                  fullAddress: l.fullAddress || "",
+                  phone: l.phone || "",
+                };
+              }
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
     if (closetData?.user) {
-      const userAddr = closetData.user.pickupAddress || closetData.user.location || "";
+      const userAddr = initialAddr?.fullAddress || closetData.user.pickupAddress || closetData.user.location || "";
       setProfileForm({
         name: closetData.user.name || "",
-        phone: closetData.user.phone || "",
+        phone: initialAddr?.phone || closetData.user.phone || "",
         pickupAddress: userAddr,
         bio: closetData.user.bio || "",
         quote: closetData.user.quote || "",
       });
     }
 
-    // Tự động khôi phục trạm gửi đã lưu (từ lần đăng trước hoặc hồ sơ cá nhân)
-    try {
-      const savedLoc = typeof window !== "undefined" ? localStorage.getItem("cloop_saved_pickup_location") : null;
-      const parsed = savedLoc ? JSON.parse(savedLoc) : null;
-      
-      const phone = parsed?.phone || closetData?.user?.phone || "";
-      const province = parsed?.province || closetData?.user?.province || "Hà Nội";
-      const district = parsed?.district || closetData?.user?.district || "Quận Hoàn Kiếm";
-      const ward = parsed?.ward || closetData?.user?.ward || "Phường Hàng Đào";
-      const address = parsed?.address || closetData?.user?.pickupAddress || closetData?.user?.location || "";
-      const note = parsed?.note || "";
+    if (initialAddr) {
+      syncUnifiedAddress(initialAddr, false);
 
-      if (parsed?.provinceId) setSelectedGhnProvinceId(parsed.provinceId);
-      if (parsed?.districtId) setSelectedGhnDistrictId(parsed.districtId);
-      if (parsed?.wardCode) setSelectedGhnWardCode(parsed.wardCode);
-      if (parsed?.address) setSpecificAddressDetail(parsed.address);
-      if (parsed?.note) setAddressNote(parsed.note);
-
-      setUploadData(prev => ({
-        ...prev,
-        province: parsed?.province ? province : (prev.province || province),
-        district: parsed?.district ? district : (prev.district || district),
-        ward: parsed?.ward ? ward : (prev.ward || ward),
-        address: parsed?.address ? address : (prev.address || address),
-        note: parsed?.note ? note : (prev.note || note),
-        ownerPhone: parsed?.phone ? phone : (prev.ownerPhone || phone),
-      }));
-    } catch (_) {}
+      // Pre-fetch huyện & xã để khi mở modal không bị rỗng
+      if (initialAddr.provinceId) {
+        fetch(`/api/shipping/address?type=district&province_id=${initialAddr.provinceId}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data?.data && Array.isArray(data.data)) {
+              setGhnDistricts(data.data);
+              setCheckoutDistricts(data.data);
+            }
+          })
+          .catch(() => {});
+      }
+      if (initialAddr.districtId) {
+        fetch(`/api/shipping/address?type=ward&district_id=${initialAddr.districtId}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data?.data && Array.isArray(data.data)) {
+              setGhnWards(data.data);
+              setCheckoutWards(data.data);
+            }
+          })
+          .catch(() => {});
+      }
+    }
   }, [closetData]);
 
   // 🔄 NẠP LẠI DỮ LIỆU TỦ ĐỒ CÁ NHÂN KHI CHUYỂN VÀO TAB CLOSET
@@ -1066,14 +1258,17 @@ export default function MobileAppClient({
       }
     } catch (_) {}
 
-    setCheckoutRenterName(savedInfo?.name || currentUser?.name || closetData?.user?.name || "");
-    setCheckoutRenterPhone(savedInfo?.phone || closetData?.user?.phone || "");
-    setCheckoutRenterNote(savedInfo?.note || "");
+    const provId = unifiedAddress.provinceId || savedInfo?.provinceId || savedLoc?.provinceId || "";
+    const distId = unifiedAddress.districtId || savedInfo?.districtId || savedLoc?.districtId || "";
+    const wdCode = unifiedAddress.wardCode || savedInfo?.wardCode || savedLoc?.wardCode || "";
+    const addr = unifiedAddress.specificAddress || savedInfo?.addressDetail || savedInfo?.address || savedLoc?.address || closetData?.user?.specificAddress || closetData?.user?.address || "";
+    const note = unifiedAddress.addressNote || savedInfo?.note || savedLoc?.note || closetData?.user?.addressNote || "";
+    const phone = unifiedAddress.phone || savedInfo?.phone || closetData?.user?.phone || "";
+    const name = unifiedAddress.recipientName || savedInfo?.name || currentUser?.name || closetData?.user?.name || "";
 
-    const provId = savedInfo?.provinceId || savedLoc?.provinceId || "";
-    const distId = savedInfo?.districtId || savedLoc?.districtId || "";
-    const wdCode = savedInfo?.wardCode || savedLoc?.wardCode || "";
-    const addr = savedInfo?.addressDetail || savedInfo?.address || savedLoc?.address || closetData?.user?.address || "";
+    setCheckoutRenterName(name);
+    setCheckoutRenterPhone(phone);
+    setCheckoutRenterNote(note);
 
     setCheckoutProvinceId(provId);
     setCheckoutDistrictId(distId);
@@ -1112,6 +1307,15 @@ export default function MobileAppClient({
     setCheckoutDistricts([]);
     setCheckoutWards([]);
     setCheckoutShippingFee(null);
+    const prov = ghnProvinces.find(p => p.ProvinceID === provId);
+    syncUnifiedAddress({
+      provinceId: provId,
+      districtId: "",
+      wardCode: "",
+      province: prov?.ProvinceName || "",
+      district: "",
+      ward: "",
+    }, false);
   };
 
   const handleCheckoutDistrictChange = (distId: number | "") => {
@@ -1119,11 +1323,23 @@ export default function MobileAppClient({
     setCheckoutWardCode("");
     setCheckoutWards([]);
     setCheckoutShippingFee(null);
+    const dist = checkoutDistricts.find(d => d.DistrictID === distId);
+    syncUnifiedAddress({
+      districtId: distId,
+      wardCode: "",
+      district: dist?.DistrictName || "",
+      ward: "",
+    }, false);
   };
 
   const handleCheckoutWardChange = (wdCode: string) => {
     setCheckoutWardCode(wdCode);
     setCheckoutShippingFee(null);
+    const ward = checkoutWards.find(w => w.WardCode === wdCode);
+    syncUnifiedAddress({
+      wardCode: wdCode,
+      ward: ward?.WardName || "",
+    }, false);
   };
 
   // 💳 XÁC NHẬN TẠO ĐƠN HÀNG (RENTAL HOẶC PURCHASE)
@@ -1199,6 +1415,23 @@ export default function MobileAppClient({
       }
     } catch (_) {}
 
+    const deliveryAddressPayload = {
+      provinceId: checkoutProvinceId,
+      districtId: checkoutDistrictId,
+      wardCode: checkoutWardCode,
+      province: prov?.ProvinceName || "",
+      district: dist?.DistrictName || "",
+      ward: ward?.WardName || "",
+      specificAddress: checkoutAddressDetail.trim(),
+      addressNote: checkoutRenterNote.trim(),
+      fullAddress: fullShippingAddress,
+      recipientName: checkoutRenterName.trim(),
+      phone: checkoutRenterPhone.trim(),
+    };
+
+    // Đồng bộ ngay địa chỉ này làm địa chỉ chuẩn GHN duy nhất toàn hệ thống
+    syncUnifiedAddress(deliveryAddressPayload, true);
+
     try {
       const res = await createBooking({
         productId: checkoutProduct.id,
@@ -1211,6 +1444,7 @@ export default function MobileAppClient({
         isRental,
         shippingMode: checkoutShippingMode,
         shippingFee: effectiveShipping,
+        deliveryAddress: deliveryAddressPayload,
       });
 
       if (res.success && res.rentalId) {
@@ -1750,16 +1984,52 @@ export default function MobileAppClient({
     setProfileSaveSuccess(false);
 
     try {
+      const prov = ghnProvinces.find(p => p.ProvinceID === selectedGhnProvinceId);
+      const dist = ghnDistricts.find(d => d.DistrictID === selectedGhnDistrictId);
+      const ward = ghnWards.find(w => w.WardCode === selectedGhnWardCode);
+
+      const parts = [specificAddressDetail.trim(), ward?.WardName, dist?.DistrictName, prov?.ProvinceName].filter(Boolean);
+      const fullAddr = parts.length > 0
+        ? (parts.join(", ") + (addressNote.trim() ? ` (Ghi chú: ${addressNote.trim()})` : ""))
+        : profileForm.pickupAddress;
+      const locationStr = (dist?.DistrictName && prov?.ProvinceName)
+        ? `${dist.DistrictName}, ${prov.ProvinceName}`
+        : (prov?.ProvinceName || fullAddr || profileForm.name);
+
       const res = await updateClosetProfileAction({
         userId: closetData?.user?.id || currentUser?.id || "",
         name: profileForm.name,
-        location: profileForm.pickupAddress || profileForm.name,
+        location: locationStr,
         bio: profileForm.bio,
         quote: profileForm.quote,
+        provinceId: selectedGhnProvinceId,
+        districtId: selectedGhnDistrictId,
+        wardCode: selectedGhnWardCode,
+        province: prov?.ProvinceName || unifiedAddress.province,
+        district: dist?.DistrictName || unifiedAddress.district,
+        ward: ward?.WardName || unifiedAddress.ward,
+        specificAddress: specificAddressDetail,
+        addressNote: addressNote,
+        pickupAddress: fullAddr,
+        fullAddress: fullAddr,
+        phone: profileForm.phone,
       });
 
       if (res.success) {
         setProfileSaveSuccess(true);
+        syncUnifiedAddress({
+          provinceId: selectedGhnProvinceId,
+          districtId: selectedGhnDistrictId,
+          wardCode: selectedGhnWardCode,
+          province: prov?.ProvinceName || unifiedAddress.province,
+          district: dist?.DistrictName || unifiedAddress.district,
+          ward: ward?.WardName || unifiedAddress.ward,
+          specificAddress: specificAddressDetail,
+          addressNote: addressNote,
+          fullAddress: fullAddr,
+          phone: profileForm.phone,
+          recipientName: profileForm.name,
+        }, true);
         await refreshPersonalData();
         setTimeout(() => setProfileSaveSuccess(false), 2500);
       }
@@ -2658,7 +2928,11 @@ export default function MobileAppClient({
                           {closetData?.user?.email || currentUser?.email || "member@cloop.vn"}
                         </p>
                         <p className="text-[9.5px] text-stone-400 mt-0.5">
-                          Gia nhập: {closetData?.user?.joinDate || "2026"} • {closetData?.user?.location || "Nghệ An"}
+                          Gia nhập: {closetData?.user?.joinDate || "2026"} • {
+                            (unifiedAddress.district && unifiedAddress.province)
+                              ? `${unifiedAddress.district}, ${unifiedAddress.province}`
+                              : (unifiedAddress.province || closetData?.user?.location || "Chưa cập nhật địa chỉ")
+                          }
                         </p>
                       </div>
                     </div>
@@ -2801,7 +3075,7 @@ export default function MobileAppClient({
                           Hồ Sơ &amp; Địa Chỉ Giao Nhận
                         </h4>
                         <p className="text-[11px] text-stone-500 mt-0.5 truncate max-w-[210px]">
-                          {closetData?.user?.location || "Cập nhật địa chỉ nhận & gửi đồ"}
+                          {unifiedAddress.fullAddress || closetData?.user?.fullAddress || closetData?.user?.pickupAddress || closetData?.user?.location || "Cài đặt địa chỉ chuẩn GHN"}
                         </p>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
@@ -5046,6 +5320,14 @@ export default function MobileAppClient({
                                 district: "",
                                 ward: "",
                               }));
+                              syncUnifiedAddress({
+                                provinceId: val,
+                                districtId: "",
+                                wardCode: "",
+                                province: prov?.ProvinceName || "",
+                                district: "",
+                                ward: "",
+                              }, false);
                             }}
                             className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638] cursor-pointer"
                           >
@@ -5084,6 +5366,12 @@ export default function MobileAppClient({
                                 district: dist?.DistrictName || "",
                                 ward: "",
                               }));
+                              syncUnifiedAddress({
+                                districtId: val,
+                                wardCode: "",
+                                district: dist?.DistrictName || "",
+                                ward: "",
+                              }, false);
                             }}
                             className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638] disabled:opacity-50 cursor-pointer"
                           >
@@ -5122,6 +5410,10 @@ export default function MobileAppClient({
                                 ...prev,
                                 ward: ward?.WardName || "",
                               }));
+                              syncUnifiedAddress({
+                                wardCode: val,
+                                ward: ward?.WardName || "",
+                              }, false);
                             }}
                             className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638] disabled:opacity-50 cursor-pointer"
                           >
@@ -5166,7 +5458,11 @@ export default function MobileAppClient({
                         required
                         placeholder="VD: Số 123 Phố Huế..."
                         value={uploadData.address}
-                        onChange={(e) => setUploadData({ ...uploadData, address: e.target.value })}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setUploadData({ ...uploadData, address: val });
+                          syncUnifiedAddress({ specificAddress: val }, false);
+                        }}
                         className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
                       />
                     </div>
@@ -5767,13 +6063,7 @@ export default function MobileAppClient({
                             onChange={(e) => {
                               const val = e.target.value;
                               setCheckoutRenterName(val);
-                              try {
-                                if (typeof window !== "undefined") {
-                                  const raw = localStorage.getItem("cloop_saved_renter_info");
-                                  const parsed = raw ? JSON.parse(raw) : {};
-                                  localStorage.setItem("cloop_saved_renter_info", JSON.stringify({ ...parsed, name: val }));
-                                }
-                              } catch (_) {}
+                              syncUnifiedAddress({ recipientName: val }, false);
                             }}
                             className="w-full h-9 px-2.5 rounded-xl border border-stone-300 bg-white text-xs outline-none focus:border-[#1E5638]"
                           />
@@ -5788,13 +6078,7 @@ export default function MobileAppClient({
                             onChange={(e) => {
                               const val = e.target.value;
                               setCheckoutRenterPhone(val);
-                              try {
-                                if (typeof window !== "undefined") {
-                                  const raw = localStorage.getItem("cloop_saved_renter_info");
-                                  const parsed = raw ? JSON.parse(raw) : {};
-                                  localStorage.setItem("cloop_saved_renter_info", JSON.stringify({ ...parsed, phone: val }));
-                                }
-                              } catch (_) {}
+                              syncUnifiedAddress({ phone: val }, false);
                             }}
                             className="w-full h-9 px-2.5 rounded-xl border border-stone-300 bg-white text-xs font-mono outline-none focus:border-[#1E5638]"
                           />
@@ -5879,7 +6163,11 @@ export default function MobileAppClient({
                               required
                               placeholder="VD: Số 18, Ngõ 45, Đường Láng..."
                               value={checkoutAddressDetail}
-                              onChange={(e) => setCheckoutAddressDetail(e.target.value)}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setCheckoutAddressDetail(val);
+                                syncUnifiedAddress({ specificAddress: val }, false);
+                              }}
                               className="w-full h-9 px-2.5 rounded-xl border border-stone-300 bg-white text-xs outline-none focus:border-[#1E5638]"
                             />
                           </div>
@@ -5890,7 +6178,11 @@ export default function MobileAppClient({
                               type="text"
                               placeholder="VD: Chung cư Star Tower, tầng 12, gọi trước khi giao..."
                               value={checkoutRenterNote}
-                              onChange={(e) => setCheckoutRenterNote(e.target.value)}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setCheckoutRenterNote(val);
+                                syncUnifiedAddress({ addressNote: val }, false);
+                              }}
                               className="w-full h-9 px-2.5 rounded-xl border border-stone-300 bg-white text-xs outline-none focus:border-[#1E5638]"
                             />
                           </div>

@@ -19,7 +19,8 @@ export async function createBooking({
   isRental,
   shippingMode,
   shippingFee: clientShippingFee,
-  fastTrackMode = false
+  fastTrackMode = false,
+  deliveryAddress
 }: {
   productId: string;
   startDate: string;
@@ -32,6 +33,7 @@ export async function createBooking({
   shippingMode: "CLOOP_BOOK" | "SELF_BOOK";
   shippingFee?: number;
   fastTrackMode?: boolean;
+  deliveryAddress?: any;
 }) {
   const log = new Logger();
   
@@ -213,6 +215,67 @@ export async function createBooking({
           orderCode: BigInt(orderCode)
         }
       });
+
+      // 4.1. Tạo bản ghi Shipment GHN và lưu địa chỉ chuẩn hóa
+      if (deliveryAddress) {
+        try {
+          const provName = deliveryAddress.province || deliveryAddress.provinceName || "";
+          const distName = deliveryAddress.district || deliveryAddress.districtName || "";
+          const wardName = deliveryAddress.ward || deliveryAddress.wardName || "";
+          const addrDetail = deliveryAddress.address || deliveryAddress.addressDetail || deliveryAddress.specificAddress || "";
+          const nt = deliveryAddress.note || deliveryAddress.addressNote || "";
+          const ghnParts = [addrDetail, wardName, distName, provName].filter(Boolean);
+          const fullAddr = deliveryAddress.fullAddress || (ghnParts.join(", ") + (nt ? ` (Ghi chú: ${nt})` : ""));
+          const locStr = [distName, provName].filter(Boolean).join(", ") || provName || "";
+
+          await tx.shipment.create({
+            data: {
+              rentalId: rental.id,
+              direction: "DELIVERY",
+              provider: "GHN",
+              status: "PENDING_BOOKING",
+              shippingFeeCollected: shippingFee,
+              deliveryAddress: {
+                ...deliveryAddress,
+                recipientName: verifiedRenterName,
+                phone: verifiedRenterPhone,
+                fullAddress: fullAddr
+              },
+              pickupAddress: {
+                province: product.province || "Hà Nội",
+                districtId: product.districtId || null,
+                wardCode: product.wardCode || null,
+                address: product.specificAddress || "",
+                phone: verifiedOwnerPhone,
+                name: verifiedOwnerName
+              }
+            }
+          });
+
+          // Tự động lưu làm địa chỉ chính chủ của tài khoản vào auth.users
+          await tx.$executeRawUnsafe(
+            `UPDATE auth.users SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || $1::jsonb WHERE id = $2::uuid;`,
+            JSON.stringify({
+              province_id: deliveryAddress.provinceId ? Number(deliveryAddress.provinceId) : null,
+              district_id: deliveryAddress.districtId ? Number(deliveryAddress.districtId) : null,
+              ward_code: deliveryAddress.wardCode ? String(deliveryAddress.wardCode) : null,
+              province: provName,
+              district: distName,
+              ward: wardName,
+              specific_address: addrDetail,
+              address_note: nt,
+              pickup_address: fullAddr,
+              full_address: fullAddr,
+              location: locStr,
+              phone: verifiedRenterPhone || undefined,
+              name: verifiedRenterName || undefined
+            }),
+            user.id
+          );
+        } catch (shipErr) {
+          console.warn("Shipment and user meta sync notice:", shipErr);
+        }
+      }
 
       // 5. Đổi trạng thái (State Machine) sang RESERVED
       await tx.listing.updateMany({

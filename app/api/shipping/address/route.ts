@@ -222,6 +222,19 @@ const WARD_MAP: Record<number, { code: string; name: string }[]> = {
     { code: "2060504", name: "Xã Diễn Ngọc" },
     { code: "2060505", name: "Xã Diễn Thành" },
   ],
+  // Huyện Nghĩa Đàn (Nghệ An)
+  20614: [
+    { code: "2061401", name: "Thị trấn Nghĩa Đàn" },
+    { code: "2061402", name: "Xã Nghĩa Thịnh" },
+    { code: "2061403", name: "Xã Nghĩa Hưng" },
+    { code: "2061404", name: "Xã Nghĩa Mai" },
+    { code: "2061405", name: "Xã Nghĩa Lâm" },
+    { code: "2061406", name: "Xã Nghĩa Sơn" },
+    { code: "2061407", name: "Xã Nghĩa Bình" },
+    { code: "2061408", name: "Xã Nghĩa Hội" },
+    { code: "2061409", name: "Xã Nghĩa Trung" },
+    { code: "2061410", name: "Xã Nghĩa Thắng" },
+  ],
   // Quận Hoàn Kiếm (Hà Nội)
   20101: [
     { code: "2010101", name: "Phường Hàng Bạc" },

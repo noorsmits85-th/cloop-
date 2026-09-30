@@ -251,6 +251,17 @@ export async function updateClosetProfileAction(data: {
   bio?: string;
   quote?: string;
   todaysMemory?: string;
+  phone?: string;
+  provinceId?: number | string | null;
+  districtId?: number | string | null;
+  wardCode?: string | null;
+  province?: string;
+  district?: string;
+  ward?: string;
+  specificAddress?: string;
+  addressNote?: string;
+  pickupAddress?: string;
+  fullAddress?: string;
 }) {
   try {
     const userAuth = await requireUser();
@@ -273,6 +284,7 @@ export async function updateClosetProfileAction(data: {
         metaPayload.name = data.name;
         metaPayload.full_name = data.name;
       }
+      if (data.phone) metaPayload.phone = data.phone;
       if (data.location) metaPayload.location = data.location;
       if (data.quote) metaPayload.quote = data.quote;
       if (data.bio) metaPayload.bio = data.bio;
@@ -281,6 +293,16 @@ export async function updateClosetProfileAction(data: {
         metaPayload.avatar = data.avatar;
         metaPayload.avatar_url = data.avatar;
       }
+      if (data.provinceId !== undefined && data.provinceId !== "") metaPayload.province_id = Number(data.provinceId);
+      if (data.districtId !== undefined && data.districtId !== "") metaPayload.district_id = Number(data.districtId);
+      if (data.wardCode !== undefined) metaPayload.ward_code = String(data.wardCode);
+      if (data.province) metaPayload.province = data.province;
+      if (data.district) metaPayload.district = data.district;
+      if (data.ward) metaPayload.ward = data.ward;
+      if (data.specificAddress) metaPayload.specific_address = data.specificAddress;
+      if (data.addressNote !== undefined) metaPayload.address_note = data.addressNote;
+      if (data.pickupAddress) metaPayload.pickup_address = data.pickupAddress;
+      if (data.fullAddress) metaPayload.full_address = data.fullAddress;
 
       await prisma.$executeRawUnsafe(
         `UPDATE auth.users SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || $1::jsonb WHERE id = $2::uuid;`,
@@ -302,6 +324,17 @@ export async function updateClosetProfileAction(data: {
           bio: data.bio || undefined,
           todaysMemory: data.todaysMemory || undefined,
           avatar: data.avatar || undefined,
+          phone: data.phone || undefined,
+          province_id: data.provinceId ? Number(data.provinceId) : undefined,
+          district_id: data.districtId ? Number(data.districtId) : undefined,
+          ward_code: data.wardCode ? String(data.wardCode) : undefined,
+          province: data.province || undefined,
+          district: data.district || undefined,
+          ward: data.ward || undefined,
+          specific_address: data.specificAddress || undefined,
+          address_note: data.addressNote || undefined,
+          pickup_address: data.pickupAddress || undefined,
+          full_address: data.fullAddress || undefined,
         }
       });
     } catch (sbErr) {
@@ -316,6 +349,101 @@ export async function updateClosetProfileAction(data: {
   } catch (err: any) {
     console.error("Lỗi updateClosetProfileAction:", err);
     return { success: false, error: err.message || "Không thể cập nhật hồ sơ." };
+  }
+}
+
+export async function saveUnifiedUserAddressAction(data: {
+  userId?: string;
+  name?: string;
+  phone?: string;
+  provinceId: number | string;
+  districtId: number | string;
+  wardCode: string;
+  province: string;
+  district: string;
+  ward: string;
+  specificAddress: string;
+  addressNote?: string;
+  fullAddress?: string;
+}) {
+  try {
+    const { createClient } = await import("@/src/utils/supabase/server");
+    const supabase = await createClient();
+    let authUserId: string | null = null;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.id) authUserId = user.id;
+    } catch (_) {}
+    if (!authUserId) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user?.id) authUserId = session.user.id;
+      } catch (_) {}
+    }
+    if (!authUserId && data.userId) {
+      authUserId = data.userId;
+    }
+
+    const ghnParts = [data.specificAddress?.trim(), data.ward?.trim(), data.district?.trim(), data.province?.trim()].filter(Boolean);
+    const fullAddr = data.fullAddress?.trim() || (ghnParts.join(", ") + (data.addressNote?.trim() ? ` (Ghi chú: ${data.addressNote.trim()})` : ""));
+    const locationStr = [data.ward?.trim(), data.district?.trim(), data.province?.trim()].filter(Boolean).join(", ") || data.province?.trim() || "";
+
+    const metaPayload: Record<string, any> = {
+      province_id: data.provinceId ? Number(data.provinceId) : null,
+      district_id: data.districtId ? Number(data.districtId) : null,
+      ward_code: data.wardCode ? String(data.wardCode) : null,
+      province: data.province?.trim() || "",
+      district: data.district?.trim() || "",
+      ward: data.ward?.trim() || "",
+      specific_address: data.specificAddress?.trim() || "",
+      address_note: data.addressNote?.trim() || "",
+      pickup_address: fullAddr,
+      full_address: fullAddr,
+      location: locationStr
+    };
+    if (data.name?.trim()) {
+      metaPayload.name = data.name.trim();
+      metaPayload.full_name = data.name.trim();
+    }
+    if (data.phone?.trim()) {
+      metaPayload.phone = data.phone.trim();
+    }
+
+    if (authUserId) {
+      try {
+        await prisma.$executeRawUnsafe(
+          `UPDATE auth.users SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || $1::jsonb WHERE id = $2::uuid;`,
+          JSON.stringify(metaPayload),
+          authUserId
+        );
+      } catch (e) {
+        console.warn("Raw update fallback in saveUnifiedUserAddressAction:", e);
+      }
+      try {
+        await supabase.auth.updateUser({ data: metaPayload });
+      } catch (_) {}
+    }
+
+    return { 
+      success: true, 
+      unifiedAddress: {
+        provinceId: data.provinceId ? Number(data.provinceId) : "",
+        districtId: data.districtId ? Number(data.districtId) : "",
+        wardCode: data.wardCode ? String(data.wardCode) : "",
+        province: data.province?.trim() || "",
+        district: data.district?.trim() || "",
+        ward: data.ward?.trim() || "",
+        specificAddress: data.specificAddress?.trim() || "",
+        addressNote: data.addressNote?.trim() || "",
+        fullAddress: fullAddr,
+        location: locationStr,
+        recipientName: data.name?.trim() || "",
+        phone: data.phone?.trim() || ""
+      }
+    };
+  } catch (err: any) {
+    console.error("Lỗi saveUnifiedUserAddressAction:", err);
+    return { success: false, error: err.message || "Không thể lưu địa chỉ GHN" };
   }
 }
 
@@ -535,6 +663,19 @@ export async function getMyClosetMobileDataAction(clientUserId?: string) {
       };
     });
 
+    const userProvince = authMeta.province || null;
+    const userDistrict = authMeta.district || null;
+    const userWard = authMeta.ward || null;
+    const userSpecificAddr = authMeta.specific_address || authMeta.address || null;
+    const userNote = authMeta.address_note || authMeta.note || "";
+    const ghnParts = [userSpecificAddr, userWard, userDistrict, userProvince].filter(Boolean);
+    const computedFullAddress = ghnParts.length > 0
+      ? (ghnParts.join(", ") + (userNote ? ` (Ghi chú: ${userNote})` : ""))
+      : (authMeta.full_address || authMeta.pickup_address || (authMeta.location && authMeta.location !== "Hà Nội, Việt Nam" ? authMeta.location : ""));
+    const computedLocation = userProvince
+      ? [userDistrict, userProvince].filter(Boolean).join(", ")
+      : (authMeta.location && authMeta.location !== "Hà Nội, Việt Nam" ? authMeta.location : "");
+
     return {
       success: true,
       isLoggedIn: true,
@@ -545,9 +686,18 @@ export async function getMyClosetMobileDataAction(clientUserId?: string) {
         avatar: dbUser?.avatar || authMeta.avatar || authMeta.avatar_url || null,
         bio: authMeta.bio || "Thành viên cộng đồng thời trang tuần hoàn CLOOP.",
         quote: authMeta.quote || "Lưu giữ ký ức qua từng chiếc váy.",
-        location: authMeta.location || "Hà Nội, Việt Nam",
+        location: computedLocation || "Chưa cập nhật địa chỉ",
         phone: authMeta.phone || "",
-        pickupAddress: authMeta.pickup_address || authMeta.location || "",
+        pickupAddress: computedFullAddress || "",
+        fullAddress: computedFullAddress || "",
+        provinceId: authMeta.province_id ? Number(authMeta.province_id) : null,
+        districtId: authMeta.district_id ? Number(authMeta.district_id) : null,
+        wardCode: authMeta.ward_code ? String(authMeta.ward_code) : null,
+        province: userProvince,
+        district: userDistrict,
+        ward: userWard,
+        specificAddress: userSpecificAddr,
+        addressNote: userNote,
         cloopCoins: dbUser?.cloopCoins ?? 120,
         walletBalance: dbUser?.walletBalance ?? 0,
         rating: Number(dbUser?.rating ?? 5.0),

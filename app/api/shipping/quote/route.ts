@@ -60,6 +60,7 @@ const MOCK_TO_GHN_DISTRICT_MAP: Record<number, number> = {
   20606: 1571, // Quỳnh Lưu
   20609: 1568, // Nghi Lộc
   20610: 1569, // Nam Đàn
+  20614: 1573, // Huyện Nghĩa Đàn
   // Thanh Hóa
   20701: 1538, // TP Thanh Hóa
   20702: 1576, // Sầm Sơn
