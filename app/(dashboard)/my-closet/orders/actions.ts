@@ -246,13 +246,19 @@ export async function raiseDisputeWithProposalAction(
       return { success: false, error: "Bắt buộc phải đính kèm ít nhất 1 ảnh bằng chứng." };
     }
 
-    // URL validation: must be secure HTTPS from trusted media hosts
+    // URL validation: must be secure HTTPS from trusted media hosts (Google Drive 10TB Vault, Google Cloud, Cloudinary)
     const isValidImages = images.every(img =>
       typeof img === "string" &&
-      (img.startsWith("https://res.cloudinary.com/") || img.startsWith("https://") || img.startsWith("/"))
+      (img.startsWith("https://drive.google.com/") ||
+       img.startsWith("https://lh3.googleusercontent.com/") ||
+       img.startsWith("https://storage.googleapis.com/") ||
+       img.startsWith("https://script.google.com/") ||
+       img.startsWith("https://res.cloudinary.com/") ||
+       img.startsWith("https://") ||
+       img.startsWith("/"))
     );
     if (!isValidImages) {
-      return { success: false, error: "Định dạng hình ảnh không hợp lệ hoặc không an toàn." };
+      return { success: false, error: "Định dạng hình ảnh/video bằng chứng không hợp lệ hoặc không an toàn." };
     }
 
     const cleanDeduction = Math.floor(Math.max(0, Number(suggestedDeduction) || 0));

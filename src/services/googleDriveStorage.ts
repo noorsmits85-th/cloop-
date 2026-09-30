@@ -135,6 +135,7 @@ export async function uploadToGoogleDrive(
               name: options.fileName,
               viewUrl: data.url || `https://drive.google.com/file/d/${data.fileId}/view`,
               downloadUrl: data.downloadUrl || `https://drive.google.com/uc?id=${data.fileId}&export=download`,
+              thumbnailUrl: `https://lh3.googleusercontent.com/d/${data.fileId}=w1000`,
               storageWarehouse: wh.name,
             };
           }

@@ -28,14 +28,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Lỗi tải tệp lên kho lưu trữ 10TB." }, { status: 500 });
     }
 
+    const isVideo = (file.type || "").startsWith("video/");
+    const displayUrl = isVideo
+      ? (result.viewUrl || result.downloadUrl)
+      : (result.thumbnailUrl || (result.fileId ? `https://lh3.googleusercontent.com/d/${result.fileId}=w1000` : result.viewUrl));
+
     return NextResponse.json({
       success: true,
       fileId: result.fileId,
-      url: result.viewUrl,
+      url: displayUrl,
+      viewUrl: result.viewUrl,
       downloadUrl: result.downloadUrl,
+      thumbnailUrl: result.thumbnailUrl || (result.fileId ? `https://lh3.googleusercontent.com/d/${result.fileId}=w1000` : undefined),
       storageWarehouse: result.storageWarehouse,
       name: result.name,
-      isVideo: (file.type || "").startsWith("video/"),
+      isVideo,
     });
   } catch (error: any) {
     console.error("Lỗi API Upload 10TB Drive:", error);

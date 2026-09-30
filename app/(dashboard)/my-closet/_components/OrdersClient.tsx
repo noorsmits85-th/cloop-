@@ -7,7 +7,6 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { submitReviewAction, raiseDisputeWithProposalAction, acceptDisputeProposalAction, rejectAndEscalateDisputeAction, completeOrderAction, loadMoreOrdersAction, renterReceivedAction, renterReturnAction } from "../orders/actions"; 
 import { requestPickupAction } from "@/app/actions/shipment";
-import { CldUploadWidget } from "next-cloudinary";
 import Link from "next/link";
 import { toast } from "sonner";
 import { calculateDynamicGhnFee, extractProvince } from "@/src/utils/shipping";
@@ -144,6 +143,100 @@ export function OrdersClient({
     fullAccessories: true,
     sealedProperly: true
   });
+
+  // ☁️ Google Drive 10TB Storage State & Upload Handlers
+  const [isUploadingDisputeMedia, setIsUploadingDisputeMedia] = useState(false);
+  const [disputeUploadProgress, setDisputeUploadProgress] = useState("");
+  const [isUploadingPackagingMedia, setIsUploadingPackagingMedia] = useState(false);
+  const [packagingUploadProgress, setPackagingUploadProgress] = useState("");
+
+  const handleUploadDisputeMedia = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploadingDisputeMedia(true);
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.size > 100 * 1024 * 1024) {
+          toast.error(`Tệp ${file.name} vượt quá giới hạn 100MB.`);
+          continue;
+        }
+        setDisputeUploadProgress(`Đang lưu tệp ${i + 1}/${files.length} vào Kho Google 10TB...`);
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("targetKho", "auto");
+
+        const res = await fetch("/api/upload-drive", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const errJson = await res.json().catch(() => null);
+          throw new Error(errJson?.error || "Lỗi tải tệp lên Kho lưu trữ Google.");
+        }
+
+        const json = await res.json();
+        if (json.url) {
+          setDisputeImages((prev) => [...prev, json.url]);
+        }
+      }
+      toast.success("Đã tải bằng chứng lên Kho Google 10TB an toàn!");
+    } catch (err: any) {
+      console.error("Dispute upload error:", err);
+      toast.error(err.message || "Lỗi tải ảnh/video lên Kho Google.");
+    } finally {
+      setIsUploadingDisputeMedia(false);
+      setDisputeUploadProgress("");
+      if (e.target) e.target.value = "";
+    }
+  };
+
+  const handleUploadPackagingMedia = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploadingPackagingMedia(true);
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.size > 100 * 1024 * 1024) {
+          toast.error(`Tệp ${file.name} vượt quá giới hạn 100MB.`);
+          continue;
+        }
+        setPackagingUploadProgress(`Đang lưu tệp ${i + 1}/${files.length} vào Kho Google 10TB...`);
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("targetKho", "auto");
+
+        const res = await fetch("/api/upload-drive", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const errJson = await res.json().catch(() => null);
+          throw new Error(errJson?.error || "Lỗi tải tệp lên Kho lưu trữ Google.");
+        }
+
+        const json = await res.json();
+        if (json.url) {
+          setPackagingProofs((prev) => [...prev, json.url]);
+        }
+      }
+      toast.success("Đã lưu video/ảnh niêm phong vào Kho Google 10TB!");
+    } catch (err: any) {
+      console.error("Packaging upload error:", err);
+      toast.error(err.message || "Lỗi tải video/ảnh đóng gói.");
+    } finally {
+      setIsUploadingPackagingMedia(false);
+      setPackagingUploadProgress("");
+      if (e.target) e.target.value = "";
+    }
+  };
 
   // ⚡ Supabase Realtime Channels (Live State & Toast Synchronization)
   useEffect(() => {
@@ -1163,26 +1256,58 @@ export function OrdersClient({
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-medium text-stone-500 uppercase tracking-wide">Ảnh minh chứng hiện trường (Ít nhất 1 ảnh)</label>
-              <div className="flex flex-wrap gap-2.5">
-                {disputeImages.map((img, i) => (
-                  <img key={i} src={img} alt="Bằng chứng" className="w-14 h-14 object-cover rounded-md border border-stone-200 shadow-xs" />
-                ))}
-                <CldUploadWidget 
-                  uploadPreset="cloop_uploads" 
-                  options={{ 
-                    maxFiles: 5, 
-                    maxFileSize: 25000000, 
-                    resourceType: "auto",
-                    clientAllowedFormats: ["png", "jpeg", "jpg", "mp4", "mov", "webm"]
-                  }}
-                  onSuccess={(result: any) => { if (result.info?.secure_url) setDisputeImages(prev => [...prev, result.info.secure_url]); }}
-                >
-                  {({ open }) => (
-                    <button type="button" onClick={() => open()} className="w-14 h-14 rounded-md border border-dashed border-stone-300 flex items-center justify-center text-stone-400 hover:border-amber-400 hover:text-amber-600 transition-colors text-lg font-light">+</button>
-                  )}
-                </CldUploadWidget>
+              <div className="flex items-center justify-between">
+                <label className="block text-[10px] font-medium text-stone-500 uppercase tracking-wide">
+                  Ảnh / Video minh chứng (Kho lưu trữ Google 10TB)
+                </label>
+                {isUploadingDisputeMedia && (
+                  <span className="text-[10px] text-amber-700 font-semibold flex items-center gap-1 animate-pulse">
+                    <Loader2 size={11} className="animate-spin" /> {disputeUploadProgress || "Đang lưu lên Kho Google..."}
+                  </span>
+                )}
               </div>
+              <div className="flex flex-wrap gap-2.5 items-center">
+                {disputeImages.map((img, i) => (
+                  <div key={i} className="relative group w-14 h-14 rounded-md border border-stone-200 overflow-hidden shadow-xs">
+                    {img.endsWith(".mp4") || img.endsWith(".mov") || img.endsWith(".webm") || img.includes("video") ? (
+                      <div className="w-full h-full bg-stone-900 flex items-center justify-center text-amber-400">
+                        <Video size={16} />
+                      </div>
+                    ) : (
+                      <img src={img} alt="Bằng chứng" className="w-full h-full object-cover" />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setDisputeImages(prev => prev.filter((_, idx) => idx !== i))}
+                      className="absolute top-0.5 right-0.5 bg-black/70 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                    >
+                      <X size={10} />
+                    </button>
+                  </div>
+                ))}
+                
+                <label className="w-14 h-14 rounded-md border border-dashed border-amber-400/60 bg-amber-50/40 hover:bg-amber-100/60 flex flex-col items-center justify-center text-amber-800 transition-colors text-xs cursor-pointer">
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*,video/*"
+                    disabled={isUploadingDisputeMedia}
+                    onChange={handleUploadDisputeMedia}
+                    className="hidden"
+                  />
+                  {isUploadingDisputeMedia ? (
+                    <Loader2 size={16} className="animate-spin text-amber-700" />
+                  ) : (
+                    <>
+                      <Camera size={16} />
+                      <span className="text-[8px] font-bold mt-0.5">+Google</span>
+                    </>
+                  )}
+                </label>
+              </div>
+              <p className="text-[10px] text-stone-400">
+                Tệp được lưu trữ an toàn không giới hạn trên Kho Google 10TB CLOOP Vault.
+              </p>
             </div>
 
             <button 
@@ -1288,30 +1413,21 @@ export function OrdersClient({
                   </div>
                 ))}
 
-                <CldUploadWidget 
-                  uploadPreset="cloop_uploads" 
-                  options={{ 
-                    maxFiles: 3, 
-                    maxFileSize: 25000000, 
-                    resourceType: "auto",
-                    clientAllowedFormats: ["png", "jpeg", "jpg", "mp4", "mov", "webm"]
-                  }}
-                  onSuccess={(result: any) => { 
-                    if (result.info?.secure_url) {
-                      setPackagingProofs(prev => [...prev, result.info.secure_url]); 
-                    }
-                  }}
-                >
-                  {({ open }) => (
-                    <button 
-                      type="button" 
-                      onClick={() => open()} 
-                      className="h-16 px-3 rounded-md border border-dashed border-emerald-600/40 hover:border-emerald-600 bg-emerald-50/30 text-emerald-800 flex items-center gap-2 text-xs font-medium transition-colors cursor-pointer"
-                    >
-                      <Camera size={16} /> + Thêm video/ảnh
-                    </button>
+                <label className="h-16 px-4 rounded-md border border-dashed border-emerald-600/50 hover:border-emerald-600 bg-emerald-50/40 text-emerald-800 flex items-center gap-2 text-xs font-medium transition-colors cursor-pointer">
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*,video/*"
+                    disabled={isUploadingPackagingMedia}
+                    onChange={handleUploadPackagingMedia}
+                    className="hidden"
+                  />
+                  {isUploadingPackagingMedia ? (
+                    <><Loader2 size={16} className="animate-spin text-emerald-700" /> {packagingUploadProgress || "Đang lưu..."}</>
+                  ) : (
+                    <><Camera size={16} /> + Thêm video/ảnh (Kho Google 10TB)</>
                   )}
-                </CldUploadWidget>
+                </label>
               </div>
             </div>
 

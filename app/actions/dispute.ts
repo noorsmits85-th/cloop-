@@ -250,7 +250,14 @@ export async function getDisputeEvidenceUrls(params: {
       // Nếu là URL trực tiếp, chỉ cho phép các domain tin cậy đã được cấu hình
       if (key.startsWith("http://") || key.startsWith("https://")) {
         const parsed = new URL(key);
-        const trustedDomains = ["storage.googleapis.com", "res.cloudinary.com", "supabase.co"];
+        const trustedDomains = [
+          "storage.googleapis.com",
+          "drive.google.com",
+          "googleusercontent.com",
+          "googleapis.com",
+          "res.cloudinary.com",
+          "supabase.co",
+        ];
         const isTrusted = trustedDomains.some((d) => parsed.hostname.endsWith(d));
         if (!isTrusted) {
           throw new Error("Bằng chứng chứa liên kết từ nguồn không tin cậy.");
