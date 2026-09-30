@@ -8,7 +8,7 @@ import {
   MoreHorizontal, X, Star, Heart,
   Plus, CheckCircle2, UploadCloud, Camera, RefreshCw,
   Leaf, ArrowRight, Shirt, Calendar, ShieldCheck, Check,
-  ChevronRight, ArrowLeft, Wallet, Droplet, Award,
+  ChevronRight, ArrowLeft, Wallet, Droplet, Award, Clock,
   MapPin, Edit3, Menu, HelpCircle, LogOut, Package, Crop, Truck,
   Zap, CreditCard, QrCode, Loader2, ExternalLink, Copy,
   Trash2, Eye, EyeOff, Edit, PackageX, Share2, MessageCircle
@@ -21,6 +21,7 @@ import { getMyClosetMobileDataAction, updateClosetProfileAction, getClosetFullDa
 import { deleteProductAction, toggleProductHideAction } from "@/app/(dashboard)/my-closet/items/actions";
 import { getScrubbedReviewsAction } from "@/app/(dashboard)/my-closet/orders/actions";
 import { createBooking } from "@/app/actions/booking";
+import { requestWithdrawalAction, saveUserBankInfoAction } from "@/app/actions/withdrawal";
 import { maskPublicAddress } from "@/src/utils/shipping";
 
 const FALLBACK_CLOUDINARY_IMG = "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530424/cloop_mobile_closet/pt4xccwmvrjsrnhrgnib.png";
@@ -48,6 +49,29 @@ const OCCASIONS_TABS = [
   { id: "tot_nghiep", name: "Tốt nghiệp" },
   { id: "le_hoi", name: "Lễ hội" },
   { id: "cong_so", name: "Công sở" },
+];
+
+// 🏦 DANH SÁCH NGÂN HÀNG VIỆT NAM THÔNG DỤNG
+const VIETNAM_BANKS = [
+  "MB Bank (Ngân hàng Quân Đội)",
+  "Vietcombank (VCB)",
+  "Techcombank (TCB)",
+  "ACB (Ngân hàng Á Châu)",
+  "VPBank (Việt Nam Thịnh Vượng)",
+  "TPBank (Tiên Phong)",
+  "BIDV (Đầu tư và Phát triển)",
+  "VietinBank (Công Thương)",
+  "Agribank (Nông Nghiệp)",
+  "Sacombank",
+  "VIB (Quốc Tế)",
+  "HDBank",
+  "OCB (Phương Đông)",
+  "MSB (Hàng Hải)",
+  "SHB (Sài Gòn - Hà Nội)",
+  "SeABank",
+  "Cake by VPBank",
+  "Timo Digital Bank",
+  "Khác"
 ];
 
 const CATEGORIES_LIST = [
@@ -436,6 +460,25 @@ export default function MobileAppClient({
   const [showGhnPicker, setShowGhnPicker] = useState<boolean>(false);
   const [isLoadingGhnDistricts, setIsLoadingGhnDistricts] = useState<boolean>(false);
   const [isLoadingGhnWards, setIsLoadingGhnWards] = useState<boolean>(false);
+
+  // 🏦 LIÊN KẾT NGÂN HÀNG & RÚT TIỀN ĐỒNG BỘ BẢN WEB
+  const [isBankModalOpen, setIsBankModalOpen] = useState(false);
+  const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
+  const [bankForm, setBankForm] = useState({
+    bankName: "",
+    bankAccount: "",
+    bankOwner: "",
+  });
+  const [customBankName, setCustomBankName] = useState("");
+  const [isSavingBank, setIsSavingBank] = useState(false);
+  const [bankSaveSuccess, setBankSaveSuccess] = useState(false);
+  const [bankError, setBankError] = useState("");
+
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [withdrawPassword, setWithdrawPassword] = useState("");
+  const [isSubmittingWithdraw, setIsSubmittingWithdraw] = useState(false);
+  const [withdrawSuccessMsg, setWithdrawSuccessMsg] = useState("");
+  const [withdrawErrorMsg, setWithdrawErrorMsg] = useState("");
 
   // 📍 ĐỊA CHỈ ĐỒNG NHẤT DUY NHẤT (CHUẨN GHN) TOÀN APP
   const [unifiedAddress, setUnifiedAddress] = useState<{
@@ -836,7 +879,31 @@ export default function MobileAppClient({
         bio: closetData.user.bio || "",
         quote: closetData.user.quote || "",
       });
+
+      // 🏦 Đồng bộ tài khoản ngân hàng từ Database
+      if (closetData.user.bankAccount || closetData.user.bankName) {
+        setBankForm({
+          bankName: closetData.user.bankName || "",
+          bankAccount: closetData.user.bankAccount || "",
+          bankOwner: closetData.user.bankOwner || closetData.user.name || "",
+        });
+      }
     }
+
+    // Khôi phục ngân hàng đã lưu từ LocalStorage nếu có
+    try {
+      if (typeof window !== "undefined") {
+        const rawBank = localStorage.getItem("cloop_saved_bank_info");
+        if (rawBank) {
+          const b = JSON.parse(rawBank);
+          setBankForm(prev => ({
+            bankName: prev.bankName || b.bankName || "",
+            bankAccount: prev.bankAccount || b.bankAccount || "",
+            bankOwner: prev.bankOwner || b.bankOwner || "",
+          }));
+        }
+      }
+    } catch (_) {}
 
     if (initialAddr) {
       syncUnifiedAddress(initialAddr, false);
@@ -2037,6 +2104,115 @@ export default function MobileAppClient({
       console.error("Lỗi cập nhật hồ sơ:", err);
     } finally {
       setIsSavingProfile(false);
+    }
+  };
+
+  // 🏦 LƯU LIÊN KẾT TÀI KHOẢN NGÂN HÀNG (ĐỒNG BỘ WEB & DB)
+  const handleSaveBankInfo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser || !closetData?.user?.id) {
+      setShowAuthModal(true);
+      return;
+    }
+
+    const effectiveBank = bankForm.bankName === "Khác" ? customBankName.trim() : bankForm.bankName.trim();
+
+    if (!effectiveBank || !bankForm.bankAccount.trim() || !bankForm.bankOwner.trim()) {
+      setBankError("Vui lòng điền đầy đủ tên ngân hàng, số tài khoản và họ tên chủ tài khoản.");
+      return;
+    }
+
+    setIsSavingBank(true);
+    setBankError("");
+    try {
+      const res = await saveUserBankInfoAction({
+        bankName: effectiveBank,
+        bankAccountNumber: bankForm.bankAccount.trim().replace(/\s+/g, ""),
+        bankAccountHolder: bankForm.bankOwner.trim().toUpperCase(),
+        clientUserId: closetData?.user?.id || currentUser?.id,
+      });
+
+      if (res.success) {
+        setBankSaveSuccess(true);
+        try {
+          if (typeof window !== "undefined") {
+            localStorage.setItem("cloop_saved_bank_info", JSON.stringify({
+              bankName: effectiveBank,
+              bankAccount: bankForm.bankAccount.trim().replace(/\s+/g, ""),
+              bankOwner: bankForm.bankOwner.trim().toUpperCase(),
+            }));
+          }
+        } catch (_) {}
+        setBankForm(prev => ({ ...prev, bankName: effectiveBank }));
+        await refreshPersonalData();
+        setTimeout(() => {
+          setBankSaveSuccess(false);
+          setIsBankModalOpen(false);
+        }, 1500);
+      } else {
+        setBankError(res.message || "Không thể lưu thông tin ngân hàng.");
+      }
+    } catch (err: any) {
+      setBankError("Lỗi kết nối khi lưu tài khoản ngân hàng.");
+    } finally {
+      setIsSavingBank(false);
+    }
+  };
+
+  // 💳 XÁC NHẬN YÊU CẦU RÚT TIỀN VỀ NGÂN HÀNG (ĐỒNG BỘ CHUẨN WEB)
+  const handleConfirmWithdrawal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser || !closetData?.user?.id) {
+      setShowAuthModal(true);
+      return;
+    }
+
+    const rawAmount = parseInt(withdrawAmount.replace(/\D/g, ""), 10) || 0;
+    const availableBal = closetData?.user?.walletBalance || 0;
+
+    if (rawAmount < 50000) {
+      setWithdrawErrorMsg("Số tiền rút tối thiểu là 50.000đ.");
+      return;
+    }
+    if (rawAmount > availableBal) {
+      setWithdrawErrorMsg(`Số dư khả dụng (${availableBal.toLocaleString("vi-VN")}đ) không đủ.`);
+      return;
+    }
+    if (!bankForm.bankName.trim() || !bankForm.bankAccount.trim() || !bankForm.bankOwner.trim()) {
+      setWithdrawErrorMsg("Vui lòng liên kết tài khoản ngân hàng trước khi tạo lệnh rút tiền.");
+      return;
+    }
+
+    setIsSubmittingWithdraw(true);
+    setWithdrawErrorMsg("");
+    setWithdrawSuccessMsg("");
+
+    try {
+      const res = await requestWithdrawalAction({
+        amount: rawAmount,
+        bankName: bankForm.bankName.trim(),
+        bankAccountNumber: bankForm.bankAccount.trim().replace(/\s+/g, ""),
+        bankAccountHolder: bankForm.bankOwner.trim().toUpperCase(),
+        password: withdrawPassword,
+        clientUserId: closetData?.user?.id || currentUser?.id,
+      });
+
+      if (res.success) {
+        setWithdrawSuccessMsg(res.message || "Lệnh rút tiền đã được tạo thành công!");
+        setWithdrawAmount("");
+        setWithdrawPassword("");
+        await refreshPersonalData();
+        setTimeout(() => {
+          setWithdrawSuccessMsg("");
+          setIsWithdrawModalOpen(false);
+        }, 2200);
+      } else {
+        setWithdrawErrorMsg(res.message || "Không thể tạo lệnh rút tiền.");
+      }
+    } catch (err: any) {
+      setWithdrawErrorMsg("Lỗi kết nối khi gửi yêu cầu rút tiền.");
+    } finally {
+      setIsSubmittingWithdraw(false);
     }
   };
 
@@ -3412,26 +3588,215 @@ export default function MobileAppClient({
                       </div>
                     )}
 
-                    {/* CHI TIẾT PHÂN MỤC 3: VÍ LÁ & THU NHẬP */}
+                    {/* CHI TIẾT PHÂN MỤC 3: VÍ THU NHẬP & LIÊN KẾT RÚT TIỀN (ĐỒNG BỘ 100% BẢN WEB) */}
                     {activeClosetView === "wallet" && (
                       <div className="space-y-3">
-                        <div className="bg-white rounded-2xl p-4 border border-stone-200/80 shadow-2xs space-y-3">
-                          <span className="text-[11px] text-stone-500 uppercase font-bold tracking-wider">Số Dư Khả Dụng</span>
-                          <div className="flex items-baseline gap-2">
-                            <span className="font-heading font-black text-2xl text-[#16442C]">
-                              {(closetData?.user?.walletBalance || 0).toLocaleString("vi-VN")}đ
-                            </span>
-                            <span className="text-xs text-emerald-700 font-bold">Ví Lá CLOOP</span>
+                        {/* Nút quay lại danh mục */}
+                        <button
+                          type="button"
+                          onClick={() => setActiveClosetView("menu")}
+                          className="flex items-center gap-1.5 text-xs font-bold text-stone-600 hover:text-[#1E5638] transition cursor-pointer"
+                        >
+                          <ArrowLeft size={14} /> Quay lại danh mục quản lý
+                        </button>
+
+                        {/* Thẻ Số Dư Ví Thu Nhập */}
+                        <div className="bg-gradient-to-br from-[#1E5638] to-[#133c26] rounded-3xl p-5 text-white shadow-md relative overflow-hidden">
+                          <div className="absolute top-0 right-0 w-36 h-36 bg-emerald-400/10 rounded-full blur-2xl pointer-events-none" />
+                          <div className="relative z-10 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] text-emerald-200/90 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                                <Wallet size={13} className="text-emerald-300" /> Số Dư Ví Thu Nhập
+                              </span>
+                              <span className="text-[10px] bg-emerald-500/20 text-emerald-200 border border-emerald-400/30 px-2 py-0.5 rounded-full font-bold">
+                                Khả Dụng
+                              </span>
+                            </div>
+
+                            <div>
+                              <div className="flex items-baseline gap-1.5">
+                                <span className="font-heading font-black text-3xl text-white">
+                                  {(closetData?.user?.walletBalance || 0).toLocaleString("vi-VN")}
+                                </span>
+                                <span className="text-base font-bold text-emerald-300">đ</span>
+                              </div>
+                              {Boolean(closetData?.user?.pendingWithdrawalBalance && closetData.user.pendingWithdrawalBalance > 0) && (
+                                <div className="mt-1 flex items-center gap-1.5 text-[11px] text-amber-200 bg-amber-500/20 border border-amber-400/30 px-2 py-0.5 rounded-lg w-fit">
+                                  <RefreshCw size={10} className="animate-spin text-amber-300" />
+                                  <span>Đang xử lý rút: {closetData.user.pendingWithdrawalBalance.toLocaleString("vi-VN")}đ</span>
+                                </div>
+                              )}
+                            </div>
+
+                            <p className="text-[11px] text-emerald-100/70 leading-relaxed font-light">
+                              Thu nhập nhận được từ các lượt khách thuê và mua đồ trong tủ đồ của bạn. Tiền thuê được tự động giải ngân sau khi hoàn tất đơn.
+                            </p>
+
+                            <div className="pt-2 grid grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (!currentUser) {
+                                    setShowAuthModal(true);
+                                    return;
+                                  }
+                                  if (!bankForm.bankAccount) {
+                                    setIsBankModalOpen(true);
+                                  } else {
+                                    setIsWithdrawModalOpen(true);
+                                  }
+                                }}
+                                className="w-full py-2.5 bg-white text-[#16442C] text-xs font-bold rounded-xl shadow-xs hover:bg-emerald-50 transition active:scale-[0.98] cursor-pointer flex items-center justify-center gap-1.5"
+                              >
+                                <CreditCard size={14} className="text-emerald-700" />
+                                <span>Rút Về Ngân Hàng</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (!currentUser) {
+                                    setShowAuthModal(true);
+                                    return;
+                                  }
+                                  setIsBankModalOpen(true);
+                                }}
+                                className="w-full py-2.5 bg-white/15 border border-white/20 hover:bg-white/25 text-white text-xs font-bold rounded-xl transition active:scale-[0.98] cursor-pointer flex items-center justify-center gap-1.5"
+                              >
+                                <Edit3 size={13} className="text-emerald-200" />
+                                <span>{bankForm.bankAccount ? "Đổi STK" : "Liên Kết STK"}</span>
+                              </button>
+                            </div>
                           </div>
-                          <p className="text-xs text-stone-500 leading-relaxed">
-                            Thu nhập nhận được từ các lượt khách thuê trang phục trong tủ đồ của bạn. Tiền thuê được tự động giải ngân sau khi hoàn tất đơn.
-                          </p>
-                          <button
-                            onClick={() => alert("Chức năng liên kết ngân hàng và rút tiền đã sẵn sàng trên bản web!")}
-                            className="w-full py-2.5 bg-[#1E5638] text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer"
-                          >
-                            Yêu Cầu Rút Tiền Về Tài Khoản
-                          </button>
+                        </div>
+
+                        {/* Thẻ Tài Khoản Ngân Hàng Đã Liên Kết */}
+                        {bankForm.bankAccount ? (
+                          <div className="bg-white rounded-2xl p-4 border border-emerald-200/80 shadow-2xs space-y-2.5">
+                            <div className="flex items-center justify-between pb-2 border-b border-stone-100">
+                              <div className="flex items-center gap-1.5">
+                                <ShieldCheck size={14} className="text-emerald-700" />
+                                <span className="text-[11px] font-bold text-stone-800 uppercase tracking-wider">
+                                  Tài Khoản Thụ Hưởng Nhận Tiền
+                                </span>
+                              </div>
+                              <span className="text-[10px] text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-bold">
+                                Đã liên kết
+                              </span>
+                            </div>
+
+                            <div className="flex items-center justify-between">
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-heading font-black text-sm text-[#16442C]">
+                                    {bankForm.bankName}
+                                  </span>
+                                  <span className="font-mono font-bold text-xs text-stone-800 bg-stone-100 px-2 py-0.5 rounded-md">
+                                    {bankForm.bankAccount}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-stone-500 font-bold uppercase tracking-wide">
+                                  Chủ TK: {bankForm.bankOwner || closetData?.user?.name || "CHÍNH CHỦ"}
+                                </p>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => setIsBankModalOpen(true)}
+                                className="px-2.5 py-1 text-[11px] font-bold text-emerald-800 hover:text-emerald-950 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition cursor-pointer"
+                              >
+                                Đổi
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-white rounded-2xl p-4 border border-dashed border-amber-300 bg-amber-50/40 shadow-2xs space-y-2">
+                            <div className="flex items-center gap-2 text-amber-900">
+                              <CreditCard size={18} className="text-amber-700 shrink-0" />
+                              <span className="text-xs font-bold">Chưa liên kết tài khoản ngân hàng</span>
+                            </div>
+                            <p className="text-[11px] text-stone-600 leading-relaxed font-light">
+                              Hãy liên kết số tài khoản ngân hàng chính chủ để tiền thuê và tiền bán được giải ngân tự động về tài khoản của bạn.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!currentUser) setShowAuthModal(true);
+                                else setIsBankModalOpen(true);
+                              }}
+                              className="w-full py-2 bg-[#1E5638] text-white text-xs font-bold rounded-xl shadow-xs hover:bg-[#236341] transition cursor-pointer flex items-center justify-center gap-1.5"
+                            >
+                              <Plus size={13} />
+                              <span>Liên Kết Ngân Hàng Ngay (1 Phút)</span>
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Thẻ Lịch Sử Lệnh Rút Tiền Gần Đây */}
+                        <div className="bg-white rounded-2xl p-4 border border-stone-200/80 shadow-2xs space-y-3">
+                          <div className="flex items-center justify-between pb-2 border-b border-stone-100">
+                            <h4 className="font-heading font-black text-xs uppercase tracking-wider text-[#16442C] flex items-center gap-1.5">
+                              <Clock size={13} className="text-emerald-700" />
+                              Lịch Sử Lệnh Rút Tiền Gần Đây
+                            </h4>
+                            <span className="text-[10px] text-stone-400 font-mono">
+                              {(closetData?.withdrawals?.length || 0)} giao dịch
+                            </span>
+                          </div>
+
+                          {closetData?.withdrawals && closetData.withdrawals.length > 0 ? (
+                            <div className="space-y-2 divide-y divide-stone-100">
+                              {closetData.withdrawals.map((w: any) => {
+                                const isPending = w.status === "PENDING";
+                                const isCompleted = w.status === "COMPLETED" || w.status === "APPROVED";
+                                return (
+                                  <div key={w.id} className="pt-2 first:pt-0 flex items-center justify-between text-xs">
+                                    <div className="space-y-0.5">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="font-bold text-stone-900 font-mono">
+                                          -{Number(w.amount).toLocaleString("vi-VN")}đ
+                                        </span>
+                                        <span className={`text-[9.5px] px-1.5 py-0.2 rounded font-bold ${
+                                          isCompleted
+                                            ? "bg-emerald-100 text-emerald-800"
+                                            : isPending
+                                            ? "bg-amber-100 text-amber-800"
+                                            : "bg-rose-100 text-rose-800"
+                                        }`}>
+                                          {isCompleted ? "Đã chuyển tiền" : isPending ? "Đang xử lý" : "Từ chối"}
+                                        </span>
+                                      </div>
+                                      <p className="text-[10.5px] text-stone-500">
+                                        Về {w.bankName} ({w.bankAccountNumber}) • {w.createdAt}
+                                      </p>
+                                      {w.adminNote && (
+                                        <p className="text-[10px] text-rose-600 italic">
+                                          Lý do: {w.adminNote}
+                                        </p>
+                                      )}
+                                    </div>
+
+                                    <div className="shrink-0 text-right">
+                                      {isCompleted ? (
+                                        <CheckCircle2 size={16} className="text-emerald-600 ml-auto" />
+                                      ) : isPending ? (
+                                        <RefreshCw size={14} className="animate-spin text-amber-600 ml-auto" />
+                                      ) : (
+                                        <X size={16} className="text-rose-600 ml-auto" />
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="py-4 text-center space-y-1">
+                              <p className="text-xs text-stone-500 font-medium">Chưa có giao dịch rút tiền nào</p>
+                              <p className="text-[11px] text-stone-400 leading-relaxed font-light">
+                                Khi có thu nhập từ khách thuê trang phục, bạn có thể tạo lệnh rút tiền về tài khoản ngân hàng bất cứ lúc nào.
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
@@ -6461,6 +6826,294 @@ export default function MobileAppClient({
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================
+            MODAL 1: LIÊN KẾT TÀI KHOẢN NGÂN HÀNG (BANK LINKING)
+            ======================================================== */}
+        {isBankModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <div className="relative w-full max-w-sm bg-white rounded-3xl p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+                <div className="flex items-center gap-2">
+                  <CreditCard size={18} className="text-emerald-700" />
+                  <h3 className="font-heading font-black text-sm text-[#16442C] uppercase tracking-wide">
+                    Liên Kết Ngân Hàng
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsBankModalOpen(false)}
+                  className="p-1 rounded-full text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {bankSaveSuccess && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-xs font-bold text-emerald-800">
+                  <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                  <span>Đã liên kết tài khoản ngân hàng thành công!</span>
+                </div>
+              )}
+
+              {bankError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs font-bold text-rose-800">
+                  {bankError}
+                </div>
+              )}
+
+              <form onSubmit={handleSaveBankInfo} className="space-y-3 text-left">
+                <div>
+                  <label className="block text-[11px] font-bold text-stone-700 mb-1">
+                    Ngân hàng thụ hưởng *
+                  </label>
+                  <select
+                    required
+                    value={bankForm.bankName}
+                    onChange={(e) => setBankForm({ ...bankForm, bankName: e.target.value })}
+                    className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638] cursor-pointer"
+                  >
+                    <option value="">-- Chọn ngân hàng thụ hưởng --</option>
+                    {VIETNAM_BANKS.map((b) => (
+                      <option key={b} value={b}>
+                        {b}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {bankForm.bankName === "Khác" && (
+                  <div>
+                    <label className="block text-[11px] font-bold text-stone-700 mb-1">
+                      Nhập tên ngân hàng của bạn *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="VD: Shinhan Bank, Public Bank..."
+                      value={customBankName}
+                      onChange={(e) => setCustomBankName(e.target.value)}
+                      className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-[11px] font-bold text-stone-700 mb-1">
+                    Số tài khoản ngân hàng *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="VD: 0866801743"
+                    value={bankForm.bankAccount}
+                    onChange={(e) => setBankForm({ ...bankForm, bankAccount: e.target.value.replace(/\s+/g, "") })}
+                    className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-white text-xs font-mono font-bold outline-none focus:border-[#1E5638]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-stone-700 mb-1">
+                    Họ &amp; Tên chủ tài khoản (In hoa không dấu) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="VD: NGUYEN MAI ANH"
+                    value={bankForm.bankOwner}
+                    onChange={(e) => setBankForm({ ...bankForm, bankOwner: e.target.value.toUpperCase() })}
+                    className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-white text-xs font-bold uppercase outline-none focus:border-[#1E5638]"
+                  />
+                  <p className="text-[10px] text-stone-500 mt-1 leading-tight italic">
+                    * Tên chủ tài khoản ngân hàng phải trùng khớp với tài khoản CLOOP để tiền được giải ngân đúng chính chủ.
+                  </p>
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    disabled={isSavingBank}
+                    className="w-full h-10 bg-[#1E5638] hover:bg-[#236341] text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                  >
+                    {isSavingBank ? (
+                      <>
+                        <RefreshCw size={13} className="animate-spin" />
+                        <span>Đang lưu...</span>
+                      </>
+                    ) : (
+                      <span>Lưu Tài Khoản Ngân Hàng</span>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================
+            MODAL 2: YÊU CẦU RÚT TIỀN VỀ NGÂN HÀNG (WITHDRAWAL)
+            ======================================================== */}
+        {isWithdrawModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <div className="relative w-full max-w-sm bg-white rounded-3xl p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+                <div className="flex items-center gap-2">
+                  <CreditCard size={18} className="text-emerald-700" />
+                  <h3 className="font-heading font-black text-sm text-[#16442C] uppercase tracking-wide">
+                    Rút Tiền Về Ngân Hàng
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsWithdrawModalOpen(false)}
+                  className="p-1 rounded-full text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {withdrawSuccessMsg && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-xs font-bold text-emerald-800">
+                  <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                  <span>{withdrawSuccessMsg}</span>
+                </div>
+              )}
+
+              {withdrawErrorMsg && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs font-bold text-rose-800">
+                  {withdrawErrorMsg}
+                </div>
+              )}
+
+              <form onSubmit={handleConfirmWithdrawal} className="space-y-3.5 text-left">
+                {/* Thông tin tài khoản thụ hưởng */}
+                <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-2xl flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] text-emerald-800 font-bold uppercase tracking-wider block">
+                      Tài khoản nhận tiền:
+                    </span>
+                    <p className="font-heading font-black text-xs text-[#16442C]">
+                      {bankForm.bankName} • {bankForm.bankAccount}
+                    </p>
+                    <p className="text-[10px] text-stone-600 font-bold uppercase">
+                      Chủ TK: {bankForm.bankOwner}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsWithdrawModalOpen(false);
+                      setIsBankModalOpen(true);
+                    }}
+                    className="text-[10px] font-bold text-emerald-800 underline cursor-pointer"
+                  >
+                    Đổi STK
+                  </button>
+                </div>
+
+                {/* Nhập số tiền rút */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-bold text-stone-700">
+                      Số tiền muốn rút (VNĐ) *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setWithdrawAmount((closetData?.user?.walletBalance || 0).toLocaleString("vi-VN"))}
+                      className="text-[11px] font-bold text-emerald-700 hover:underline cursor-pointer"
+                    >
+                      Rút tất cả
+                    </button>
+                  </div>
+
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    required
+                    placeholder="Tối thiểu 50.000đ"
+                    value={withdrawAmount}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/\D/g, "");
+                      if (!raw) {
+                        setWithdrawAmount("");
+                        return;
+                      }
+                      const num = parseInt(raw, 10);
+                      if (!isNaN(num)) {
+                        setWithdrawAmount(num.toLocaleString("vi-VN"));
+                      }
+                    }}
+                    className="w-full h-11 px-3 rounded-xl border border-stone-300 bg-white font-mono font-bold text-base text-[#16442C] outline-none focus:border-[#1E5638]"
+                  />
+
+                  {/* Quick chips */}
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {[50000, 100000, 200000].filter(amt => amt <= (closetData?.user?.walletBalance || 0)).map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => setWithdrawAmount(amt.toLocaleString("vi-VN"))}
+                        className="px-2.5 py-1 text-[10.5px] font-bold rounded-lg bg-stone-100 hover:bg-emerald-50 hover:text-emerald-800 border border-stone-200 transition cursor-pointer"
+                      >
+                        {amt.toLocaleString("vi-VN")}đ
+                      </button>
+                    ))}
+                    {(closetData?.user?.walletBalance || 0) >= 50000 && (
+                      <button
+                        type="button"
+                        onClick={() => setWithdrawAmount((closetData?.user?.walletBalance || 0).toLocaleString("vi-VN"))}
+                        className="px-2.5 py-1 text-[10.5px] font-bold rounded-lg bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border border-emerald-300 transition cursor-pointer"
+                      >
+                        Toàn bộ ({(closetData?.user?.walletBalance || 0).toLocaleString("vi-VN")}đ)
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between text-[10px] text-stone-500 mt-1.5 font-mono">
+                    <span>Số dư khả dụng:</span>
+                    <strong className="text-emerald-800">
+                      {(closetData?.user?.walletBalance || 0).toLocaleString("vi-VN")}đ
+                    </strong>
+                  </div>
+                </div>
+
+                {/* Mật khẩu giao dịch */}
+                <div>
+                  <label className="block text-[11px] font-bold text-stone-700 mb-1">
+                    Mật khẩu tài khoản (Bảo mật giao dịch)
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="Nhập mật khẩu xác thực..."
+                    value={withdrawPassword}
+                    onChange={(e) => setWithdrawPassword(e.target.value)}
+                    className="w-full h-10 px-3 rounded-xl border border-stone-300 bg-white text-xs outline-none focus:border-[#1E5638]"
+                  />
+                  <p className="text-[10px] text-stone-400 mt-0.5 italic">
+                    * Yêu cầu rút tiền được đối soát tự động và giải ngân trong 5 - 15 phút.
+                  </p>
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    disabled={isSubmittingWithdraw || !withdrawAmount || (parseInt(withdrawAmount.replace(/\D/g, ""), 10) < 50000) || (parseInt(withdrawAmount.replace(/\D/g, ""), 10) > (closetData?.user?.walletBalance || 0))}
+                    className="w-full h-11 bg-[#1E5638] hover:bg-[#236341] text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    {isSubmittingWithdraw ? (
+                      <>
+                        <RefreshCw size={14} className="animate-spin" />
+                        <span>Đang tạo lệnh rút tiền...</span>
+                      </>
+                    ) : (
+                      <span>Xác Nhận Tạo Lệnh Rút Tiền</span>
+                    )}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

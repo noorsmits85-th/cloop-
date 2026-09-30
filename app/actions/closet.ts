@@ -558,7 +558,7 @@ export async function getMyClosetMobileDataAction(clientUserId?: string) {
 
     const userId = authUser.id;
 
-    const [dbUser, products, rentalsAsOwner, rentalsAsRenter, authMetaRows] = await Promise.all([
+    const [dbUser, products, rentalsAsOwner, rentalsAsRenter, authMetaRows, withdrawals] = await Promise.all([
       prisma.user.findUnique({
         where: { id: userId },
         select: {
@@ -571,6 +571,7 @@ export async function getMyClosetMobileDataAction(clientUserId?: string) {
           completedOrders: true,
           cloopCoins: true,
           walletBalance: true,
+          pendingWithdrawalBalance: true,
           createdAt: true
         }
       }),
@@ -612,7 +613,22 @@ export async function getMyClosetMobileDataAction(clientUserId?: string) {
       prisma.$queryRawUnsafe<any[]>(
         `SELECT raw_user_meta_data FROM auth.users WHERE id = $1::uuid;`,
         userId
-      ).catch(() => [])
+      ).catch(() => []),
+      prisma.withdrawalRequest.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        select: {
+          id: true,
+          amount: true,
+          bankName: true,
+          bankAccountNumber: true,
+          bankAccountHolder: true,
+          status: true,
+          adminNote: true,
+          createdAt: true
+        }
+      }).catch(() => [])
     ]);
 
     const authMeta = authMetaRows?.[0]?.raw_user_meta_data || {};
@@ -700,11 +716,25 @@ export async function getMyClosetMobileDataAction(clientUserId?: string) {
         addressNote: userNote,
         cloopCoins: dbUser?.cloopCoins ?? 120,
         walletBalance: dbUser?.walletBalance ?? 0,
+        pendingWithdrawalBalance: dbUser?.pendingWithdrawalBalance ?? 0,
+        bankName: authMeta.bank_name || authMeta.bankName || (withdrawals?.[0]?.bankName) || "",
+        bankAccount: authMeta.bank_account || authMeta.bankAccountNumber || (withdrawals?.[0]?.bankAccountNumber) || "",
+        bankOwner: authMeta.bank_owner || authMeta.bankAccountHolder || (withdrawals?.[0]?.bankAccountHolder) || dbUser?.name || "",
         rating: Number(dbUser?.rating ?? 5.0),
         reviewCount: dbUser?.reviewCount ?? 0,
         completedOrders: dbUser?.completedOrders ?? 0,
         joinDate: dbUser?.createdAt ? new Date(dbUser.createdAt).toLocaleDateString("vi-VN") : "2026"
       },
+      withdrawals: (withdrawals || []).map((w: any) => ({
+        id: w.id,
+        amount: w.amount,
+        bankName: w.bankName,
+        bankAccountNumber: w.bankAccountNumber,
+        bankAccountHolder: w.bankAccountHolder,
+        status: w.status,
+        adminNote: w.adminNote,
+        createdAt: w.createdAt ? new Date(w.createdAt).toLocaleDateString("vi-VN") : ""
+      })),
       stats: {
         totalItems: products.length,
         co2Saved: co2Saved || (products.length * 5.8),
