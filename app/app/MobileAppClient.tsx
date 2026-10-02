@@ -11,9 +11,14 @@ import {
   ChevronRight, ArrowLeft, Wallet, Droplet, Award, Clock,
   MapPin, Edit3, Menu, HelpCircle, LogOut, Package, Crop, Truck,
   Zap, CreditCard, QrCode, Loader2, ExternalLink, Copy,
-  Trash2, Eye, EyeOff, Edit, PackageX, Share2, MessageCircle
+  Trash2, Eye, EyeOff, Edit, PackageX, Share2, MessageCircle,
+  Mic, Layers
 } from "lucide-react";
+import Link from "next/link";
 import Cropper from "react-easy-crop";
+import VisualSearchModal from "@/app/components/VisualSearchModal";
+import VoiceSearchModal from "@/app/components/VoiceSearchModal";
+import DigitalProductPassport from "@/app/components/DigitalProductPassport";
 import { useAuthModal } from "@/app/AuthModalContext";
 import { getShopProductsAction, createProductAction, updateProductFromAppAction } from "@/app/actions/product";
 import { toggleProductInteractionAction } from "@/app/actions/favorite";
@@ -263,6 +268,8 @@ export default function MobileAppClient({
   const [selectedOccasion, setSelectedOccasion] = useState("Tất cả");
   const [searchQuery, setSearchQuery] = useState("");
   const [likedItems, setLikedItems] = useState<Record<string, boolean>>({});
+  const [isVisualSearchOpen, setIsVisualSearchOpen] = useState(false);
+  const [isVoiceSearchOpen, setIsVoiceSearchOpen] = useState(false);
 
   // 🌐 THIẾT LẬP NGÔN NGỮ (VIE / ENG)
   const [lang, setLang] = useState<"vi" | "en">("vi");
@@ -2295,19 +2302,41 @@ export default function MobileAppClient({
 
           {/* Ô TÌM KIẾM TRONG APP (HIỂN THỊ Ở TAB KHÁM PHÁ & SÀN ĐỒ) */}
           {(activeTab === "home" || activeTab === "shop") && (
-            <div className="relative flex items-center">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={lang === "vi" ? "Tìm đầm tiệc cưới, dạ hội, áo dài..." : "Search dresses, gala, wedding outfits..."}
-                className="w-full h-10 bg-white text-stone-900 placeholder-stone-400 pl-4 pr-10 rounded-xl text-xs font-medium outline-none border border-stone-200/90 shadow-2xs focus:border-[#1E5638] focus:ring-1 focus:ring-[#1E5638]"
-              />
+            <div className="flex items-center gap-1.5">
+              <div className="relative flex-1 flex items-center">
+                <Search size={15} className="absolute left-3.5 text-stone-400 pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={lang === "vi" ? "Tìm đầm tiệc cưới, dạ hội, áo dài..." : "Search dresses, gala, wedding outfits..."}
+                  className="w-full h-10 bg-white text-stone-900 placeholder-stone-400 pl-9 pr-8 rounded-xl text-xs font-medium outline-none border border-stone-200/90 shadow-2xs focus:border-[#1E5638] focus:ring-1 focus:ring-[#1E5638]"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-2.5 text-stone-400 hover:text-stone-600 p-1 cursor-pointer"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
               <button
                 type="button"
-                className="absolute right-3.5 text-stone-400 hover:text-[#1E5638] transition"
+                onClick={() => setIsVoiceSearchOpen(true)}
+                className="w-10 h-10 rounded-xl bg-white border border-stone-200/90 text-[#16442C] hover:bg-stone-50 flex items-center justify-center shadow-2xs active:scale-95 transition-transform shrink-0 cursor-pointer"
+                title="Tìm kiếm bằng giọng nói"
               >
-                <Search size={16} />
+                <Mic size={18} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsVisualSearchOpen(true)}
+                className="w-10 h-10 rounded-xl bg-[#1E5638] text-white flex items-center justify-center shadow-xs active:scale-95 transition-transform shrink-0 cursor-pointer"
+                title="Tìm kiếm bằng hình ảnh AI"
+              >
+                <Camera size={18} />
               </button>
             </div>
           )}
@@ -2341,6 +2370,56 @@ export default function MobileAppClient({
                 className="w-full h-auto block object-cover group-hover:scale-[1.01] transition-transform duration-500"
               />
               <div className="absolute inset-0 bg-black/0 hover:bg-black/5 transition-colors" />
+            </div>
+
+            {/* 🚀 TECHFEST 3 TÍNH NĂNG ĐỘT PHÁ: MIX & MATCH, TÌM BẰNG ẢNH AI, VOICE SEARCH */}
+            <div className="mx-3 mt-3 grid grid-cols-3 gap-2">
+              <Link
+                href="/mix-match"
+                className="p-2.5 rounded-2xl bg-white border border-emerald-900/15 shadow-2xs hover:bg-emerald-50/50 transition-all flex flex-col items-center text-center group cursor-pointer"
+              >
+                <div className="w-9 h-9 rounded-xl bg-emerald-100/80 text-emerald-800 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
+                  <Layers size={17} />
+                </div>
+                <span className="text-[11px] font-bold text-[#16442C] leading-tight">
+                  Phối Đồ Studio
+                </span>
+                <span className="text-[9px] text-emerald-700 font-medium mt-0.5">
+                  Mix & Match (-10%)
+                </span>
+              </Link>
+
+              <button
+                type="button"
+                onClick={() => setIsVisualSearchOpen(true)}
+                className="p-2.5 rounded-2xl bg-white border border-emerald-900/15 shadow-2xs hover:bg-emerald-50/50 transition-all flex flex-col items-center text-center group cursor-pointer"
+              >
+                <div className="w-9 h-9 rounded-xl bg-teal-100/80 text-teal-800 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
+                  <Camera size={17} />
+                </div>
+                <span className="text-[11px] font-bold text-[#16442C] leading-tight">
+                  Tìm Bằng Ảnh
+                </span>
+                <span className="text-[9px] text-teal-700 font-medium mt-0.5">
+                  Quét Shopee/TikTok
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsVoiceSearchOpen(true)}
+                className="p-2.5 rounded-2xl bg-white border border-emerald-900/15 shadow-2xs hover:bg-emerald-50/50 transition-all flex flex-col items-center text-center group cursor-pointer"
+              >
+                <div className="w-9 h-9 rounded-xl bg-amber-100/80 text-amber-800 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
+                  <Mic size={17} />
+                </div>
+                <span className="text-[11px] font-bold text-[#16442C] leading-tight">
+                  Tìm Giọng Nói
+                </span>
+                <span className="text-[9px] text-amber-700 font-medium mt-0.5">
+                  Voice Search 0đ
+                </span>
+              </button>
             </div>
 
             {/* THÔNG SỐ TÁC ĐỘNG TUẦN HOÀN */}
@@ -5029,13 +5108,26 @@ export default function MobileAppClient({
                   </div>
                 )}
 
-                {/* 7. LỢI ÍCH MÔI TRƯỜNG SINH THÁI TUẦN HOÀN */}
-                <div className="p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200/70 text-emerald-950 text-xs leading-relaxed flex items-center gap-2.5">
-                  <Leaf size={16} className="text-emerald-700 shrink-0 fill-emerald-700" />
-                  <div>
-                    Mỗi lượt chia sẻ trang phục này giúp tiết kiệm <strong>5.8kg CO2e</strong> và <strong>2.000L nước</strong> so với việc may mới.
-                  </div>
-                </div>
+                {/* 7. HỘ CHIẾU SỐ THỜI TRANG & CHUỖI VÒNG ĐỜI TUẦN HOÀN (DPP) */}
+                <DigitalProductPassport
+                  productId={selectedProduct.id}
+                  productTitle={selectedProduct.title || "Trang phục CLOOP"}
+                  material={selectedProduct.material}
+                  category={selectedProduct.category}
+                  province={selectedProduct.location || selectedProduct.province}
+                  brand={selectedProduct.brand}
+                  ownerName={selectedProduct.ownerName}
+                  rentalCount={selectedProduct.completedOrders || 0}
+                />
+
+                {/* Phối đồ Mix & Match Studio */}
+                <Link
+                  href={`/mix-match?productId=${selectedProduct.id}`}
+                  className="w-full py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-[#183A2D] text-xs font-bold border border-emerald-300/60 shadow-2xs flex items-center justify-center gap-2 transition active:scale-98"
+                >
+                  <Layers size={14} className="text-emerald-700" />
+                  <span>Thử phối đồ cùng món này (Mix & Match Studio)</span>
+                </Link>
 
                 {/* 8. KHỐI ĐÁNH GIÁ CỘNG ĐỒNG THỰC TẾ (NHƯ BẢN WEB) */}
                 <div className="bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs space-y-3">
@@ -7117,6 +7209,22 @@ export default function MobileAppClient({
             </div>
           </div>
         )}
+
+        {/* MODAL TÌM KIẾM HÌNH ẢNH LOOKBOOK BẰNG AI (SHOPEE / TIKTOK STYLE CROP) */}
+        <VisualSearchModal
+          isOpen={isVisualSearchOpen}
+          onClose={() => setIsVisualSearchOpen(false)}
+        />
+
+        {/* MODAL TÌM KIẾM BẰNG GIỌNG NÓI TIẾNG VIỆT (0Đ NATIVE) */}
+        <VoiceSearchModal
+          isOpen={isVoiceSearchOpen}
+          onClose={() => setIsVoiceSearchOpen(false)}
+          onTranscript={(text) => {
+            setSearchQuery(text);
+            setActiveTab("shop");
+          }}
+        />
 
       </div>
     </div>
