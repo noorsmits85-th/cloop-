@@ -4,9 +4,10 @@ import { useState, useEffect, useRef, useTransition } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { MapPin, Star, ArrowLeft, Search, SlidersHorizontal, Shirt, X, Flame, Loader2 } from "lucide-react";
+import { MapPin, Star, ArrowLeft, Search, SlidersHorizontal, Shirt, X, Flame, Loader2, Mic } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getShopProductsAction } from "@/app/actions/product";
+import VoiceSearchModal from "@/app/components/VoiceSearchModal";
 
 const PLACEHOLDER_IMG = "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600";
 
@@ -88,6 +89,7 @@ export function ShopClient({
   const [selectedSize, setSelectedSize] = useState(urlSize);
   const [selectedMaterial, setSelectedMaterial] = useState(urlMaterial);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isVoiceSearchOpen, setIsVoiceSearchOpen] = useState(false);
   const [selectedOccasion, setSelectedOccasion] = useState(urlOccasion || urlCategory || initialOccasion || "Tất cả");
 
   const occasionList = [
@@ -277,7 +279,7 @@ export function ShopClient({
 
           {/* SEARCH & FILTERS */}
           <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 w-full lg:w-auto font-ui">
-            <div className="flex items-center gap-2 border border-stone-200 bg-stone-50 rounded-full px-3.5 py-1.5 sm:py-2 w-full sm:w-[260px] focus-within:bg-white focus-within:border-[#183A2D] transition-colors">
+            <div className="flex items-center gap-2 border border-stone-200 bg-stone-50 rounded-full px-3.5 py-1.5 sm:py-2 w-full sm:w-[270px] focus-within:bg-white focus-within:border-[#183A2D] transition-colors">
               <Search size={14} className="text-stone-400 shrink-0" />
               <input 
                 type="text"
@@ -286,9 +288,18 @@ export function ShopClient({
                 placeholder="Tìm tên váy, áo hoặc chủ tủ..." 
                 className="bg-transparent border-none outline-none text-xs w-full text-stone-800 placeholder:text-stone-400 font-medium"
               />
-              {searchQuery && (
-                <button onClick={() => setSearchQuery("")} className="text-stone-400 hover:text-stone-600">
+              {searchQuery ? (
+                <button onClick={() => setSearchQuery("")} className="text-stone-400 hover:text-stone-600 cursor-pointer">
                   <X size={12} />
+                </button>
+              ) : (
+                <button 
+                  type="button" 
+                  onClick={() => setIsVoiceSearchOpen(true)}
+                  title="Tìm kiếm bằng giọng nói"
+                  className="text-stone-400 hover:text-[#183A2D] transition-colors p-0.5 cursor-pointer"
+                >
+                  <Mic size={14} />
                 </button>
               )}
             </div>
@@ -523,6 +534,14 @@ export function ShopClient({
         )}
       </AnimatePresence>
 
+      {/* MODAL TÌM KIẾM BẰNG GIỌNG NÓI */}
+      <VoiceSearchModal
+        isOpen={isVoiceSearchOpen}
+        onClose={() => setIsVoiceSearchOpen(false)}
+        onTranscript={(text) => {
+          setSearchQuery(text);
+        }}
+      />
     </main>
   );
 }

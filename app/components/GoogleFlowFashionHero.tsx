@@ -6,9 +6,10 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowRight, Camera, Search, X, 
-  ShieldCheck, Leaf
+  ShieldCheck, Leaf, Mic
 } from "lucide-react";
 import VisualSearchModal from "@/app/components/VisualSearchModal";
+import VoiceSearchModal from "@/app/components/VoiceSearchModal";
 import { getShopProductsAction } from "@/app/actions/product";
 import { getOptimizedCloudinaryUrl } from "@/lib/cloudinary-optimize";
 
@@ -355,6 +356,7 @@ interface GoogleFlowFashionHeroProps {
 
 export default function GoogleFlowFashionHero({ initialProducts }: GoogleFlowFashionHeroProps) {
   const [isVisualSearchOpen, setIsVisualSearchOpen] = useState(false);
+  const [isVoiceSearchOpen, setIsVoiceSearchOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<FashionItem | null>(null);
   const [heroProducts, setHeroProducts] = useState<any[]>(initialProducts && initialProducts.length > 0 ? initialProducts : []);
 
@@ -380,7 +382,7 @@ export default function GoogleFlowFashionHero({ initialProducts }: GoogleFlowFas
     <>
       {/* 📱 1. GIAO DIỆN DI ĐỘNG NHẸ BÃNG */}
       <div className="md:hidden w-full bg-[#FAF8F5] px-4 pt-3 pb-3 space-y-3.5 border-b border-[#EBE6D8]">
-        {/* Thanh tìm kiếm & Camera AI */}
+        {/* Thanh tìm kiếm & Voice & Camera AI */}
         <div className="flex items-center gap-2">
           <Link
             href="/shop"
@@ -393,8 +395,16 @@ export default function GoogleFlowFashionHero({ initialProducts }: GoogleFlowFas
           </Link>
           <button
             type="button"
+            onClick={() => setIsVoiceSearchOpen(true)}
+            className="w-11 h-11 rounded-full bg-white border border-[#E0D9CE] text-[#183A2D] hover:bg-stone-100 flex items-center justify-center shadow-3xs active:scale-95 transition-transform shrink-0 cursor-pointer"
+            title="Tìm kiếm bằng giọng nói"
+          >
+            <Mic size={18} />
+          </button>
+          <button
+            type="button"
             onClick={() => setIsVisualSearchOpen(true)}
-            className="w-11 h-11 rounded-full bg-[#183A2D] text-white flex items-center justify-center shadow-md active:scale-95 transition-transform shrink-0"
+            className="w-11 h-11 rounded-full bg-[#183A2D] text-white flex items-center justify-center shadow-md active:scale-95 transition-transform shrink-0 cursor-pointer"
             title="Tìm kiếm bằng ảnh AI"
           >
             <Camera size={18} />
@@ -562,6 +572,15 @@ export default function GoogleFlowFashionHero({ initialProducts }: GoogleFlowFas
 
           <button
             type="button"
+            onClick={() => setIsVoiceSearchOpen(true)}
+            className="w-full sm:w-auto px-5 py-3.5 rounded-full bg-white/20 hover:bg-white/30 text-white border border-white/35 font-heading font-bold text-xs sm:text-sm tracking-wider uppercase transition-all duration-300 shadow-md hover:scale-105 active:scale-95 flex items-center justify-center gap-2 group font-ui cursor-pointer"
+          >
+            <Mic size={15} className="text-[#A3E39F] group-hover:scale-110 transition-transform" />
+            <span>Tìm Bằng Giọng Nói</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setIsVisualSearchOpen(true)}
             className="w-full sm:w-auto px-6 py-3.5 rounded-full bg-white/20 hover:bg-white/30 text-white border border-white/35 font-heading font-bold text-xs sm:text-sm tracking-wider uppercase transition-all duration-300 shadow-md hover:scale-105 active:scale-95 flex items-center justify-center gap-2 group font-ui cursor-pointer"
           >
@@ -699,6 +718,12 @@ export default function GoogleFlowFashionHero({ initialProducts }: GoogleFlowFas
       <VisualSearchModal 
         isOpen={isVisualSearchOpen} 
         onClose={() => setIsVisualSearchOpen(false)} 
+      />
+
+      {/* MODAL TÌM KIẾM BẰNG GIỌNG NÓI */}
+      <VoiceSearchModal
+        isOpen={isVoiceSearchOpen}
+        onClose={() => setIsVoiceSearchOpen(false)}
       />
 
     </section>

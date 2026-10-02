@@ -72,6 +72,7 @@ function HeaderNavbar({ darkMode, setDarkMode, handleFeatureRequirement, current
           <nav className="hidden lg:flex items-center gap-3.5 xl:gap-5 font-ui text-[11px] xl:text-[12px] uppercase tracking-wide whitespace-nowrap font-bold min-w-0 overflow-x-auto no-scrollbar">
             <Link href="/" prefetch={true} className={getNavbarClass("/", null, null)}>Trang chủ</Link>
             <Link href="/shop?type=rent" prefetch={true} className={getNavbarClass("/shop", "rent", null)}>Thuê đồ</Link>
+            <Link href="/mix-match" prefetch={true} className={getNavbarClass("/mix-match", null, null)}>Phối đồ Studio</Link>
             <Link href="/my-closet/create?mode=rent" prefetch={true} className={getNavbarClass("/my-closet/create", null, "rent")}>Cho thuê đồ</Link>
             <Link href="/shop?type=sell" prefetch={true} className={getNavbarClass("/shop", "sell", null)}>Sở hữu</Link>
             <Link href="/my-closet/create?mode=consign" prefetch={true} className={getNavbarClass("/my-closet/create", null, "consign")}>Thanh lý</Link>

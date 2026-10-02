@@ -11,7 +11,13 @@ import {
   X, 
   CheckCircle2,
   ExternalLink,
-  Info
+  Info,
+  MapPin,
+  TrendingDown,
+  Sparkles,
+  GitBranch,
+  Calendar,
+  Clock
 } from "lucide-react";
 
 interface DigitalProductPassportProps {
@@ -22,6 +28,7 @@ interface DigitalProductPassportProps {
   province?: string;
   brand?: string;
   ownerName?: string;
+  rentalCount?: number;
 }
 
 export default function DigitalProductPassport({
@@ -31,14 +38,21 @@ export default function DigitalProductPassport({
   category = "Dạ hội",
   province = "Nghệ An",
   brand = "CLOOP Signature",
-  ownerName = "Chủ tủ CLOOP"
+  ownerName = "Chủ tủ CLOOP",
+  rentalCount = 0
 }: DigitalProductPassportProps) {
+  const [activeTab, setActiveTab] = useState<"metrics" | "journey">("metrics");
   const [showQrModal, setShowQrModal] = useState(false);
 
   // Sinh mã DPP định danh duy nhất theo chuẩn ESPR Châu Âu
   const dppSerial = `DPP-VN-CLP-${productId.slice(0, 8).toUpperCase()}`;
   const currentUrl = typeof window !== "undefined" ? window.location.href : `https://cloop.vn/product/${productId}`;
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(currentUrl)}&color=18-58-45`;
+
+  // Tính toán chỉ số sinh thái theo dữ liệu thực tế
+  const totalCycles = Math.max(1, (rentalCount || 0) + 1);
+  const co2ReducedKg = (totalCycles * 3.6).toFixed(1);
+  const waterSavedLiters = (totalCycles * 2700).toLocaleString("vi-VN");
 
   return (
     <>
@@ -65,14 +79,16 @@ export default function DigitalProductPassport({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setShowQrModal(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-[#183A2D] text-[11px] font-bold border border-emerald-800/20 shadow-2xs hover:bg-emerald-50 transition-colors cursor-pointer"
-          >
-            <QrCode size={13} className="text-emerald-700" />
-            <span>Quét Mã DPP</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowQrModal(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-[#183A2D] text-[11px] font-bold border border-emerald-800/20 shadow-2xs hover:bg-emerald-50 transition-colors cursor-pointer"
+            >
+              <QrCode size={13} className="text-emerald-700" />
+              <span>Quét Mã DPP</span>
+            </button>
+          </div>
         </div>
 
         {/* DPP Serial & Identity */}
@@ -89,42 +105,143 @@ export default function DigitalProductPassport({
           </div>
         </div>
 
-        {/* 3 Chỉ Số Đo Lường ESG & Net Zero */}
-        <div className="grid grid-cols-3 gap-2 text-center">
-          <div className="bg-white/90 p-2.5 rounded-xl border border-emerald-800/10 shadow-2xs">
-            <span className="text-[10px] text-stone-500 font-semibold block">Giảm Phát Thải CO₂</span>
-            <p className="text-sm sm:text-base font-black font-mono text-[#183A2D] pt-0.5">-2.8 kg</p>
-            <span className="text-[9px] text-emerald-700 font-medium">~1 cây xanh / 3 tháng</span>
-          </div>
-
-          <div className="bg-white/90 p-2.5 rounded-xl border border-emerald-800/10 shadow-2xs">
-            <span className="text-[10px] text-stone-500 font-semibold block">Tiết Kiệm Nước</span>
-            <p className="text-sm sm:text-base font-black font-mono text-[#183A2D] pt-0.5">3.200 Lít</p>
-            <span className="text-[9px] text-emerald-700 font-medium">So với may mới</span>
-          </div>
-
-          <div className="bg-white/90 p-2.5 rounded-xl border border-emerald-800/10 shadow-2xs">
-            <span className="text-[10px] text-stone-500 font-semibold block">Vòng Đời Tuần Hoàn</span>
-            <p className="text-sm sm:text-base font-black font-mono text-[#183A2D] pt-0.5">3 / 10</p>
-            <span className="text-[9px] text-emerald-700 font-medium">Độ bền tối ưu</span>
-          </div>
+        {/* Tab Switcher: Chỉ số ESG vs Hành trình tuần hoàn */}
+        <div className="flex rounded-xl bg-emerald-950/10 p-1 border border-emerald-900/10 text-xs font-bold">
+          <button
+            type="button"
+            onClick={() => setActiveTab("metrics")}
+            className={`flex-1 py-1.5 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeTab === "metrics"
+                ? "bg-white text-[#183A2D] shadow-xs"
+                : "text-stone-600 hover:text-[#183A2D]"
+            }`}
+          >
+            <TrendingDown size={13} className="text-emerald-700" />
+            <span>Chỉ Số Xanh ESG</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("journey")}
+            className={`flex-1 py-1.5 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeTab === "journey"
+                ? "bg-white text-[#183A2D] shadow-xs"
+                : "text-stone-600 hover:text-[#183A2D]"
+            }`}
+          >
+            <GitBranch size={13} className="text-emerald-700" />
+            <span>Chuỗi Vòng Đời ({totalCycles} Vòng)</span>
+          </button>
         </div>
 
-        {/* Traceability & Material Breakdown */}
-        <div className="space-y-1.5 text-[11px] text-stone-700 bg-white/70 p-3 rounded-xl border border-emerald-800/10">
-          <div className="flex justify-between items-center">
-            <span className="text-stone-500">Chất liệu sợi định danh:</span>
-            <strong className="text-[#142A1E]">{material}</strong>
+        {/* TAB 1: CHỈ SỐ ESG & NET ZERO */}
+        {activeTab === "metrics" && (
+          <div className="space-y-3 animate-in fade-in duration-150">
+            {/* 3 Chỉ Số Đo Lường ESG & Net Zero */}
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="bg-white/90 p-2.5 rounded-xl border border-emerald-800/10 shadow-2xs">
+                <span className="text-[10px] text-stone-500 font-semibold block">Giảm Phát Thải CO₂</span>
+                <p className="text-sm sm:text-base font-black font-mono text-[#183A2D] pt-0.5">-{co2ReducedKg} kg</p>
+                <span className="text-[9px] text-emerald-700 font-medium">~1 cây xanh / 3 tháng</span>
+              </div>
+
+              <div className="bg-white/90 p-2.5 rounded-xl border border-emerald-800/10 shadow-2xs">
+                <span className="text-[10px] text-stone-500 font-semibold block">Tiết Kiệm Nước</span>
+                <p className="text-sm sm:text-base font-black font-mono text-[#183A2D] pt-0.5">{waterSavedLiters} Lít</p>
+                <span className="text-[9px] text-emerald-700 font-medium">So với may mới</span>
+              </div>
+
+              <div className="bg-white/90 p-2.5 rounded-xl border border-emerald-800/10 shadow-2xs">
+                <span className="text-[10px] text-stone-500 font-semibold block">Vòng Đời Tuần Hoàn</span>
+                <p className="text-sm sm:text-base font-black font-mono text-[#183A2D] pt-0.5">{totalCycles} / 10</p>
+                <span className="text-[9px] text-emerald-700 font-medium">Độ bền tối ưu</span>
+              </div>
+            </div>
+
+            {/* Traceability & Material Breakdown */}
+            <div className="space-y-1.5 text-[11px] text-stone-700 bg-white/70 p-3 rounded-xl border border-emerald-800/10">
+              <div className="flex justify-between items-center">
+                <span className="text-stone-500">Chất liệu sợi định danh:</span>
+                <strong className="text-[#142A1E]">{material}</strong>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-stone-500">Khả năng tái chế & phục hồi:</span>
+                <strong className="text-emerald-800">96% (Eco-grade A+)</strong>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-stone-500">Phương thức định danh vật lý:</span>
+                <strong className="text-[#142A1E]">NFC Smart Tag & Dynamic QR Code</strong>
+              </div>
+            </div>
           </div>
-          <div className="flex justify-between items-center">
-            <span className="text-stone-500">Khả năng tái chế & phục hồi:</span>
-            <strong className="text-emerald-800">94% (Eco-grade A+)</strong>
+        )}
+
+        {/* TAB 2: BẢN ĐỒ HÀNH TRÌNH CHUỖI VÒNG ĐỜI (LIFECYCLE GRAPH) */}
+        {activeTab === "journey" && (
+          <div className="bg-white/80 p-3.5 rounded-xl border border-emerald-800/10 space-y-3 animate-in fade-in duration-150">
+            <div className="relative pl-6 space-y-4 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-emerald-300">
+              
+              {/* Điểm khởi tạo: Tủ đồ gốc */}
+              <div className="relative">
+                <span className="absolute -left-6 top-0.5 w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">
+                  1
+                </span>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-[#183A2D]">Khởi nguyên tủ đồ</span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-extrabold font-mono">
+                      ORIGIN
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-stone-600 mt-0.5">
+                    Được đăng ký tại tủ đồ của <strong className="text-stone-800">{ownerName}</strong> ({province}).
+                  </p>
+                  <p className="text-[10px] text-emerald-700 mt-0.5 font-medium flex items-center gap-1">
+                    <CheckCircle2 size={11} /> Đã kiểm định tình trạng sợi vải & gắn định danh số DPP
+                  </p>
+                </div>
+              </div>
+
+              {/* Lượt tuần hoàn trước đó (nếu có) */}
+              {rentalCount > 0 && (
+                <div className="relative">
+                  <span className="absolute -left-6 top-0.5 w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] font-bold">
+                    2
+                  </span>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-[#183A2D]">Đã chia sẻ {rentalCount} lượt trải nghiệm</span>
+                      <span className="px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 text-[9px] font-extrabold font-mono">
+                        CIRCULATED
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-stone-600 mt-0.5">
+                      Đã qua giặt sấy sinh học thân thiện môi trường sau mỗi lượt sử dụng.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Vòng tuần hoàn tiếp theo: Lượt này dành cho khách */}
+              <div className="relative">
+                <span className="absolute -left-6 top-0.5 w-5 h-5 rounded-full bg-amber-500 text-stone-950 flex items-center justify-center text-[10px] font-bold ring-2 ring-amber-300 animate-pulse">
+                  {totalCycles}
+                </span>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-amber-900">Vòng tuần hoàn tiếp theo</span>
+                    <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[9px] font-extrabold font-mono">
+                      READY TO WEAR
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-stone-600 mt-0.5">
+                    Sẵn sàng tới tay bạn! Khi bạn thuê món đồ này, bạn trực tiếp giúp giảm rác thải dệt may.
+                  </p>
+                </div>
+              </div>
+
+            </div>
           </div>
-          <div className="flex justify-between items-center">
-            <span className="text-stone-500">Phương thức định danh vật lý:</span>
-            <strong className="text-[#142A1E]">NFC Smart Tag & Dynamic QR Code</strong>
-          </div>
-        </div>
+        )}
 
       </div>
 
@@ -150,7 +267,7 @@ export default function DigitalProductPassport({
               <h3 className="text-lg font-heading font-extrabold text-[#183A2D]">
                 Hộ Chiếu Số Trang Phục
               </h3>
-              <p className="text-xs text-stone-500">
+              <p className="text-xs text-stone-500 line-clamp-1">
                 {productTitle}
               </p>
             </div>
