@@ -329,17 +329,6 @@ export default function ProductDetailClient({
                   <span className="text-xs text-stone-500 font-medium">/ ngày (tiết kiệm 90% so với mua mới)</span>
                 )}
               </div>
-
-              {/* Phối đồ Mix & Match Studio */}
-              <div className="pt-2">
-                <Link
-                  href={`/mix-match?productId=${product.id}`}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-[#183A2D] text-xs font-bold border border-emerald-300/60 shadow-2xs transition-all hover:scale-102"
-                >
-                  <Layers size={13} className="text-emerald-700" />
-                  <span>Thử phối đồ cùng món này (Mix & Match Studio)</span>
-                </Link>
-              </div>
             </div>
 
             {/* 📋 CHIC BENTO GRID: ĐẶC TÍNH SẢN PHẨM & CHỈ SỐ VỪA VẶN */}

@@ -2372,56 +2372,6 @@ export default function MobileAppClient({
               <div className="absolute inset-0 bg-black/0 hover:bg-black/5 transition-colors" />
             </div>
 
-            {/* 🚀 TECHFEST 3 TÍNH NĂNG ĐỘT PHÁ: MIX & MATCH, TÌM BẰNG ẢNH AI, VOICE SEARCH */}
-            <div className="mx-3 mt-3 grid grid-cols-3 gap-2">
-              <Link
-                href="/mix-match"
-                className="p-2.5 rounded-2xl bg-white border border-emerald-900/15 shadow-2xs hover:bg-emerald-50/50 transition-all flex flex-col items-center text-center group cursor-pointer"
-              >
-                <div className="w-9 h-9 rounded-xl bg-emerald-100/80 text-emerald-800 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
-                  <Layers size={17} />
-                </div>
-                <span className="text-[11px] font-bold text-[#16442C] leading-tight">
-                  Phối Đồ Studio
-                </span>
-                <span className="text-[9px] text-emerald-700 font-medium mt-0.5">
-                  Mix & Match (-10%)
-                </span>
-              </Link>
-
-              <button
-                type="button"
-                onClick={() => setIsVisualSearchOpen(true)}
-                className="p-2.5 rounded-2xl bg-white border border-emerald-900/15 shadow-2xs hover:bg-emerald-50/50 transition-all flex flex-col items-center text-center group cursor-pointer"
-              >
-                <div className="w-9 h-9 rounded-xl bg-teal-100/80 text-teal-800 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
-                  <Camera size={17} />
-                </div>
-                <span className="text-[11px] font-bold text-[#16442C] leading-tight">
-                  Tìm Bằng Ảnh
-                </span>
-                <span className="text-[9px] text-teal-700 font-medium mt-0.5">
-                  Quét Shopee/TikTok
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsVoiceSearchOpen(true)}
-                className="p-2.5 rounded-2xl bg-white border border-emerald-900/15 shadow-2xs hover:bg-emerald-50/50 transition-all flex flex-col items-center text-center group cursor-pointer"
-              >
-                <div className="w-9 h-9 rounded-xl bg-amber-100/80 text-amber-800 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
-                  <Mic size={17} />
-                </div>
-                <span className="text-[11px] font-bold text-[#16442C] leading-tight">
-                  Tìm Giọng Nói
-                </span>
-                <span className="text-[9px] text-amber-700 font-medium mt-0.5">
-                  Voice Search 0đ
-                </span>
-              </button>
-            </div>
-
             {/* THÔNG SỐ TÁC ĐỘNG TUẦN HOÀN */}
             <div className="mx-3 mt-3 bg-white rounded-xl p-2.5 border border-stone-200/70 shadow-2xs flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -5119,15 +5069,6 @@ export default function MobileAppClient({
                   ownerName={selectedProduct.ownerName}
                   rentalCount={selectedProduct.completedOrders || 0}
                 />
-
-                {/* Phối đồ Mix & Match Studio */}
-                <Link
-                  href={`/mix-match?productId=${selectedProduct.id}`}
-                  className="w-full py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-[#183A2D] text-xs font-bold border border-emerald-300/60 shadow-2xs flex items-center justify-center gap-2 transition active:scale-98"
-                >
-                  <Layers size={14} className="text-emerald-700" />
-                  <span>Thử phối đồ cùng món này (Mix & Match Studio)</span>
-                </Link>
 
                 {/* 8. KHỐI ĐÁNH GIÁ CỘNG ĐỒNG THỰC TẾ (NHƯ BẢN WEB) */}
                 <div className="bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs space-y-3">
