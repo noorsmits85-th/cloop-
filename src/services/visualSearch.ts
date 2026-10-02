@@ -33,7 +33,9 @@ export interface VisualSearchResult {
 }
 
 const CANDIDATE_GEMINI_MODELS = [
+  "gemini-3.8-flash",
   "gemini-3.6-flash",
+  "gemini-3.5-flash-lite",
   "gemini-3.1-flash-lite",
 ];
 
@@ -134,7 +136,7 @@ Trả về đúng cấu trúc JSON:
               ]);
 
               const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error(`Timeout for ${candidate}`)), 6500)
+                setTimeout(() => reject(new Error(`Timeout for ${candidate}`)), 2200)
               );
 
               const result: any = await Promise.race([geminiPromise, timeoutPromise]);
@@ -164,9 +166,9 @@ Trả về đúng cấu trúc JSON:
               }
             }
           }
-        }, 3);
+        }, 1);
       } catch (poolErr: any) {
-        console.warn("[Gemini Pool Fallback]:", poolErr?.message || poolErr);
+        console.warn("[Gemini Pool Fast Fallback]:", poolErr?.message || poolErr);
       }
     };
 
@@ -314,7 +316,7 @@ Trả về đúng cấu trúc JSON:
 
     // Sắp xếp theo độ tương đồng cao nhất
     scoredProducts.sort((a, b) => b.matchScore - a.matchScore);
-    const topMatched = scoredProducts.slice(0, 6);
+    const topMatched = scoredProducts.slice(0, 16);
 
     return {
       success: true,

@@ -229,7 +229,7 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
     setActiveSearchImage(imageSrc);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 35000);
+    const timeoutId = setTimeout(() => controller.abort(), 6500);
 
     try {
       let finalBase64 = imageSrc;
@@ -257,7 +257,7 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
       clearTimeout(timeoutId);
       if (err.name === "AbortError") {
         setErrorMessage(
-          "Thời gian xử lý AI vượt quá giới hạn (35s). Vui lòng khoanh vùng sát món đồ hơn nhé."
+          "Thời gian phản hồi AI vượt quá 6s. Đang hiển thị các trang phục liên quan từ kho CLOOP."
         );
       } else {
         setErrorMessage(err.message || "Đã xảy ra lỗi khi tìm kiếm bằng AI");
@@ -277,7 +277,8 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
       setRawImage(compressed);
       setCrop({ x: 0, y: 0 });
       setZoom(1);
-      setViewMode("crop");
+      // Bắt đầu quét ngay lập tức không để khách chờ lâu
+      executeSearch(compressed);
     } catch (err) {
       console.error("Lỗi nén ảnh ban đầu:", err);
     }
@@ -613,7 +614,7 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
                   {/* Cột 1 (md:col-span-4): Ảnh đang quét / đã quét & Laser Scanner */}
-                  <div className="md:col-span-4 space-y-3">
+                  <div className={`md:col-span-4 space-y-3 ${!isAnalyzing ? "hidden md:block" : "block"}`}>
                     <div className="relative rounded-2xl overflow-hidden aspect-[3/4] border border-emerald-500/40 bg-stone-950 shadow-2xl">
                       {activeSearchImage && (
                         <Image
@@ -692,12 +693,59 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
 
                   {/* Cột 2 & 3 (md:col-span-8): Phân tích đặc tính AI & Danh sách đồ tương đồng */}
                   <div className="md:col-span-8 space-y-4">
-                    {/* Bóc tách AI Tags */}
+                    {/* Shopee-style Compact Search Bar for Mobile */}
+                    {!isAnalyzing && (
+                      <div className="md:hidden flex items-center gap-3 p-3 rounded-2xl bg-white/5 border border-white/10 mb-2">
+                        <div className="relative w-14 h-18 rounded-xl overflow-hidden border-2 border-emerald-400 shrink-0 bg-stone-900 shadow-md">
+                          {activeSearchImage && (
+                            <Image
+                              src={activeSearchImage}
+                              alt="Vùng tìm kiếm"
+                              fill
+                              className="object-cover"
+                            />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <span className="text-[10px] font-bold text-emerald-300 uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-400/30">
+                              {detectedInfo?.category || "CLOOP Lens"}
+                            </span>
+                            {detectedInfo?.dominantColor && (
+                              <span className="text-[10px] text-amber-300 px-1.5 py-0.5 rounded-md bg-amber-500/20 border border-amber-400/30 truncate">
+                                {detectedInfo.dominantColor}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-stone-300 line-clamp-1 italic mb-2">
+                            {detectedInfo?.itemDescription || "Đã đối chiếu với tủ đồ thực tế"}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            {rawImage && (
+                              <button
+                                onClick={handleBackToCrop}
+                                className="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-400/40 text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                              >
+                                <Crop size={12} /> Khoanh vùng lại
+                              </button>
+                            )}
+                            <button
+                              onClick={handleReset}
+                              className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-stone-300 text-[10px] font-medium flex items-center gap-1 cursor-pointer transition-colors"
+                            >
+                              <RefreshCw size={12} /> Đổi ảnh
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Bóc tách AI Tags (Desktop) */}
                     {detectedInfo && (
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="bg-emerald-950/40 border border-emerald-500/30 rounded-2xl p-4 shadow-lg"
+                        className="hidden md:block bg-emerald-950/40 border border-emerald-500/30 rounded-2xl p-4 shadow-lg"
                       >
                         <div className="flex items-center gap-2 text-emerald-300 text-xs font-bold uppercase tracking-wider mb-2">
                           <CheckCircle2 size={16} /> AI đã nhận diện phom dáng Lookbook:
@@ -764,10 +812,9 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
                         </div>
                       )}
 
-                      {/* Lưới sản phẩm khớp */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[380px] overflow-y-auto pr-1">
+                      {/* Lưới sản phẩm khớp 2 cột chuẩn Shopee Fashion Grid */}
+                      <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5 max-h-[440px] overflow-y-auto pr-1">
                         {matchedProducts.map((product) => {
-                          // Phân loại màu sắc huy hiệu độ khớp
                           const isHighMatch = product.matchScore >= 85;
                           const isMediumMatch = product.matchScore >= 70;
 
@@ -776,9 +823,10 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
                               key={product.id}
                               href={`/product/${product.id}`}
                               onClick={onClose}
-                              className="group flex items-center gap-3 p-3 rounded-2xl bg-white/5 hover:bg-emerald-950/40 border border-white/10 hover:border-emerald-400/50 transition-all duration-300 shadow-sm hover:shadow-lg"
+                              className="group flex flex-col rounded-2xl bg-white/5 hover:bg-emerald-950/40 border border-white/10 hover:border-emerald-400/50 transition-all duration-300 shadow-sm hover:shadow-lg overflow-hidden"
                             >
-                              <div className="relative w-18 h-24 rounded-xl overflow-hidden shrink-0 border border-white/10 bg-stone-900">
+                              {/* Product Image */}
+                              <div className="relative w-full aspect-[3/4] bg-stone-900 overflow-hidden">
                                 <Image
                                   src={product.primaryImage}
                                   alt={product.title}
@@ -786,7 +834,7 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
                                   className="object-cover group-hover:scale-105 transition-transform duration-300"
                                 />
                                 <div
-                                  className={`absolute top-1 left-1 px-1.5 py-0.5 rounded text-[9px] font-black shadow-md ${
+                                  className={`absolute top-2 left-2 px-2 py-0.5 rounded-md text-[10px] font-black shadow-md ${
                                     isHighMatch
                                       ? "bg-emerald-400 text-stone-950"
                                       : isMediumMatch
@@ -798,31 +846,31 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
                                 </div>
                               </div>
 
-                              <div className="flex-1 min-w-0">
-                                <span className="text-[10px] text-stone-400 block truncate font-medium">
-                                  Chủ tủ: {product.ownerName}
-                                </span>
-                                <h5 className="text-xs font-bold text-white group-hover:text-emerald-300 transition-colors truncate mb-1">
-                                  {product.title}
-                                </h5>
-                                <p className="text-[10px] text-stone-400 mb-2 truncate">
-                                  {product.matchReason}
-                                </p>
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <span className="text-xs font-black text-emerald-400 block">
-                                      {product.rentalPrice.toLocaleString("vi-VN")}đ
-                                      <span className="text-[9px] text-stone-400 font-normal">/ngày</span>
-                                    </span>
-                                    {product.salePrice > 0 && (
-                                      <span className="text-[9px] text-stone-500 line-through">
-                                        Mua: {product.salePrice.toLocaleString("vi-VN")}đ
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span className="text-[10px] font-bold text-emerald-300 group-hover:text-white flex items-center gap-0.5 bg-emerald-500/20 px-2 py-1 rounded-lg border border-emerald-500/30 transition-colors">
-                                    Thuê ngay <ArrowRight size={10} />
+                              {/* Details */}
+                              <div className="p-2.5 sm:p-3 flex flex-col flex-1 justify-between">
+                                <div>
+                                  <span className="text-[10px] text-stone-400 block truncate font-medium mb-0.5">
+                                    Chủ tủ: {product.ownerName}
                                   </span>
+                                  <h5 className="text-xs font-bold text-white group-hover:text-emerald-300 transition-colors line-clamp-2 leading-tight mb-1">
+                                    {product.title}
+                                  </h5>
+                                  <p className="text-[10px] text-stone-400 mb-2 truncate">
+                                    {product.matchReason}
+                                  </p>
+                                </div>
+
+                                <div>
+                                  <div className="flex items-baseline gap-1 mb-2">
+                                    <span className="text-xs sm:text-sm font-extrabold text-emerald-400">
+                                      {product.rentalPrice.toLocaleString("vi-VN")}đ
+                                    </span>
+                                    <span className="text-[9px] text-stone-400 font-normal">/ngày</span>
+                                  </div>
+
+                                  <div className="w-full py-1.5 rounded-lg bg-emerald-500/20 group-hover:bg-emerald-500 text-emerald-300 group-hover:text-stone-950 text-[11px] font-bold transition-colors flex items-center justify-center gap-1 border border-emerald-500/30">
+                                    Thuê ngay <ArrowRight size={11} />
+                                  </div>
                                 </div>
                               </div>
                             </Link>

@@ -3,13 +3,25 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, X, ArrowRight, Sparkles, Volume2, Search, AlertCircle } from "lucide-react";
+import { X, AlertCircle } from "lucide-react";
 
 interface VoiceSearchModalProps {
   isOpen: boolean;
   onClose: () => void;
   onTranscript?: (text: string) => void;
 }
+
+const SAMPLE_PHRASES = [
+  "Đầm dạ hội tiệc cưới",
+  "Áo dài cách tân",
+  "Set blazer dạ tweed",
+  "Váy hoa nhí dạo phố",
+];
+
+// Wave heights pattern similar to Shopee
+const WAVE_PATTERN = [
+  4, 6, 8, 12, 18, 26, 32, 28, 20, 14, 18, 28, 36, 30, 22, 16, 24, 34, 38, 30, 20, 14, 18, 26, 20, 12, 8, 6, 4
+];
 
 export default function VoiceSearchModal({ isOpen, onClose, onTranscript }: VoiceSearchModalProps) {
   const router = useRouter();
@@ -19,7 +31,7 @@ export default function VoiceSearchModal({ isOpen, onClose, onTranscript }: Voic
   const [errorStatus, setErrorStatus] = useState<string | null>(null);
   const recognitionRef = useRef<any>(null);
 
-  // Initialize SpeechRecognition on open
+  // Auto-start recording immediately when opened
   useEffect(() => {
     if (!isOpen) {
       if (recognitionRef.current) {
@@ -41,7 +53,7 @@ export default function VoiceSearchModal({ isOpen, onClose, onTranscript }: Voic
 
     if (!SpeechRecognition) {
       setErrorStatus(
-        "Trình duyệt hiện tại chưa hỗ trợ Web Speech API. Bạn có thể sử dụng Chrome, Safari hoặc gõ tìm kiếm thông thường nhé!"
+        "Trình duyệt chưa hỗ trợ nhận diện giọng nói trực tiếp. Bạn vui lòng sử dụng Chrome, Safari hoặc gõ tìm kiếm nhé!"
       );
       return;
     }
@@ -74,10 +86,9 @@ export default function VoiceSearchModal({ isOpen, onClose, onTranscript }: Voic
         if (final) {
           setTranscript(final.trim());
           setInterimTranscript("");
-          // Auto submit after a brief pause
           setTimeout(() => {
             handleCompleteSearch(final.trim());
-          }, 800);
+          }, 600);
         } else {
           setInterimTranscript(interim);
         }
@@ -86,11 +97,12 @@ export default function VoiceSearchModal({ isOpen, onClose, onTranscript }: Voic
       recognition.onerror = (event: any) => {
         console.warn("Speech recognition error:", event.error);
         if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-          setErrorStatus("Quyền truy cập micro đã bị từ chối. Vui lòng bật cấp quyền micro trên trình duyệt.");
+          setErrorStatus("Vui lòng cấp quyền micro trên trình duyệt để tìm kiếm bằng giọng nói.");
         } else if (event.error === "no-speech") {
-          setErrorStatus("Chưa nghe thấy giọng nói. Hãy bấm nút micro và thử nói lại lần nữa nhé!");
+          // Keep listening or prompt
+          setErrorStatus("Chưa nghe rõ câu nói. Bạn hãy thử nói lại lần nữa nhé!");
         } else {
-          setErrorStatus("Không thể nhận diện giọng nói lúc này. Vui lòng thử lại.");
+          setErrorStatus("Không thể nhận diện giọng nói lúc này.");
         }
         setIsListening(false);
       };
@@ -103,7 +115,7 @@ export default function VoiceSearchModal({ isOpen, onClose, onTranscript }: Voic
       recognition.start();
     } catch (err: any) {
       console.error("Init speech recognition failed:", err);
-      setErrorStatus("Không thể khởi động micro. Vui lòng thử lại.");
+      setErrorStatus("Không thể khởi động micro.");
       setIsListening(false);
     }
 
@@ -118,7 +130,17 @@ export default function VoiceSearchModal({ isOpen, onClose, onTranscript }: Voic
     };
   }, [isOpen]);
 
-  const handleRestart = () => {
+  const handleCompleteSearch = (queryText: string) => {
+    if (!queryText.trim()) return;
+    onClose();
+    if (onTranscript) {
+      onTranscript(queryText.trim());
+    } else {
+      router.push(`/shop?search=${encodeURIComponent(queryText.trim())}`);
+    }
+  };
+
+  const handleRetryListening = () => {
     setErrorStatus(null);
     setTranscript("");
     setInterimTranscript("");
@@ -131,150 +153,110 @@ export default function VoiceSearchModal({ isOpen, onClose, onTranscript }: Voic
     }
   };
 
-  const handleCompleteSearch = (queryText: string) => {
-    if (!queryText.trim()) return;
-    onClose();
-    if (onTranscript) {
-      onTranscript(queryText.trim());
-    } else {
-      router.push(`/shop?search=${encodeURIComponent(queryText.trim())}`);
-    }
-  };
-
   if (!isOpen) return null;
 
-  const currentDisplay = transcript || interimTranscript;
+  const currentText = transcript || interimTranscript;
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+      <div className="fixed inset-0 z-[10000] flex flex-col justify-end bg-black/60 backdrop-blur-xs">
+        {/* Backdrop click to dismiss */}
         <div className="fixed inset-0" onClick={onClose} />
 
+        {/* Shopee-style Bottom Sheet */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.94, y: 15 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.94, y: 15 }}
-          className="relative w-full max-w-md bg-stone-950 border border-emerald-500/30 rounded-3xl p-6 sm:p-7 text-white shadow-2xl text-center z-10 overflow-hidden"
+          initial={{ y: "100%", opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: "100%", opacity: 0 }}
+          transition={{ type: "spring", damping: 28, stiffness: 320 }}
+          className="relative w-full max-w-lg mx-auto bg-white rounded-t-[32px] pt-6 pb-9 px-6 text-center shadow-2xl z-10 overflow-hidden"
         >
-          {/* Close button */}
+          {/* Close button in top right */}
           <button
+            type="button"
             onClick={onClose}
-            className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-stone-300 hover:text-white transition-colors cursor-pointer"
+            className="absolute top-5 right-5 w-8 h-8 rounded-full hover:bg-stone-100 flex items-center justify-center text-stone-400 hover:text-stone-700 transition-colors cursor-pointer"
           >
-            <X size={16} />
+            <X size={20} />
           </button>
 
-          {/* Badge */}
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-[10.5px] font-bold uppercase tracking-widest mb-5 font-ui">
-            <Volume2 size={13} className="animate-pulse" />
-            <span>Voice Fashion Search (0đ)</span>
+          {/* Heading */}
+          <div className="mt-2 mb-4">
+            <h3 className="text-xl sm:text-2xl font-extrabold text-stone-900 tracking-tight transition-all">
+              {currentText ? `"${currentText}"` : isListening ? "Đang lắng nghe..." : "Bấm vào sóng âm để nói"}
+            </h3>
           </div>
 
-          <h3 className="font-heading text-xl sm:text-2xl font-bold tracking-tight mb-2">
-            Tìm đồ bằng giọng nói
-          </h3>
-          <p className="text-xs text-stone-400 mb-6 max-w-xs mx-auto">
-            Hãy nói tên trang phục, màu sắc hoặc dịp bạn muốn mặc (ví dụ: &quot;Đầm dạ hội đỏ&quot;, &quot;Áo dài cách tân&quot;...)
+          {/* Subtitle */}
+          <p className="text-xs font-semibold text-stone-400 mb-3 uppercase tracking-wider">
+            Bạn hãy thử nói
           </p>
 
-          {/* Animated Microphone Circle */}
-          <div className="relative w-28 h-28 mx-auto flex items-center justify-center my-4">
-            {isListening && (
-              <>
-                <motion.div
-                  animate={{ scale: [1, 1.5, 1], opacity: [0.6, 0.1, 0.6] }}
-                  transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-                  className="absolute inset-0 rounded-full bg-emerald-500/30 border border-emerald-400/40"
-                />
-                <motion.div
-                  animate={{ scale: [1, 1.25, 1], opacity: [0.8, 0.3, 0.8] }}
-                  transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
-                  className="absolute inset-2 rounded-full bg-emerald-500/40"
-                />
-              </>
-            )}
-
-            <button
-              onClick={isListening ? () => recognitionRef.current?.stop() : handleRestart}
-              className={`relative z-10 w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 shadow-xl cursor-pointer ${
-                isListening
-                  ? "bg-emerald-500 text-stone-950 shadow-emerald-500/40 scale-105"
-                  : "bg-stone-800 text-stone-300 hover:bg-stone-700"
-              }`}
-            >
-              {isListening ? (
-                <Mic size={34} className="animate-pulse" />
-              ) : (
-                <MicOff size={32} />
-              )}
-            </button>
+          {/* Sample Phrases List */}
+          <div className="space-y-2 mb-8">
+            {SAMPLE_PHRASES.map((phrase, idx) => (
+              <p
+                key={idx}
+                onClick={() => handleCompleteSearch(phrase)}
+                className="text-[13px] text-stone-700 font-medium cursor-pointer hover:text-[#EE4D2D] hover:font-bold transition-colors select-none py-0.5"
+              >
+                {phrase}
+              </p>
+            ))}
           </div>
 
-          {/* Dynamic Audio Visualizer Bars */}
-          {isListening && (
-            <div className="flex items-center justify-center gap-1.5 h-6 mb-4">
-              {[0.4, 0.8, 1.2, 0.6, 1.0, 0.5, 0.9, 0.4].map((delay, idx) => (
-                <motion.span
-                  key={idx}
-                  animate={{ height: ["4px", "22px", "4px"] }}
-                  transition={{ repeat: Infinity, duration: 0.8, delay: delay * 0.3, ease: "easeInOut" }}
-                  className="w-1 bg-emerald-400 rounded-full"
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Live Transcript Box */}
-          <div className="min-h-[56px] px-4 py-3 rounded-2xl bg-white/5 border border-white/10 mb-4 flex items-center justify-center text-center">
-            {currentDisplay ? (
-              <p className="text-sm font-semibold text-emerald-300 italic">
-                &quot;{currentDisplay}&quot;
-              </p>
-            ) : isListening ? (
-              <p className="text-xs text-stone-400 animate-pulse">
-                Đang lắng nghe giọng nói của bạn...
-              </p>
-            ) : (
-              <p className="text-xs text-stone-500">
-                Bấm vào biểu tượng micro để nói
-              </p>
-            )}
-          </div>
-
-          {/* Error message */}
+          {/* Error notice if microphone failed */}
           {errorStatus && (
-            <div className="p-3 mb-4 rounded-xl bg-red-950/40 border border-red-500/30 text-[11px] text-red-300 flex items-center gap-2 text-left">
-              <AlertCircle size={15} className="shrink-0 text-red-400" />
+            <div className="mb-4 p-3 rounded-2xl bg-amber-50 border border-amber-200/80 text-xs text-amber-900 flex items-center justify-center gap-2">
+              <AlertCircle size={15} className="shrink-0 text-amber-700" />
               <span>{errorStatus}</span>
+              <button
+                type="button"
+                onClick={handleRetryListening}
+                className="underline font-bold text-amber-950 ml-1 cursor-pointer"
+              >
+                Thử lại
+              </button>
             </div>
           )}
 
-          {/* Action Button */}
-          {transcript ? (
-            <button
-              onClick={() => handleCompleteSearch(transcript)}
-              className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-ui text-xs font-bold uppercase tracking-wider shadow-lg shadow-emerald-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <Search size={15} /> Tìm kiếm ngay
-            </button>
-          ) : (
-            <div className="flex items-center justify-center gap-2">
-              {[
-                "Đầm dạ tiệc",
-                "Áo blazer",
-                "Áo dài cách tân",
-                "Set đồ vintage",
-              ].map((sample, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleCompleteSearch(sample)}
-                  className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[10.5px] text-stone-300 transition-colors cursor-pointer"
-                >
-                  {sample}
-                </button>
-              ))}
-            </div>
-          )}
+          {/* Shopee-style Animated Waveform Equalizer (Tap to restart if stopped) */}
+          <div
+            onClick={!isListening ? handleRetryListening : undefined}
+            className={`flex items-center justify-center gap-[3px] h-10 px-2 transition-all ${
+              !isListening ? "cursor-pointer hover:opacity-80" : ""
+            }`}
+            title={!isListening ? "Bấm để thu âm lại" : "Đang lắng nghe"}
+          >
+            {WAVE_PATTERN.map((baseH, idx) => (
+              <motion.span
+                key={idx}
+                animate={
+                  isListening
+                    ? {
+                        height: [
+                          `${Math.max(4, baseH * 0.4)}px`,
+                          `${Math.max(4, baseH * 1.15)}px`,
+                          `${Math.max(4, baseH * 0.3)}px`,
+                        ],
+                        opacity: [0.8, 1, 0.8],
+                      }
+                    : { height: "4px", opacity: 0.35 }
+                }
+                transition={
+                  isListening
+                    ? {
+                        repeat: Infinity,
+                        duration: 0.8 + (idx % 5) * 0.12,
+                        ease: "easeInOut",
+                        delay: (idx % 7) * 0.08,
+                      }
+                    : { duration: 0.3 }
+                }
+                className="w-[3px] rounded-full bg-gradient-to-t from-[#EE4D2D] to-[#FF7337]"
+              />
+            ))}
+          </div>
         </motion.div>
       </div>
     </AnimatePresence>
