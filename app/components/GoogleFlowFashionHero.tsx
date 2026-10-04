@@ -538,8 +538,8 @@ export default function GoogleFlowFashionHero({ initialProducts }: GoogleFlowFas
         })}
       </div>
 
-      {/* 🍵 BALANCED CENTER AMBIENT MASK (Tươi sáng, trong trẻo, làm nổi bật sắc màu trang phục) */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(7,24,15,0.60)_0%,_rgba(7,24,15,0.40)_38%,_rgba(6,20,13,0.18)_75%,_rgba(4,14,9,0.48)_100%)] pointer-events-none z-20" />
+      {/* 🍵 BALANCED CENTER AMBIENT MASK (Tối hơn một xíu vừa vặn, tăng chiều sâu và độ tương phản) */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(5,18,11,0.72)_0%,_rgba(5,18,11,0.52)_38%,_rgba(4,15,9,0.26)_75%,_rgba(3,11,7,0.58)_100%)] pointer-events-none z-20" />
 
       {/* 🌟 CENTERPIECE CONTENT */}
       <div className="relative z-30 max-w-3xl mx-auto px-4 text-center flex flex-col items-center justify-center pointer-events-auto my-auto py-8">

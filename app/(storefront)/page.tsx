@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { getOptimizedCloudinaryUrl } from "@/lib/cloudinary-optimize";
 import Image from "next/image";
 import Link from "next/link";
@@ -13,7 +13,9 @@ import {
   Droplet,
   DollarSign,
   CheckCircle2,
-  Calendar
+  Calendar,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import VisualSearchModal from "@/app/components/VisualSearchModal";
 import GoogleFlowFashionHero from "@/app/components/GoogleFlowFashionHero";
@@ -125,6 +127,22 @@ export default function Home() {
   const [isVisualSearchOpen, setIsVisualSearchOpen] = useState(false);
   const [activeClosetIndex, setActiveClosetIndex] = useState(0);
   const [products, setProducts] = useState<any[]>(REAL_DEFAULT_PRODUCTS);
+  const occasionScrollRef = useRef<HTMLDivElement>(null);
+
+  const handleOccasionWheel = (e: React.WheelEvent) => {
+    if (!occasionScrollRef.current) return;
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+      occasionScrollRef.current.scrollLeft += e.deltaY * 1.15;
+    }
+  };
+
+  const scrollOccasions = (direction: "left" | "right") => {
+    if (!occasionScrollRef.current) return;
+    occasionScrollRef.current.scrollBy({
+      left: direction === "left" ? -320 : 320,
+      behavior: "smooth"
+    });
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -365,79 +383,79 @@ export default function Home() {
       {/* ⚡ 02 — NHỊP ĐẬP TUẦN HOÀN (CHÂN HERO HEADER) */}
       <LivePulseTicker />
 
-      {/* 👗 03 — OCCASIONS (Kiểu By Rotation: khi rê chuột kéo to hình ra đầy đủ) */}
+      {/* 👗 03 — OCCASIONS (Giữ nguyên kích cỡ lớn sang trọng, lăn chuột lướt mượt mà xem toàn bộ ảnh) */}
       <section className="w-full max-w-7xl xl:max-w-[1380px] mx-auto px-4 md:px-6 lg:px-8 py-8 md:py-12">
-        <div className="flex items-center justify-between mb-6 sm:mb-8">
-          <h2 className="font-heading text-2xl sm:text-3xl md:text-4xl text-[#0A2517] font-extrabold tracking-tight">
-            Tìm Phong Cách Theo Dịp Của Bạn
-          </h2>
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-3">
+          <div>
+            <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200/80 font-ui">
+              BỘ SƯU TẬP TUYỂN CHỌN
+            </span>
+            <h2 className="font-heading text-2xl sm:text-3xl md:text-4xl text-[#0A2517] font-extrabold tracking-tight mt-1.5">
+              Tìm Phong Cách Theo Dịp Của Bạn
+            </h2>
+          </div>
 
-          <Link 
-            href="/shop" 
-            prefetch={true}
-            className="font-ui text-xs font-bold uppercase tracking-wider text-[#183A2D] hover:text-emerald-800 flex items-center gap-1 group shrink-0"
-          >
-            <span>Tất Cả Phong Cách</span>
-            <ArrowRight size={13} className="group-hover:translate-x-1 transition-transform" />
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link 
+              href="/shop" 
+              prefetch={true}
+              className="font-ui text-xs font-bold uppercase tracking-wider text-[#183A2D] hover:text-emerald-800 flex items-center gap-1 group shrink-0 mr-1"
+            >
+              <span>Tất Cả Phong Cách</span>
+              <ArrowRight size={13} className="group-hover:translate-x-1 transition-transform" />
+            </Link>
+
+            {/* Nút lướt sang trái / phải nhẹ nhàng */}
+            <div className="hidden sm:flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => scrollOccasions("left")}
+                className="w-9 h-9 rounded-full bg-white hover:bg-stone-100 border border-stone-200/80 text-[#0A2517] flex items-center justify-center shadow-xs transition-transform active:scale-95 cursor-pointer"
+                title="Lướt sang trái"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollOccasions("right")}
+                className="w-9 h-9 rounded-full bg-white hover:bg-stone-100 border border-stone-200/80 text-[#0A2517] flex items-center justify-center shadow-xs transition-transform active:scale-95 cursor-pointer"
+                title="Lướt sang phải"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* 💻 DESKTOP: Khi rê chuột vào thẻ nào, thẻ đó mượt mà dãn rộng kéo to hình ra đầy đủ (Accordion Expanding Cards) */}
-        <div className="hidden md:flex gap-3 lg:gap-3.5 w-full h-[460px] lg:h-[500px]">
+        {/* 🌟 DÃY THẺ GIỮ NGUYÊN KÍCH CỠ LỚN SANG TRỌNG - LĂN CHUỘT XEM TOÀN BỘ ẢNH */}
+        <div 
+          ref={occasionScrollRef}
+          onWheel={handleOccasionWheel}
+          className="w-full overflow-x-auto no-scrollbar scroll-smooth flex gap-3.5 sm:gap-4 lg:gap-5 py-2 -mx-4 sm:mx-0 px-4 sm:px-0"
+        >
           {occasionCollections.map((col) => (
             <Link
               key={col.id}
               href={col.link}
               prefetch={true}
-              className="group relative flex-1 hover:flex-[3] lg:hover:flex-[3.5] transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] rounded-2xl lg:rounded-3xl overflow-hidden shadow-xs hover:shadow-2xl cursor-pointer border border-stone-200/80 flex flex-col justify-end p-5 lg:p-6"
+              className="w-[230px] sm:w-[260px] md:w-[275px] lg:w-[285px] aspect-[9/14] shrink-0 rounded-2xl lg:rounded-3xl overflow-hidden relative shadow-xs hover:shadow-2xl transition-all duration-500 group flex flex-col justify-end p-5 cursor-pointer border border-stone-200/80 hover:-translate-y-1"
             >
               <Image 
                 src={col.image} 
                 alt={col.title} 
                 fill 
-                className="object-cover transition-transform duration-700 ease-out group-hover:scale-105 brightness-[0.92] group-hover:brightness-[0.96]" 
+                className="object-cover transition-transform duration-700 ease-out group-hover:scale-106 brightness-[0.92] group-hover:brightness-[0.96]" 
                 unoptimized 
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent pointer-events-none" />
 
               <div className="relative z-10 space-y-1">
-                <h3 className="font-heading text-xl lg:text-2xl font-bold text-white leading-tight whitespace-nowrap drop-shadow-md">
+                <h3 className="font-heading text-xl lg:text-2xl font-bold text-white leading-tight">
                   {col.title}
                 </h3>
                 <div className="flex items-center gap-1 text-xs font-semibold text-[#A3E39F] group-hover:text-white transition-colors font-ui">
-                  <span className="uppercase text-[10px] tracking-wider whitespace-nowrap">Khám Phá Ngay</span>
+                  <span className="uppercase text-[10px] tracking-wider">Khám Phá Ngay</span>
                   <ArrowRight size={12} className="group-hover:translate-x-1.5 transition-transform" />
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-
-        {/* 📱 MOBILE: Lướt ngang mượt mà */}
-        <div className="flex md:hidden overflow-x-auto no-scrollbar gap-3 snap-x px-4 -mx-4 py-1">
-          {occasionCollections.map((col) => (
-            <Link
-              key={col.id}
-              href={col.link}
-              prefetch={true}
-              className="w-[220px] shrink-0 aspect-[9/14] snap-start rounded-2xl overflow-hidden relative shadow-xs border border-stone-200/80 p-4 flex flex-col justify-end group active:scale-[0.98] transition-transform"
-            >
-              <Image 
-                src={col.image} 
-                alt={col.title} 
-                fill 
-                className="object-cover brightness-[0.92]" 
-                unoptimized 
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
-
-              <div className="relative z-10 space-y-1">
-                <h3 className="font-heading text-lg font-bold text-white leading-tight">
-                  {col.title}
-                </h3>
-                <div className="flex items-center gap-1 text-[10px] font-semibold text-[#A3E39F] font-ui uppercase">
-                  <span>Khám Phá Ngay</span>
-                  <ArrowRight size={11} />
                 </div>
               </div>
             </Link>
