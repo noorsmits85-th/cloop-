@@ -74,7 +74,10 @@ export async function middleware(request: NextRequest) {
   } else if (pathname.startsWith('/shop') || pathname.startsWith('/api/products')) {
     rlType = 'shop';
   } else if (pathname.startsWith('/api/')) {
-    rlType = 'api';
+    // Bỏ qua rate limit chung cho các route AI vì chúng đã tự xử lý rate limit (fail-open)
+    if (!pathname.startsWith('/api/visual-search') && !pathname.startsWith('/api/voice-transcribe')) {
+      rlType = 'api';
+    }
   }
 
   if (rlType) {
