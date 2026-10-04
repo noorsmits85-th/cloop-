@@ -71,6 +71,11 @@ model Product {
   isHighlighted   Boolean            @default(false)
   likeCount       Int                @default(0)
   saveCount       Int                @default(0)
+  aiCategory      String?
+  aiColor         String?
+  aiMaterial      String?
+  aiStyle         String?
+  aiKeywords      String[]           @default([])
   blogs           BlogPost[]
   listings        Listing[]
   images          ProductImage[]

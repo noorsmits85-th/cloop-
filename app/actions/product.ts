@@ -300,6 +300,12 @@ export async function createProductAction({
     } catch(e) {
       console.error("Cache purge failed:", e);
     }
+    
+    // Giai đoạn A: Chạy ngầm AI auto-tagging sau khi tạo sản phẩm thành công
+    import('@/src/services/autoTagging').then(m => {
+      m.autoTagProductBackground(newProductId, uploadedImageUrls[0]);
+    }).catch(console.error);
+
     return { success: true, productId: newProductId };
   } catch (error: any) {
     console.error("Create Product Error:", error);

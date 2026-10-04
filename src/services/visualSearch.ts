@@ -67,7 +67,6 @@ type AiAnalysis = {
   material: string;
   itemDescription: string;
   searchKeywords: string[];
-  matches: Array<{ idx: number; score: number; reason: string }>;
   model: string;
 };
 
@@ -177,25 +176,10 @@ async function loadCatalog(): Promise<CatalogItem[]> {
   return items;
 }
 
-function buildPrompt(catalog: CatalogItem[], colorHint?: string | null): string {
-  const lines = catalog
-    .map((p, i) => {
-      const color = p.color && p.color !== "Tự nhiên" ? ` | màu: ${p.color}` : "";
-      const desc = p.description ? ` | mô tả: ${p.description.replace(/\s+/g, " ").slice(0, 70)}` : "";
-      return `${i + 1}. ${p.title} | loại: ${p.category}${color} | dịp: ${p.occasion}${desc}`;
-    })
-    .join("\n");
+function buildPrompt(colorHint?: string | null): string {
+  return `Bạn là chuyên gia thời trang của CLOOP. Nhìn ảnh, xác định MÓN ĐỒ CHÍNH (nổi bật nhất, ở trung tâm ảnh).
 
-  return `Bạn là chuyên gia thời trang của CLOOP. Nhìn ảnh, xác định MÓN ĐỒ CHÍNH (nổi bật nhất, ở trung tâm ảnh),
-rồi chọn các sản phẩm GIỐNG NHẤT trong kho dưới đây.
-
-Tiêu chí ưu tiên: (1) cùng loại trang phục (váy/đầm, áo, quần, áo khoác, set, áo dài...) là bắt buộc để điểm cao;
-(2) cùng màu; (3) cùng phom dáng/chi tiết (trễ vai, dáng dài, thắt eo, sọc, hoa...); (4) cùng phong cách/dịp.
-Khác loại trang phục thì điểm tối đa 45. Không bịa sản phẩm ngoài danh sách.
-${colorHint ? `Gợi ý: đo pixel vùng trung tâm ảnh cho màu chủ đạo ~ "${colorHint}".` : ""}
-
-KHO CLOOP:
-${lines}
+${colorHint ? "Gợi ý: đo pixel vùng trung tâm ảnh cho màu chủ đạo ~ " + colorHint + "." : ""}
 
 Trả về JSON đúng cấu trúc:
 {
@@ -204,10 +188,8 @@ Trả về JSON đúng cấu trúc:
   "style": "phong cách, tiếng Việt",
   "material": "chất liệu dự đoán, tiếng Việt",
   "itemDescription": "1 câu mô tả món đồ chính",
-  "searchKeywords": ["4-6 từ khóa tiếng Việt"],
-  "matches": [{"idx": số thứ tự trong kho, "score": 0-100, "reason": "lý do ngắn <= 8 từ"}]
-}
-"matches" gồm tối đa ${MAX_RESULTS} sản phẩm, sắp xếp điểm giảm dần.`;
+  "searchKeywords": ["4-6 từ khóa tiếng Việt"]
+}`;
 }
 
 async function callVisionModel(
@@ -254,15 +236,7 @@ async function callVisionModel(
     material: String(parsed.material || ""),
     itemDescription: String(parsed.itemDescription || ""),
     searchKeywords: Array.isArray(parsed.searchKeywords) ? parsed.searchKeywords.map(String).slice(0, 8) : [],
-    matches: Array.isArray(parsed.matches)
-      ? parsed.matches
-          .map((m: any) => ({
-            idx: Number(m?.idx),
-            score: Number(m?.score),
-            reason: String(m?.reason || "").slice(0, 80),
-          }))
-          .filter((m: any) => Number.isFinite(m.idx) && Number.isFinite(m.score))
-      : [],
+
     model,
   };
 }
@@ -270,10 +244,9 @@ async function callVisionModel(
 /** Chạy song song các model nhanh, trả về kết quả hợp lệ đầu tiên; huỷ các request còn lại. */
 async function analyzeWithAi(
   image: SafeImagePayload,
-  catalog: CatalogItem[],
   colorHint?: string | null
 ): Promise<AiAnalysis | null> {
-  const prompt = buildPrompt(catalog, colorHint);
+  const prompt = buildPrompt(colorHint);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
 
@@ -364,67 +337,85 @@ export async function searchByValidatedOutfitImage(
   }
 
   try {
-    const catalog = await loadCatalog();
-    if (catalog.length === 0) {
-      return { success: true, traceId, matchedProducts: [], isFallback: true, elapsedMs: Date.now() - startedAt };
+    const ai = await analyzeWithAi(image, colorHint);
+
+    let dbQuery: any = { isDeleted: false, status: { in: ["IN_CLOSET", "ON_MARKET"] } };
+    
+    // Giai đoạn A: Tìm kiếm bằng AI Tags thay vì full catalog
+    if (ai) {
+      dbQuery.OR = [
+        { aiCategory: { contains: ai.category, mode: 'insensitive' } },
+        { title: { contains: ai.category, mode: 'insensitive' } },
+        { category: { contains: ai.category, mode: 'insensitive' } },
+      ];
+    } else if (colorHint) {
+       dbQuery.OR = [
+         { color: { contains: colorHint, mode: 'insensitive' } },
+         { aiColor: { contains: colorHint, mode: 'insensitive' } },
+       ];
     }
 
-    const ai = await analyzeWithAi(image, catalog, colorHint);
+    const rawProducts = await prisma.product.findMany({
+      where: dbQuery,
+      take: 40,
+      include: {
+        images: { orderBy: { isPrimary: 'desc' }, take: 1 },
+        listings: { where: { isDeleted: false, status: 'AVAILABLE' } },
+        user: { select: { name: true } }
+      }
+    });
 
-    const queryText = normalizeText(
-      ai ? [ai.category, ai.dominantColor, ai.itemDescription, ...ai.searchKeywords].join(" ") : colorHint || ""
-    );
-    const queryGarments = groupsIn(queryText, GARMENT_GROUPS);
+    const queryGarments = groupsIn(normalizeText(ai?.category || ''), GARMENT_GROUPS);
     const queryColors = groupsIn(normalizeText([ai?.dominantColor, colorHint].filter(Boolean).join(" ")), COLOR_GROUPS);
     const keywords = ai ? ai.searchKeywords.map(normalizeText).filter(Boolean) : [];
 
-    const scored = new Map<string, { item: CatalogItem; score: number; reason: string }>();
-    const aiPicks = new Map<string, { score: number; reason: string }>();
-    if (ai) {
-      for (const m of ai.matches) {
-        const item = catalog[m.idx - 1];
-        if (!item || aiPicks.has(item.id)) continue;
-        aiPicks.set(item.id, {
-          score: Math.max(1, Math.min(m.score, 99)),
-          reason: m.reason || `Tương đồng ${ai.category}`,
-        });
-      }
-    }
+    const scored = rawProducts.map(p => {
+       const rent = p.listings.find((l: any) => l.listingType === "RENT");
+       const sell = p.listings.find((l: any) => l.listingType === "SELL");
+       
+       const itemStr = normalizeText([p.title, p.category, p.occasion, p.aiCategory, p.aiKeywords?.join(' ')].join(" "));
+       const itemColorsStr = normalizeText([p.color, p.aiColor].join(" "));
+       
+       let score = 30;
+       const itemGarments = groupsIn(itemStr, GARMENT_GROUPS);
+       const itemColors = groupsIn(itemColorsStr, COLOR_GROUPS);
 
-    // Chấm điểm toàn bộ kho:
-    // - Món AI chọn: 70% điểm AI (đã nhìn ảnh) + 30% điểm loại đồ/màu đo được.
-    // - Món AI không chọn: tối đa ~50% điểm loại đồ/màu -> chỉ vượt được các lựa chọn AI yếu.
-    // - Khi AI lỗi: dùng 100% điểm loại đồ/màu (màu đo từ pixel ảnh).
-    for (const item of catalog) {
-      const h = heuristicScore(item, queryGarments, queryColors, keywords);
-      const pick = aiPicks.get(item.id);
-      let score: number;
-      let reason: string;
-      if (pick) {
-        score = 0.7 * pick.score + 0.3 * h.score;
-        reason = pick.reason;
-      } else {
-        score = ai ? 0.6 * h.score : h.score;
-        reason = h.reasons.length ? `Gần giống: ${h.reasons.join(", ")}` : "Gợi ý cùng phong cách";
-      }
-      scored.set(item.id, { item, score: Math.round(Math.max(1, Math.min(score, 99))), reason });
-    }
+       let reasons = [];
+       if (queryGarments.size > 0 && [...queryGarments].some(g => itemGarments.has(g))) {
+         score += 40; reasons.push("cùng loại đồ");
+       } else if (itemGarments.size > 0) {
+         score -= 10;
+       }
 
-    const matchedProducts = [...scored.values()]
-      .sort((a, b) => b.score - a.score)
-      .slice(0, MAX_RESULTS)
-      .map(({ item, score, reason }) => ({
-        id: item.id,
-        title: item.title,
-        category: item.category,
-        color: item.color,
-        primaryImage: item.primaryImage,
-        rentalPrice: item.rentalPrice,
-        salePrice: item.salePrice,
-        matchScore: score,
-        matchReason: reason,
-        ownerName: item.ownerName,
-      }));
+       if (queryColors.size > 0 && [...queryColors].some(c => itemColors.has(c))) {
+         score += 20; reasons.push("cùng tông màu");
+       }
+
+       let kwHits = 0;
+       for (const kw of keywords) {
+         if (kw.length >= 3 && itemStr.includes(kw)) kwHits++;
+       }
+       if (kwHits > 0) {
+         score += Math.min(kwHits * 5, 15); reasons.push("tương đồng chi tiết");
+       }
+
+       if (ai && p.aiCategory && normalizeText(p.aiCategory).includes(normalizeText(ai.category))) {
+         score += 10; 
+       }
+
+       return {
+         id: p.id,
+         title: p.title,
+         category: p.category || '',
+         color: p.color,
+         primaryImage: p.images[0]?.url || "",
+         rentalPrice: rent?.basePrice || 0,
+         salePrice: sell?.basePrice || 0,
+         matchScore: Math.max(1, Math.min(score, 99)),
+         matchReason: reasons.length ? "Gần giống: " + reasons.join(", ") : "Gợi ý tương tự",
+         ownerName: p.user?.name || "CLOOP"
+       };
+    }).sort((a, b) => b.matchScore - a.matchScore).slice(0, MAX_RESULTS);
 
     const result: VisualSearchResult = {
       success: true,
@@ -438,7 +429,7 @@ export async function searchByValidatedOutfitImage(
         searchKeywords: ai?.searchKeywords || [],
         aiModelUsed: ai?.model || "color-fallback",
       },
-      matchedProducts,
+      matchedProducts: scored,
       isFallback: !ai,
       elapsedMs: Date.now() - startedAt,
     };
