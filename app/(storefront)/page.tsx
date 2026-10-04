@@ -144,8 +144,8 @@ export default function Home() {
     return () => { isMounted = false; };
   }, []);
 
-  // Trích xuất linh hoạt ảnh mới nhất từ database chung cho từng dịp
-  const getLatestOccasionImage = (keywords: string[], fallback: string) => {
+  // Trích xuất linh hoạt ảnh mới nhất từ database chung cho từng dịp. Mục nào chưa có hình thì trả về null để ẩn
+  const getLatestOccasionImage = (keywords: string[]) => {
     const found = products.find((p: any) => {
       const occasion = (p.occasion || "").toLowerCase();
       const category = (p.category || "").toLowerCase();
@@ -154,72 +154,75 @@ export default function Home() {
       return keywords.some((k) => occasion.includes(k) || category.includes(k) || title.includes(k) || tag.includes(k));
     });
     const url = found?.images?.[0]?.url || found?.images?.[0] || found?.img || found?.image;
-    return (url && typeof url === "string" && !url.startsWith("/")) ? url : fallback;
+    return (url && typeof url === "string" && !url.startsWith("/")) ? url : null;
   };
 
-  // 03 — OCCASION CURATIONS (5 Bộ Sưu Tập Lấy Ảnh Mới Nhất Từ Database Chung)
-  const occasionCollections = useMemo(() => [
-    { 
-      id: "wedding", 
-      title: "Dự Tiệc Cưới", 
-      image: getOptimizedCloudinaryUrl(
-        getLatestOccasionImage(
-          ["cưới", "tiệc", "đầm dự tiệc", "váy ren"],
-          "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790529633/cloop_mobile_closet/ekxdoqiw0ge05f9znmgj.jpg"
-        ),
-        600
-      ),
-      link: "/shop?occasion=Tiệc cưới"
-    },
-    { 
-      id: "gala", 
-      title: "Dạ Hội", 
-      image: getOptimizedCloudinaryUrl(
-        getLatestOccasionImage(
-          ["dạ hội", "sự kiện", "prom", "sang trọng"],
-          "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790243386/cloop_mobile_closet/xpirvpupmyfoxxneenve.jpg"
-        ),
-        600
-      ),
-      link: "/shop?occasion=Dạ hội"
-    },
-    { 
-      id: "heritage", 
-      title: "Áo Dài", 
-      image: getOptimizedCloudinaryUrl(
-        getLatestOccasionImage(
-          ["áo dài", "cách tân", "truyền thống"],
-          "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790159335/cloop_mobile_closet/s3lwl54qe2sjov5i4oaw.jpg"
-        ),
-        600
-      ),
-      link: "/shop?occasion=Áo dài"
-    },
-    { 
-      id: "minimal", 
-      title: "Dạo Phố", 
-      image: getOptimizedCloudinaryUrl(
-        getLatestOccasionImage(
-          ["dạo phố", "hằng ngày", "phố", "áo thun", "sweater"],
-          "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530309/cloop_mobile_closet/zvvo3mp0lrsa4mbvam60.jpg"
-        ),
-        600
-      ),
-      link: "/shop?occasion=Dạo phố"
-    },
-    { 
-      id: "travel", 
-      title: "Du Lịch", 
-      image: getOptimizedCloudinaryUrl(
-        getLatestOccasionImage(
-          ["du lịch", "dã ngoại", "biển", "váy maxi", "yếm"],
-          "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790160514/cloop_mobile_closet/u9te4xi7eh2dgi9u1b5h.jpg"
-        ),
-        600
-      ),
-      link: "/shop?occasion=Du lịch"
-    }
-  ], [products]);
+  // 03 — OCCASIONS (Đồng bộ đầy đủ sự kiện, chỉ hiện mục CÓ HÌNH, tự động hiện khi có ảnh mới)
+  const occasionCollections = useMemo(() => {
+    const allOccasions = [
+      { 
+        id: "wedding", 
+        title: "Dự Tiệc Cưới", 
+        keywords: ["cưới", "tiệc", "đầm dự tiệc", "váy ren"],
+        link: "/shop?occasion=Tiệc cưới"
+      },
+      { 
+        id: "gala", 
+        title: "Dạ Hội", 
+        keywords: ["dạ hội", "sự kiện", "prom", "sang trọng"],
+        link: "/shop?occasion=Dạ hội"
+      },
+      { 
+        id: "heritage", 
+        title: "Áo Dài", 
+        keywords: ["áo dài", "cách tân", "truyền thống", "cổ phục"],
+        link: "/shop?occasion=Áo dài"
+      },
+      { 
+        id: "street", 
+        title: "Dạo Phố", 
+        keywords: ["dạo phố", "hằng ngày", "phố", "áo thun", "sweater", "cà phê"],
+        link: "/shop?occasion=Dạo phố"
+      },
+      { 
+        id: "travel", 
+        title: "Du Lịch", 
+        keywords: ["du lịch", "dã ngoại", "biển", "váy maxi", "yếm", "đi biển"],
+        link: "/shop?occasion=Du lịch"
+      },
+      { 
+        id: "birthday", 
+        title: "Sinh Nhật", 
+        keywords: ["sinh nhật", "hẹn hò", "date", "hoa nhí", "ngọt ngào"],
+        link: "/shop?occasion=Sinh nhật"
+      },
+      { 
+        id: "event", 
+        title: "Sự Kiện", 
+        keywords: ["sự kiện", "biểu diễn", "event", "stage", "áo dạ"],
+        link: "/shop?occasion=Sự kiện"
+      },
+      { 
+        id: "festival", 
+        title: "Lễ Hội", 
+        keywords: ["lễ hội", "festival", "check-in", "tết", "trung thu"],
+        link: "/shop?occasion=Lễ hội"
+      },
+    ];
+
+    return allOccasions
+      .map((occ) => {
+        const rawImg = getLatestOccasionImage(occ.keywords);
+        if (!rawImg) return null; // Mục nào chưa có hình thì thôi không hiện, sau có hình tự động hiện!
+        return {
+          id: occ.id,
+          title: occ.title,
+          image: getOptimizedCloudinaryUrl(rawImg, 700),
+          link: occ.link
+        };
+      })
+      .filter(Boolean) as Array<{ id: string; title: string; image: string; link: string }>;
+  }, [products]);
 
   // 04 — TRENDING ROTATIONS CATALOG (Dữ Liệu Thật 100% Cập Nhật Mới Nhất)
   const trendingCatalog = products.slice(0, 8).map((p: any, idx: number) => {
@@ -362,53 +365,79 @@ export default function Home() {
       {/* ⚡ 02 — NHỊP ĐẬP TUẦN HOÀN (CHÂN HERO HEADER) */}
       <LivePulseTicker />
 
-      {/* 👗 03 — OCCASION CURATIONS (KHÁM PHÁ THEO DỊP) */}
-      <section className="w-full max-w-7xl xl:max-w-[1380px] mx-auto px-4 md:px-6 lg:px-8 pt-8 pb-12 md:pt-10 md:pb-16">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-2 mb-6 sm:mb-8">
-          <div>
-            <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200/80 font-ui">
-              BỘ SƯU TẬP TUYỂN CHỌN
-            </span>
-            <h2 className="font-heading text-2xl sm:text-3xl md:text-4xl text-[#0A2517] font-extrabold tracking-tight mt-1.5">
-              Tìm Phong Cách Theo Dịp Của Bạn
-            </h2>
-          </div>
+      {/* 👗 03 — OCCASIONS (Kiểu By Rotation: khi rê chuột kéo to hình ra đầy đủ) */}
+      <section className="w-full max-w-7xl xl:max-w-[1380px] mx-auto px-4 md:px-6 lg:px-8 py-8 md:py-12">
+        <div className="flex items-center justify-between mb-6 sm:mb-8">
+          <h2 className="font-heading text-2xl sm:text-3xl md:text-4xl text-[#0A2517] font-extrabold tracking-tight">
+            Tìm Phong Cách Theo Dịp Của Bạn
+          </h2>
 
           <Link 
-            href="/shop?type=rent" 
+            href="/shop" 
             prefetch={true}
-            className="font-ui text-xs font-bold uppercase tracking-widest text-[#183A2D] hover:text-emerald-800 flex items-center gap-1 group shrink-0"
+            className="font-ui text-xs font-bold uppercase tracking-wider text-[#183A2D] hover:text-emerald-800 flex items-center gap-1 group shrink-0"
           >
             <span>Tất Cả Phong Cách</span>
             <ArrowRight size={13} className="group-hover:translate-x-1 transition-transform" />
           </Link>
         </div>
 
-        {/* 5 High-Fashion Visual Cards (Kích thước lớn, phom đứng sang trọng) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 lg:gap-5">
+        {/* 💻 DESKTOP: Khi rê chuột vào thẻ nào, thẻ đó mượt mà dãn rộng kéo to hình ra đầy đủ (Accordion Expanding Cards) */}
+        <div className="hidden md:flex gap-3 lg:gap-3.5 w-full h-[460px] lg:h-[500px]">
           {occasionCollections.map((col) => (
             <Link
               key={col.id}
               href={col.link}
               prefetch={true}
-              className="group relative aspect-[3/4] sm:aspect-[3/4] md:aspect-[9/13] lg:aspect-[9/14] min-h-[380px] sm:min-h-[420px] lg:min-h-[460px] rounded-2xl lg:rounded-3xl overflow-hidden shadow-xs hover:shadow-2xl transition-all duration-700 flex flex-col justify-end p-5 lg:p-6 cursor-pointer border border-stone-200/80"
+              className="group relative flex-1 hover:flex-[3] lg:hover:flex-[3.5] transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] rounded-2xl lg:rounded-3xl overflow-hidden shadow-xs hover:shadow-2xl cursor-pointer border border-stone-200/80 flex flex-col justify-end p-5 lg:p-6"
             >
               <Image 
                 src={col.image} 
                 alt={col.title} 
                 fill 
-                className="object-cover transition-transform duration-1000 ease-out group-hover:scale-108 brightness-[0.9] group-hover:brightness-[0.8]" 
+                className="object-cover transition-transform duration-700 ease-out group-hover:scale-105 brightness-[0.92] group-hover:brightness-[0.96]" 
                 unoptimized 
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent pointer-events-none" />
 
-              <div className="relative z-10 space-y-1.5 transform translate-y-1 group-hover:translate-y-0 transition-transform duration-500">
-                <h3 className="font-heading text-xl lg:text-2xl font-bold text-white leading-tight">
+              <div className="relative z-10 space-y-1">
+                <h3 className="font-heading text-xl lg:text-2xl font-bold text-white leading-tight whitespace-nowrap drop-shadow-md">
                   {col.title}
                 </h3>
-                <div className="pt-1.5 flex items-center gap-1 text-xs font-semibold text-[#A3E39F] group-hover:text-white transition-colors font-ui">
-                  <span className="uppercase text-[10px] tracking-wider">Khám Phá Ngay</span>
-                  <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+                <div className="flex items-center gap-1 text-xs font-semibold text-[#A3E39F] group-hover:text-white transition-colors font-ui">
+                  <span className="uppercase text-[10px] tracking-wider whitespace-nowrap">Khám Phá Ngay</span>
+                  <ArrowRight size={12} className="group-hover:translate-x-1.5 transition-transform" />
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+
+        {/* 📱 MOBILE: Lướt ngang mượt mà */}
+        <div className="flex md:hidden overflow-x-auto no-scrollbar gap-3 snap-x px-4 -mx-4 py-1">
+          {occasionCollections.map((col) => (
+            <Link
+              key={col.id}
+              href={col.link}
+              prefetch={true}
+              className="w-[220px] shrink-0 aspect-[9/14] snap-start rounded-2xl overflow-hidden relative shadow-xs border border-stone-200/80 p-4 flex flex-col justify-end group active:scale-[0.98] transition-transform"
+            >
+              <Image 
+                src={col.image} 
+                alt={col.title} 
+                fill 
+                className="object-cover brightness-[0.92]" 
+                unoptimized 
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
+
+              <div className="relative z-10 space-y-1">
+                <h3 className="font-heading text-lg font-bold text-white leading-tight">
+                  {col.title}
+                </h3>
+                <div className="flex items-center gap-1 text-[10px] font-semibold text-[#A3E39F] font-ui uppercase">
+                  <span>Khám Phá Ngay</span>
+                  <ArrowRight size={11} />
                 </div>
               </div>
             </Link>

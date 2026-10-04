@@ -538,14 +538,14 @@ export default function GoogleFlowFashionHero({ initialProducts }: GoogleFlowFas
         })}
       </div>
 
-      {/* 🍵 BALANCED CENTER AMBIENT MASK (Tối ưu ánh sáng, không làm đen/lủng ảnh xung quanh) */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(7,24,15,0.72)_0%,_rgba(7,24,15,0.50)_38%,_rgba(7,24,15,0.20)_75%,_rgba(5,18,10,0.55)_100%)] pointer-events-none z-20" />
+      {/* 🍵 BALANCED CENTER AMBIENT MASK (Tươi sáng, trong trẻo, làm nổi bật sắc màu trang phục) */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(7,24,15,0.60)_0%,_rgba(7,24,15,0.40)_38%,_rgba(6,20,13,0.18)_75%,_rgba(4,14,9,0.48)_100%)] pointer-events-none z-20" />
 
       {/* 🌟 CENTERPIECE CONTENT */}
       <div className="relative z-30 max-w-3xl mx-auto px-4 text-center flex flex-col items-center justify-center pointer-events-auto my-auto py-8">
         
         {/* Top Matcha Badge */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#071F13]/85 border border-[#A3E39F]/50 text-[#A3E39F] text-[10.5px] font-bold uppercase tracking-widest mb-4 shadow-lg font-ui">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#05180E]/90 border border-[#A3E39F]/50 text-[#A3E39F] text-[10.5px] font-bold uppercase tracking-widest mb-4 shadow-lg font-ui">
           <span className="w-2 h-2 rounded-full bg-[#A3E39F] animate-pulse"></span>
           Tủ Đồ Chia Sẻ & Tuần Hoàn 2026
         </div>
@@ -556,11 +556,11 @@ export default function GoogleFlowFashionHero({ initialProducts }: GoogleFlowFas
         </h1>
 
         {/* Tagline */}
-        <p className="font-body text-xs sm:text-sm md:text-[15px] text-stone-100 font-normal leading-relaxed max-w-lg mx-auto mb-6 drop-shadow-[0_2px_14px_rgba(0,0,0,0.9)]">
+        <p className="font-body text-xs sm:text-sm md:text-[15px] text-stone-200 font-normal leading-relaxed max-w-lg mx-auto mb-6 drop-shadow-[0_2px_14px_rgba(0,0,0,0.9)]">
           Biến tủ đồ của bạn thành nguồn thu nhập. Đăng cho thuê, chuyển nhượng dễ dàng và trải nghiệm hàng nghìn mẫu thiết kế với giá cực hời.
         </p>
 
-        {/* 2 Action Buttons */}
+        {/* 2 Action Buttons (Đã bỏ nút Giọng nói theo yêu cầu, màu sắc sẫm sang trọng) */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 w-full sm:w-auto">
           <Link
             href="/shop?type=rent"
@@ -572,19 +572,10 @@ export default function GoogleFlowFashionHero({ initialProducts }: GoogleFlowFas
 
           <button
             type="button"
-            onClick={() => setIsVoiceSearchOpen(true)}
-            className="w-full sm:w-auto px-5 py-3.5 rounded-full bg-white/20 hover:bg-white/30 text-white border border-white/35 font-heading font-bold text-xs sm:text-sm tracking-wider uppercase transition-all duration-300 shadow-md hover:scale-105 active:scale-95 flex items-center justify-center gap-2 group font-ui cursor-pointer"
-          >
-            <Mic size={15} className="text-[#A3E39F] group-hover:scale-110 transition-transform" />
-            <span>Tìm Bằng Giọng Nói</span>
-          </button>
-
-          <button
-            type="button"
             onClick={() => setIsVisualSearchOpen(true)}
-            className="w-full sm:w-auto px-6 py-3.5 rounded-full bg-white/20 hover:bg-white/30 text-white border border-white/35 font-heading font-bold text-xs sm:text-sm tracking-wider uppercase transition-all duration-300 shadow-md hover:scale-105 active:scale-95 flex items-center justify-center gap-2 group font-ui cursor-pointer"
+            className="w-full sm:w-auto px-7 py-3.5 rounded-full bg-[#0A2316]/90 hover:bg-[#113824] text-white border border-[#A3E39F]/40 backdrop-blur-md font-heading font-bold text-xs sm:text-sm tracking-wider uppercase transition-all duration-300 shadow-lg hover:shadow-[0_0_20px_rgba(163,227,159,0.3)] hover:scale-105 active:scale-95 flex items-center justify-center gap-2.5 group font-ui cursor-pointer"
           >
-            <Camera size={15} className="text-[#A3E39F] group-hover:scale-110 transition-transform" />
+            <Camera size={16} className="text-[#A3E39F] group-hover:scale-110 transition-transform" />
             <span>Tìm Bằng Ảnh AI</span>
           </button>
         </div>
