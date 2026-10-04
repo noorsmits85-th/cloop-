@@ -5,6 +5,7 @@ import { searchByValidatedOutfitImage } from "@/src/services/visualSearch";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+export const maxDuration = 20;
 
 function getClientIp(request: NextRequest): string {
   return (
@@ -23,8 +24,18 @@ export async function POST(request: NextRequest) {
 
   try {
     if (visualSearchRateLimit) {
-      const rateLimit = await visualSearchRateLimit.limit(`visual-search:${ip}`);
-      if (!rateLimit.success) {
+      let allowed = true;
+      try {
+        allowed = (
+          await Promise.race([
+            visualSearchRateLimit.limit(`visual-search:${ip}`),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error("RATE_LIMIT_TIMEOUT")), 800)),
+          ])
+        ).success;
+      } catch (rlErr: any) {
+        console.warn("[Visual Search RateLimit unavailable, fail-open]:", rlErr?.message || rlErr);
+      }
+      if (!allowed) {
         return visualSearchError(429, "Ban dang tim bang hinh anh qua nhanh. Vui long thu lai sau it phut.");
       }
     }
@@ -54,7 +65,8 @@ export async function POST(request: NextRequest) {
       return visualSearchError(400, "Du lieu anh khong hop le.");
     }
 
-    const result = await searchByValidatedOutfitImage(image);
+    const colorHint = typeof body?.colorHint === "string" ? body.colorHint.slice(0, 24) : null;
+    const result = await searchByValidatedOutfitImage(image, { colorHint });
     if (!result.success) {
       return visualSearchError(
         503,
@@ -68,6 +80,8 @@ export async function POST(request: NextRequest) {
       traceId: result.traceId,
       detectedInfo: result.detectedInfo,
       products: result.matchedProducts,
+      isFallback: Boolean(result.isFallback),
+      elapsedMs: result.elapsedMs,
     });
   } catch (error: any) {
     // TODO: integrate Sentry/LogRocket tracking and avoid leaking raw provider errors to users.

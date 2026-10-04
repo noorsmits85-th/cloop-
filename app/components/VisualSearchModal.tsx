@@ -173,6 +173,63 @@ async function getCroppedImg(
   return canvas.toDataURL("image/jpeg", 0.82);
 }
 
+// Đo màu chủ đạo trực tiếp từ pixel (vùng trung tâm 60% - nơi món đồ thường nằm). Chạy trên máy, ~5ms, miễn phí.
+async function extractDominantColorName(imageSrc: string): Promise<string | null> {
+  try {
+    const img = new window.Image();
+    img.crossOrigin = "anonymous";
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error("load"));
+      img.src = imageSrc;
+    });
+    const size = 40;
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return null;
+    const sx = img.width * 0.2;
+    const sy = img.height * 0.2;
+    ctx.drawImage(img, sx, sy, img.width * 0.6, img.height * 0.6, 0, 0, size, size);
+    const { data } = ctx.getImageData(0, 0, size, size);
+
+    const votes: Record<string, number> = {};
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i] / 255, g = data[i + 1] / 255, b = data[i + 2] / 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      const l = (max + min) / 2;
+      const d = max - min;
+      const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+      let h = 0;
+      if (d !== 0) {
+        if (max === r) h = 60 * (((g - b) / d) % 6);
+        else if (max === g) h = 60 * ((b - r) / d + 2);
+        else h = 60 * ((r - g) / d + 4);
+      }
+      if (h < 0) h += 360;
+
+      let name: string;
+      if (l > 0.86 && s < 0.35) name = "trắng";
+      else if (l < 0.16) name = "đen";
+      else if (s < 0.14) name = "xám";
+      else if ((h < 50 && l < 0.45 && s < 0.6) || (h < 40 && s < 0.45)) name = h < 40 && l > 0.6 ? "be" : "nâu";
+      else if (h < 15 || h >= 345) name = "đỏ";
+      else if (h < 40) name = "cam";
+      else if (h < 68) name = l > 0.7 && s < 0.5 ? "be" : "vàng";
+      else if (h < 170) name = "xanh lá";
+      else if (h < 255) name = "xanh dương";
+      else if (h < 295) name = "tím";
+      else name = "hồng";
+      votes[name] = (votes[name] || 0) + 1;
+    }
+    const best = Object.entries(votes).sort((a, b) => b[1] - a[1])[0];
+    return best ? best[0] : null;
+  } catch {
+    return null; // ảnh ngoài domain chặn CORS -> bỏ qua, server vẫn chạy AI bình thường
+  }
+}
+
 const SCAN_STATUS_STEPS = [
   "Đang quét phom dáng & tỷ lệ cắt may...",
   "Bóc tách chất liệu vải & dải màu sắc...",
@@ -205,6 +262,8 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
   const [detectedInfo, setDetectedInfo] = useState<DetectedInfo | null>(null);
   const [matchedProducts, setMatchedProducts] = useState<MatchedProduct[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isFallbackResult, setIsFallbackResult] = useState(false);
+  const searchRequestRef = useRef(0);
 
   // Cycle status ticker during scanning
   useEffect(() => {
@@ -221,31 +280,35 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
 
   // Xử lý gửi ảnh đã chọn/đã crop lên API Visual Search
   const executeSearch = async (imageSrc: string) => {
+    const requestId = ++searchRequestRef.current;
     setIsAnalyzing(true);
     setErrorMessage(null);
     setDetectedInfo(null);
     setMatchedProducts([]);
+    setIsFallbackResult(false);
     setViewMode("results");
     setActiveSearchImage(imageSrc);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6500);
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
 
     try {
       let finalBase64 = imageSrc;
       if (!imageSrc.startsWith("data:image/")) {
         finalBase64 = await compressImageForVisualSearch(imageSrc);
       }
+      const colorHint = await extractDominantColorName(finalBase64);
 
       const res = await fetch("/api/visual-search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ base64Image: finalBase64 }),
+        body: JSON.stringify({ base64Image: finalBase64, colorHint }),
         signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
       const data = await res.json();
+      if (requestId !== searchRequestRef.current) return; // đã có lượt tìm mới hơn
 
       if (!res.ok || !data.success) {
         throw new Error(data.message || "Không thể tìm kiếm ảnh này");
@@ -253,17 +316,17 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
 
       setDetectedInfo(data.detectedInfo);
       setMatchedProducts(data.products || []);
+      setIsFallbackResult(Boolean(data.isFallback));
     } catch (err: any) {
       clearTimeout(timeoutId);
+      if (requestId !== searchRequestRef.current) return;
       if (err.name === "AbortError") {
-        setErrorMessage(
-          "Thời gian phản hồi AI vượt quá 6s. Đang hiển thị các trang phục liên quan từ kho CLOOP."
-        );
+        setErrorMessage("Mạng đang chậm, chưa nhận được kết quả. Bạn thử lại hoặc khoanh vùng sát món đồ hơn nhé.");
       } else {
         setErrorMessage(err.message || "Đã xảy ra lỗi khi tìm kiếm bằng AI");
       }
     } finally {
-      setIsAnalyzing(false);
+      if (requestId === searchRequestRef.current) setIsAnalyzing(false);
     }
   };
 
@@ -795,6 +858,19 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
                           Trang phục tương đồng trong tủ đồ CLOOP ({matchedProducts.length}):
                         </h4>
                       </div>
+                      {isFallbackResult && !isAnalyzing && matchedProducts.length > 0 && (
+                        <div className="mb-3 p-2.5 rounded-xl bg-amber-500/10 border border-amber-400/30 text-[11px] text-amber-200 flex items-center justify-between gap-2">
+                          <span>AI đang quá tải, đây là gợi ý gần đúng theo màu sắc đo từ ảnh.</span>
+                          {activeSearchImage && (
+                            <button
+                              onClick={() => executeSearch(activeSearchImage)}
+                              className="shrink-0 underline font-bold text-amber-100 cursor-pointer"
+                            >
+                              Quét lại
+                            </button>
+                          )}
+                        </div>
+                      )}
 
                       {matchedProducts.length === 0 && !isAnalyzing && !errorMessage && (
                         <div className="p-8 text-center bg-white/5 border border-white/10 rounded-2xl">
