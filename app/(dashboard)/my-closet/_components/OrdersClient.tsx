@@ -13,6 +13,23 @@ import { calculateDynamicGhnFee, extractProvince } from "@/src/utils/shipping";
 
 const PLACEHOLDER_IMG = "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=120";
 
+const isEvidenceVideo = (url: string) => {
+  if (!url) return false;
+  const lower = url.toLowerCase();
+  return (
+    lower.includes("#video") ||
+    lower.includes("type=video") ||
+    lower.endsWith(".mp4") ||
+    lower.endsWith(".mov") ||
+    lower.endsWith(".webm") ||
+    lower.endsWith(".avi") ||
+    lower.endsWith(".mkv") ||
+    lower.includes("/video/") ||
+    lower.includes("video") ||
+    lower.includes("drive.google.com/file")
+  );
+};
+
 function StatusStepper({ status, isOwnerMode }: { status: string, isOwnerMode: boolean }) {
   const steps = [
     { key: "PENDING_APPROVAL", label: "Chờ duyệt", icon: <Package size={14} strokeWidth={1.5} /> },
@@ -135,6 +152,20 @@ export function OrdersClient({
   const [isReviewSubmitting, setIsReviewSubmitting] = useState(false);
   const [isDisputeSubmitting, setIsDisputeSubmitting] = useState(false);
 
+  // ⚖️ Burden of Proof (Nghĩa Vụ Chứng Minh) Counter-Dispute State
+  const [showCounterModal, setShowCounterModal] = useState(false);
+  const [counterDisputeData, setCounterDisputeData] = useState<{
+    disputeId: string;
+    orderId: string;
+    suggestedDeduction: number;
+    depositAmount: number;
+  } | null>(null);
+  const [counterReason, setCounterReason] = useState("");
+  const [counterVideos, setCounterVideos] = useState<string[]>([]);
+  const [isUploadingCounterMedia, setIsUploadingCounterMedia] = useState(false);
+  const [counterUploadProgress, setCounterUploadProgress] = useState("");
+  const [isSubmittingCounter, setIsSubmittingCounter] = useState(false);
+
   // 📦 Packaging Video & Sealed Proof State (Kiểm tra niêm phong & Video trước khi gửi)
   const [packagingOrder, setPackagingOrder] = useState<any | null>(null);
   const [packagingProofs, setPackagingProofs] = useState<string[]>([]);
@@ -180,7 +211,9 @@ export function OrdersClient({
 
         const json = await res.json();
         if (json.url) {
-          setDisputeImages((prev) => [...prev, json.url]);
+          const isVideo = file.type.startsWith("video/") || json.isVideo;
+          const finalUrl = isVideo && !json.url.toLowerCase().includes("video") ? `${json.url}#video` : json.url;
+          setDisputeImages((prev) => [...prev, finalUrl]);
         }
       }
       toast.success("Đã tải bằng chứng lên Kho Google 10TB an toàn!");
@@ -190,6 +223,52 @@ export function OrdersClient({
     } finally {
       setIsUploadingDisputeMedia(false);
       setDisputeUploadProgress("");
+      if (e.target) e.target.value = "";
+    }
+  };
+
+  const handleUploadCounterMedia = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploadingCounterMedia(true);
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.size > 100 * 1024 * 1024) {
+          toast.error(`Tệp ${file.name} vượt quá giới hạn 100MB.`);
+          continue;
+        }
+        setCounterUploadProgress(`Đang tải video ${i + 1}/${files.length} lên Kho Google 10TB...`);
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("targetKho", "auto");
+
+        const res = await fetch("/api/upload-drive", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const errJson = await res.json().catch(() => null);
+          throw new Error(errJson?.error || "Lỗi tải video lên Kho lưu trữ Google.");
+        }
+
+        const json = await res.json();
+        if (json.url) {
+          const isVideo = file.type.startsWith("video/") || json.isVideo;
+          const finalUrl = isVideo && !json.url.toLowerCase().includes("video") ? `${json.url}#video` : json.url;
+          setCounterVideos((prev) => [...prev, finalUrl]);
+        }
+      }
+      toast.success("Đã tải video bảo chứng lên Kho Google 10TB an toàn!");
+    } catch (err: any) {
+      console.error("Counter upload error:", err);
+      toast.error(err.message || "Lỗi tải video lên Kho Google.");
+    } finally {
+      setIsUploadingCounterMedia(false);
+      setCounterUploadProgress("");
       if (e.target) e.target.value = "";
     }
   };
@@ -486,6 +565,18 @@ export function OrdersClient({
       return; 
     }
 
+    // 🛡️ NGUYÊN TẮC NGHĨA VỤ CHỨNG MINH CHO CHỦ TỦ:
+    // Chủ tủ yêu cầu trừ cọc bắt buộc phải có video mở hộp niêm phong đối soát từ shipper!
+    if (isOwnerMode && suggestedDeduction > 0) {
+      const hasUnboxingVideo = disputeImages.some(isEvidenceVideo);
+      if (!hasUnboxingVideo) {
+        toast.error("Thiếu video mở hộp đối soát!", {
+          description: "Theo Nguyên Tắc Nghĩa Vụ Chứng Minh (Burden of Proof): Chủ tủ bắt buộc phải đính kèm video quay rõ quá trình mở hộp niêm phong khi nhận lại hàng. Nếu không có video mở hộp đối soát, chủ tủ phải tự chịu toàn bộ trách nhiệm và không thể mở khiếu nại!",
+        });
+        return;
+      }
+    }
+
     setIsDisputeSubmitting(true);
     try {
       const res = await raiseDisputeWithProposalAction(
@@ -537,6 +628,68 @@ export function OrdersClient({
     } finally {
       setAcceptingDisputeIds(prev => ({ ...prev, [disputeId]: false }));
     }
+  };
+
+  const handleOpenCounterDisputeModal = (dispute: any, order: any) => {
+    setCounterDisputeData({
+      disputeId: dispute.id,
+      orderId: order.id,
+      suggestedDeduction: dispute.suggestedDeduction || 0,
+      depositAmount: order.invoice?.depositAmount || 0,
+    });
+    setCounterReason("");
+    setCounterVideos([]);
+    setShowCounterModal(true);
+  };
+
+  const handleSubmitCounterDispute = async () => {
+    if (!counterDisputeData) return;
+    if (!counterReason.trim()) {
+      toast.error("Vui lòng nhập lý do bạn không đồng ý với mức bồi thường");
+      return;
+    }
+    const hasVideo = counterVideos.some(isEvidenceVideo);
+    if (!hasVideo) {
+      toast.error("Thiếu video bảo chứng!", {
+        description: "Theo Nguyên Tắc Nghĩa Vụ Chứng Minh: Khách thuê bắt buộc phải có video bảo chứng lúc nhận hoặc gửi hàng để khiếu nại ngược lên BQT.",
+      });
+      return;
+    }
+
+    setIsSubmittingCounter(true);
+    try {
+      const res = await rejectAndEscalateDisputeAction(
+        counterDisputeData.disputeId,
+        counterReason,
+        counterVideos
+      );
+      if (res.success) {
+        toast.info("Đã chuyển lên Ban Quản Trị Trọng Tài!", {
+          description: "BQT CLOOP sẽ đối soát video 2 bên và giải quyết trong 48h.",
+        });
+        setShowCounterModal(false);
+        setCounterDisputeData(null);
+        setCounterReason("");
+        setCounterVideos([]);
+        router.refresh();
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("dispute-updated"));
+        }
+      } else {
+        toast.error("Lỗi xử lý", { description: res.error });
+      }
+    } catch (e: any) {
+      toast.error("Lỗi hệ thống", { description: e.message });
+    } finally {
+      setIsSubmittingCounter(false);
+    }
+  };
+
+  const handleAcceptWithoutProof = async () => {
+    if (!counterDisputeData) return;
+    const disputeId = counterDisputeData.disputeId;
+    setShowCounterModal(false);
+    await handleAcceptDispute(disputeId);
   };
 
   const handleRejectDispute = async (disputeId: string) => {
@@ -1078,20 +1231,38 @@ export function OrdersClient({
                                               <span className="text-[10px] text-stone-500">(kèm hoàn trả 100% tiền cọc)</span>
                                             </>
                                           ) : (
-                                            <>
-                                              <span className="font-medium text-stone-900">Chủ tủ đề xuất khấu trừ cọc:</span>{" "}
-                                              <span className="font-bold text-amber-900">{order.disputes[0].suggestedDeduction?.toLocaleString('vi-VN')}đ</span>{" "}
-                                              <span className="text-[10px] text-stone-500">(để bồi thường hư hỏng)</span>
-                                            </>
+                                            <div className="p-3 rounded-lg bg-amber-100/70 border border-amber-200/80 text-xs space-y-2 my-2">
+                                              <p className="text-amber-950 font-medium leading-relaxed">
+                                                Chủ tủ báo đồ có vết bẩn/hỏng nhẹ và đề xuất trừ <span className="font-bold text-amber-900">{(order.disputes[0].suggestedDeduction || 0).toLocaleString('vi-VN')}đ</span> (tương ứng {Math.round(((order.disputes[0].suggestedDeduction || 0) / (order.invoice?.depositAmount || 1)) * 100)}% cọc) tiền xử lý. Bạn có đồng ý không?
+                                              </p>
+                                              <div className="pt-1.5 border-t border-amber-200/70 space-y-1 text-[11px] text-stone-700">
+                                                <div className="flex justify-between">
+                                                  <span>Tiền cọc ban đầu của bạn:</span>
+                                                  <span className="font-semibold">{(order.invoice?.depositAmount || 0).toLocaleString('vi-VN')}đ</span>
+                                                </div>
+                                                <div className="flex justify-between text-emerald-800 font-semibold">
+                                                  <span>Số tiền cọc còn lại hoàn vào ví bạn ngay:</span>
+                                                  <span>{Math.max(0, (order.invoice?.depositAmount || 0) - (order.disputes[0].suggestedDeduction || 0)).toLocaleString('vi-VN')}đ</span>
+                                                </div>
+                                              </div>
+                                            </div>
                                           )}
                                         </p>
-                                        {order.disputes[0].images?.length > 0 && (
-                                          <div className="flex gap-2 pt-1">
-                                            {order.disputes[0].images.map((img: string, i: number) => (
-                                              <img key={i} src={img} alt="Minh chứng" className="w-12 h-12 rounded object-cover border border-amber-200" />
-                                            ))}
-                                          </div>
-                                        )}
+                                         {order.disputes[0].images?.length > 0 && (
+                                           <div className="pt-1.5 space-y-1.5">
+                                             <span className="text-[10px] font-semibold text-amber-900 uppercase tracking-wide block">
+                                               Hình ảnh bằng chứng & Hóa đơn thực tế (Proof of Expense):
+                                             </span>
+                                             <div className="flex gap-2">
+                                               {order.disputes[0].images.map((img: string, i: number) => (
+                                                 <img key={i} src={img} alt="Minh chứng / Hóa đơn" className="w-14 h-14 rounded-md object-cover border border-amber-300 shadow-2xs" />
+                                               ))}
+                                             </div>
+                                             <p className="text-[10px] text-stone-500 italic">
+                                               * Hệ thống chỉ duyệt mức trừ cọc căn cứ theo hóa đơn dịch vụ thật từ cơ sở giặt ủi/sửa chữa bên ngoài.
+                                             </p>
+                                           </div>
+                                         )}
                                         {order.disputes[0].status === "PENDING_REVIEW" ? (
                                           <div className="pt-2">
                                             {order.disputes[0].adminNotes?.includes('"initiatorRole":"RENTER"') ? (
@@ -1106,15 +1277,15 @@ export function OrdersClient({
                                                   className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium px-4 py-2 rounded-md transition-colors flex items-center gap-1.5 disabled:opacity-50"
                                                 >
                                                   {acceptingDisputeIds[order.disputes[0].id] ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-                                                  Đồng ý khấu trừ & Nhận phần cọc còn lại
+                                                  Xác nhận bồi thường theo Hóa đơn & Nhận lại {Math.max(0, (order.invoice?.depositAmount || 0) - (order.disputes[0].suggestedDeduction || 0)).toLocaleString('vi-VN')}đ cọc thừa
                                                 </button>
                                                 <button
                                                   disabled={rejectingDisputeIds[order.disputes[0].id]}
-                                                  onClick={() => handleRejectDispute(order.disputes[0].id)}
-                                                  className="bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-medium px-3 py-2 rounded-md transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                                                  onClick={() => handleOpenCounterDisputeModal(order.disputes[0], order)}
+                                                  className="bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-medium px-3 py-2 rounded-md transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
                                                 >
                                                   {rejectingDisputeIds[order.disputes[0].id] ? <Loader2 size={13} className="animate-spin" /> : <X size={13} />}
-                                                  Không đồng ý (Đẩy lên BQT)
+                                                  Không đồng ý (Cung cấp bằng chứng)
                                                 </button>
                                               </div>
                                             )}
@@ -1237,6 +1408,65 @@ export function OrdersClient({
                 placeholder={!isOwnerMode ? `VD: ${selectedOrderForDispute.invoice?.rentalFee || 50000} (Hoàn 100% tiền thuê)` : "VD: 80000 (chi phí spa, phục hồi...)"} 
                 className="w-full px-4 py-2.5 rounded-md border border-stone-200/60 text-sm font-medium focus:outline-none focus:border-amber-500 bg-stone-50/30 transition-colors" 
               />
+
+              {/* Tùy chọn click nhanh % giá trị cọc hoặc tiền thuê */}
+              {(() => {
+                const depositAmount = selectedOrderForDispute.invoice?.depositAmount || 0;
+                const rentalFee = selectedOrderForDispute.invoice?.rentalFee || 0;
+
+                const quickOptions = isOwnerMode
+                  ? [
+                      { label: "Mức 1 (30%)", sub: "Giặt hấp / sứt chỉ", amount: Math.min(depositAmount, Math.round(depositAmount * 0.3)) },
+                      { label: "Mức 2 (50%)", sub: "Khóa kéo / phục hồi", amount: Math.min(depositAmount, Math.round(depositAmount * 0.5)) },
+                      { label: "Mức 3 (100%)", sub: "Hỏng hoàn toàn / rách toạc", amount: depositAmount },
+                    ]
+                  : [
+                      { label: "30%", sub: "Lỗi nhỏ", amount: Math.min(rentalFee, Math.round(rentalFee * 0.3)) },
+                      { label: "50%", sub: "Sai mô tả", amount: Math.min(rentalFee, Math.round(rentalFee * 0.5)) },
+                      { label: "100%", sub: "Toàn bộ thuê", amount: rentalFee },
+                    ];
+
+                return (
+                  <div className="space-y-2 pt-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] text-stone-500 font-medium">Chọn nhanh:</span>
+                      {quickOptions.map((opt) => (
+                        <button
+                          key={opt.label}
+                          type="button"
+                          onClick={() => setSuggestedDeduction(opt.amount)}
+                          className={`px-2.5 py-1 rounded text-[11px] font-medium border transition-all cursor-pointer ${
+                            suggestedDeduction === opt.amount
+                              ? "bg-amber-800 text-white border-amber-800 shadow-xs"
+                              : "bg-white text-stone-700 border-stone-200 hover:border-amber-700 hover:text-amber-900"
+                          }`}
+                        >
+                          <span className="font-semibold">{opt.label}</span>{" "}
+                          <span className="text-[10px] opacity-75">({opt.amount.toLocaleString("vi-VN")}đ)</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {isOwnerMode && (
+                      <div className="p-2.5 rounded-md bg-stone-100/80 border border-stone-200/80 text-[11px] space-y-1">
+                        <div className="flex justify-between text-stone-700">
+                          <span>Chủ tủ nhận bồi thường:</span>
+                          <span className="font-semibold text-amber-900">
+                            {(suggestedDeduction || 0).toLocaleString("vi-VN")}đ
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-stone-700">
+                          <span>Khách nhận lại tiền cọc thừa:</span>
+                          <span className="font-semibold text-emerald-800">
+                            {Math.max(0, depositAmount - (suggestedDeduction || 0)).toLocaleString("vi-VN")}đ
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
               {(() => {
                 const deliveryShipment = selectedOrderForDispute.shipments?.find((s: any) => s.direction === "DELIVERY");
                 const renterAddr = deliveryShipment?.deliveryAddress as any;
@@ -1258,7 +1488,9 @@ export function OrdersClient({
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label className="block text-[10px] font-medium text-stone-500 uppercase tracking-wide">
-                  Ảnh / Video minh chứng (Kho lưu trữ Google 10TB)
+                  {isOwnerMode 
+                    ? "Ảnh/Video lỗi & Hóa đơn dịch vụ thực tế (Proof of Expense)" 
+                    : "Ảnh/Video minh chứng hàng lỗi"}
                 </label>
                 {isUploadingDisputeMedia && (
                   <span className="text-[10px] text-amber-700 font-semibold flex items-center gap-1 animate-pulse">
@@ -1266,6 +1498,18 @@ export function OrdersClient({
                   </span>
                 )}
               </div>
+              {isOwnerMode && (
+                <div className="space-y-2">
+                  <div className="text-[10px] text-amber-900 bg-amber-50/80 p-2.5 rounded-md border border-amber-200/80 leading-relaxed space-y-1">
+                    <div className="font-semibold text-amber-800">1. Quy định "Có hóa đơn thực tế mới duyệt trừ cọc" (Proof of Expense):</div>
+                    <div>Để tránh kê khống chi phí và bảo đảm khách thuê tâm phục khẩu phục, vui lòng chụp rõ hóa đơn/biên lai từ tiệm giặt hấp hoặc xưởng may sửa chữa (ghi rõ ngày tháng, nội dung xử lý và số tiền). Hệ thống sẽ căn cứ đúng số tiền hóa đơn để phân chia dòng tiền.</div>
+                  </div>
+                  <div className="text-[10px] text-rose-950 bg-rose-50/80 p-2.5 rounded-md border border-rose-200/80 leading-relaxed space-y-1">
+                    <div className="font-semibold text-rose-800">2. Nguyên Tắc Nghĩa Vụ Chứng Minh (Burden of Proof):</div>
+                    <div>Chủ tủ <strong>bắt buộc phải tải lên video mở hộp niêm phong</strong> khi nhận lại kiện hàng từ shipper. Nếu không có video mở hộp đối soát, chủ tủ phải tự chịu 100% trách nhiệm và hệ thống sẽ tự động từ chối mở khiếu nại trừ cọc.</div>
+                  </div>
+                </div>
+              )}
               <div className="flex flex-wrap gap-2.5 items-center">
                 {disputeImages.map((img, i) => (
                   <div key={i} className="relative group w-14 h-14 rounded-md border border-stone-200 overflow-hidden shadow-xs">
@@ -1321,6 +1565,124 @@ export function OrdersClient({
           </motion.div>
         </div>
       )}
+      {/* ⚖️ MODAL NGHĨA VỤ CHỨNG MINH CHO KHÁCH THUÊ (BURDEN OF PROOF COUNTER-DISPUTE MODAL) */}
+      {showCounterModal && counterDisputeData && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 backdrop-blur-md p-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="bg-white border border-stone-100 rounded-xl max-w-[500px] w-full shadow-2xl p-6 md:p-8 text-left space-y-5">
+            <div className="flex justify-between items-center border-b border-stone-100 pb-3">
+              <div className="flex items-center gap-2 text-stone-900">
+                <AlertTriangle size={18} className="text-amber-700" strokeWidth={2} />
+                <h3 className="text-xs font-semibold uppercase tracking-wide">Phản Hồi Khiếu Nại & Nghĩa Vụ Chứng Minh</h3>
+              </div>
+              <button onClick={() => setShowCounterModal(false)} className="text-stone-400 hover:text-stone-900 transition-colors p-1 cursor-pointer">
+                <X size={18} strokeWidth={1.5} />
+              </button>
+            </div>
+
+            <div className="p-3 rounded-lg bg-stone-50 border border-stone-200/80 text-xs space-y-1.5">
+              <div className="flex justify-between text-stone-700">
+                <span>Chủ tủ đề xuất khấu trừ theo hóa đơn:</span>
+                <span className="font-bold text-amber-900">{counterDisputeData.suggestedDeduction.toLocaleString('vi-VN')}đ</span>
+              </div>
+              <div className="flex justify-between text-emerald-800 font-semibold">
+                <span>Số tiền cọc còn lại hoàn vào ví bạn:</span>
+                <span>{Math.max(0, counterDisputeData.depositAmount - counterDisputeData.suggestedDeduction).toLocaleString('vi-VN')}đ</span>
+              </div>
+            </div>
+
+            {/* Quy định pháp lý cốt lõi */}
+            <div className="text-[11px] text-amber-950 bg-amber-50/90 p-3 rounded-lg border border-amber-300/80 leading-relaxed space-y-1.5">
+              <div className="font-bold text-amber-900 uppercase tracking-wide flex items-center gap-1.5">
+                <ShieldAlert size={14} className="text-amber-800" /> Nguyên Tắc Nghĩa Vụ Chứng Minh (Burden of Proof):
+              </div>
+              <p>
+                Chủ tủ đã cung cấp video mở hộp đối soát và hóa đơn dịch vụ hợp lệ. Để từ chối bồi thường và chuyển lên BQT phân xử, <strong>khách thuê bắt buộc phải có Video bảo chứng</strong> (video lúc nhận bóc seal từ shipper hoặc video lúc đóng gói gửi trả nguyên vẹn).
+              </p>
+              <p className="font-medium text-amber-900">
+                Nếu bạn <strong>không có video bảo chứng</strong>, hệ thống sẽ mặc định công nhận yêu cầu bồi thường của chủ tủ và hoàn lại tiền cọc thừa cho bạn.
+              </p>
+            </div>
+
+            {/* Tùy chọn 1: Khách có video bảo chứng */}
+            <div className="p-4 rounded-xl border border-stone-200 bg-stone-50/50 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-stone-800 uppercase tracking-wide">
+                  Phương án 1: Tôi có Video bảo chứng (Gửi lên BQT)
+                </span>
+                {isUploadingCounterMedia && (
+                  <span className="text-[10px] text-amber-700 font-semibold flex items-center gap-1 animate-pulse">
+                    <Loader2 size={11} className="animate-spin" /> {counterUploadProgress || "Đang lưu video..."}
+                  </span>
+                )}
+              </div>
+
+              <textarea
+                rows={2}
+                value={counterReason}
+                onChange={(e) => setCounterReason(e.target.value)}
+                placeholder="Nhập lý do phản biện (VD: Lỗi này đã có từ lúc tôi bóc seal nhận đồ...)"
+                className="w-full px-3 py-2 rounded-md border border-stone-200 text-xs bg-white focus:outline-none focus:border-amber-600 resize-none"
+              />
+
+              <div className="flex items-center gap-2 flex-wrap">
+                {counterVideos.map((vid, idx) => (
+                  <div key={idx} className="relative group w-14 h-14 rounded-md bg-stone-900 flex items-center justify-center text-amber-400 border border-stone-300">
+                    <Video size={18} />
+                    <button
+                      type="button"
+                      onClick={() => setCounterVideos(prev => prev.filter((_, i) => i !== idx))}
+                      className="absolute top-0.5 right-0.5 bg-black/70 text-white rounded-full p-0.5 cursor-pointer"
+                    >
+                      <X size={10} />
+                    </button>
+                  </div>
+                ))}
+
+                <label className="h-10 px-3 rounded-md border border-dashed border-amber-600 bg-amber-50/50 hover:bg-amber-100/50 flex items-center gap-1.5 text-amber-900 text-xs font-medium cursor-pointer transition-colors">
+                  <input
+                    type="file"
+                    accept="video/*"
+                    disabled={isUploadingCounterMedia}
+                    onChange={handleUploadCounterMedia}
+                    className="hidden"
+                  />
+                  <Video size={14} />
+                  <span>+ Tải Video bảo chứng (Google 10TB)</span>
+                </label>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSubmitCounterDispute}
+                disabled={isSubmittingCounter || counterVideos.length === 0}
+                className="w-full py-2.5 bg-stone-900 hover:bg-black text-white text-xs font-semibold rounded-md transition-colors disabled:opacity-40 cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                {isSubmittingCounter ? <Loader2 size={13} className="animate-spin" /> : <ShieldAlert size={13} />}
+                Gửi Video bảo chứng lên BQT Trọng tài
+              </button>
+            </div>
+
+            {/* Tùy chọn 2: Khách không có video bảo chứng */}
+            <div className="p-4 rounded-xl border border-dashed border-stone-300 bg-white space-y-2">
+              <span className="text-xs font-semibold text-stone-700 uppercase tracking-wide block">
+                Phương án 2: Tôi không có Video bảo chứng
+              </span>
+              <p className="text-[11px] text-stone-500 leading-relaxed">
+                Vì không có video đối chứng, theo Quy chế Nghĩa vụ Chứng minh, yêu cầu bồi thường theo hóa đơn thực tế của chủ tủ được chấp nhận. Hệ thống sẽ trích bồi thường và hoàn trả ngay <strong>{Math.max(0, counterDisputeData.depositAmount - counterDisputeData.suggestedDeduction).toLocaleString('vi-VN')}đ</strong> cọc thừa vào ví của bạn.
+              </p>
+              <button
+                type="button"
+                onClick={handleAcceptWithoutProof}
+                className="w-full py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-semibold rounded-md transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <Check size={13} />
+                Chấp nhận khấu trừ theo quy chế & Nhận cọc thừa ngay
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
 
       {packagingOrder && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 backdrop-blur-md p-4">
@@ -1333,6 +1695,13 @@ export function OrdersClient({
               <button onClick={() => setPackagingOrder(null)} className="text-stone-400 hover:text-stone-900 transition-colors p-1">
                 <X size={18} strokeWidth={1.5} />
               </button>
+            </div>
+
+            <div className="rounded-lg border border-stone-200/90 bg-stone-50/70 p-2.5 text-[11px] text-stone-600">
+              <span className="font-bold text-[#183A2D] uppercase tracking-wider text-[10px] block mb-0.5 font-ui">
+                ĐẶC QUYỀN ĐÓNG GÓI TẬN CỬA 0 ĐỒNG
+              </span>
+              Bưu tá GHN mang sẵn túi niêm phong tiêu chuẩn của bưu cục đến tận nơi. Bạn chỉ cần gấp gọn trang phục, không cần chuẩn bị thùng carton hay băng keo.
             </div>
 
             <div className="flex items-center gap-3 p-2.5 rounded-lg bg-stone-50 border border-stone-200/60">
@@ -1377,7 +1746,7 @@ export function OrdersClient({
                     onChange={(e) => setPackagingChecklist(prev => ({ ...prev, sealedProperly: e.target.checked }))}
                     className="mt-0.5 rounded border-stone-300 text-[#183A2D] focus:ring-[#183A2D]" 
                   />
-                  <span>Đã dán kín miệng túi / hộp hàng và dán tem niêm phong CLOOP.</span>
+                  <span>Đã gấp gọn trang phục sẵn sàng để bưu tá GHN niêm phong vào túi bưu cục tại chỗ (Đặc quyền 0đ).</span>
                 </label>
               </div>
             </div>

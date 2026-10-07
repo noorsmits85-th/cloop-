@@ -516,7 +516,7 @@ async function fetchShopProductsDirect(
       waist: p.waist || null,
       hips: p.hips || null,
       createdAt: p.createdAt.toISOString(),
-      isBoosted: Boolean(p.isHighlighted)
+      isBoosted: Boolean(p.isHighlighted || (p.boostExpiresAt && new Date(p.boostExpiresAt) > new Date()))
     };
   });
 

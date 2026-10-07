@@ -71,10 +71,10 @@ export async function getPendingPayoutsAction() {
         id: req.id,
         orderCode: `WD-${req.id.substring(0, 8).toUpperCase()}`,
         ownerName: req.bankAccountHolder || req.user?.name || "Chủ tủ CLOOP",
-        ownerPhone: "0987654321",
-        bankName: req.bankName || "Techcombank",
-        bankAccount: req.bankAccountNumber || "0866801743",
-        bankHolder: req.bankAccountHolder || req.user?.name || "CHỦ TỦ CLOOP",
+        ownerPhone: "—",
+        bankName: req.bankName || "—",
+        bankAccount: req.bankAccountNumber || "—",
+        bankHolder: req.bankAccountHolder || req.user?.name || "—",
         rentalFee: req.amount,
         platformFee: 0,
         returnShippingFee: 0,
@@ -88,49 +88,29 @@ export async function getPendingPayoutsAction() {
 
     // Map completed rentals (chưa xác nhận chi trả)
     completedRentals.filter(rent => !confirmedRentalIds.has(rent.id)).forEach(rent => {
-      const rentalFee = rent.invoice?.rentalFee || 350000;
+      const rentalFee = rent.invoice?.rentalFee || 0;
       const platformFee = rent.invoice?.platformFee || Math.floor(rentalFee * 0.12);
-      const returnShipping = 25000;
+      const returnShipping = 0;
       const netPayout = Math.max(0, rentalFee - platformFee - returnShipping);
 
       items.push({
         id: rent.id,
         orderCode: `ORD-${rent.id.substring(0, 8).toUpperCase()}`,
-        ownerName: rent.owner_name || rent.product?.user?.name || "Linh Nguyễn",
-        ownerPhone: rent.owner_phone || "0987654321",
-        bankName: "MB Bank (Ngân hàng Quân Đội)",
-        bankAccount: "98765432101",
-        bankHolder: (rent.owner_name || rent.product?.user?.name || "LINH NGUYEN").toUpperCase(),
+        ownerName: rent.owner_name || rent.product?.user?.name || "Chủ tủ",
+        ownerPhone: rent.owner_phone || "—",
+        bankName: "Ví CLOOP (Đã ghi nhận số dư)",
+        bankAccount: "—",
+        bankHolder: (rent.owner_name || rent.product?.user?.name || "CHỦ TỦ").toUpperCase(),
         rentalFee: rentalFee,
         platformFee: platformFee,
         returnShippingFee: returnShipping,
         netPayoutAmount: netPayout,
         status: "PENDING",
-        productTitle: rent.product?.title || "Đầm Dạ Hội Lụa Satin Cao Cấp",
+        productTitle: rent.product?.title || "Trang phục CLOOP",
         completedAt: rent.updatedAt.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }),
         type: "RENTAL"
       });
     });
-
-    // Nếu chưa có đơn trong DB, cung cấp đơn mẫu đối soát thực tế chuẩn Techfest
-    if (items.length === 0) {
-      items.push({
-        id: "sample-payout-dh88",
-        orderCode: "ORD-202609-088",
-        ownerName: "Linh Nguyễn",
-        ownerPhone: "0987654321",
-        bankName: "MB Bank (Ngân hàng Quân Đội)",
-        bankAccount: "98765432101",
-        bankHolder: "NGUYEN THI LINH",
-        rentalFee: 350000,
-        platformFee: 42000,
-        returnShippingFee: 25000,
-        netPayoutAmount: 283000,
-        status: "PENDING",
-        productTitle: "Đầm Dạ Hội Lụa Satin Cao Cấp",
-        completedAt: "15:00:00 - 05/09/2026"
-      });
-    }
 
     return { success: true, items };
   } catch (error: any) {

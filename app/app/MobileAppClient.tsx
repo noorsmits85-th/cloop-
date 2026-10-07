@@ -299,6 +299,26 @@ export default function MobileAppClient({
   const [isBlogModalOpen, setIsBlogModalOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
 
+  // Lời nhắc chỉ dẫn thân thiện cho người dùng khi vào tab "Tôi"
+  const [showWelcomeTip, setShowWelcomeTip] = useState(true);
+
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined" && localStorage.getItem("cloop_app_me_tip_v2_closed") === "true") {
+        setShowWelcomeTip(false);
+      }
+    } catch (_) {}
+  }, []);
+
+  const handleCloseWelcomeTip = () => {
+    setShowWelcomeTip(false);
+    try {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("cloop_app_me_tip_v2_closed", "true");
+      }
+    } catch (_) {}
+  };
+
   // 🛡️ DỮ LIỆU AN TOÀN TRÁNH CRASH GIAO DIỆN (NULL-SAFETY)
   const safeOrdersAsRenter = closetData?.ordersAsRenter || [];
   const safeOrdersAsLender = closetData?.ordersAsLender || [];
@@ -3103,7 +3123,7 @@ export default function MobileAppClient({
                     onClick={() => openAuthModal ? openAuthModal('login') : setShowAuthModal(true)}
                     className="py-3 px-2 rounded-xl bg-emerald-900/80 border border-emerald-600/70 text-white font-bold text-xs tracking-wider uppercase shadow-sm hover:bg-emerald-800 transition cursor-pointer text-center flex items-center justify-center gap-1"
                   >
-                    <span>🔑 Đăng Nhập</span>
+                    <span>Đăng Nhập</span>
                   </button>
                 </div>
               </div>
@@ -3152,143 +3172,190 @@ export default function MobileAppClient({
                     </button>
                   </div>
 
-                  {/* 3 Viên nang số liệu gọn gàng */}
+                  {/* 3 Viên nang số liệu cốt lõi */}
                   <div className="grid grid-cols-3 gap-1.5 pt-1.5 border-t border-emerald-800/60 text-center">
-                    <div className="bg-white/10 rounded-xl py-1 px-1.5">
-                      <span className="text-[8.5px] text-emerald-200 block">Ví Thu Nhập</span>
-                      <p className="font-mono font-black text-xs text-emerald-300">
-                        {(closetData?.user?.walletBalance || 0).toLocaleString("vi-VN")}đ
+                    <button 
+                      onClick={() => setActiveClosetView("wallet")}
+                      className="bg-white/10 hover:bg-white/20 transition rounded-xl py-1.5 px-1 cursor-pointer text-center"
+                    >
+                      <span className="text-[9px] text-emerald-200 block">Ví tiền</span>
+                      <p className="font-mono font-bold text-xs text-emerald-300 mt-0.5 truncate">
+                        {(closetData?.user?.walletBalance || 0).toLocaleString("vi-VN")}₫
                       </p>
-                    </div>
-                    <div className="bg-white/10 rounded-xl py-1 px-1.5">
-                      <span className="text-[8.5px] text-emerald-200 block">Điểm Xanh</span>
-                      <p className="font-mono font-black text-xs text-white">
-                        {closetData?.stats?.greenPoints || 120} pts
+                    </button>
+                    <button 
+                      onClick={() => setActiveClosetView("wallet")}
+                      className="bg-white/10 hover:bg-white/20 transition rounded-xl py-1.5 px-1 cursor-pointer text-center"
+                    >
+                      <span className="text-[9px] text-emerald-200 block">Điểm Lá</span>
+                      <p className="font-mono font-bold text-xs text-white mt-0.5 truncate">
+                        {(closetData?.user?.cloopCoins || 0).toLocaleString("vi-VN")} Lá
                       </p>
-                    </div>
-                    <div className="bg-white/10 rounded-xl py-1 px-1.5">
-                      <span className="text-[8.5px] text-emerald-200 block">Giảm CO2</span>
-                      <p className="font-mono font-black text-xs text-white">
-                        {Math.round((closetData?.stats?.co2Saved || 15) * 10) / 10}kg
+                    </button>
+                    <button 
+                      onClick={() => setActiveClosetView("items")}
+                      className="bg-white/10 hover:bg-white/20 transition rounded-xl py-1.5 px-1 cursor-pointer text-center"
+                    >
+                      <span className="text-[9px] text-emerald-200 block">Tủ đồ</span>
+                      <p className="font-mono font-bold text-xs text-white mt-0.5 truncate">
+                        {safeMyProducts.length} món
                       </p>
-                    </div>
+                    </button>
                   </div>
                 </div>
 
                 {/* ========================================================
-                    2. CÁC THANH MENU 3 GẠCH QUẢN LÝ (CHIA RÕ RÀNG NHƯ BẢN WEB)
+                    2. DANH MỤC QUẢN LÝ (TỐI GIẢN TỪ KHÓA, GỌN GÀNG, DỄ DÙNG)
                     ======================================================== */}
                 {activeClosetView === "menu" ? (
                   <div className="space-y-2 pt-1">
-                    <div className="flex items-center justify-between px-1">
-                      <h3 className="font-heading font-black text-xs uppercase tracking-wider text-[#16442C]">
-                        Danh Mục Quản Lý Tủ Đồ
-                      </h3>
-                    </div>
+                    
+                    {/* 😊 LỜI NHẮC CHỈ DẪN THÂN THIỆN */}
+                    {showWelcomeTip && (
+                      <div className="bg-[#FAF9F5] border border-stone-200/90 rounded-2xl p-3.5 flex items-center justify-between gap-3 text-xs text-stone-800 shadow-2xs">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="text-base select-none shrink-0">😊</span>
+                          <p className="text-[11.5px] leading-relaxed text-stone-700">
+                            Chào bạn ghé CLOOP! Bấm vào <strong>Tủ đồ</strong> để chia sẻ trang phục hoặc vào <strong>Ví Lá</strong> nhận quà làm quen nhé.
+                          </p>
+                        </div>
+                        <button
+                          onClick={handleCloseWelcomeTip}
+                          className="p-1 text-stone-400 hover:text-stone-700 rounded-full hover:bg-stone-200/60 transition shrink-0 cursor-pointer"
+                          title="Đóng"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    )}
 
-                    {/* THANH 1: KỆ ĐỒ CÁ NHÂN */}
+                    {/* MỤC 1: TỦ ĐỒ CỦA TÔI */}
                     <button
                       onClick={() => setActiveClosetView("items")}
-                      className="w-full bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs flex items-center justify-between hover:border-[#1E5638] hover:shadow-xs transition active:scale-[0.99] cursor-pointer text-left group"
+                      className="w-full bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs flex items-center justify-between hover:border-[#183A2D]/50 transition active:scale-[0.99] cursor-pointer text-left group"
                     >
-                      <div>
-                        <h4 className="text-xs font-bold text-stone-900 group-hover:text-[#1E5638]">
-                          Kệ Đồ Của Tôi
-                        </h4>
-                        <p className="text-[11px] text-stone-500 mt-0.5">
-                          Quản lý các trang phục đang cho thuê &amp; pass lại
-                        </p>
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-stone-100 text-[#183A2D] flex items-center justify-center shrink-0">
+                          <Shirt size={17} />
+                        </div>
+                        <span className="text-xs font-semibold text-stone-900 group-hover:text-[#183A2D] transition-colors">
+                          Tủ đồ của tôi
+                        </span>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full">
-                          {closetData?.myProducts?.length || 0} món
+                        <span className="text-[11px] font-medium text-stone-600 bg-stone-100 px-2.5 py-0.5 rounded-full">
+                          {safeMyProducts.length} món
                         </span>
-                        <ChevronRight size={16} className="text-stone-400 group-hover:text-[#1E5638] transition-transform group-hover:translate-x-0.5" />
+                        <ChevronRight size={15} className="text-stone-400 group-hover:text-[#183A2D] transition-transform group-hover:translate-x-0.5" />
                       </div>
                     </button>
 
-                    {/* THANH 2: ĐƠN HÀNG & LỊCH THUÊ */}
+                    {/* MỤC 2: ĐƠN HÀNG */}
                     <button
                       onClick={() => setActiveClosetView("orders")}
-                      className="w-full bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs flex items-center justify-between hover:border-[#1E5638] hover:shadow-xs transition active:scale-[0.99] cursor-pointer text-left group"
+                      className="w-full bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs flex items-center justify-between hover:border-[#183A2D]/50 transition active:scale-[0.99] cursor-pointer text-left group"
                     >
-                      <div>
-                        <h4 className="text-xs font-bold text-stone-900 group-hover:text-[#1E5638]">
-                          Đơn Hàng &amp; Lịch Hẹn Thuê
-                        </h4>
-                        <p className="text-[11px] text-stone-500 mt-0.5">
-                          Theo dõi khách thuê đồ &amp; trang phục bạn đang thuê
-                        </p>
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-stone-100 text-[#183A2D] flex items-center justify-center shrink-0">
+                          <Package size={17} />
+                        </div>
+                        <span className="text-xs font-semibold text-stone-900 group-hover:text-[#183A2D] transition-colors">
+                          Đơn hàng &amp; Thuê đồ
+                        </span>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="text-[11px] font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded-full">
+                        <span className="text-[11px] font-medium text-stone-600 bg-stone-100 px-2.5 py-0.5 rounded-full">
                           {(closetData?.ordersAsLender?.length || 0) + (closetData?.ordersAsRenter?.length || 0)} đơn
                         </span>
-                        <ChevronRight size={16} className="text-stone-400 group-hover:text-[#1E5638] transition-transform group-hover:translate-x-0.5" />
+                        <ChevronRight size={15} className="text-stone-400 group-hover:text-[#183A2D] transition-transform group-hover:translate-x-0.5" />
                       </div>
                     </button>
 
-                    {/* THANH 3: VÍ THU NHẬP & SỐ DƯ */}
+                    {/* MỤC 3: VÍ TIỀN & RÚT TIỀN */}
                     <button
                       onClick={() => setActiveClosetView("wallet")}
-                      className="w-full bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs flex items-center justify-between hover:border-[#1E5638] hover:shadow-xs transition active:scale-[0.99] cursor-pointer text-left group"
+                      className="w-full bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs flex items-center justify-between hover:border-[#183A2D]/50 transition active:scale-[0.99] cursor-pointer text-left group"
                     >
-                      <div>
-                        <h4 className="text-xs font-bold text-stone-900 group-hover:text-[#1E5638]">
-                          Ví Thu Nhập &amp; Doanh Thu
-                        </h4>
-                        <p className="text-[11px] text-stone-500 mt-0.5">
-                          Số dư khả dụng từ tiền thuê &amp; thanh toán
-                        </p>
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-stone-100 text-[#183A2D] flex items-center justify-center shrink-0">
+                          <Wallet size={17} />
+                        </div>
+                        <span className="text-xs font-semibold text-stone-900 group-hover:text-[#183A2D] transition-colors">
+                          Ví tiền &amp; Rút tiền
+                        </span>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full">
-                          {(closetData?.user?.walletBalance || 0).toLocaleString("vi-VN")}đ
+                        <span className="text-[11px] font-bold text-[#183A2D] bg-[#183A2D]/5 px-2.5 py-0.5 rounded-full font-mono">
+                          {(closetData?.user?.walletBalance || 0).toLocaleString("vi-VN")}₫
                         </span>
-                        <ChevronRight size={16} className="text-stone-400 group-hover:text-[#1E5638] transition-transform group-hover:translate-x-0.5" />
+                        <ChevronRight size={15} className="text-stone-400 group-hover:text-[#183A2D] transition-transform group-hover:translate-x-0.5" />
                       </div>
                     </button>
 
-                    {/* THANH 4: TÁC ĐỘNG SINH THÁI (ECO STATS) */}
+                    {/* MỤC 4: ĐIỂM LÁ CLOOP (NẠP & ĐẨY BÀI) */}
                     <button
-                      onClick={() => setActiveClosetView("eco")}
-                      className="w-full bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs flex items-center justify-between hover:border-[#1E5638] hover:shadow-xs transition active:scale-[0.99] cursor-pointer text-left group"
+                      onClick={() => setActiveClosetView("wallet")}
+                      className="w-full bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs flex items-center justify-between hover:border-[#183A2D]/50 transition active:scale-[0.99] cursor-pointer text-left group"
                     >
-                      <div>
-                        <h4 className="text-xs font-bold text-stone-900 group-hover:text-[#1E5638]">
-                          Thống Kê Sinh Thái &amp; Điểm Xanh
-                        </h4>
-                        <p className="text-[11px] text-stone-500 mt-0.5">
-                          Lượng CO2, nước bảo tồn và huy hiệu tuần hoàn
-                        </p>
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-stone-100 text-[#183A2D] flex items-center justify-center shrink-0">
+                          <Leaf size={17} />
+                        </div>
+                        <span className="text-xs font-semibold text-stone-900 group-hover:text-[#183A2D] transition-colors">
+                          Ví Điểm Lá (Nạp &amp; Đẩy bài)
+                        </span>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="text-[11px] font-bold text-teal-900 bg-teal-50 px-2 py-0.5 rounded-full">
-                          {closetData?.stats?.greenPoints || 120} pts
+                        <span className="text-[11px] font-bold text-[#183A2D] bg-[#183A2D]/5 px-2.5 py-0.5 rounded-full font-mono">
+                          {(closetData?.user?.cloopCoins || 0).toLocaleString("vi-VN")} Lá
                         </span>
-                        <ChevronRight size={16} className="text-stone-400 group-hover:text-[#1E5638] transition-transform group-hover:translate-x-0.5" />
+                        <ChevronRight size={15} className="text-stone-400 group-hover:text-[#183A2D] transition-transform group-hover:translate-x-0.5" />
                       </div>
                     </button>
 
-                    {/* THANH 5: HỒ SƠ & ĐỊA CHỈ GIAO NHẬN */}
+                    {/* MỤC 5: ĐỊA CHỈ GIAO NHẬN */}
                     <button
                       onClick={() => setActiveClosetView("profile")}
-                      className="w-full bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs flex items-center justify-between hover:border-[#1E5638] hover:shadow-xs transition active:scale-[0.99] cursor-pointer text-left group"
+                      className="w-full bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs flex items-center justify-between hover:border-[#183A2D]/50 transition active:scale-[0.99] cursor-pointer text-left group"
                     >
-                      <div>
-                        <h4 className="text-xs font-bold text-stone-900 group-hover:text-[#1E5638]">
-                          Hồ Sơ &amp; Địa Chỉ Giao Nhận
-                        </h4>
-                        <p className="text-[11px] text-stone-500 mt-0.5 truncate max-w-[210px]">
-                          {unifiedAddress.fullAddress || closetData?.user?.fullAddress || closetData?.user?.pickupAddress || closetData?.user?.location || "Cài đặt địa chỉ chuẩn GHN"}
-                        </p>
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-stone-100 text-[#183A2D] flex items-center justify-center shrink-0">
+                          <MapPin size={17} />
+                        </div>
+                        <span className="text-xs font-semibold text-stone-900 group-hover:text-[#183A2D] transition-colors">
+                          Địa chỉ giao nhận
+                        </span>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        <ChevronRight size={16} className="text-stone-400 group-hover:text-[#1E5638] transition-transform group-hover:translate-x-0.5" />
+                        <span className="text-[11px] font-medium text-stone-500 truncate max-w-[120px]">
+                          {unifiedAddress.province || "Cài đặt"}
+                        </span>
+                        <ChevronRight size={15} className="text-stone-400 group-hover:text-[#183A2D] transition-transform group-hover:translate-x-0.5" />
                       </div>
                     </button>
 
-                    {/* THANH 6: BANNER ĐĂNG MÓN ĐỒ MỚI (NỔI BẬT) */}
+                    {/* MỤC 6: TÁC ĐỘNG SINH THÁI */}
+                    <button
+                      onClick={() => setActiveClosetView("eco")}
+                      className="w-full bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs flex items-center justify-between hover:border-[#183A2D]/50 transition active:scale-[0.99] cursor-pointer text-left group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-stone-100 text-[#183A2D] flex items-center justify-center shrink-0">
+                          <Droplet size={17} />
+                        </div>
+                        <span className="text-xs font-semibold text-stone-900 group-hover:text-[#183A2D] transition-colors">
+                          Tác động sinh thái
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-[11px] font-medium text-stone-600 bg-stone-100 px-2.5 py-0.5 rounded-full">
+                          {closetData?.stats?.greenPoints || 120} pts
+                        </span>
+                        <ChevronRight size={15} className="text-stone-400 group-hover:text-[#183A2D] transition-transform group-hover:translate-x-0.5" />
+                      </div>
+                    </button>
+
+                    {/* NÚT ĐĂNG TRANG PHỤC MỚI */}
                     <button
                       onClick={() => {
                         if (!currentUser) {
@@ -3297,18 +3364,11 @@ export default function MobileAppClient({
                           handleOpenCreateModal();
                         }
                       }}
-                      className="w-full bg-[#1E5638] text-white rounded-2xl p-3.5 shadow-sm flex items-center justify-between hover:bg-[#236341] transition active:scale-[0.99] cursor-pointer text-left mt-3"
+                      className="w-full bg-[#183A2D] hover:bg-[#112a20] text-white rounded-2xl p-3.5 shadow-sm flex items-center justify-center gap-2 transition active:scale-[0.99] cursor-pointer mt-3"
                     >
-                      <div>
-                        <h4 className="text-xs font-black text-white uppercase tracking-wide">
-                          Đăng Thêm Trang Phục Mới
-                        </h4>
-                        <p className="text-[11px] text-stone-300 mt-0.5">
-                          Váy tiệc chỉ mặc 1 lần? Chia sẻ để nhận thu nhập
-                        </p>
-                      </div>
-                      <span className="text-[11px] font-bold bg-white text-[#16442C] px-3 py-1.5 rounded-xl shrink-0 shadow-2xs">
-                        + Đăng ngay
+                      <Plus size={16} className="text-white" />
+                      <span className="text-xs font-bold text-white tracking-wide uppercase">
+                        Đăng trang phục mới
                       </span>
                     </button>
                   </div>
@@ -3323,7 +3383,7 @@ export default function MobileAppClient({
                       className="flex items-center gap-1.5 text-xs font-bold text-[#16442C] hover:underline cursor-pointer py-1"
                     >
                       <ArrowLeft size={16} />
-                      <span>Quay lại danh mục quản lý</span>
+                      <span>Quay lại</span>
                     </button>
 
                     {/* CHI TIẾT PHÂN MỤC 1: KỆ ĐỒ CỦA TÔI */}
@@ -4118,7 +4178,7 @@ export default function MobileAppClient({
             {activeTab === "orders" && <span className="w-1.5 h-1.5 rounded-full bg-[#C92A2A] -mb-1 mt-0.5" />}
           </button>
 
-          {/* TAB 5: TỦ ĐỒ (Đồng bộ /my-closet) */}
+          {/* TAB 5: TÔI (Đồng bộ /my-closet) */}
           <button
             onClick={() => { setActiveTab("closet"); setActiveClosetView("menu"); }}
             className={`flex flex-col items-center justify-center flex-1 py-0.5 select-none transition-colors cursor-pointer relative ${
@@ -4130,7 +4190,7 @@ export default function MobileAppClient({
               <span className="absolute top-0 right-3 w-2 h-2 rounded-full bg-[#C92A2A] ring-2 ring-white" />
             )}
             <span className="text-[10px] tracking-tight mt-0.5">
-              {lang === "vi" ? "Tủ đồ" : "Closet"}
+              {lang === "vi" ? "Tôi" : "Me"}
             </span>
             {activeTab === "closet" && <span className="w-1.5 h-1.5 rounded-full bg-[#C92A2A] -mb-1 mt-0.5" />}
           </button>
@@ -4823,7 +4883,7 @@ export default function MobileAppClient({
                     {/* Tag Tiết kiệm % như bản web */}
                     <div className="pt-1">
                       <span className="text-[10px] font-bold text-[#C92A2A] bg-red-50 border border-red-200/80 px-2 py-0.5 rounded-md font-mono inline-flex items-center gap-1">
-                        <span>🏷️</span> Tiết kiệm {
+                        Tiết kiệm {
                           Math.round((1 - (Number(selectedProduct.price || selectedProduct.rentalPrice || selectedProduct.salePrice || 0) / (Number(selectedProduct.originalPrice || selectedProduct.storeRetailPrice || 0) > 0 ? Number(selectedProduct.originalPrice || selectedProduct.storeRetailPrice) : (Number(selectedProduct.price || selectedProduct.rentalPrice || 0) * 9)))) * 100)
                         }% so với giá mua mới
                       </span>
@@ -5646,7 +5706,7 @@ export default function MobileAppClient({
                           className="w-full h-10 px-3 rounded-xl border border-emerald-300 bg-white text-xs font-bold outline-none"
                         />
                         <p className="text-[9.5px] text-stone-500 mt-1">
-                          Khoản bảo chứng tài sản, được hoàn trả 100% khi người thuê trả đồ nguyên vẹn.
+                          Khoản tiền cọc được hoàn trả tự động sau khi kết thúc đơn thuê.
                         </p>
                       </div>
                     </div>
@@ -6021,7 +6081,7 @@ export default function MobileAppClient({
                     {bookingSuccessData ? (isPaidSuccess ? "Thanh Toán Thành Công" : "Cổng Thanh Toán PayOS") : (checkoutProduct.listingTypeRaw === "SELL" ? "Xác Nhận Mua Trang Phục" : "Xác Nhận Thuê Trang Phục")}
                   </h3>
                   <p className="text-[11px] text-stone-500 mt-0.5">
-                    {bookingSuccessData ? (isPaidSuccess ? "Giao dịch đã xác thực bởi PayOS" : "Két bảo chứng tự động khóa tiền cọc") : "Bảo chứng thanh toán an toàn bởi CLOOP Escrow"}
+                    {bookingSuccessData ? (isPaidSuccess ? "Giao dịch thành công qua PayOS" : "Vui lòng quét mã QR để hoàn tất thanh toán") : "Xác nhận thông tin giao dịch"}
                   </p>
                 </div>
 
@@ -6055,10 +6115,10 @@ export default function MobileAppClient({
                         </div>
                         <div>
                           <h4 className="font-heading font-black text-lg text-emerald-950">
-                            Thanh Toán PayOS Thành Công! 🎉
+                            Thanh Toán Thành Công
                           </h4>
                           <p className="text-xs text-emerald-800 mt-0.5">
-                            Két bảo chứng CLOOP Escrow đã nhận tiền cọc & xác nhận đơn hàng.
+                            Hệ thống đã ghi nhận thanh toán và xác nhận đơn hàng của bạn.
                           </p>
                         </div>
                         <div className="inline-block bg-white px-3 py-1.5 rounded-full border border-emerald-300 font-mono text-xs font-black text-[#16442C]">
@@ -6123,7 +6183,7 @@ export default function MobileAppClient({
                     <div className="space-y-3.5 py-1 animate-in fade-in duration-300">
                       <div className="text-center space-y-1 bg-stone-50 p-3 rounded-2xl border border-stone-200">
                         <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200/80 inline-block">
-                          KÉT BẢO CHỨNG TỰ ĐỘNG KHÓA TIỀN CỌC
+                          THANH TOÁN AN TOÀN TRỰC TUYẾN
                         </span>
                         <h4 className="font-heading font-black text-base text-[#16442C] pt-0.5">
                           Quét Mã QR Chuyển Khoản PayOS
@@ -6605,6 +6665,21 @@ export default function MobileAppClient({
                             <span className="font-bold font-mono">
                               {checkoutShippingFee !== null ? `${checkoutShippingFee.toLocaleString("vi-VN")}đ` : "--"}
                             </span>
+                          </div>
+
+                          {/* ĐẶC QUYỀN ĐÓNG GÓI TẬN CỬA 0 ĐỒNG (TỐI GIẢN - KHÔNG ICON MÀU MÈ) */}
+                          <div className="p-2.5 rounded-xl border border-stone-200/90 bg-stone-50/60 text-[11px] text-stone-700 leading-relaxed">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="font-bold uppercase tracking-wider text-[10px] text-[#16442C]">
+                                ĐẶC QUYỀN ĐÓNG GÓI TẬN CỬA 0 ĐỒNG
+                              </span>
+                              <span className="text-[9px] font-semibold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200/60 font-mono">
+                                ĐÃ BAO GỒM
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-stone-500 leading-snug">
+                              Bưu tá GHN mang sẵn túi niêm phong tiêu chuẩn của bưu cục đến tận nơi. Bạn không cần thùng carton, không cần băng keo.
+                            </p>
                           </div>
                         </div>
                       )}

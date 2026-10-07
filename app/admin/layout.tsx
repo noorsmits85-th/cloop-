@@ -9,8 +9,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="min-h-screen bg-[#FAF9F5]">
       {/* THANH ĐIỀU HƯỚNG MẠCH DÒNG TIỀN VẬN HÀNH THỐNG NHẤT TOÀN SÀN */}
       <AdminNavbar />
-      <div className="max-w-[1500px] mx-auto">
-        {children}
+      <div className="w-full px-4 lg:px-6 py-6">
+        <div className="max-w-[1280px] mx-auto">
+          {children}
+        </div>
       </div>
     </div>
   );

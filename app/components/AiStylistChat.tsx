@@ -4,10 +4,17 @@ import { useMemo, useRef, useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { 
   MapPin, Send, X, PhoneCall, MessageCircle, 
-  ArrowRight, ShieldCheck, Headphones, Camera, Image as ImageIcon
+  ArrowRight, ShieldCheck, Headphones, Camera, Image as ImageIcon, Sparkles
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { 
+  getOrCreateSupportTicket, 
+  getTicketMessages, 
+  sendCustomerMessage, 
+  MessageItem 
+} from "@/app/actions/support";
+import { soundAlert } from "@/lib/sound-alert";
 
 // 🌟 ICON ĐẶC TRƯNG ĐỘC BẢN: CLOOP CHATBOT (Kết hợp Chat Bubble + Đôi Mắt Infinity Loop Tuần Hoàn)
 function CloopChatBotIcon({ className = "w-6 h-6" }: { className?: string }) {
@@ -312,15 +319,152 @@ export default function AiStylistChat({
   
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const stylistScrollContainerRef = useRef<HTMLDivElement | null>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  // --- CSKH REALTIME CHAT STATES ---
+  const [cskhTicketId, setCskhTicketId] = useState<string | null>(null);
+  const [cskhMessages, setCskhMessages] = useState<MessageItem[]>([]);
+  const [cskhInput, setCskhInput] = useState("");
+  const [isCskhSending, setIsCskhSending] = useState(false);
+  const [cskhUnreadCount, setCskhUnreadCount] = useState(0);
+  const prevAdminCountRef = useRef<number>(0);
+  const cskhScrollContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Khôi phục ticket CSKH từ localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedTicketId = localStorage.getItem("cloop_customer_ticket_id");
+      if (savedTicketId) {
+        setCskhTicketId(savedTicketId);
+        getTicketMessages(savedTicketId).then((res) => {
+          if (res.success && res.messages) {
+            setCskhMessages(res.messages as any);
+            const adminCount = res.messages.filter((m) => m.senderType === "ADMIN").length;
+            prevAdminCountRef.current = adminCount;
+            setTimeout(() => {
+              if (cskhScrollContainerRef.current) {
+                cskhScrollContainerRef.current.scrollTo({
+                  top: cskhScrollContainerRef.current.scrollHeight,
+                  behavior: "auto",
+                });
+              }
+            }, 50);
+          }
+        });
+      }
+    }
+  }, []);
+
+  // Polling tin nhắn CSKH từ Admin mỗi 3.5 giây (chỉ cập nhật khi thực sự có tin nhắn mới)
+  useEffect(() => {
+    if (!cskhTicketId) return;
+
+    const interval = setInterval(async () => {
+      const res = await getTicketMessages(cskhTicketId);
+      if (res.success && res.messages) {
+        const newMsgs = res.messages as any[];
+        setCskhMessages((prev) => {
+          if (prev.length !== newMsgs.length) {
+            setTimeout(() => {
+              if (cskhScrollContainerRef.current) {
+                cskhScrollContainerRef.current.scrollTo({
+                  top: cskhScrollContainerRef.current.scrollHeight,
+                  behavior: "smooth",
+                });
+              }
+            }, 50);
+            return newMsgs;
+          }
+          const prevLast = prev[prev.length - 1]?.id;
+          const newLast = newMsgs[newMsgs.length - 1]?.id;
+          if (prevLast !== newLast) {
+            setTimeout(() => {
+              if (cskhScrollContainerRef.current) {
+                cskhScrollContainerRef.current.scrollTo({
+                  top: cskhScrollContainerRef.current.scrollHeight,
+                  behavior: "smooth",
+                });
+              }
+            }, 50);
+            return newMsgs;
+          }
+          return prev; // Giữ nguyên, không re-render, không nhảy lướt!
+        });
+
+        const currentAdminMsgs = newMsgs.filter((m) => m.senderType === "ADMIN").length;
+        if (currentAdminMsgs > prevAdminCountRef.current) {
+          soundAlert.playChime();
+          if (activeTab !== "cskh") {
+            setCskhUnreadCount((prev) => prev + (currentAdminMsgs - prevAdminCountRef.current));
+          }
+        }
+        prevAdminCountRef.current = currentAdminMsgs;
+      }
+    }, 3500);
+
+    return () => clearInterval(interval);
+  }, [cskhTicketId, activeTab]);
+
+  useEffect(() => {
+    if (activeTab === "cskh") {
+      setCskhUnreadCount(0);
+      setTimeout(() => {
+        if (cskhScrollContainerRef.current) {
+          cskhScrollContainerRef.current.scrollTo({
+            top: cskhScrollContainerRef.current.scrollHeight,
+            behavior: "auto",
+          });
+        }
+      }, 50);
+    }
+  }, [activeTab]);
+
+  const handleSendCskhMessage = async (textToSend?: string) => {
+    const text = (textToSend || cskhInput).trim();
+    if (!text || isCskhSending) return;
+
+    setCskhInput("");
+    setIsCskhSending(true);
+
+    let activeId = cskhTicketId;
+    if (!activeId) {
+      const initRes = await getOrCreateSupportTicket({
+        customerName: "Khách Hàng",
+      });
+      if (initRes.success && initRes.ticket) {
+        activeId = initRes.ticket.id;
+        setCskhTicketId(activeId);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("cloop_customer_ticket_id", activeId);
+        }
+      }
+    }
+
+    if (activeId) {
+      const sendRes = await sendCustomerMessage({
+        ticketId: activeId,
+        content: text,
+        senderName: "Khách Hàng",
+      });
+      if (sendRes.success && sendRes.message) {
+        setCskhMessages((prev) => [...prev, sendRes.message as any]);
+      }
+    }
+    setIsCskhSending(false);
+  };
+
+  const scrollToStylistBottom = (smooth = true) => {
+    if (stylistScrollContainerRef.current) {
+      stylistScrollContainerRef.current.scrollTo({
+        top: stylistScrollContainerRef.current.scrollHeight,
+        behavior: smooth ? "smooth" : "auto",
+      });
+    }
   };
 
   useEffect(() => {
-    if (showChat) {
-      scrollToBottom();
+    if (showChat && activeTab === "stylist") {
+      scrollToStylistBottom(true);
     }
   }, [messages, isTyping, showChat, activeTab]);
 
@@ -549,7 +693,7 @@ export default function AiStylistChat({
                 <button
                   type="button"
                   onClick={() => setActiveTab("cskh")}
-                  className={`py-0.5 rounded transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                  className={`relative py-0.5 rounded transition-all flex items-center justify-center gap-1 cursor-pointer ${
                     activeTab === "cskh"
                       ? "bg-white text-[#1E5638] shadow-2xs font-extrabold"
                       : "text-stone-300 hover:text-white"
@@ -557,6 +701,9 @@ export default function AiStylistChat({
                 >
                   <Headphones size={10} />
                   CSKH 24/7
+                  {cskhUnreadCount > 0 && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
+                  )}
                 </button>
               </div>
             </div>
@@ -564,7 +711,7 @@ export default function AiStylistChat({
             {/* TAB 1: AI STYLIST CHAT STREAM */}
             {activeTab === "stylist" ? (
               <>
-                <div className="flex-1 space-y-2 overflow-y-auto p-2.5 text-left scrollbar-thin bg-[#FAF8F3]">
+                <div ref={stylistScrollContainerRef} className="flex-1 space-y-2 overflow-y-auto p-2.5 text-left scrollbar-thin bg-[#FAF8F3]">
                   {messages.map((message) => (
                     <div key={message.id} className="space-y-1">
                       <div className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -621,8 +768,6 @@ export default function AiStylistChat({
                       )}
                     </div>
                   ))}
-
-                  <div ref={messagesEndRef} />
                 </div>
 
                 {/* 📷 IMAGE PREVIEW STRIP (KHI ĐANG CHỌN ẢNH ĐỂ GỬI) */}
@@ -685,66 +830,116 @@ export default function AiStylistChat({
                 </div>
               </>
             ) : (
-              /* TAB 2: CSKH 24/7 */
-              <div className="flex-1 overflow-y-auto p-3 space-y-2.5 text-left bg-[#FAF8F3]">
-                <div className="p-2.5 rounded-xl bg-[#EBF5EA] border border-[#CDE0CB] space-y-0.5">
-                  <div className="flex items-center gap-1 text-[10px] font-bold text-[#18422A] uppercase tracking-wider">
-                    <ShieldCheck size={13} /> CSKH CLOOP Sẵn Sàng
+              /* TAB 2: CSKH TRỰC TUYẾN ẨN DANH 100% (CHUẨN SHOPEE) */
+              <div className="flex-1 flex flex-col overflow-hidden bg-[#FAF8F3] text-left">
+                {/* Banner Trực Tuyến & Ẩn Danh */}
+                <div className="p-2.5 bg-[#EBF5EA] border-b border-[#CDE0CB] space-y-0.5 shrink-0">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#18422A] uppercase tracking-wider">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <ShieldCheck size={12} className="text-emerald-700" />
+                      CSKH CLOOP Sẵn Sàng
+                    </div>
+                    <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-white/80 border border-emerald-300 text-emerald-900 font-semibold font-ui">
+                      Ẩn danh 100%
+                    </span>
                   </div>
-                  <p className="text-[9.5px] text-stone-600 font-light leading-relaxed">
-                    Hỗ trợ nhanh về đổi size, giao gấp 2H hoặc xử lý cọc. Phản hồi trong 3 phút!
+                  <p className="text-[9px] text-stone-600 font-light leading-tight">
+                    Tin nhắn kết nối trực tiếp với Đội ngũ Admin trực ban. Phản hồi trong 2 phút!
                   </p>
                 </div>
 
-                <div className="space-y-1.5">
-                  <a
-                    href="tel:0987654321"
-                    className="flex items-center justify-between p-2 rounded-xl border border-stone-200 hover:border-[#183A2D] bg-white shadow-2xs transition-all group"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center">
-                        <PhoneCall size={12} />
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-bold text-stone-800 leading-tight">Hotline Khẩn Cấp</p>
-                        <p className="text-[9.5px] font-mono font-bold text-emerald-700">098.765.4321</p>
-                      </div>
+                {/* Danh sách tin nhắn CSKH */}
+                <div ref={cskhScrollContainerRef} className="flex-1 overflow-y-auto p-2.5 space-y-2 scrollbar-thin text-xs">
+                  {/* Tin nhắn chào mừng mặc định */}
+                  <div className="flex items-start gap-1.5">
+                    <div className="w-5.5 h-5.5 rounded-full bg-[#183A2D] text-white text-[9px] font-bold flex items-center justify-center shrink-0">
+                      C
                     </div>
-                    <span className="text-[9px] font-semibold text-stone-400 group-hover:text-[#183A2D] font-ui flex items-center gap-0.5">
-                      Gọi <ArrowRight size={9} />
-                    </span>
-                  </a>
+                    <div className="max-w-[85%] p-2.5 rounded-2xl rounded-tl-xs bg-white border border-stone-200 text-stone-700 text-[10.5px] leading-relaxed shadow-2xs">
+                      <p className="font-bold text-[#183A2D] text-[10.5px] mb-0.5">CLOOP Chăm Sóc Khách Hàng</p>
+                      Dạ CLOOP xin chào bạn! Đội ngũ CSKH sẵn sàng hỗ trợ bạn về chọn size, giao nhận hỏa tốc và hoàn tiền cọc Escrow 100%. Bạn cần hỗ trợ gì cứ nhắn shop nhé!
+                    </div>
+                  </div>
 
-                  <a
-                    href="https://zalo.me"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between p-2 rounded-xl border border-stone-200 hover:border-blue-600 bg-white shadow-2xs transition-all group"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center">
-                        <MessageCircle size={12} />
+                  {/* Lịch sử tin nhắn thực giữa Khách và Admin */}
+                  {cskhMessages.map((m) => {
+                    const isMe = m.senderType === "USER";
+                    return (
+                      <div
+                        key={m.id}
+                        className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
+                      >
+                        <span className="text-[8.5px] text-stone-400 mb-0.5 px-1 font-mono">
+                          {isMe ? "Bạn" : "Chuyên viên CSKH CLOOP"} ·{" "}
+                          {new Date(m.createdAt).toLocaleTimeString("vi-VN", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                        <div
+                          className={`max-w-[85%] p-2.5 rounded-2xl text-[10.5px] leading-relaxed shadow-2xs ${
+                            isMe
+                              ? "bg-[#183A2D] text-white rounded-tr-xs"
+                              : "bg-white text-stone-800 border border-stone-200 rounded-tl-xs"
+                          }`}
+                        >
+                          {m.content}
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-[10px] font-bold text-stone-800 leading-tight">Zalo Hỗ Trợ</p>
-                        <p className="text-[9px] text-stone-500">Phản hồi &lt; 3 phút</p>
-                      </div>
-                    </div>
-                    <span className="text-[9px] font-semibold text-blue-600 font-ui flex items-center gap-0.5">
-                      Chat <ArrowRight size={9} />
-                    </span>
-                  </a>
+                    );
+                  })}
                 </div>
 
-                <div className="pt-1 text-center">
+                {/* Gợi ý câu hỏi nhanh (Chips) */}
+                <div className="px-2 py-1 bg-white border-t border-stone-200/80 flex items-center gap-1 overflow-x-auto text-[9.5px] shrink-0">
                   <button
                     type="button"
-                    onClick={() => setActiveTab("stylist")}
-                    className="text-[10px] font-semibold text-[#183A2D] hover:underline font-ui inline-flex items-center gap-1 cursor-pointer"
+                    onClick={() => handleSendCskhMessage("Shop cho mình hỏi về chính sách đổi size 24h?")}
+                    className="px-2 py-0.5 rounded-full bg-stone-100 hover:bg-emerald-50 hover:text-emerald-800 border border-stone-200 text-stone-600 whitespace-nowrap transition-colors cursor-pointer"
                   >
-                    ← Quay lại tìm đồ cùng AI
+                    Đổi size 24h
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSendCskhMessage("Tiền cọc Escrow khi nào được hoàn về ví của mình ạ?")}
+                    className="px-2 py-0.5 rounded-full bg-stone-100 hover:bg-emerald-50 hover:text-emerald-800 border border-stone-200 text-stone-600 whitespace-nowrap transition-colors cursor-pointer"
+                  >
+                    Hoàn tiền cọc
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSendCskhMessage("Thời gian giao hàng hỏa tốc GHN là bao lâu ạ?")}
+                    className="px-2 py-0.5 rounded-full bg-stone-100 hover:bg-emerald-50 hover:text-emerald-800 border border-stone-200 text-stone-600 whitespace-nowrap transition-colors cursor-pointer"
+                  >
+                    Giao nhận GHN
                   </button>
                 </div>
+
+                {/* Khung soạn thảo & gửi tin cho CSKH */}
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleSendCskhMessage();
+                  }}
+                  className="p-2 bg-white border-t border-stone-200 flex items-center gap-1.5 shrink-0"
+                >
+                  <input
+                    type="text"
+                    placeholder="Nhắn tin cho chuyên viên CSKH..."
+                    value={cskhInput}
+                    onChange={(e) => setCskhInput(e.target.value)}
+                    disabled={isCskhSending}
+                    className="flex-1 px-3 py-1.5 text-xs bg-stone-100 rounded-full border border-transparent focus:border-emerald-700 focus:bg-white focus:outline-hidden transition-all"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!cskhInput.trim() || isCskhSending}
+                    className="w-7 h-7 rounded-full bg-[#183A2D] text-white flex items-center justify-center hover:bg-emerald-900 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer shrink-0"
+                  >
+                    <Send size={11} />
+                  </button>
+                </form>
               </div>
             )}
           </motion.div>

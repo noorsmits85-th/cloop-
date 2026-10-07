@@ -51,21 +51,64 @@ export async function createDispute(data: {
     const category: DamageCategory = data.damageCategory || 
       (data.severity === "LOW" ? "WEAR_AND_TEAR" : data.severity === "MEDIUM" ? "REPAIRABLE_DAMAGE" : "TOTAL_LOSS");
 
-    if (category === "WEAR_AND_TEAR" && data.suggestedDeduction > 0) {
-      return {
-        success: false,
-        error: "Theo Chính Sách Vận Hành CLOOP: Vết bẩn bề mặt (son môi, phấn trang điểm nhẹ, mồ hôi, nếp nhăn) thuộc phạm vi Hao Mòn Thông Thường (Wear & Tear) đã được tính trong giá thuê. Chủ tủ tự xử lý giặt ủi, không được khấu trừ tiền cọc của khách!",
-      };
+    const depositAmount = rental.invoice?.depositAmount || 0;
+    const maxRepairableDeduction = Math.min(depositAmount, 500000);
+
+    if (category === "WEAR_AND_TEAR") {
+      if (data.suggestedDeduction > 0) {
+        return {
+          success: false,
+          error: "Theo Chính Sách Vận Hành CLOOP: Vết bẩn bề mặt (son môi, phấn trang điểm nhẹ, mồ hôi, nếp nhăn) thuộc phạm vi Hao Mòn Thông Thường (Wear & Tear) đã được tính trong giá thuê. Chủ tủ tự xử lý giặt ủi, không được khấu trừ tiền cọc của khách!",
+        };
+      }
+    } else if (category === "REPAIRABLE_DAMAGE") {
+      // Hư hỏng có thể khắc phục: Bị chặn trần 500k và không vượt quá cọc thực tế
+      if (data.suggestedDeduction > maxRepairableDeduction) {
+        return {
+          success: false,
+          error: `Đối với Hư hỏng có thể khắc phục (Repairable Damage), mức khấu trừ tối đa là ${maxRepairableDeduction.toLocaleString("vi-VN")}đ (giới hạn bởi trần sửa chữa 500.000đ và số tiền cọc thực tế ${depositAmount.toLocaleString("vi-VN")}đ), không được yêu cầu tịch thu toàn bộ tiền cọc!`,
+        };
+      }
+    } else if (category === "TOTAL_LOSS") {
+      // Hỏng hoàn toàn / Mất đồ: Được phép trừ tới 100% cọc (depositAmount) mà KHÔNG bị vướng trần 500k
+      if (data.suggestedDeduction > depositAmount) {
+        return {
+          success: false,
+          error: `Đối với trường hợp Hỏng hoàn toàn / Mất đồ (Total Loss), số tiền khấu trừ (${data.suggestedDeduction.toLocaleString("vi-VN")}đ) không được vượt quá số tiền cọc thực tế (${depositAmount.toLocaleString("vi-VN")}đ) được ký quỹ trong đơn hàng!`,
+        };
+      }
     }
 
-    if (category === "REPAIRABLE_DAMAGE" && data.suggestedDeduction > 500000) {
-      return {
-        success: false,
-        error: "Đối với Hư hỏng có thể khắc phục (Repairable Damage), mức khấu trừ tối đa là 500.000đ theo chi phí giặt hấp/khâu vá thực tế, không được yêu cầu tịch thu toàn bộ tiền cọc!",
-      };
+    // 1c. NGUYÊN TẮC NGHĨA VỤ CHỨNG MINH (BURDEN OF PROOF):
+    // Chủ tủ yêu cầu trừ cọc bắt buộc phải có video mở hộp đối soát khi nhận lại kiện hàng từ shipper.
+    // Nếu chủ tủ không có video mở hộp, chủ tủ phải tự chịu 100% trách nhiệm và hệ thống từ chối mở khiếu nại trừ cọc!
+    if (isOwner && data.suggestedDeduction > 0) {
+      const evidence = data.evidenceUrls || [];
+      const hasUnboxingVideo = evidence.some((url) => {
+        const lower = url.toLowerCase();
+        return (
+          lower.includes("#video") ||
+          lower.includes("type=video") ||
+          lower.endsWith(".mp4") ||
+          lower.endsWith(".mov") ||
+          lower.endsWith(".webm") ||
+          lower.endsWith(".avi") ||
+          lower.endsWith(".mkv") ||
+          lower.includes("/video/") ||
+          lower.includes("video") ||
+          lower.includes("drive.google.com/file")
+        );
+      });
+
+      if (!hasUnboxingVideo) {
+        return {
+          success: false,
+          error: "Theo Nguyên Tắc Nghĩa Vụ Chứng Minh (Burden of Proof): Chủ tủ bắt buộc phải đính kèm video quay rõ quá trình mở hộp đối soát niêm phong khi nhận lại hàng từ shipper. Không có video mở hộp = Chủ tủ tự chịu toàn bộ trách nhiệm, hệ thống từ chối mở khiếu nại trừ cọc!",
+        };
+      }
     }
 
-    // 1c. OWNER RISK ENGINE: Soi xét tần suất khiếu nại của Chủ tủ (Phát hiện Moral Hazard)
+    // 1d. OWNER RISK ENGINE: Soi xét tần suất khiếu nại của Chủ tủ (Phát hiện Moral Hazard)
     let isHighDisputeOwner = false;
     let ownerDisputeRate = 0;
     if (isOwner) {
@@ -117,6 +160,12 @@ export async function createDispute(data: {
           suggestedDeduction: data.suggestedDeduction,
           images: data.evidenceUrls || [],
           status: "PENDING_REVIEW",
+          adminNotes: JSON.stringify({
+            damageCategory: category,
+            initiatorId: user.id,
+            initiatorRole: isAdmin ? "ADMIN" : isOwner ? "OWNER" : "RENTER",
+            proposedAt: new Date().toISOString(),
+          }),
         },
       });
 

@@ -849,6 +849,21 @@ export default function CheckoutClient({
             </span>
           </div>
 
+          {/* ĐẶC QUYỀN ĐÓNG GÓI TẬN CỬA 0 ĐỒNG (TỐI GIẢN - KHÔNG ICON MÀU MÈ) */}
+          <div className="rounded-xl border border-stone-200/90 bg-stone-50/70 p-2.5 text-[11px] text-stone-700 leading-relaxed my-1">
+            <div className="flex items-center justify-between mb-1">
+              <span className="font-bold uppercase tracking-wider text-[10px] text-[#183A2D] font-ui">
+                ĐẶC QUYỀN ĐÓNG GÓI TẬN CỬA 0 ĐỒNG
+              </span>
+              <span className="text-[9.5px] font-semibold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60 font-ui">
+                ĐÃ BAO GỒM
+              </span>
+            </div>
+            <p className="text-[10px] text-stone-500 font-ui leading-normal">
+              Bưu tá GHN mang sẵn túi niêm phong tiêu chuẩn của bưu cục đến tận nơi. Bạn không cần thùng carton, không cần băng keo.
+            </p>
+          </div>
+
           {/* Phân tách biểu phí: Phí dịch vụ 0% Thành viên sáng lập */}
           <div className="flex justify-between items-center py-0.5">
             <span>Phí dịch vụ tuần hoàn (CLOOP):</span>

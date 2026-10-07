@@ -170,7 +170,7 @@ export default function LoginPage() {
                     : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                <span>🔑 Đăng Nhập</span>
+                <span>Đăng Nhập</span>
               </button>
               <button
                 type="button"
@@ -427,7 +427,7 @@ export default function LoginPage() {
                       onClick={() => { setMode('LOGIN'); setMessage(null); }} 
                       className="w-full py-2.5 px-3 bg-white hover:bg-slate-50 border border-emerald-300 rounded-lg text-xs font-bold text-[#183A2D] shadow-2xs transition flex items-center justify-center gap-1.5 cursor-pointer"
                     >
-                      <span>🔑 Bấm vào đây để Đăng Nhập</span>
+                      <span>Bấm vào đây để Đăng Nhập</span>
                     </button>
                   </div>
                 )}

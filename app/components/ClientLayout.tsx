@@ -275,7 +275,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         {children}
       </div>
 
-      {!pathname?.startsWith('/my-closet') && !pathname?.startsWith('/app') && (
+      {!pathname?.startsWith('/my-closet') && !pathname?.startsWith('/app') && !pathname?.startsWith('/admin') && (
         <>
           <footer className="w-full bg-[#0A2517] text-white pt-16 pb-8 border-t border-white/10">
             <div className="max-w-[1536px] mx-auto px-4 md:px-8 lg:px-12">
@@ -360,7 +360,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       )}
 
 
-      {!pathname?.startsWith('/app') && <AiStylistChat darkMode={darkMode} />}
+      {!pathname?.startsWith('/app') && !pathname?.startsWith('/admin') && !pathname?.startsWith('/login') && <AiStylistChat darkMode={darkMode} />}
 
       <AnimatePresence>
         {showAuthModal && (
@@ -411,7 +411,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                         : "text-stone-600 dark:text-stone-400 hover:text-stone-900"
                     }`}
                   >
-                    <span>🔑 Đăng Nhập</span>
+                    <span>Đăng Nhập</span>
                   </button>
                   <button
                     type="button"
@@ -789,7 +789,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                       onClick={() => switchAuthMode('login')} 
                       className="w-full py-2.5 px-3 bg-white dark:bg-stone-800 hover:bg-stone-50 border border-emerald-300 dark:border-emerald-700/80 rounded-xl text-xs font-bold text-[#183A2D] dark:text-emerald-300 shadow-2xs transition flex items-center justify-center gap-1.5 cursor-pointer"
                     >
-                      <span>🔑 Bấm vào đây để Đăng Nhập</span>
+                      <span>Bấm vào đây để Đăng Nhập</span>
                     </button>
                   </div>
                 )}
@@ -834,8 +834,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           </div>
         )}
       </AnimatePresence>
-      {!pathname?.startsWith('/app') && <PwaInstallPrompt />}
-      {!pathname?.startsWith('/app') && <MobileBottomDock />}
+      {!pathname?.startsWith('/app') && !pathname?.startsWith('/admin') && <PwaInstallPrompt />}
+      {!pathname?.startsWith('/app') && !pathname?.startsWith('/admin') && <MobileBottomDock />}
     </div>
   );
 }

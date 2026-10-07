@@ -15,6 +15,8 @@ export interface InvoiceData {
   totalDepositIn: number;
   depositRefund: number;
   rentalFee: number;
+  platformFee?: number;
+  shippingFeeCollected?: number;
   status: string;
   createdAt: string; // Thêm thời gian giao dịch chi tiết
 }
@@ -85,10 +87,11 @@ export default function LedgerClient({ initialInvoices, totalPlatformFee, totalI
       const code = `PC-${inv.id.substring(0, 8).toUpperCase()}`;
       const rentalFee = inv.rentalFee;
       const depositRefund = inv.depositRefund;
-      const platformFee = Math.floor(rentalFee * 0.12) || 10000;
+      const platformFee = inv.platformFee ?? Math.floor(rentalFee * 0.12);
       const vatFee = Math.round(platformFee * 0.1);
       const netPlatformFee = platformFee - vatFee;
-      const payoutToOwner = Math.max(0, rentalFee - platformFee - 25000);
+      const payoutToOwner = Math.max(0, rentalFee - platformFee);
+      const shippingFee = inv.shippingFeeCollected ?? 0;
 
       // 1. Khách nạp tiền cọc + thuê + ship
       rows.push([
@@ -125,7 +128,7 @@ export default function LedgerClient({ initialInvoices, totalPlatformFee, totalI
         inv.productName,
         inv.renter,
         inv.owner,
-        "Thanh toán tiền thuê cho Chủ tủ sau khi cấn trừ phí sàn & ship chiều về",
+        "Thanh toán tiền thuê cho Chủ tủ sau khi cấn trừ phí sàn",
         "TK 33882 (Phải trả Chủ tủ)",
         "TK 112 (Tiền gửi không kỳ hạn)",
         payoutToOwner.toString(),
@@ -139,7 +142,7 @@ export default function LedgerClient({ initialInvoices, totalPlatformFee, totalI
         inv.productName,
         inv.renter,
         inv.owner,
-        "Doanh thu thuần dịch vụ nền tảng CLOOP",
+        "Doanh thu thuần dịch vụ nền tảng CLOOP (chưa VAT)",
         "TK 33882 (Phải trả Chủ tủ)",
         "TK 5113 (Doanh thu cung cấp dịch vụ)",
         netPlatformFee.toString(),
@@ -160,33 +163,21 @@ export default function LedgerClient({ initialInvoices, totalPlatformFee, totalI
         inv.status === "COMPLETED" ? "Đã đối soát" : "Chờ đối soát"
       ]);
 
-      // 6. Cước GHN thực tế
-      rows.push([
-        code,
-        inv.createdAt,
-        inv.productName,
-        inv.renter,
-        inv.owner,
-        "Chi trả cước giao hàng thực tế bưu tá GHN",
-        "TK 33883 (Thu hộ vận chuyển)",
-        "TK 331 (Phải trả bưu tá GHN)",
-        "42000",
-        inv.status === "COMPLETED" ? "Đã đối soát" : "Chờ đối soát"
-      ]);
-
-      // 7. Thặng dư đệm Block 5K
-      rows.push([
-        code,
-        inv.createdAt,
-        inv.productName,
-        inv.renter,
-        inv.owner,
-        "Thặng dư thuật toán Block 5K (Quỹ phòng vệ giao lại)",
-        "TK 33883 (Thu hộ vận chuyển)",
-        "TK 3388_BUFFER (hoặc TK 711)",
-        "8000",
-        inv.status === "COMPLETED" ? "Đã đối soát" : "Chờ đối soát"
-      ]);
+      // 6. Cước vận chuyển thu hộ (nếu có)
+      if (shippingFee > 0) {
+        rows.push([
+          code,
+          inv.createdAt,
+          inv.productName,
+          inv.renter,
+          inv.owner,
+          "Chi trả cước giao hàng thực tế bưu tá GHN",
+          "TK 33883 (Thu hộ vận chuyển)",
+          "TK 331 (Phải trả bưu tá GHN)",
+          shippingFee.toString(),
+          inv.status === "COMPLETED" ? "Đã đối soát" : "Chờ đối soát"
+        ]);
+      }
     });
 
     const csvContent = "\uFEFF" + [
@@ -205,8 +196,8 @@ export default function LedgerClient({ initialInvoices, totalPlatformFee, totalI
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] p-8 font-sans">
-      <div className="max-w-5xl mx-auto">
+    <div className="w-full font-sans pb-16">
+      <div className="w-full space-y-6">
         <div className="flex items-center justify-between mb-8 border-b border-[#E9E2D5] pb-6">
           <div className="flex items-center gap-4">
             <ShieldCheck className="w-10 h-10 text-emerald-800" />
@@ -316,16 +307,20 @@ export default function LedgerClient({ initialInvoices, totalPlatformFee, totalI
                       <div className="flex justify-between w-64 items-center border-t border-stone-100 pt-1.5">
                         <div>
                           <p className="text-stone-700 font-medium">Trả tiền chủ đồ</p>
-                          <p className="text-[10px] text-stone-400">Nợ TK 3388 / Có TK 112</p>
+                          <p className="text-[10px] text-stone-400">Nợ TK 33882 / Có TK 112</p>
                         </div>
-                        <span className="font-mono font-medium text-stone-700">{(inv.rentalFee - 10000).toLocaleString()}đ</span>
+                        <span className="font-mono font-medium text-stone-700">
+                          {Math.max(0, inv.rentalFee - (inv.platformFee ?? Math.floor(inv.rentalFee * 0.12))).toLocaleString()}đ
+                        </span>
                       </div>
                       <div className="flex justify-between w-64 items-center border-t border-stone-200 pt-1.5 mt-1 bg-amber-50 p-1.5 rounded">
                         <div>
                           <p className="text-amber-700 font-bold">Phí nền tảng (Doanh thu)</p>
-                          <p className="text-[10px] text-amber-600">Nợ TK 3388 / Có TK 5113</p>
+                          <p className="text-[10px] text-amber-600">Nợ TK 33882 / Có TK 5113</p>
                         </div>
-                        <span className="font-mono font-bold text-amber-700">10.000đ</span>
+                        <span className="font-mono font-bold text-amber-700">
+                          {(inv.platformFee ?? Math.floor(inv.rentalFee * 0.12)).toLocaleString()}đ
+                        </span>
                       </div>
                     </div>
                   </td>
@@ -410,10 +405,11 @@ export default function LedgerClient({ initialInvoices, totalPlatformFee, totalI
               {activeTab === "accounting" ? (
                 <>
                   {(() => {
-                    const modalPlatformFee = Math.floor(selectedInvoice.rentalFee * 0.12) || 42000;
+                    const modalPlatformFee = selectedInvoice.platformFee ?? Math.floor(selectedInvoice.rentalFee * 0.12);
                     const modalVatFee = Math.round(modalPlatformFee * 0.1);
                     const modalNetPlatformFee = modalPlatformFee - modalVatFee;
-                    const modalPayoutToOwner = Math.max(0, selectedInvoice.rentalFee - modalPlatformFee - 25000);
+                    const modalPayoutToOwner = Math.max(0, selectedInvoice.rentalFee - modalPlatformFee);
+                    const modalShipping = selectedInvoice.shippingFeeCollected ?? 0;
 
                     return (
                       <>
@@ -453,7 +449,7 @@ export default function LedgerClient({ initialInvoices, totalPlatformFee, totalI
                               <tr className="bg-white">
                                 <td className="px-4 py-3 text-stone-800 font-medium">
                                   <span>Thanh toán tiền thuê cho chủ đồ</span>
-                                  <p className="text-[11px] text-stone-400">Thu hộ - Chi hộ chủ tủ (đã cấn trừ 12% phí sàn & 25k ship về)</p>
+                                  <p className="text-[11px] text-stone-400">Thu hộ - Chi hộ chủ tủ (đã cấn trừ phí sàn)</p>
                                 </td>
                                 <td className="px-4 py-3 text-center font-mono text-stone-600 font-bold">33882</td>
                                 <td className="px-4 py-3 text-center font-mono text-stone-600 font-bold">112</td>
@@ -465,7 +461,7 @@ export default function LedgerClient({ initialInvoices, totalPlatformFee, totalI
                                   <tr className="bg-amber-50/50">
                                     <td className="px-4 py-3 text-amber-900 font-medium">
                                       <span>Doanh thu phí dịch vụ sàn CLOOP (chưa VAT)</span>
-                                      <p className="text-[11px] text-amber-600">Hoa hồng đại lý nền tảng kết nối (90.91%)</p>
+                                      <p className="text-[11px] text-amber-600">Hoa hồng đại lý nền tảng kết nối</p>
                                     </td>
                                     <td className="px-4 py-3 text-center font-mono text-amber-800 font-bold">33882</td>
                                     <td className="px-4 py-3 text-center font-mono text-amber-800 font-bold">5113</td>
@@ -484,7 +480,7 @@ export default function LedgerClient({ initialInvoices, totalPlatformFee, totalI
                               ) : (
                                 <tr className="bg-amber-50/50">
                                   <td className="px-4 py-3 text-amber-900 font-medium">
-                                    <span>Phí dịch vụ nền tảng CLOOP (Trọn gói 12%)</span>
+                                    <span>Phí dịch vụ nền tảng CLOOP (Trọn gói)</span>
                                     <p className="text-[11px] text-amber-600">Hoa hồng môi giới kết nối tủ đồ tuần hoàn</p>
                                   </td>
                                   <td className="px-4 py-3 text-center font-mono text-amber-800 font-bold">33882</td>
@@ -493,24 +489,17 @@ export default function LedgerClient({ initialInvoices, totalPlatformFee, totalI
                                 </tr>
                               )}
 
-                              <tr className="bg-blue-50/30">
-                                <td className="px-4 py-3 text-blue-950 font-medium">
-                                  <span>Chi trả cước giao hàng thực tế bưu tá GHN</span>
-                                  <p className="text-[11px] text-blue-600">Thanh toán cước 2 chiều giao & nhận (21.000đ x 2)</p>
-                                </td>
-                                <td className="px-4 py-3 text-center font-mono text-blue-800 font-bold">33883</td>
-                                <td className="px-4 py-3 text-center font-mono text-blue-800 font-bold">331</td>
-                                <td className="px-4 py-3 text-right font-mono font-bold text-blue-900">42.000đ</td>
-                              </tr>
-                              <tr className="bg-emerald-50/30">
-                                <td className="px-4 py-3 text-emerald-950 font-medium">
-                                  <span>Thặng dư thuật toán đệm Block 5K</span>
-                                  <p className="text-[11px] text-emerald-600">Quỹ phòng vệ rủi ro phát lại (50.000đ - 42.000đ)</p>
-                                </td>
-                                <td className="px-4 py-3 text-center font-mono text-emerald-800 font-bold">33883</td>
-                                <td className="px-4 py-3 text-center font-mono text-emerald-800 font-bold">3388_BUFFER</td>
-                                <td className="px-4 py-3 text-right font-mono font-bold text-emerald-900">8.000đ</td>
-                              </tr>
+                              {modalShipping > 0 && (
+                                <tr className="bg-blue-50/30">
+                                  <td className="px-4 py-3 text-blue-950 font-medium">
+                                    <span>Chi trả cước giao hàng bưu tá GHN</span>
+                                    <p className="text-[11px] text-blue-600">Thanh toán cước dịch vụ vận chuyển</p>
+                                  </td>
+                                  <td className="px-4 py-3 text-center font-mono text-blue-800 font-bold">33883</td>
+                                  <td className="px-4 py-3 text-center font-mono text-blue-800 font-bold">331</td>
+                                  <td className="px-4 py-3 text-right font-mono font-bold text-blue-900">{modalShipping.toLocaleString()}đ</td>
+                                </tr>
+                              )}
                             </tbody>
                             <tfoot className="bg-stone-50 border-t border-stone-200">
                               <tr>

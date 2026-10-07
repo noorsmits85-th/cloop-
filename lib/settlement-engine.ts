@@ -351,7 +351,15 @@ export async function settleDisputedRentalOrder(
       throw new Error(`[Dispute Settlement] Hóa đơn #${invoice.id} chưa thanh toán. Không thể quyết toán.`);
     }
 
-    // 2. Chống lặp quyết toán trên sổ cái
+    // 2. CHỐNG LẶP QUYẾT TOÁN & BẢO VỆ XUNG ĐỘT TRẠNG THÁI (RACE CONDITION / IDEMPOTENCY LOCK)
+    if (dispute.status === "RESOLVED") {
+      throw new Error(`[Dispute Settlement] Hồ sơ khiếu nại #${dispute.id} đã được quyết toán từ trước. Chặn thao tác trùng lặp (Idempotency Guard).`);
+    }
+
+    if (rental.status === "LENDER_COMPLETED") {
+      throw new Error(`[Dispute Settlement] Đơn hàng #${rental.id} đã hoàn tất và quyết toán xong từ trước.`);
+    }
+
     const existingPayout = await tx.ledgerTransaction.findFirst({
       where: {
         invoiceId: invoice.id,
@@ -361,7 +369,7 @@ export async function settleDisputedRentalOrder(
     });
 
     if (existingPayout) {
-      throw new Error(`[Dispute Settlement] Hóa đơn #${invoice.id} đã được quyết toán từ trước.`);
+      throw new Error(`[Dispute Settlement] Hóa đơn #${invoice.id} đã có bút toán chi trả hoàn tất trên sổ cái. Chống chi trùng lặp (Double Spend Prevention).`);
     }
 
     // 3. Tính toán dòng tiền tranh chấp kế toán kép
@@ -530,15 +538,46 @@ export async function settleDisputedRentalOrder(
       data: { payosStatus: "RESOLVED" },
     });
 
-    // Kích hoạt lại trạng thái Sẵn Sàng Cho Thuê (AVAILABLE / ON_MARKET)
+    // 6. ASSET REACTIVATION STATE MACHINE (Chuyển đổi trạng thái tài sản theo mức độ tổn thất)
+    let disputeCategory: "WEAR_AND_TEAR" | "REPAIRABLE_DAMAGE" | "TOTAL_LOSS" = "WEAR_AND_TEAR";
+    try {
+      if (dispute.adminNotes) {
+        const parsed = JSON.parse(dispute.adminNotes);
+        if (parsed.damageCategory) disputeCategory = parsed.damageCategory;
+      }
+    } catch (e) {}
+
+    // Fallback: Căn cứ vào severity và tỷ lệ khấu trừ nếu không có metadata
+    if (!disputeCategory || disputeCategory === "WEAR_AND_TEAR") {
+      if (dispute.severity === "HIGH" || (finalDeduction >= depositAmount && depositAmount > 0)) {
+        disputeCategory = "TOTAL_LOSS";
+      } else if (dispute.severity === "MEDIUM" || finalDeduction > 0) {
+        disputeCategory = "REPAIRABLE_DAMAGE";
+      }
+    }
+
+    let nextProductStatus: "ON_MARKET" | "IN_CLOSET" = "ON_MARKET";
+    let nextListingStatus: "AVAILABLE" | "HIDDEN" | "RECYCLED" = "AVAILABLE";
+
+    if (disputeCategory === "TOTAL_LOSS") {
+      // Hỏng hoàn toàn / Mất đồ -> Đưa vào lưu trữ tái chế, vĩnh viễn không cho lên sàn
+      nextProductStatus = "IN_CLOSET";
+      nextListingStatus = "RECYCLED";
+    } else if (disputeCategory === "REPAIRABLE_DAMAGE") {
+      // Cần sửa chữa/giặt hấp chuyên sâu -> Tạm khóa về tủ đồ cá nhân (IN_CLOSET), ẩn khỏi sàn (HIDDEN)
+      // Chủ tủ phải đem đồ đi spa/sửa xong và chủ động bấm "Đã sửa xong / Đăng lại" trên tủ đồ
+      nextProductStatus = "IN_CLOSET";
+      nextListingStatus = "HIDDEN";
+    }
+
     if (rental.product_id) {
       await tx.listing.updateMany({
         where: { productId: rental.product_id, isDeleted: false },
-        data: { status: "AVAILABLE" },
+        data: { status: nextListingStatus },
       });
       await tx.product.update({
         where: { id: rental.product_id },
-        data: { status: "ON_MARKET" },
+        data: { status: nextProductStatus },
       });
     }
 

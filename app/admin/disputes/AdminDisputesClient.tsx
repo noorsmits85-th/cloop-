@@ -10,7 +10,8 @@ import {
   ArrowLeft, 
   FileText, 
   ExternalLink,
-  ChevronRight
+  ChevronRight,
+  AlertTriangle
 } from "lucide-react";
 import { resolveDispute, getDisputeEvidenceUrls } from "@/app/actions/dispute";
 import { DigitalEvidenceTimeline } from "@/components/dispute/DigitalEvidenceTimeline";
@@ -122,7 +123,7 @@ export default function AdminDisputesClient({ initialDisputes }: { initialDisput
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 p-6 md:p-10 font-sans">
+    <div className="w-full font-sans pb-16">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-stone-200">
         <div>
@@ -347,6 +348,102 @@ export default function AdminDisputesClient({ initialDisputes }: { initialDisput
                   createdAt: selectedDispute.createdAt,
                 }}
               />
+
+              {/* ⚖️ Burden of Proof Audit Card */}
+              {(() => {
+                let parsedAdminNotes: any = {};
+                try {
+                  if (selectedDispute.adminNotes) parsedAdminNotes = JSON.parse(selectedDispute.adminNotes);
+                } catch {}
+
+                const hasOwnerVideo = (selectedDispute.images || []).some(url => {
+                  const lower = (url || "").toLowerCase();
+                  return lower.includes("#video") || lower.includes("type=video") || lower.endsWith(".mp4") || lower.endsWith(".mov") || lower.endsWith(".webm") || lower.includes("video") || lower.includes("drive.google.com/file");
+                });
+
+                const renterVideos = (parsedAdminNotes.renterCounterVideos || []) as string[];
+                const hasRenterVideo = renterVideos.some(url => {
+                  const lower = (url || "").toLowerCase();
+                  return lower.includes("#video") || lower.includes("type=video") || lower.endsWith(".mp4") || lower.endsWith(".mov") || lower.endsWith(".webm") || lower.includes("video") || lower.includes("drive.google.com/file");
+                });
+
+                return (
+                  <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/80 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
+                        <ShieldAlert size={14} className="text-amber-800" />
+                        Đối Soát Nghĩa Vụ Chứng Minh (Burden of Proof Audit)
+                      </h4>
+                      <span className="text-[10px] font-semibold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300/60">
+                        Chuẩn P2P
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div className={`p-3 rounded-xl border ${hasOwnerVideo ? 'bg-emerald-50/80 border-emerald-300 text-emerald-900' : 'bg-rose-50/80 border-rose-300 text-rose-900'}`}>
+                        <div className="font-bold flex items-center gap-1.5">
+                          {hasOwnerVideo ? <CheckCircle size={14} className="text-emerald-700" /> : <AlertTriangle size={14} className="text-rose-700" />}
+                          Chủ tủ: {hasOwnerVideo ? "Có video mở hộp đối soát" : "KHÔNG CÓ video mở hộp"}
+                        </div>
+                        <p className="text-[11px] mt-1 opacity-80 leading-snug">
+                          {hasOwnerVideo 
+                            ? "Đủ điều kiện pháp lý để đề xuất khấu trừ theo hóa đơn dịch vụ." 
+                            : "Chủ tủ không có video mở hộp = Tự chịu 100% trách nhiệm (Đề xuất: Bác bỏ khiếu nại, hoàn 100% cọc)."}
+                        </p>
+                      </div>
+
+                      <div className={`p-3 rounded-xl border ${hasRenterVideo ? 'bg-emerald-50/80 border-emerald-300 text-emerald-900' : 'bg-stone-100 border-stone-300 text-stone-700'}`}>
+                        <div className="font-bold flex items-center gap-1.5">
+                          {hasRenterVideo ? <CheckCircle size={14} className="text-emerald-700" /> : <AlertTriangle size={14} className="text-stone-500" />}
+                          Khách thuê: {hasRenterVideo ? "Có video bảo chứng đối ứng" : "Không có video bảo chứng"}
+                        </div>
+                        <p className="text-[11px] mt-1 opacity-80 leading-snug">
+                          {hasRenterVideo 
+                            ? "Khách đã tải video nhận/gửi đối chứng. Admin cần so sánh chéo 2 video." 
+                            : "Khách không có video bảo chứng = Mặc định chấp nhận bồi thường theo hóa đơn chủ tủ."}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Gợi ý phán quyết nhanh cho Admin */}
+                    <div className="p-3 rounded-xl bg-white border border-amber-200 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="text-stone-700">
+                        <span className="font-semibold text-stone-900">Gợi ý phán quyết: </span>
+                        {!hasOwnerVideo ? (
+                          <span className="text-rose-700 font-bold">Bác bỏ khiếu nại - Khấu trừ 0đ (Hoàn 100% cọc cho khách)</span>
+                        ) : !hasRenterVideo ? (
+                          <span className="text-emerald-800 font-bold">Chấp nhận khiếu nại - Khấu trừ {selectedDispute.suggestedDeduction.toLocaleString("vi-VN")}đ theo hóa đơn</span>
+                        ) : (
+                          <span className="text-amber-800 font-bold">Cần Admin đối chiếu chéo video bàn giao và video trả đồ</span>
+                        )}
+                      </div>
+                      {!hasOwnerVideo ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFinalDeduction(0);
+                            setAdminNotes("Bác bỏ khiếu nại do Chủ tủ không cung cấp video mở hộp đối soát theo Quy định Nghĩa vụ Chứng minh.");
+                          }}
+                          className="px-3 py-1.5 rounded-lg bg-rose-100 text-rose-800 font-bold text-[11px] hover:bg-rose-200 transition-colors cursor-pointer shrink-0"
+                        >
+                          Áp dụng Khấu trừ 0đ
+                        </button>
+                      ) : !hasRenterVideo ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFinalDeduction(selectedDispute.suggestedDeduction || 0);
+                            setAdminNotes("Chấp nhận bồi thường theo hóa đơn do Khách thuê không cung cấp được video bảo chứng theo Quy chế.");
+                          }}
+                          className="px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-800 font-bold text-[11px] hover:bg-emerald-200 transition-colors cursor-pointer shrink-0"
+                        >
+                          Áp dụng Theo Hóa đơn
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Resolution Form */}
               <div className="p-5 rounded-2xl bg-emerald-50/60 border border-emerald-200 space-y-4">

@@ -228,6 +228,23 @@ export async function completeOrderAction(orderId: string) {
   }
 }
 
+function isEvidenceVideo(url: string): boolean {
+  if (!url) return false;
+  const lower = url.toLowerCase();
+  return (
+    lower.includes("#video") ||
+    lower.includes("type=video") ||
+    lower.endsWith(".mp4") ||
+    lower.endsWith(".mov") ||
+    lower.endsWith(".webm") ||
+    lower.endsWith(".avi") ||
+    lower.endsWith(".mkv") ||
+    lower.includes("/video/") ||
+    lower.includes("video") ||
+    lower.includes("drive.google.com/file")
+  );
+}
+
 export async function raiseDisputeWithProposalAction(
   orderId: string,
   description: string,
@@ -293,6 +310,19 @@ export async function raiseDisputeWithProposalAction(
     if (isOwner) {
       if (cleanDeduction > depositAmount) {
         return { success: false, error: `Số tiền bồi thường đề xuất (${cleanDeduction.toLocaleString('vi-VN')}đ) không được vượt quá số tiền cọc (${depositAmount.toLocaleString('vi-VN')}đ).` };
+      }
+
+      // 🛡️ NGUYÊN TẮC NGHĨA VỤ CHỨNG MINH (BURDEN OF PROOF):
+      // Chủ tủ bắt buộc phải có video mở hộp đối soát khi nhận lại kiện hàng từ shipper.
+      // Nếu chủ tủ không có video mở hộp đối soát, chủ tủ tự chịu 100% trách nhiệm và không thể mở khiếu nại trừ cọc của khách!
+      if (cleanDeduction > 0) {
+        const hasUnboxingVideo = images.some(isEvidenceVideo);
+        if (!hasUnboxingVideo) {
+          return {
+            success: false,
+            error: "Theo Nguyên Tắc Nghĩa Vụ Chứng Minh (Burden of Proof): Chủ tủ bắt buộc phải đính kèm video quay rõ quá trình mở hộp đối soát niêm phong khi nhận lại hàng từ shipper. Không có video mở hộp đối soát = Chủ tủ tự chịu toàn bộ trách nhiệm, hệ thống từ chối mở khiếu nại trừ cọc!",
+          };
+        }
       }
     } else {
       if (cleanDeduction > rentalFee) {
@@ -641,18 +671,7 @@ export async function acceptDisputeProposalAction(disputeId: string) {
             customPrismaTx: tx,
           }
         );
-
-        // Kích hoạt lại sản phẩm
-        if (rental.product_id) {
-          await tx.listing.updateMany({
-            where: { productId: rental.product_id, isDeleted: false },
-            data: { status: "AVAILABLE" },
-          });
-          await tx.product.update({
-            where: { id: rental.product_id },
-            data: { status: "ON_MARKET" },
-          });
-        }
+        // Trạng thái tài sản (Product/Listing) được quản lý tự động bởi Asset Reactivation State Machine bên trong settleDisputedRentalOrder
       }
     });
 
@@ -668,7 +687,11 @@ export async function acceptDisputeProposalAction(disputeId: string) {
   }
 }
 
-export async function rejectAndEscalateDisputeAction(disputeId: string, reason: string = "") {
+export async function rejectAndEscalateDisputeAction(
+  disputeId: string, 
+  reason: string = "",
+  counterEvidenceUrls: string[] = []
+) {
   try {
     const userAuth = await requireUser();
 
@@ -705,15 +728,38 @@ export async function rejectAndEscalateDisputeAction(disputeId: string, reason: 
       return { success: false, error: "Đề xuất này đã được phản hồi hoặc đang được BQT xử lý." };
     }
 
+    // 🛡️ NGUYÊN TẮC NGHĨA VỤ CHỨNG MINH CHO KHÁCH THUÊ (BURDEN OF PROOF):
+    // Chủ tủ đã cung cấp video mở hộp và hóa đơn dịch vụ hợp lệ.
+    // Nếu khách thuê muốn từ chối bồi thường để chuyển lên BQT phân xử, BẮT BUỘC phải cung cấp video bảo chứng
+    // (video lúc nhận hàng bóc seal từ shipper hoặc video lúc đóng gói gửi trả nguyên vẹn).
+    // Nếu khách thuê không có video bảo chứng, khách buộc phải chấp nhận bồi thường theo hóa đơn thực tế của chủ tủ!
+    if (isRenter) {
+      const hasCounterVideo = Array.isArray(counterEvidenceUrls) && counterEvidenceUrls.some(isEvidenceVideo);
+      if (!hasCounterVideo) {
+        return {
+          success: false,
+          error: "Theo Nguyên Tắc Nghĩa Vụ Chứng Minh: Để từ chối yêu cầu bồi thường của Chủ tủ, Khách thuê bắt buộc phải cung cấp video bảo chứng (video lúc mở hộp nhận đồ hoặc video lúc đóng gói gửi trả). Nếu không có video bảo chứng, bạn phải chấp nhận bồi thường theo hóa đơn thực tế của chủ tủ.",
+        };
+      }
+    }
+
     await prisma.$transaction(async (tx) => {
+      let parsedNotes: any = {};
+      try {
+        if (dispute.adminNotes) parsedNotes = JSON.parse(dispute.adminNotes);
+      } catch (e) {}
+
       const disputeLock = await tx.dispute.updateMany({
         where: { id: disputeId, status: "PENDING_REVIEW" },
         data: {
           status: "DISPUTED",
           adminNotes: JSON.stringify({
+            ...parsedNotes,
             escalatedByUserId: userAuth.id,
-            escalateReason: reason || "Bên còn lại không đồng ý với mức bồi thường đề xuất.",
-            escalatedAt: new Date().toISOString()
+            escalateReason: reason || "Khách thuê không đồng ý mức bồi thường và đã cung cấp video bảo chứng.",
+            escalatedAt: new Date().toISOString(),
+            renterCounterVideos: counterEvidenceUrls || [],
+            hasRenterProof: counterEvidenceUrls.length > 0,
           })
         }
       });
@@ -730,7 +776,10 @@ export async function rejectAndEscalateDisputeAction(disputeId: string, reason: 
           targetId: disputeId,
           beforeStatus: "PENDING_REVIEW",
           afterStatus: "DISPUTED",
-          metadata: JSON.stringify({ reason })
+          metadata: JSON.stringify({ 
+            reason,
+            counterVideosCount: counterEvidenceUrls.length,
+          })
         }
       });
     });

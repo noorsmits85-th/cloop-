@@ -36,6 +36,7 @@ model User {
   products        Product[]
   rentalHistory   RentalHistory[]
   favorites       ProductFavorite[]
+  supportTickets  SupportTicket[]
 }
 
 model Product {
@@ -84,7 +85,6 @@ model Product {
   user            User?              @relation(fields: [userId], references: [id])
   rentalHistory   RentalHistory[]
   favorites       ProductFavorite[]
-
   @@index([userId])
   @@index([category])
   @@index([gender])
@@ -682,3 +682,54 @@ model WithdrawalRequest {
   @@index([createdAt(sort: Desc)])
   @@map("withdrawal_requests")
 }
+
+enum SupportTicketStatus {
+  OPEN
+  RESOLVED
+  CLOSED
+}
+
+enum SupportSenderType {
+  USER
+  ADMIN
+}
+
+model SupportTicket {
+  id               String              @id @default(uuid())
+  userId           String?
+  customerName     String?             @default("Khách hàng")
+  customerPhone    String?
+  customerEmail    String?
+  status           SupportTicketStatus @default(OPEN)
+  lastMessage      String?
+  lastMessageAt    DateTime            @default(now())
+  unreadAdminCount Int                 @default(0)
+  unreadUserCount  Int                 @default(0)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  user             User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  messages         SupportMessage[]
+
+  @@index([status])
+  @@index([userId])
+  @@index([lastMessageAt(sort: Desc)])
+  @@map("support_tickets")
+}
+
+model SupportMessage {
+  id         String            @id @default(uuid())
+  ticketId   String
+  senderType SupportSenderType
+  senderName String            @default("CLOOP Support")
+  content    String
+  isRead     Boolean           @default(false)
+  createdAt  DateTime          @default(now())
+
+  ticket     SupportTicket     @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+  @@index([createdAt(sort: Asc)])
+  @@map("support_messages")
+}
+

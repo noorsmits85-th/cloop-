@@ -3,39 +3,25 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { 
-  TrendingUp, 
   ShieldCheck, 
   CreditCard, 
-  Leaf, 
-  Users, 
-  ShoppingBag, 
   FileText, 
   Truck, 
   Scale, 
-  Search, 
-  Zap, 
-  ArrowRight, 
-  Clock, 
   CheckCircle2, 
-  AlertTriangle, 
   Loader2,
-  Lock,
   Layers,
   ChevronRight,
   RefreshCw
 } from "lucide-react";
 import { 
-  searchUserByEmail, 
-  pumpCoins, 
-  triggerFastEscrowReleaseAction,
   releaseSingleEscrowOrderAction,
-  seedOperationalOrdersAction 
+  refreshAdminViewsAction 
 } from "@/app/actions/admin";
 
 interface AdminDashboardClientProps {
   currentAdmin: {
     name: string;
-    coins: number;
   };
   metrics: {
     totalUsers: number;
@@ -56,43 +42,31 @@ export default function AdminDashboardClient({
   currentAdmin,
   metrics,
   recentRentals = [],
-  recentTopUps = [],
   pendingWithdrawals = []
 }: AdminDashboardClientProps) {
-  const [activeTab, setActiveTab] = useState<"OVERVIEW" | "ORDERS" | "TOOLS">("OVERVIEW");
-
-  // State cho công cụ hỗ trợ
-  const [email, setEmail] = useState("");
-  const [targetUser, setTargetUser] = useState<any>(null);
-  const [amount, setAmount] = useState<number>(1000);
-  const [isSearching, setIsSearching] = useState(false);
-  const [isPumping, setIsPumping] = useState(false);
-  const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
-
-  const [isReleasingEscrow, setIsReleasingEscrow] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [releasingOrderId, setReleasingOrderId] = useState<string | null>(null);
-  const [isSeeding, setIsSeeding] = useState(false);
   const [actionResult, setActionResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  // Kích hoạt giải ngân toàn sàn
-  const handleTriggerFastEscrowRelease = async () => {
-    setIsReleasingEscrow(true);
+  // Làm mới số liệu thực tế toàn bộ hệ thống
+  const handleRefreshData = async () => {
+    setIsRefreshing(true);
     setActionResult(null);
     try {
-      const res = await triggerFastEscrowReleaseAction({ minutesThreshold: 10 });
+      const res = await refreshAdminViewsAction();
       if (res.success) {
-        setActionResult({ success: true, message: res.message || "Đã giải ngân thành công!" });
+        setActionResult({ success: true, message: res.message || "Đã làm mới số liệu thành công!" });
       } else {
-        setActionResult({ success: false, message: res.error || "Lỗi khi giải ngân" });
+        setActionResult({ success: false, message: res.error || "Lỗi khi làm mới" });
       }
     } catch (err: any) {
       setActionResult({ success: false, message: err.message || "Lỗi hệ thống" });
     } finally {
-      setIsReleasingEscrow(false);
+      setIsRefreshing(false);
     }
   };
 
-  // Kích hoạt giải ngân cho 1 đơn cụ thể
+  // Kích hoạt tất toán cho 1 đơn cụ thể
   const handleReleaseSingleOrder = async (rentalId: string) => {
     setReleasingOrderId(rentalId);
     setActionResult(null);
@@ -110,168 +84,118 @@ export default function AdminDashboardClient({
     }
   };
 
-  // Đồng bộ / Seed đơn mẫu vận hành
-  const handleSeedOrders = async () => {
-    setIsSeeding(true);
-    setActionResult(null);
-    try {
-      const res = await seedOperationalOrdersAction();
-      if (res.success) {
-        setActionResult({ success: true, message: res.message || "Đã đồng bộ đơn hàng thành công!" });
-      } else {
-        setActionResult({ success: false, message: res.error || "Lỗi khi tạo đơn mẫu" });
-      }
-    } catch (err: any) {
-      setActionResult({ success: false, message: err.message || "Lỗi hệ thống" });
-    } finally {
-      setIsSeeding(false);
-    }
-  };
-
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSearching(true);
-    setMessage(null);
-    setTargetUser(null);
-
-    const res = await searchUserByEmail(email);
-    if (res.error) {
-      setMessage({ type: "error", text: res.error });
-    } else if (res.user) {
-      setTargetUser(res.user);
-    }
-    setIsSearching(false);
-  };
-
-  const handlePump = async () => {
-    if (!targetUser) return;
-    setIsPumping(true);
-    setMessage(null);
-
-    const res = await pumpCoins(targetUser.id, amount);
-    if (res.error) {
-      setMessage({ type: "error", text: res.error });
-    } else {
-      setMessage({ type: "success", text: res.message || "Thành công" });
-      setTargetUser({ ...targetUser, cloopCoins: targetUser.cloopCoins + amount });
-    }
-    setIsPumping(false);
-  };
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "PENDING_APPROVAL":
       case "WAITING_SHIP":
-        return <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">Chờ duyệt</span>;
+        return <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200">Chờ duyệt</span>;
       case "OWNER_PACKED":
       case "LENDER_APPROVED":
-        return <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200">Đã gói • Chờ bưu tá</span>;
+        return <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-blue-50 text-blue-800 border border-blue-200">Đã đóng gói</span>;
       case "LENDER_SHIPPED":
       case "SHIPPED":
-        return <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-purple-50 text-purple-800 border border-purple-200">Đang giao GHN</span>;
+        return <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-purple-50 text-purple-800 border border-purple-200">Đang giao GHN</span>;
       case "BORROWER_RECEIVED":
-        return <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-teal-50 text-teal-800 border border-teal-200">Khách đang mặc</span>;
+        return <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-teal-50 text-teal-800 border border-teal-200">Đang sử dụng</span>;
       case "BORROWER_RETURNED":
       case "RETURNED":
-        return <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-orange-50 text-orange-800 border border-orange-200">Đã trả • Chờ nhả cọc</span>;
+        return <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-orange-50 text-orange-800 border border-orange-200">Đã trả đồ • Chờ duyệt</span>;
       case "LENDER_COMPLETED":
-        return <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">✓ Hoàn tất & Đã nhả cọc</span>;
+        return <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">Hoàn tất</span>;
       case "DISPUTE":
       case "DISPUTED":
-        return <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-800 border border-rose-200">Đang tranh chấp</span>;
+        return <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-rose-50 text-rose-800 border border-rose-200">Khiếu nại</span>;
       case "CANCELLED":
-        return <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-stone-100 text-stone-500 border border-stone-200">Đã hủy đơn</span>;
+        return <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-stone-100 text-stone-500 border border-stone-200">Đã hủy</span>;
       default:
-        return <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-stone-100 text-stone-700">{status}</span>;
+        return <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-stone-100 text-stone-700">{status}</span>;
+    }
+  };
+
+  const getPaymentBadge = (paymentStatus: string) => {
+    switch (paymentStatus) {
+      case "ĐÃ_THANH_TOÁN":
+        return <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">Đã thanh toán</span>;
+      case "CHỜ_THANH_TOÁN":
+        return <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200">Chờ thanh toán</span>;
+      case "CHƯA_CÓ_HÓA_ĐƠN":
+      default:
+        return <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-stone-100 text-stone-500 border border-stone-200">Chưa có hóa đơn</span>;
     }
   };
 
   const navigationModules = [
     {
-      title: "Két Bảo Chứng Escrow",
-      description: "Giám sát quỹ tiền cọc ký quỹ (TK 3386), quản trị thanh khoản ngắn hạn và hoàn cọc.",
+      title: "Quỹ Tiền Cọc Bảo Chứng",
+      description: "Theo dõi số dư tiền cọc ký quỹ đang tạm giữ và lịch sử hoàn cọc cho khách thuê.",
       href: "/admin/deposit-vault",
-      icon: <ShieldCheck size={20} className="text-teal-700" />,
-      badge: "Két cọc"
+      icon: <ShieldCheck size={18} className="text-[#183A2D]" />,
+      badge: "Tiền cọc"
     },
     {
-      title: "Vận Chuyển 2 Chiều GHN & Block 5K",
-      description: "Theo dõi hành trình đơn hàng, cước khứ hồi và quỹ đệm bảo vệ dòng tiền.",
+      title: "Vận Chuyển Giao Nhận GHN",
+      description: "Tạo đơn trực tiếp qua API Giao Hàng Nhanh và kiểm soát mã vận đơn khứ hồi 2 chiều.",
       href: "/admin/shipments",
-      icon: <Truck size={20} className="text-amber-700" />,
-      badge: "Logistics"
+      icon: <Truck size={18} className="text-[#183A2D]" />,
+      badge: "Vận chuyển"
     },
     {
-      title: "Trọng Tài Khiếu Nại & Bồi Thường",
-      description: "Xử lý tranh chấp đồ hỏng, bồi thường trích từ tiền cọc bảo chứng Escrow.",
+      title: "Khiếu Nại & Tranh Chấp",
+      description: "Tiếp nhận hình ảnh phản ánh hư hỏng, xác định tỷ lệ khấu trừ cọc và bồi thường chủ tủ.",
       href: "/admin/disputes",
-      icon: <Scale size={20} className="text-rose-700" />,
+      icon: <Scale size={18} className="text-[#183A2D]" />,
       badge: "Tranh chấp"
     },
     {
-      title: "Sổ Cái Kép TT 99/2025/TT-BTC",
-      description: "Nhật ký ghi sổ kép bất biến ghi nhận mọi dòng tiền vào - ra và bóc tách thuế.",
+      title: "Sổ Cái Kế Toán TT 99",
+      description: "Nhật ký ghi sổ kép bất biến theo Thông tư 99/2025/TT-BTC, bóc tách dòng tiền vào - ra.",
       href: "/admin/ledger",
-      icon: <Layers size={20} className="text-purple-700" />,
+      icon: <Layers size={18} className="text-[#183A2D]" />,
       badge: "Sổ cái"
     },
     {
-      title: "Chi Trả Payouts Cho Chủ Tủ",
-      description: "Danh sách chuyển khoản giải ngân tiền cho thuê cho các chủ tủ trong 24h.",
+      title: "Chi Trả Doanh Thu Chủ Tủ",
+      description: "Duyệt lệnh rút tiền, tạo mã VietQR chuẩn Napas và đối soát chuyển khoản cho chủ tủ.",
       href: "/admin/payments",
-      icon: <CreditCard size={20} className="text-blue-700" />,
-      badge: "Chi trả 24h"
+      icon: <CreditCard size={18} className="text-[#183A2D]" />,
+      badge: "Chi trả"
     },
     {
-      title: "Kỳ Kế Toán & Báo Cáo P&L",
-      description: "Chốt sổ kế toán hàng tháng theo Thông tư 99, ghi nhận Lợi nhuận gộp toàn diện.",
+      title: "Kỳ Kế Toán & Lợi Nhuận",
+      description: "Chốt sổ kế toán theo tháng, đối soát doanh thu thực nhận và báo cáo lợi nhuận toàn sàn.",
       href: "/admin/accounting",
-      icon: <FileText size={20} className="text-emerald-700" />,
+      icon: <FileText size={18} className="text-[#183A2D]" />,
       badge: "Kế toán"
     }
   ];
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 text-left font-ui">
+    <div className="w-full space-y-6 text-left font-sans">
       
-      {/* HEADER BANNER */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#183A2D] text-white p-6 sm:p-8 rounded-3xl shadow-xl relative overflow-hidden">
-        <div className="space-y-1 relative z-10">
-          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold font-mono text-emerald-200 border border-white/10">
-            <Lock size={12} /> BẢNG ĐIỀU HÀNH BAN QUẢN TRỊ & TÀI CHÍNH TOÀN SÀN
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold font-heading mt-2">
-            Trung Tâm Điều Hành & Vận Hành Thực Tế
+      {/* HEADER TỔNG QUAN */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#183A2D] text-white p-6 rounded-2xl shadow-sm">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+            Tổng Quan Quản Trị Hệ Thống
           </h1>
-          <p className="text-white/70 text-xs sm:text-sm font-light">
-            Chào mừng Quản trị viên: <span className="text-emerald-300 font-bold font-mono">{currentAdmin.name}</span>
+          <p className="text-white/75 text-xs mt-1">
+            Quản trị viên: <span className="text-emerald-300 font-semibold">{currentAdmin.name}</span>
           </p>
         </div>
 
-        <div className="flex items-center gap-3 relative z-10">
-          <button
-            onClick={handleSeedOrders}
-            disabled={isSeeding}
-            className="px-4 py-2.5 rounded-2xl bg-white/15 hover:bg-white/25 text-white border border-white/20 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-            title="Đồng bộ lại đơn hàng và tính toán từ database"
-          >
-            {isSeeding ? <Loader2 size={14} className="animate-spin text-emerald-300" /> : <RefreshCw size={14} />}
-            <span>{isSeeding ? "Đang đồng bộ..." : "Đồng Bộ Dữ Liệu"}</span>
-          </button>
-
-          <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/10 shrink-0">
-            <Leaf size={16} className="text-emerald-300" />
-            <div className="flex flex-col text-right">
-              <span className="text-[10px] text-white/60 font-semibold uppercase">Ví Điểm Lá Admin</span>
-              <span className="text-base font-mono font-black text-white">{currentAdmin.coins.toLocaleString()} Lá</span>
-            </div>
-          </div>
-        </div>
+        <button
+          onClick={handleRefreshData}
+          disabled={isRefreshing}
+          className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 text-xs font-semibold transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
+        >
+          <RefreshCw size={14} className={isRefreshing ? "animate-spin text-emerald-300" : ""} />
+          <span>{isRefreshing ? "Đang cập nhật..." : "Làm mới số liệu"}</span>
+        </button>
       </div>
 
-      {/* FEEDBACK TOAST NOTIFICATION */}
+      {/* THÔNG BÁO KẾT QUẢ THAO TÁC */}
       {actionResult && (
-        <div className={`p-4 rounded-2xl border text-xs font-medium flex items-center justify-between gap-3 ${
+        <div className={`p-4 rounded-xl border text-xs font-medium flex items-center justify-between gap-3 ${
           actionResult.success 
             ? "bg-emerald-50 border-emerald-200 text-emerald-900" 
             : "bg-rose-50 border-rose-200 text-rose-900"
@@ -280,511 +204,221 @@ export default function AdminDashboardClient({
             <CheckCircle2 size={16} className={actionResult.success ? "text-emerald-700" : "text-rose-700"} />
             <span>{actionResult.message}</span>
           </div>
-          <button onClick={() => setActionResult(null)} className="text-xs font-bold underline opacity-70 hover:opacity-100">
+          <button onClick={() => setActionResult(null)} className="text-xs font-semibold underline opacity-70 hover:opacity-100 cursor-pointer">
             Đóng
           </button>
         </div>
       )}
 
-      {/* 🔔 BANNER NHẮC DUYỆT LỆNH RÚT TIỀN (PAYOUT ALERT) */}
+      {/* CẢNH BÁO LỆNH RÚT TIỀN CHỜ DUYỆT */}
       {pendingWithdrawals && pendingWithdrawals.length > 0 && (
-        <div className="bg-amber-50 border-2 border-amber-300 p-4 sm:p-5 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 font-mono font-black text-lg shadow-sm">
+        <div className="bg-amber-50 border border-amber-300 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center font-bold text-sm shrink-0">
               {pendingWithdrawals.length}
             </div>
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-md bg-amber-200 text-amber-900 text-[10px] font-bold uppercase tracking-wider">Cần chi trả ngay</span>
-                <span className="text-xs font-bold text-amber-950">Lệnh rút tiền đang chờ duyệt ({pendingWithdrawals.length} yêu cầu)</span>
-              </div>
-              <p className="text-xs text-amber-800 font-light">
-                Gần nhất: <strong>{pendingWithdrawals[0].amount?.toLocaleString('vi-VN')}₫</strong> về {pendingWithdrawals[0].bankName} ({pendingWithdrawals[0].bankAccountNumber}) - Chủ TK: <strong>{pendingWithdrawals[0].bankAccountHolder}</strong>.
+            <div>
+              <p className="font-bold text-amber-950">
+                Có {pendingWithdrawals.length} yêu cầu rút tiền đang chờ duyệt
+              </p>
+              <p className="text-amber-800 text-[11px] mt-0.5">
+                Gần nhất: {pendingWithdrawals[0].amount?.toLocaleString('vi-VN')}₫ • {pendingWithdrawals[0].bankName} ({pendingWithdrawals[0].bankAccountNumber}) - {pendingWithdrawals[0].bankAccountHolder}
               </p>
             </div>
           </div>
           <Link
             href="/admin/payments"
-            className="w-full sm:w-auto px-5 py-3 bg-amber-800 hover:bg-amber-900 text-white text-xs font-bold rounded-2xl transition flex items-center justify-center gap-2 shrink-0 shadow-md cursor-pointer hover:shadow-lg active:scale-98"
+            className="px-4 py-2 bg-amber-800 hover:bg-amber-900 text-white font-semibold rounded-xl transition text-xs shrink-0 cursor-pointer"
           >
-            <CreditCard size={15} /> Vào Duyệt Chuyển Tiền Ngay →
+            Xử lý chi trả →
           </Link>
         </div>
       )}
 
-      {/* 4 THẺ CHỈ SỐ TÀI CHÍNH CỐT LÕI (KEY FINANCIAL METRICS) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 4 CHỈ SỐ TÀI CHÍNH CỐT LÕI (SỐ LIỆU DATABASE 100%) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         
-        {/* KPI 1: TỔNG GMV */}
-        <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-xs flex flex-col justify-between gap-3">
-          <div className="flex justify-between items-start">
-            <span className="text-xs uppercase font-bold text-stone-400 tracking-wider">Tổng GMV Toàn Sàn</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-800 flex items-center justify-center">
-              <TrendingUp size={16} />
-            </div>
+        {/* KPI 1: TỔNG GIÁ TRỊ GIAO DỊCH */}
+        <div className="bg-white p-5 rounded-2xl border border-stone-200 space-y-1">
+          <span className="text-xs font-semibold text-stone-500 uppercase tracking-wide">Tổng Giá Trị Giao Dịch</span>
+          <div className="text-2xl font-bold font-mono text-stone-900">
+            {metrics.totalGMV.toLocaleString('vi-VN')}₫
           </div>
-          <div>
-            <div className="text-2xl font-black font-mono text-stone-900">{metrics.totalGMV.toLocaleString()}₫</div>
-            <p className="text-[11px] text-stone-400 mt-0.5">Tổng giá trị giao dịch thuê & cọc</p>
-          </div>
+          <p className="text-[11px] text-stone-400">Tổng tiền khách đã trả qua sàn</p>
         </div>
 
-        {/* KPI 2: KÉT BẢO CHỨNG ESCROW */}
-        <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-xs flex flex-col justify-between gap-3">
-          <div className="flex justify-between items-start">
-            <span className="text-xs uppercase font-bold text-stone-400 tracking-wider">Quỹ Két Escrow</span>
-            <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-800 flex items-center justify-center">
-              <ShieldCheck size={16} />
-            </div>
+        {/* KPI 2: TIỀN CỌC ĐANG GIỮ */}
+        <div className="bg-white p-5 rounded-2xl border border-stone-200 space-y-1">
+          <span className="text-xs font-semibold text-stone-500 uppercase tracking-wide">Tiền cọc đang giữ</span>
+          <div className="text-2xl font-bold font-mono text-teal-800">
+            {metrics.totalDepositEscrow.toLocaleString('vi-VN')}₫
           </div>
-          <div>
-            <div className="text-2xl font-black font-mono text-teal-900">{metrics.totalDepositEscrow.toLocaleString()}₫</div>
-            <p className="text-[11px] text-stone-400 mt-0.5">Tiền cọc bảo chứng đang quản lý</p>
-          </div>
+          <p className="text-[11px] text-stone-400">Đơn đang trong thời hạn thuê</p>
         </div>
 
-        {/* KPI 3: DOANH THU PHÍ SÀN 12% */}
-        <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-xs flex flex-col justify-between gap-3">
-          <div className="flex justify-between items-start">
-            <span className="text-xs uppercase font-bold text-stone-400 tracking-wider">Lợi Nhuận Sàn (12%)</span>
-            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-800 flex items-center justify-center">
-              <CreditCard size={16} />
-            </div>
+        {/* KPI 3: DOANH THU PHÍ SÀN */}
+        <div className="bg-white p-5 rounded-2xl border border-stone-200 space-y-1">
+          <span className="text-xs font-semibold text-stone-500 uppercase tracking-wide">Doanh thu phí sàn (12%)</span>
+          <div className="text-2xl font-bold font-mono text-blue-900">
+            {Math.round(metrics.totalPlatformFee).toLocaleString('vi-VN')}₫
           </div>
-          <div>
-            <div className="text-2xl font-black font-mono text-blue-900">{Math.round(metrics.totalPlatformFee).toLocaleString()}₫</div>
-            <p className="text-[11px] text-stone-400 mt-0.5">Phí dịch vụ 12% giữ lại trên gói thuê</p>
-          </div>
+          <p className="text-[11px] text-stone-400">Trích từ tiền thuê hoàn tất</p>
         </div>
 
-        {/* KPI 4: DOANH THU NẠP LÁ */}
-        <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-xs flex flex-col justify-between gap-3">
-          <div className="flex justify-between items-start">
-            <span className="text-xs uppercase font-bold text-stone-400 tracking-wider">Doanh Thu Nạp Lá</span>
-            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center">
-              <Leaf size={16} />
-            </div>
+        {/* KPI 4: DOANH THU BÁN XU LÁ */}
+        <div className="bg-white p-5 rounded-2xl border border-stone-200 space-y-1">
+          <span className="text-xs font-semibold text-stone-500 uppercase tracking-wide">Doanh thu bán Xu Lá</span>
+          <div className="text-2xl font-bold font-mono text-amber-800">
+            {metrics.totalCoinRevenue.toLocaleString('vi-VN')}₫
           </div>
-          <div>
-            <div className="text-2xl font-black font-mono text-amber-900">{metrics.totalCoinRevenue.toLocaleString()}₫</div>
-            <p className="text-[11px] text-stone-400 mt-0.5">+{metrics.totalCoinsIssued.toLocaleString()} Lá đã phát hành</p>
-          </div>
+          <p className="text-[11px] text-stone-400">Đã phát hành {metrics.totalCoinsIssued.toLocaleString('vi-VN')} Lá</p>
         </div>
       </div>
 
-      {/* THANH TAB CHUYỂN ĐỔI */}
-      <div className="flex items-center gap-3 border-b border-stone-200 pb-3">
-        <button
-          type="button"
-          onClick={() => setActiveTab("OVERVIEW")}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeTab === "OVERVIEW"
-              ? "bg-[#183A2D] text-white shadow-sm"
-              : "bg-white text-stone-600 hover:bg-stone-100 border border-stone-200"
-          }`}
-        >
-          📊 Tổng Quan & Phân Hệ Quản Trị
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("ORDERS")}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-            activeTab === "ORDERS"
-              ? "bg-[#183A2D] text-white shadow-sm"
-              : "bg-white text-stone-600 hover:bg-stone-100 border border-stone-200"
-          }`}
-        >
-          <ShoppingBag size={14} className="text-emerald-600" /> Vận Hành Đơn Hàng ({recentRentals.length})
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("TOOLS")}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-            activeTab === "TOOLS"
-              ? "bg-[#183A2D] text-white shadow-sm"
-              : "bg-white text-stone-600 hover:bg-stone-100 border border-stone-200"
-          }`}
-        >
-          <Zap size={14} className="text-yellow-500" /> Công Cụ Hỗ Trợ & Điều Chỉnh Điểm
-        </button>
-      </div>
-
-      {/* TAB 1: OVERVIEW */}
-      {activeTab === "OVERVIEW" && (
-        <div className="space-y-8">
-          
-          {/* LƯỚI 6 PHÂN HỆ QUẢN TRỊ CHUYÊN SÂU */}
-          <div>
-            <h2 className="text-lg font-bold font-heading text-[#0A2517] mb-4 flex items-center gap-2">
-              <Layers size={18} className="text-emerald-800" />
-              Các Phân Hệ Báo Cáo & Đối Soát Dành Cho Team
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {navigationModules.map((mod) => (
-                <Link
-                  key={mod.href}
-                  href={mod.href}
-                  className="bg-white p-5 rounded-3xl border border-stone-200/80 shadow-2xs hover:shadow-md hover:border-[#183A2D]/50 transition-all flex flex-col justify-between gap-4 group"
-                >
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <div className="w-10 h-10 rounded-2xl bg-stone-50 border border-stone-200/60 flex items-center justify-center group-hover:scale-105 transition-transform">
-                        {mod.icon}
-                      </div>
-                      <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-600 font-mono">
-                        {mod.badge}
-                      </span>
-                    </div>
-                    <h3 className="font-bold text-sm text-[#0A2517] group-hover:text-emerald-800 transition-colors">
-                      {mod.title}
-                    </h3>
-                    <p className="text-xs text-stone-500 leading-relaxed font-light">
-                      {mod.description}
-                    </p>
+      {/* 6 PHÂN HỆ QUẢN TRỊ */}
+      <div>
+        <h2 className="text-base font-bold text-stone-900 mb-3">
+          Phân Hệ Chức Năng
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {navigationModules.map((mod) => (
+            <Link
+              key={mod.href}
+              href={mod.href}
+              className="bg-white p-5 rounded-2xl border border-stone-200 hover:border-[#183A2D] hover:shadow-xs transition-all flex flex-col justify-between gap-3 group"
+            >
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <div className="w-8 h-8 rounded-lg bg-stone-100 flex items-center justify-center">
+                    {mod.icon}
                   </div>
-
-                  <div className="pt-3 border-t border-stone-100 flex items-center justify-between text-xs font-bold text-emerald-800 group-hover:translate-x-1 transition-transform">
-                    <span>Truy cập phân hệ</span>
-                    <ChevronRight size={14} />
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          {/* BẢNG TÓM TẮT ĐƠN HÀNG MỚI NHẤT TRONG TAB OVERVIEW */}
-          <div className="bg-white p-6 rounded-3xl border border-stone-200/80 shadow-xs space-y-4">
-            <div className="flex justify-between items-center pb-3 border-b border-stone-100">
-              <div>
-                <h3 className="text-base font-bold font-heading text-[#0A2517]">
-                  Đơn Hàng Vận Hành Cần Theo Dõi Gần Đây
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-stone-100 text-stone-600">
+                    {mod.badge}
+                  </span>
+                </div>
+                <h3 className="font-bold text-sm text-stone-900 group-hover:text-[#183A2D] transition-colors">
+                  {mod.title}
                 </h3>
-                <p className="text-xs text-stone-500 font-light">
-                  Kiểm soát dòng tiền Escrow, giao nhận GHN và giải ngân tiền thuê cho chủ tủ.
+                <p className="text-xs text-stone-500 leading-relaxed">
+                  {mod.description}
                 </p>
               </div>
-              <button
-                onClick={() => setActiveTab("ORDERS")}
-                className="text-xs font-bold text-emerald-800 hover:underline flex items-center gap-1 cursor-pointer"
-              >
-                <span>Xem tất cả đơn</span>
-                <ArrowRight size={13} />
-              </button>
-            </div>
 
-            {recentRentals.length === 0 ? (
-              <div className="text-center py-8 text-stone-400 space-y-3">
-                <ShoppingBag size={32} className="mx-auto text-stone-300" />
-                <p className="text-xs">Chưa có đơn hàng nào trong hệ thống.</p>
-                <button
-                  onClick={handleSeedOrders}
-                  className="px-4 py-2 rounded-full bg-[#183A2D] text-white text-xs font-bold cursor-pointer hover:bg-[#112a20]"
-                >
-                  Tạo Đơn Hàng Mẫu Vận Hành
-                </button>
+              <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-xs font-semibold text-[#183A2D]">
+                <span>Truy cập</span>
+                <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
               </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-stone-100 text-stone-400 uppercase text-[10px] tracking-wider font-bold">
-                      <th className="py-2.5">Mã Đơn</th>
-                      <th className="py-2.5">Trang Phục</th>
-                      <th className="py-2.5">Người Thuê & Chủ Tủ</th>
-                      <th className="py-2.5 text-right">Tiền Thuê</th>
-                      <th className="py-2.5 text-right">Cọc Escrow</th>
-                      <th className="py-2.5 text-center">Trạng Thái</th>
-                      <th className="py-2.5 text-right">Hành Động</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-stone-100 font-mono">
-                    {recentRentals.slice(0, 5).map((order: any) => (
-                      <tr key={order.id} className="hover:bg-stone-50/60 transition-colors">
-                        <td className="py-3 font-bold text-stone-900">#{order.code}</td>
-                        <td className="py-3 font-sans">
-                          <p className="font-bold text-[#0A2517] line-clamp-1">{order.productTitle}</p>
-                          <span className="text-[10px] text-stone-400 font-mono">{order.shippingCode}</span>
-                        </td>
-                        <td className="py-3 font-sans">
-                          <p className="text-stone-800 font-medium">Thuê: {order.renterName}</p>
-                          <p className="text-[10px] text-stone-400">Chủ: {order.ownerName}</p>
-                        </td>
-                        <td className="py-3 text-right font-bold text-emerald-800">
-                          {order.rentalFee.toLocaleString()}₫
-                        </td>
-                        <td className="py-3 text-right font-bold text-teal-800">
-                          {order.depositAmount.toLocaleString()}₫
-                        </td>
-                        <td className="py-3 text-center font-sans">
-                          {getStatusBadge(order.status)}
-                        </td>
-                        <td className="py-3 text-right font-sans">
-                          {order.status !== "LENDER_COMPLETED" ? (
-                            <button
-                              onClick={() => handleReleaseSingleOrder(order.id)}
-                              disabled={releasingOrderId === order.id}
-                              className="px-3 py-1 bg-[#183A2D] hover:bg-[#112a20] text-white rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer"
-                            >
-                              {releasingOrderId === order.id ? "Đang xử lý..." : "Nhả Cọc & Trả Tiền"}
-                            </button>
-                          ) : (
-                            <span className="text-[10px] font-bold text-emerald-700 font-mono">✓ Đã tất toán</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      {/* QUY MÔ HỆ THỐNG */}
+      <div className="bg-white p-5 rounded-2xl border border-stone-200">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-stone-400 mb-3">
+          Quy Mô Hoạt Động
+        </h3>
+        <div className="grid grid-cols-3 gap-4 text-center divide-x divide-stone-100">
+          <div>
+            <div className="text-xl sm:text-2xl font-bold font-mono text-[#183A2D]">{metrics.totalUsers}</div>
+            <div className="text-xs text-stone-500 mt-0.5">Thành viên</div>
           </div>
+          <div>
+            <div className="text-xl sm:text-2xl font-bold font-mono text-[#183A2D]">{metrics.totalProducts}</div>
+            <div className="text-xs text-stone-500 mt-0.5">Món đồ</div>
+          </div>
+          <div>
+            <div className="text-xl sm:text-2xl font-bold font-mono text-[#183A2D]">{metrics.totalRentals}</div>
+            <div className="text-xs text-stone-500 mt-0.5">Lượt thuê</div>
+          </div>
+        </div>
+      </div>
 
-          {/* QUY MÔ HỆ THỐNG */}
-          <div className="bg-white p-6 rounded-3xl border border-stone-200/80 shadow-xs">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-stone-400 mb-4">
-              Quy Mô Cộng Đồng Tủ Đồ CLOOP
+      {/* BẢNG ĐƠN HÀNG VẬN HÀNH GẦN ĐÂY */}
+      <div className="bg-white p-5 rounded-2xl border border-stone-200 space-y-3">
+        <div className="flex justify-between items-center pb-2 border-b border-stone-100">
+          <div>
+            <h3 className="text-sm font-bold text-stone-900">
+              Đơn Hàng Gần Đây ({recentRentals.length})
             </h3>
-            <div className="grid grid-cols-3 gap-4 text-center divide-x divide-stone-100">
-              <div>
-                <div className="text-2xl sm:text-3xl font-black font-mono text-[#183A2D]">{metrics.totalUsers}</div>
-                <div className="text-xs text-stone-500 font-medium mt-1">Thành viên đăng ký</div>
-              </div>
-              <div>
-                <div className="text-2xl sm:text-3xl font-black font-mono text-[#183A2D]">{metrics.totalProducts}</div>
-                <div className="text-xs text-stone-500 font-medium mt-1">Món đồ trên tủ đồ</div>
-              </div>
-              <div>
-                <div className="text-2xl sm:text-3xl font-black font-mono text-[#183A2D]">{metrics.totalRentals}</div>
-                <div className="text-xs text-stone-500 font-medium mt-1">Chuyến thuê phát sinh</div>
-              </div>
-            </div>
+            <p className="text-xs text-stone-500">
+              Dữ liệu đơn hàng thực tế ghi nhận từ cơ sở dữ liệu
+            </p>
           </div>
         </div>
-      )}
 
-      {/* TAB 2: TOÀN BỘ ĐƠN HÀNG VẬN HÀNH THỰC TẾ */}
-      {activeTab === "ORDERS" && (
-        <div className="space-y-6">
-          <div className="bg-white p-6 rounded-3xl border border-stone-200/80 shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-4 border-b border-stone-100">
-              <div>
-                <h3 className="text-lg font-bold font-heading text-[#0A2517]">
-                  Sổ Theo Dõi Chi Tiết Từng Đơn Hàng Vận Hành Toàn Sàn
-                </h3>
-                <p className="text-xs text-stone-500 font-light">
-                  Kiểm soát từng dòng tiền: Tiền thuê, Cọc Escrow, Phí sàn 12%, và Lịch trình giao nhận GHN.
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleTriggerFastEscrowRelease}
-                  disabled={isReleasingEscrow}
-                  className="px-4 py-2 rounded-xl bg-[#183A2D] hover:bg-[#112a20] text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer disabled:opacity-50"
-                >
-                  {isReleasingEscrow ? <Loader2 size={13} className="animate-spin" /> : <Zap size={13} className="text-amber-400" />}
-                  <span>Giải Ngân Toàn Bộ Đơn Đủ Điều Kiện</span>
-                </button>
-              </div>
-            </div>
-
-            {recentRentals.length === 0 ? (
-              <div className="text-center py-12 text-stone-400 space-y-3">
-                <ShoppingBag size={36} className="mx-auto text-stone-300" />
-                <p className="text-sm font-medium">Chưa có đơn hàng nào.</p>
-                <button
-                  onClick={handleSeedOrders}
-                  className="px-5 py-2.5 rounded-full bg-[#183A2D] text-white text-xs font-bold cursor-pointer"
-                >
-                  Tạo Đơn Hàng Mẫu Thực Tế
-                </button>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-stone-100 text-stone-400 uppercase text-[10px] tracking-wider font-bold">
-                      <th className="py-3">Mã Đơn & Vận Đơn</th>
-                      <th className="py-3">Trang Phục</th>
-                      <th className="py-3">Khách Thuê (SĐT)</th>
-                      <th className="py-3">Chủ Tủ (SĐT)</th>
-                      <th className="py-3 text-center">Thời Gian Thuê</th>
-                      <th className="py-3 text-right">Tiền Thuê / Cọc</th>
-                      <th className="py-3 text-center">Trạng Thái</th>
-                      <th className="py-3 text-right">Thao Tác Admin</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-stone-100 font-mono">
-                    {recentRentals.map((order: any) => (
-                      <tr key={order.id} className="hover:bg-stone-50/60 transition-colors">
-                        <td className="py-3.5">
-                          <span className="font-bold text-stone-900 block">#{order.code}</span>
-                          <span className="text-[10px] text-stone-400 font-mono">{order.shippingCode}</span>
-                        </td>
-                        <td className="py-3.5 font-sans">
-                          <p className="font-bold text-[#0A2517] line-clamp-1">{order.productTitle}</p>
-                          <span className="text-[10px] text-stone-400">Phí sàn 12%: {order.platformFee.toLocaleString()}₫</span>
-                        </td>
-                        <td className="py-3.5 font-sans">
-                          <p className="font-semibold text-stone-800">{order.renterName}</p>
-                          <span className="text-[10px] text-stone-400 font-mono">{order.renterPhone}</span>
-                        </td>
-                        <td className="py-3.5 font-sans">
-                          <p className="font-semibold text-stone-800">{order.ownerName}</p>
-                          <span className="text-[10px] text-stone-400 font-mono">{order.ownerPhone}</span>
-                        </td>
-                        <td className="py-3.5 text-center font-sans text-[11px] text-stone-600">
-                          {order.startDate} &rarr; {order.endDate}
-                        </td>
-                        <td className="py-3.5 text-right">
-                          <p className="font-bold text-emerald-800">{order.rentalFee.toLocaleString()}₫</p>
-                          <span className="text-[10px] text-teal-700 font-bold">Cọc: {order.depositAmount.toLocaleString()}₫</span>
-                        </td>
-                        <td className="py-3.5 text-center font-sans">
-                          {getStatusBadge(order.status)}
-                        </td>
-                        <td className="py-3.5 text-right font-sans">
-                          {order.status !== "LENDER_COMPLETED" ? (
-                            <button
-                              onClick={() => handleReleaseSingleOrder(order.id)}
-                              disabled={releasingOrderId === order.id}
-                              className="px-3 py-1.5 bg-[#183A2D] hover:bg-[#112a20] text-white rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer"
-                            >
-                              {releasingOrderId === order.id ? "Đang xử lý..." : "Hoàn Cọc & Giải Ngân"}
-                            </button>
-                          ) : (
-                            <span className="text-[10px] font-bold text-emerald-700 font-mono bg-emerald-50 px-2 py-1 rounded-md">
-                              ✓ Đã tất toán
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+        {recentRentals.length === 0 ? (
+          <div className="text-center py-8 text-stone-400 text-xs">
+            Chưa có đơn hàng nào trong hệ thống.
           </div>
-        </div>
-      )}
-
-      {/* TAB 3: TOOLS & ĐIỀU CHỈNH ĐIỂM LÁ */}
-      {activeTab === "TOOLS" && (
-        <div className="space-y-6">
-          
-          {/* CÔNG CỤ TẠO ĐƠN MẪU THỰC TẾ */}
-          <div className="bg-white p-6 rounded-3xl border border-stone-200/80 shadow-xs space-y-4">
-            <div className="flex justify-between items-center pb-3 border-b border-stone-100">
-              <div>
-                <h3 className="text-base font-bold font-heading text-[#0A2517]">
-                  Khởi Tạo / Đồng Bộ Dữ Liệu Vận Hành Toàn Sàn
-                </h3>
-                <p className="text-xs text-stone-500 font-light">
-                  Tự động đồng bộ các đơn hàng mẫu trải dài qua các chu trình: Đang thuê, Chờ cọc, Đã hoàn tất và Ghi sổ cái.
-                </p>
-              </div>
-              <button
-                onClick={handleSeedOrders}
-                disabled={isSeeding}
-                className="px-6 py-2.5 bg-[#183A2D] hover:bg-[#112a20] text-white rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                {isSeeding ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-                <span>{isSeeding ? "Đang tạo dữ liệu..." : "Tạo Đơn Hàng Mẫu Thực Tế"}</span>
-              </button>
-            </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-stone-200 text-stone-400 uppercase text-[10px] tracking-wider font-semibold">
+                  <th className="py-2.5">Mã Đơn</th>
+                  <th className="py-2.5">Trang Phục</th>
+                  <th className="py-2.5">Khách Thuê / Chủ Tủ</th>
+                  <th className="py-2.5 text-right">Tiền Thuê</th>
+                  <th className="py-2.5 text-right">Tiền Cọc</th>
+                  <th className="py-2.5 text-center">Thanh Toán</th>
+                  <th className="py-2.5 text-center">Vận Hành</th>
+                  <th className="py-2.5 text-right">Thao Tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-100">
+                {recentRentals.map((order: any) => (
+                  <tr key={order.id} className="hover:bg-stone-50/70 transition-colors">
+                    <td className="py-3 font-mono font-bold text-stone-900">
+                      #{order.code}
+                      {order.shippingCode && order.shippingCode !== "Chưa tạo mã" && (
+                        <span className="block text-[10px] font-normal text-stone-400 font-mono">
+                          {order.shippingCode}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3">
+                      <p className="font-semibold text-stone-900 line-clamp-1">{order.productTitle}</p>
+                      <span className="text-[10px] text-stone-400">Ngày tạo: {order.createdAt}</span>
+                    </td>
+                    <td className="py-3 text-[11px]">
+                      <p className="text-stone-800">Thuê: <span className="font-medium">{order.renterName}</span></p>
+                      <p className="text-stone-500">Chủ: {order.ownerName}</p>
+                    </td>
+                    <td className="py-3 text-right font-mono font-semibold text-stone-800">
+                      {order.rentalFee.toLocaleString('vi-VN')}₫
+                    </td>
+                    <td className="py-3 text-right font-mono font-semibold text-stone-800">
+                      {order.depositAmount.toLocaleString('vi-VN')}₫
+                    </td>
+                    <td className="py-3 text-center">
+                      {getPaymentBadge(order.paymentStatus)}
+                    </td>
+                    <td className="py-3 text-center">
+                      {getStatusBadge(order.status)}
+                    </td>
+                    <td className="py-3 text-right">
+                      {order.status === "LENDER_COMPLETED" ? (
+                        <span className="text-[11px] font-semibold text-emerald-700">✓ Đã tất toán</span>
+                      ) : (order.status === "BORROWER_RETURNED" || order.status === "RETURNED") ? (
+                        <button
+                          onClick={() => handleReleaseSingleOrder(order.id)}
+                          disabled={releasingOrderId === order.id}
+                          className="px-2.5 py-1 bg-[#183A2D] hover:bg-[#112a20] text-white rounded text-[10px] font-semibold transition disabled:opacity-50 cursor-pointer"
+                        >
+                          {releasingOrderId === order.id ? <Loader2 size={12} className="animate-spin inline" /> : "Tất toán đơn"}
+                        </button>
+                      ) : (
+                        <span className="text-[11px] text-stone-400 font-mono">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-
-          {/* CÔNG CỤ BƠM ĐIỂM LÁ CHO USER */}
-          <div className="bg-white p-6 rounded-3xl border border-stone-200/80 shadow-xs space-y-5">
-            <div className="pb-3 border-b border-stone-100">
-              <h3 className="text-base font-bold font-heading text-[#0A2517] flex items-center gap-2">
-                <Zap size={18} className="text-amber-500" />
-                Cấp Tặng & Điều Chỉnh Điểm Lá CLOOP Cho Thành Viên
-              </h3>
-              <p className="text-xs text-stone-500 font-light mt-0.5">
-                Tìm kiếm tài khoản theo email và cấp tặng Lá CLOOP kèm ghi sổ cái kế toán tự động.
-              </p>
-            </div>
-
-            <form onSubmit={handleSearch} className="flex gap-3">
-              <div className="relative flex-1">
-                <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Nhập email thành viên cần tìm..."
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-stone-200 text-xs sm:text-sm outline-none focus:border-[#183A2D]"
-                  required
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={isSearching}
-                className="px-6 py-2.5 bg-stone-900 hover:bg-black text-white text-xs font-bold rounded-xl transition-all cursor-pointer disabled:opacity-50"
-              >
-                {isSearching ? "Đang tìm..." : "Tìm Kiếm"}
-              </button>
-            </form>
-
-            {message && message.type === "error" && (
-              <div className="mt-4 bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-xl text-xs flex items-center gap-2">
-                <AlertTriangle size={14} className="shrink-0" />
-                <p>{message.text}</p>
-              </div>
-            )}
-          </div>
-
-          <div className="bg-white border border-stone-200 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
-            <div>
-              <h2 className="text-base font-bold font-heading text-stone-900 mb-3 flex items-center gap-2">
-                <Zap size={16} className="text-yellow-500" /> Bảng Điều Khiển Cấp Điểm Lá
-              </h2>
-              {targetUser ? (
-                <div className="bg-stone-50 p-3.5 rounded-2xl border border-stone-200 text-xs space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-stone-500">Tên:</span>
-                    <span className="font-bold text-stone-900">{targetUser.name}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-stone-500">Email:</span>
-                    <span className="font-mono text-stone-800">{targetUser.email}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-stone-500">Số dư Điểm Lá:</span>
-                    <span className="font-mono font-bold text-emerald-800">{targetUser.cloopCoins.toLocaleString()} Lá</span>
-                  </div>
-                  <div className="pt-2 border-t border-stone-200 flex gap-2 items-center">
-                    <input 
-                      type="number" 
-                      value={amount}
-                      onChange={(e) => setAmount(Number(e.target.value))}
-                      className="w-28 bg-white border border-stone-200 px-3 py-1.5 rounded-xl font-mono text-xs text-stone-900"
-                    />
-                    <button
-                      type="button"
-                      onClick={handlePump}
-                      disabled={isPumping}
-                      className="flex-1 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1"
-                    >
-                      {isPumping ? <Loader2 size={12} className="animate-spin" /> : "Cộng Lá Cho User"}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="py-8 text-center text-stone-400 text-xs font-light">
-                  Vui lòng tìm kiếm email người dùng ở ô bên trái trước.
-                </div>
-              )}
-            </div>
-            {message && message.type === "success" && (
-              <div className="mt-3 bg-emerald-50 border border-emerald-200 text-emerald-800 px-3 py-2 rounded-xl text-xs flex items-center gap-2">
-                <CheckCircle2 size={14} className="shrink-0" />
-                <p>{message.text}</p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+        )}
+      </div>
 
     </div>
   );

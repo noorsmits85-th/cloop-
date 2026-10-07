@@ -83,17 +83,17 @@ export default function PaymentsClient({ initialItems }: { initialItems: PayoutI
   const totalPendingAmount = activeItems.reduce((sum, it) => sum + it.netPayoutAmount, 0);
 
   return (
-    <div className="p-6 sm:p-10 bg-[#FAF9F5] min-h-screen text-left font-sans">
-      <div className="max-w-5xl mx-auto space-y-6">
+    <div className="w-full text-left font-sans pb-16">
+      <div className="w-full space-y-6">
 
         {/* HEADER */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-stone-200 pb-6">
           <div>
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-800 mb-1">
-              <CreditCard size={16} /> Mạch Giải Ngân & Payouts (24h)
+            <div className="text-xs font-bold uppercase tracking-wider text-emerald-800 mb-1">
+              Mạch Giải Ngân Doanh Thu (24h)
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-stone-900 tracking-tight">
-              Khung Quản Lý Chi Trả CLOOP
+              Khung Quản Lý Chi Trả Doanh Thu
             </h1>
             <p className="text-xs sm:text-sm text-stone-500 mt-1">
               Danh sách các đơn thuê đã hoàn tất cần chuyển khoản trả tiền cho chủ tủ đồ trong vòng 24 giờ.
@@ -105,10 +105,10 @@ export default function PaymentsClient({ initialItems }: { initialItems: PayoutI
               href="/admin/ledger"
               className="bg-white hover:bg-emerald-50 text-stone-700 hover:text-emerald-800 border border-stone-300 hover:border-emerald-300 px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
             >
-              <FileText size={14} className="text-emerald-700" /> Xem Sổ Cái TT 99
+              Xem Sổ Cái TT 99
             </Link>
-            <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2">
-              <Clock size={14} /> Cam kết Payout 24h
+            <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 px-4 py-2 rounded-xl text-xs font-bold">
+              Chi trả trong 24h
             </div>
           </div>
         </div>
@@ -128,7 +128,7 @@ export default function PaymentsClient({ initialItems }: { initialItems: PayoutI
           <div className="bg-[#183A2D] text-white p-5 rounded-2xl shadow-md">
             <span className="text-[11px] font-bold text-emerald-200 uppercase tracking-wider">Đã chuyển hoàn tất</span>
             <p className="text-2xl font-black font-mono text-white mt-1">{completedIds.length} lượt</p>
-            <p className="text-[10px] text-emerald-300 mt-1">✓ Đã đồng bộ vào sổ cái kế toán</p>
+            <p className="text-[10px] text-emerald-300 mt-1">Đã đồng bộ vào sổ cái kế toán</p>
           </div>
         </div>
 
@@ -136,19 +136,16 @@ export default function PaymentsClient({ initialItems }: { initialItems: PayoutI
         <div className="space-y-4">
           {activeItems.length === 0 ? (
             <div className="bg-white p-12 rounded-3xl border border-stone-200 text-center space-y-3">
-              <div className="w-12 h-12 bg-emerald-100 text-emerald-800 rounded-full flex items-center justify-center mx-auto">
-                <CheckCircle2 size={24} />
-              </div>
-              <h3 className="text-lg font-bold text-stone-800">Tuyệt vời! Không còn đơn nào tồn đọng</h3>
+              <h3 className="text-lg font-bold text-stone-800">Không còn đơn nào tồn đọng</h3>
               <p className="text-xs text-stone-500 max-w-md mx-auto">
-                Toàn bộ tiền thuê của chủ tủ đã được giải ngân đúng cam kết 24h. Dòng tiền đối soát trên sàn hoàn toàn cân bằng.
+                Toàn bộ tiền thuê của chủ tủ đã được giải ngân. Dòng tiền đối soát trên sàn hoàn toàn cân bằng.
               </p>
               <div className="pt-2">
                 <Link
                   href="/admin/accounting"
                   className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-4 py-2 rounded-xl transition"
                 >
-                  Chuyển sang Kỳ Kế Toán & Báo Cáo P&L <ArrowRight size={14} />
+                  Chuyển sang Kỳ Kế Toán & Lợi Nhuận
                 </Link>
               </div>
             </div>

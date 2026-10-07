@@ -3,6 +3,14 @@ import { createClient } from "@/src/utils/supabase/server";
 import { prisma } from "@/src/lib/prisma";
 import { redirect } from "next/navigation";
 
+export const ADMIN_EMAILS = [
+  "tranthitrinh0501@gmail.com",
+  "th4212044@gmail.com",
+  "noorsmits85@gmail.com",
+  "trangh2910@gmail.com",
+  "tp785053@gmail.com"
+];
+
 // ⚡ IN-MEMORY SWR CACHE (30s TTL): Triệt tiêu 100% các truy vấn DB lặp lại khi người dùng chuyển tab Dashboard
 const userAuthCache = new Map<string, { user: any; expiry: number }>();
 
@@ -41,6 +49,7 @@ export const requireUser = cache(async () => {
 
   const name = user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Thành viên CLOOP";
   const email = user.email || `${user.id}@cloop.vn`;
+  const isAdminEmail = ADMIN_EMAILS.includes(email.toLowerCase());
 
   // ⚡ Tối ưu siêu tốc: Đọc trước bằng findUnique (2ms, không lock database)
   try {
@@ -57,6 +66,14 @@ export const requireUser = cache(async () => {
       }
     });
 
+    if (profile && isAdminEmail && profile.role !== "ADMIN") {
+      await prisma.user.update({
+        where: { id: profile.id },
+        data: { role: "ADMIN" }
+      });
+      profile.role = "ADMIN";
+    }
+
     // Chỉ khi user chưa có trong database mới thực hiện ghi mới (create)
     if (!profile) {
       profile = await prisma.user.create({
@@ -67,7 +84,7 @@ export const requireUser = cache(async () => {
           name: name,
           walletBalance: 0,
           cloopCoins: 100,
-          role: "USER"
+          role: isAdminEmail ? "ADMIN" : "USER"
         },
         select: {
           id: true,

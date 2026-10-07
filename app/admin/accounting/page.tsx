@@ -29,7 +29,7 @@ export default async function AdminAccountingPage() {
   }));
 
   return (
-    <div className="p-8 max-w-7xl mx-auto bg-stone-50 min-h-screen font-sans">
+    <div className="w-full font-sans pb-16">
       <div className="mb-8">
         <h1 className="text-3xl font-black text-stone-900 tracking-tight">Kỳ Kế Toán (Báo Cáo Kết Quả Hoạt Động Toàn Diện)</h1>
         <p className="text-stone-500 mt-2">Chốt sổ kỳ kế toán theo Thông tư 99/2025/TT-BTC để ghi nhận Lợi nhuận gộp và Tình hình tài chính nền tảng.</p>

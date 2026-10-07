@@ -344,9 +344,9 @@ export function ItemsClient({
         document.execCommand("copy");
         document.body.removeChild(input);
       }
-      showToast("🎉 Đã sao chép liên kết Tủ Đồ Công Khai! Bạn có thể dán vào Bio Instagram, TikTok hoặc gửi cho bạn bè.");
+      showToast("😊 Đã sao chép liên kết Tủ Đồ Công Khai.");
     } catch {
-      showToast("Không thể sao chép liên kết tự động. Vui lòng thử lại sau.", "error");
+      showToast("Không thể sao chép liên kết. Vui lòng thử lại sau.", "error");
     }
   };
 
@@ -354,12 +354,12 @@ export function ItemsClient({
     if (!selectedBoostItem) return;
     setIsBoosting(true);
     try {
-      const res = await purchaseBoostPackage(selectedBoostItem.id, undefined, boostPackage);
+      const res = await purchaseBoostPackage(selectedBoostItem.id, userId, boostPackage);
       if (res.success) {
         showToast(
           boostPackage === "BOOST"
-            ? `🚀 Đã Đẩy Top 12h cho "${selectedBoostItem.name}" thành công!`
-            : `Đã bật Hào Quang Nổi Bật cho "${selectedBoostItem.name}" thành công!`
+            ? `😊 Đã Đẩy Top 12h cho "${selectedBoostItem.name}" thành công!`
+            : `😊 Đã kích hoạt Nổi Bật cho "${selectedBoostItem.name}" thành công!`
         );
         setSelectedBoostItem(null);
         router.refresh();
@@ -377,13 +377,13 @@ export function ItemsClient({
     if (isUpdating) return;
     setIsUpdating(true);
     try {
-      // 🌟 Dùng Server Action an toàn với Prisma BlogPost
+      // Dùng Server Action an toàn với Prisma BlogPost
       const res = await toggleBlogPostStatusAction(productId, currentlyHidden);
       if (res.success) {
         showToast(
           currentlyHidden
-            ? "🎉 Đã đẩy câu chuyện Lookbook hiển thị lại công khai trên Blog!"
-            : "🛑 Đã ẩn câu chuyện khỏi luồng bài viết công khai!"
+            ? "😊 Đã hiển thị lại câu chuyện Lookbook trên Blog."
+            : "Đã ẩn câu chuyện khỏi luồng bài viết công khai."
         );
         setItems(
           items.map((item) =>
@@ -402,8 +402,8 @@ export function ItemsClient({
         if (error) throw error;
         showToast(
           currentlyHidden
-            ? "🎉 Đã hiển thị lại câu chuyện Lookbook!"
-            : "🛑 Đã ẩn câu chuyện Lookbook!"
+            ? "😊 Đã hiển thị lại câu chuyện Lookbook."
+            : "Đã ẩn câu chuyện Lookbook."
         );
 
         setItems(

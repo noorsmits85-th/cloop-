@@ -12,21 +12,61 @@ const OPEN_RENTAL_STATUSES = [
   "DISPUTE",
 ] as const;
 
+function getStatusLabel(status: string): string {
+  switch (status) {
+    case "PENDING_APPROVAL":
+      return "Chờ xác nhận";
+    case "OWNER_PACKED":
+      return "Chủ tủ đã đóng gói";
+    case "LENDER_SHIPPED":
+      return "Đang giao hàng";
+    case "BORROWER_RECEIVED":
+      return "Khách đang sử dụng";
+    case "BORROWER_RETURNED":
+      return "Khách đã gửi trả đồ";
+    case "DISPUTE":
+      return "Đang khiếu nại";
+    case "LENDER_COMPLETED":
+      return "Đã hoàn cọc / Hoàn tất";
+    default:
+      return status;
+  }
+}
+
 export async function getDepositVaultMetricsAction() {
   try {
     await requireAdmin();
 
     const today = new Date();
-    const rentalHistory = await prisma.rentalHistory.findMany({
+
+    const formatDate = (d: Date | null) => {
+      if (!d) return "—";
+      return new Date(d).toLocaleDateString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        timeZone: "Asia/Ho_Chi_Minh",
+      });
+    };
+
+    // 1. CÁC ĐƠN HÀNG ĐANG TẠM GIỮ TIỀN CỌC THỰC TẾ (HÓA ĐƠN ĐÃ THANH TOÁN VÀ ĐƠN ĐANG TRONG QUÁ TRÌNH THUÊ)
+    const activeRentals = await prisma.rentalHistory.findMany({
       where: {
         status: { in: [...OPEN_RENTAL_STATUSES] },
-        invoice: { status: "PAID" },
+        invoice: {
+          status: "PAID",
+          depositAmount: { gt: 0 },
+        },
       },
       select: {
         id: true,
+        start_date: true,
         end_date: true,
         status: true,
         renter_name: true,
+        renter_phone: true,
+        owner_name: true,
+        owner_phone: true,
         product: { select: { title: true } },
         invoice: {
           select: {
@@ -34,17 +74,19 @@ export async function getDepositVaultMetricsAction() {
             rentalFee: true,
             shippingFeeCollected: true,
             amount: true,
+            status: true,
           },
         },
       },
       orderBy: { end_date: "asc" },
-      take: 40,
+      take: 100,
     });
 
     let totalVault = 0;
     let pendingReturn = 0;
+    let activeRentalDeposit = 0;
 
-    const formattedTx = rentalHistory.map((rent) => {
+    const formattedActive = activeRentals.map((rent) => {
       const depositAmount = rent.invoice?.depositAmount || 0;
       const expectedReturnDate = rent.end_date;
       const daysUntilReturn = Math.ceil(
@@ -52,50 +94,90 @@ export async function getDepositVaultMetricsAction() {
       );
 
       totalVault += depositAmount;
-      if (daysUntilReturn >= 0 && daysUntilReturn <= 7) {
+
+      if (rent.status === "BORROWER_RETURNED" || (daysUntilReturn >= 0 && daysUntilReturn <= 3)) {
         pendingReturn += depositAmount;
+      } else {
+        activeRentalDeposit += depositAmount;
       }
 
       return {
         id: rent.id,
-        item: rent.product?.title || "Sản phẩm CLOOP",
-        productName: rent.product?.title || "Sản phẩm CLOOP",
-        renterName: rent.renter_name || "Khách thuê CLOOP",
-        deposit: depositAmount,
-        amount: depositAmount,
-        status: "active",
-        expectedReturn: expectedReturnDate,
-        date: expectedReturnDate ? new Date(expectedReturnDate).toLocaleDateString("vi-VN") : "Hôm nay",
-        isOverdue: today > expectedReturnDate,
+        orderCode: `CLP-${rent.id.slice(0, 8).toUpperCase()}`,
+        productTitle: rent.product?.title || "Sản phẩm thời trang",
+        renterName: rent.renter_name || "Khách thuê",
+        renterPhone: rent.renter_phone || "—",
+        ownerName: rent.owner_name || "Chủ tủ",
+        ownerPhone: rent.owner_phone || "—",
+        depositAmount,
+        status: rent.status,
+        statusLabel: getStatusLabel(rent.status),
+        startDate: formatDate(rent.start_date),
+        endDate: formatDate(rent.end_date),
         invoiceAmount: rent.invoice?.amount || 0,
         rentalFee: rent.invoice?.rentalFee || 0,
         shippingFeeCollected: rent.invoice?.shippingFeeCollected || 0,
+        isSettled: false,
       };
     });
 
-    if (formattedTx.length === 0) {
-      const demoReturnDate = new Date(Date.now() + 3 * 86400000);
-      formattedTx.push({
-        id: "CLP-2026-DH88",
-        item: "Đầm Dạ Hội Lụa Satin Cao Cấp",
-        productName: "Đầm Dạ Hội Lụa Satin Cao Cấp",
-        renterName: "Thu Trang (Khách thuê)",
-        deposit: 1000000,
-        amount: 1000000,
-        status: "active",
-        expectedReturn: demoReturnDate,
-        date: new Date(demoReturnDate).toLocaleDateString("vi-VN"),
-        isOverdue: false,
-        invoiceAmount: 1375000,
-        rentalFee: 350000,
-        shippingFeeCollected: 25000,
-      });
-      totalVault = 1000000;
-      pendingReturn = 1000000;
-    }
+    // 2. LỊCH SỬ TIỀN CỌC ĐÃ HOÀN TRẢ / GIẢI NGÂN HOÀN TẤT
+    const settledRentals = await prisma.rentalHistory.findMany({
+      where: {
+        status: "LENDER_COMPLETED",
+        invoice: {
+          status: "PAID",
+          depositAmount: { gt: 0 },
+        },
+      },
+      select: {
+        id: true,
+        start_date: true,
+        end_date: true,
+        status: true,
+        renter_name: true,
+        renter_phone: true,
+        owner_name: true,
+        owner_phone: true,
+        product: { select: { title: true } },
+        invoice: {
+          select: {
+            depositAmount: true,
+            rentalFee: true,
+            shippingFeeCollected: true,
+            amount: true,
+            status: true,
+          },
+        },
+      },
+      orderBy: { end_date: "desc" },
+      take: 50,
+    });
 
-    const availableLiquidity = totalVault - pendingReturn;
-    const estimatedInterest = (availableLiquidity * 0.05) / 365 * 30;
+    let totalHistoricalSettled = 0;
+    const formattedSettled = settledRentals.map((rent) => {
+      const depositAmount = rent.invoice?.depositAmount || 0;
+      totalHistoricalSettled += depositAmount;
+
+      return {
+        id: rent.id,
+        orderCode: `CLP-${rent.id.slice(0, 8).toUpperCase()}`,
+        productTitle: rent.product?.title || "Sản phẩm thời trang",
+        renterName: rent.renter_name || "Khách thuê",
+        renterPhone: rent.renter_phone || "—",
+        ownerName: rent.owner_name || "Chủ tủ",
+        ownerPhone: rent.owner_phone || "—",
+        depositAmount,
+        status: rent.status,
+        statusLabel: "Đã hoàn cọc / Đóng đơn",
+        startDate: formatDate(rent.start_date),
+        endDate: formatDate(rent.end_date),
+        invoiceAmount: rent.invoice?.amount || 0,
+        rentalFee: rent.invoice?.rentalFee || 0,
+        shippingFeeCollected: rent.invoice?.shippingFeeCollected || 0,
+        isSettled: true,
+      };
+    });
 
     return {
       success: true,
@@ -103,14 +185,17 @@ export async function getDepositVaultMetricsAction() {
         vaultSummary: {
           totalVault,
           pendingReturn,
-          availableLiquidity,
-          estimatedInterest,
+          activeRentalDeposit,
+          activeCount: formattedActive.length,
+          totalHistoricalSettled,
+          settledCount: formattedSettled.length,
         },
-        transactions: formattedTx,
+        activeTransactions: formattedActive,
+        settledTransactions: formattedSettled,
       },
     };
   } catch (error: any) {
-    // TODO: Tich hop Sentry/LogRocket de tracking loi admin vault that.
+    console.error("Lỗi getDepositVaultMetricsAction:", error);
     return { success: false, error: error.message };
   }
 }

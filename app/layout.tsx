@@ -10,6 +10,7 @@ import "./globals.css";
 import { AuthModalProvider } from "./AuthModalContext";
 import SmoothScroll from "./components/SmoothScroll";
 import ClientLayout from "./components/ClientLayout";
+import CrispChat from "./components/CrispChat";
 import { Toaster } from "sonner";
 
 // 🌿 1. Font Tiêu Đề Lớn & Logo: Fraunces (Chuẩn sang trọng 100% như mẫu Ví CLOOP)
@@ -99,6 +100,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
       </head>
       <body className="font-body text-gray-800 antialiased" suppressHydrationWarning>
+        <CrispChat />
         <Toaster position="top-right" richColors theme="light" closeButton />
         <SmoothScroll>
           <AuthModalProvider initialUser={initialUser}>

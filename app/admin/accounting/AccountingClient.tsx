@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { executeMonthlyClosing } from "@/app/actions/accounting";
-import { Calculator, CheckCircle2, AlertTriangle, CalendarDays, Loader2 } from "lucide-react";
+import { Calculator, CheckCircle2, AlertTriangle, CalendarDays, Loader2, Info } from "lucide-react";
 
 export default function AccountingClient({ initialPeriods }: { initialPeriods: any[] }) {
   const [periods, setPeriods] = useState(initialPeriods);
@@ -10,19 +10,19 @@ export default function AccountingClient({ initialPeriods }: { initialPeriods: a
   const [error, setError] = useState<string | null>(null);
 
   // Form values
-  const [targetMonth, setTargetMonth] = useState(new Date().getMonth() + 1);
-  const [targetYear, setTargetYear] = useState(new Date().getFullYear());
-  const [forceDemo, setForceDemo] = useState(false);
+  const now = new Date();
+  const [targetMonth, setTargetMonth] = useState(now.getMonth() + 1);
+  const [targetYear, setTargetYear] = useState(now.getFullYear());
+  const [allowInterim, setAllowInterim] = useState(false);
 
   const handleClosePeriod = async () => {
     setLoading(true);
     setError(null);
     try {
-      const result = await executeMonthlyClosing(targetMonth, targetYear, forceDemo);
+      const result = await executeMonthlyClosing(targetMonth, targetYear, allowInterim);
       if (!result.success) {
         setError(result.error);
       } else {
-        // Refresh or add to list
         window.location.reload();
       }
     } catch (err: any) {
@@ -42,8 +42,8 @@ export default function AccountingClient({ initialPeriods }: { initialPeriods: a
               <Calculator size={24} />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-stone-900">Chốt Sổ Cuối Kỳ</h2>
-              <p className="text-sm text-stone-500">Tạo bút toán kết chuyển</p>
+              <h2 className="text-lg font-bold text-stone-900">Chốt Sổ Kỳ Kế Toán</h2>
+              <p className="text-sm text-stone-500">Kết chuyển doanh thu & chi phí thực tế</p>
             </div>
           </div>
 
@@ -76,23 +76,28 @@ export default function AccountingClient({ initialPeriods }: { initialPeriods: a
               />
             </div>
 
-            <div className="flex items-center gap-2 p-3 bg-stone-50 rounded-lg border border-stone-200 mt-2">
-              <input 
-                type="checkbox" 
-                id="forceDemo" 
-                checked={forceDemo}
-                onChange={e => setForceDemo(e.target.checked)}
-                className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
-              />
-              <label htmlFor="forceDemo" className="text-sm text-stone-700 font-medium cursor-pointer">
-                Chế độ Demo (Bỏ qua ràng buộc thời gian)
-              </label>
+            <div className="p-3 bg-stone-50 rounded-lg border border-stone-200 mt-2 space-y-2">
+              <div className="flex items-center gap-2">
+                <input 
+                  type="checkbox" 
+                  id="allowInterim" 
+                  checked={allowInterim}
+                  onChange={e => setAllowInterim(e.target.checked)}
+                  className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500 cursor-pointer"
+                />
+                <label htmlFor="allowInterim" className="text-sm text-stone-700 font-medium cursor-pointer">
+                  Chốt sổ tạm tính giữa kỳ
+                </label>
+              </div>
+              <p className="text-[11px] text-stone-500 leading-tight">
+                Sử dụng khi kỳ kế toán hiện tại chưa hết tháng nhưng Ban Quản trị cần khóa số liệu tạm tính để báo cáo.
+              </p>
             </div>
 
             <button
               onClick={handleClosePeriod}
               disabled={loading}
-              className="w-full mt-4 bg-emerald-600 text-white font-bold py-3 px-4 rounded-xl hover:bg-emerald-700 transition flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full mt-4 bg-[#183A2D] hover:bg-[#112a20] text-white font-bold py-3 px-4 rounded-xl transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
             >
               {loading ? <Loader2 className="animate-spin" size={20} /> : <CheckCircle2 size={20} />}
               Thực hiện Chốt sổ {targetMonth}/{targetYear}
@@ -121,36 +126,58 @@ export default function AccountingClient({ initialPeriods }: { initialPeriods: a
                     Chưa có kỳ kế toán nào được đóng.
                   </td>
                 </tr>
-              ) : periods.map((period: any) => (
-                <tr key={period.id} className="hover:bg-stone-50 transition">
-                  <td className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
-                        <CalendarDays size={20} />
+              ) : periods.map((period: any) => {
+                let meta: any = null;
+                try {
+                  meta = period.metadata ? JSON.parse(period.metadata) : null;
+                } catch (e) {
+                  meta = null;
+                }
+
+                return (
+                  <tr key={period.id} className="hover:bg-stone-50 transition">
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+                          <CalendarDays size={20} />
+                        </div>
+                        <div>
+                          <p className="font-bold text-stone-900">Tháng {period.month}/{period.year}</p>
+                          <p className="text-xs text-stone-500">Chốt lúc: {period.closedAt ? new Date(period.closedAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'N/A'}</p>
+                          {meta?.isInterim && (
+                            <span className="inline-block mt-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                              Tạm tính giữa kỳ
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-bold text-stone-900">Tháng {period.month}/{period.year}</p>
-                        <p className="text-xs text-stone-500">Chốt lúc: {period.closedAt ? new Date(period.closedAt).toLocaleString('vi-VN') : 'N/A'}</p>
+                    </td>
+                    <td className="p-4 text-right">
+                      <div className="font-mono font-bold text-stone-800">
+                        {(period.revenueTotal ?? 0).toLocaleString()}đ
                       </div>
-                    </div>
-                  </td>
-                  <td className="p-4 text-right font-mono font-medium text-stone-700">
-                    {(period.revenueTotal ?? 0).toLocaleString()}đ
-                  </td>
-                  <td className="p-4 text-right font-mono font-medium text-stone-700">
-                    {(period.expenseTotal ?? 0).toLocaleString()}đ
-                  </td>
-                  <td className="p-4 text-right font-mono font-bold text-emerald-600">
-                    {(period.netProfit ?? 0).toLocaleString()}đ
-                  </td>
-                  <td className="p-4 text-center">
-                    <span className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold tracking-wide">
-                      <CheckCircle2 size={14} />
-                      ĐÃ ĐÓNG KỲ
-                    </span>
-                  </td>
-                </tr>
-              ))}
+                      {meta && (meta.feeRevenue > 0 || meta.coinRevenue > 0) && (
+                        <div className="text-[10px] text-stone-400 font-sans mt-0.5">
+                          {meta.feeRevenue > 0 && <span>Sàn: {meta.feeRevenue.toLocaleString()}đ </span>}
+                          {meta.coinRevenue > 0 && <span>• Xu: {meta.coinRevenue.toLocaleString()}đ</span>}
+                        </div>
+                      )}
+                    </td>
+                    <td className="p-4 text-right font-mono font-medium text-stone-700">
+                      {(period.expenseTotal ?? 0).toLocaleString()}đ
+                    </td>
+                    <td className="p-4 text-right font-mono font-bold text-emerald-700">
+                      {(period.netProfit ?? 0).toLocaleString()}đ
+                    </td>
+                    <td className="p-4 text-center">
+                      <span className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-xs font-bold tracking-wide">
+                        <CheckCircle2 size={14} />
+                        ĐÃ ĐÓNG KỲ
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

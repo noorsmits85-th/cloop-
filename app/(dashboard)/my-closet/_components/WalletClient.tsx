@@ -132,10 +132,10 @@ export function WalletClient({
 
   useEffect(() => {
     if (paymentStatus === "coin_success") {
-      showToast("🎉 Nạp Điểm Lá thành công! Điểm Lá đã được cộng vào tài khoản.");
+      showToast("😊 Nạp Điểm Lá thành công. Số dư đã được cộng vào tài khoản.");
       window.history.replaceState(null, '', '/my-closet/wallet');
     } else if (paymentStatus === "coin_cancel") {
-      showToast("🚫 Giao dịch nạp Lá đã bị hủy.", "error");
+      showToast("Giao dịch nạp Lá đã dừng.", "error");
       window.history.replaceState(null, '', '/my-closet/wallet');
     }
   }, [paymentStatus]);
@@ -157,7 +157,7 @@ export function WalletClient({
       createdAt: new Date().toISOString()
     };
     setCoinLedger(prev => [newEntry, ...prev]);
-    showToast(`🎉 Nạp thành công +${totalCoins.toLocaleString()} Lá! Đã cập nhật vào Sổ Cái.`);
+    showToast(`😊 Nạp thành công +${totalCoins.toLocaleString()} Lá vào ví.`);
     setTimeout(() => {
       setShowCoinStoreModal(false);
       setActiveTopUpData(null);
@@ -232,7 +232,7 @@ export function WalletClient({
     setClaimedQuests(prev => Array.from(new Set([...prev, questCode])));
     const reward = quest.rewardCoins || 0;
     setCoins(prev => prev + reward);
-    showToast(`🎉 Nhận thành công +${reward} Lá vào ví!`);
+    showToast(`😊 Nhận thành công +${reward} Lá vào ví.`);
 
     // ⚡ 2. Gửi Server Action đồng bộ ngầm
     try {
@@ -284,7 +284,7 @@ export function WalletClient({
           console.warn("Lỗi lưu STK:", saveErr);
         }
 
-        showToast("🎉 " + res.message);
+        showToast("😊 " + res.message);
         setShowWithdrawModal(false);
         setWithdrawAmount("");
         setPassword("");

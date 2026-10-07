@@ -263,7 +263,8 @@ export default function Home() {
     let price = rentPrice || 50000;
     let priceUnit = "/ ngày";
     let ctaText = "Thuê Ngay";
-    let origPrice = sellPrice > 0 ? sellPrice : (price * 5);
+    const deposit = p.deposit && Number(p.deposit) > 0 ? Number(p.deposit) : 0;
+    let origPrice = 0;
 
     if (isSellOnly) {
       mode = "SELL";
@@ -272,7 +273,19 @@ export default function Home() {
       price = sellPrice || (typeof p.price === "number" && p.price > 0 ? p.price : 100000);
       priceUnit = "";
       ctaText = "Mua Ngay";
-      origPrice = p.origPrice || (price > 150000 ? Math.round(price * 1.5) : Math.round(price * 2.5));
+
+      const dbOrig = Number(p.originalPrice || p.storeRetailPrice || p.origPrice || 0);
+      if (dbOrig > price) {
+        origPrice = dbOrig;
+      } else if (price >= 200000) {
+        origPrice = Math.round((price * 1.75) / 10000) * 10000;
+      } else if (price >= 100000) {
+        origPrice = Math.round((price * 2.0) / 10000) * 10000;
+      } else if (price >= 70000) {
+        origPrice = Math.round((price * 2.25) / 10000) * 10000;
+      } else {
+        origPrice = Math.round((price * 2.4) / 10000) * 10000;
+      }
     } else if (isBoth) {
       mode = "BOTH";
       modeBadge = "Thuê & Mua";
@@ -280,16 +293,40 @@ export default function Home() {
       price = rentPrice;
       priceUnit = "/ ngày";
       ctaText = "Chi Tiết";
-      origPrice = sellPrice;
+
+      const dbOrig = Number(p.originalPrice || p.storeRetailPrice || 0);
+      if (dbOrig > price) {
+        origPrice = dbOrig;
+      } else if (deposit > price * 2) {
+        origPrice = deposit;
+      } else if (sellPrice > 0) {
+        origPrice = Math.round((sellPrice * 1.5) / 10000) * 10000;
+      } else {
+        origPrice = Math.round((price * 8) / 10000) * 10000;
+      }
     } else {
       // Thuê đồ thuần túy
       price = rentPrice || (typeof p.price === "number" && p.price > 0 ? p.price : 50000);
-      origPrice = sellPrice > 0 ? sellPrice : (p.origPrice || price * 5);
+      const dbOrig = Number(p.originalPrice || p.storeRetailPrice || 0);
+      if (dbOrig > price) {
+        origPrice = dbOrig;
+      } else if (deposit > price * 2) {
+        origPrice = deposit;
+      } else if (sellPrice > 0) {
+        origPrice = Math.round((sellPrice * 1.5) / 10000) * 10000;
+      } else {
+        origPrice = Math.round((price * 8) / 10000) * 10000;
+      }
     }
 
     if (origPrice <= price) {
-      origPrice = Math.round(price * 1.8);
+      origPrice = Math.round(price * 1.5);
     }
+
+    // Tính % tiết kiệm toán học chính xác theo từng món đồ
+    const savedPercent = origPrice > price 
+      ? Math.round(((origPrice - price) / origPrice) * 100) 
+      : 0;
 
     return {
       id: p.id || idx,
@@ -303,6 +340,7 @@ export default function Home() {
       modeBadge,
       ctaText,
       origPrice,
+      savedPercent,
       img,
       hoverImg,
       user: typeof p.user === "string" ? p.user : `@${p.user?.username || (owner.toLowerCase().replace(/\s+/g, ''))}`,
@@ -561,9 +599,11 @@ export default function Home() {
                     >
                       {product.brand}
                     </Link>
-                    <span className="text-emerald-700 font-bold font-mono text-[9.5px] bg-emerald-50 px-1.5 py-0.5 rounded">
-                      Tiết kiệm 90%
-                    </span>
+                    {product.savedPercent > 0 && (
+                      <span className="text-emerald-700 font-bold font-mono text-[9.5px] bg-emerald-50 px-1.5 py-0.5 rounded">
+                        Tiết kiệm {product.savedPercent}%
+                      </span>
+                    )}
                   </div>
 
                   <Link href={`/product/${product.id}`} prefetch={true}>
@@ -586,7 +626,7 @@ export default function Home() {
                   <div className="text-right">
                     <span className="text-[9px] text-stone-400 font-ui block">Giá gốc:</span>
                     <span className="text-[11px] text-stone-400 line-through font-mono">
-                      {(product.origPrice / 1000000).toFixed(1)}Tr
+                      {product.origPrice.toLocaleString('vi-VN')}đ
                     </span>
                   </div>
                 </div>

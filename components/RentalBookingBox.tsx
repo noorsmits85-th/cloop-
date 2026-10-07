@@ -254,6 +254,13 @@ export default function RentalBookingBox({
           <span>{isRental ? "Tiếp Tục Đặt Thuê" : "Tiếp Tục Mua Hàng"}</span>
           <ArrowRight size={14} />
         </button>
+
+        {/* ĐẶC QUYỀN ĐÓNG GÓI TẬN CỬA 0 ĐỒNG (TỐI GIẢN - KHÔNG ICON MÀU MÈ) */}
+        <div className="pt-1.5 text-center">
+          <p className="text-[11px] text-stone-500 font-ui tracking-wide">
+            Đóng gói tận cửa 0đ &nbsp;•&nbsp; Giao nhận 2 chiều &nbsp;•&nbsp; Ký quỹ độc lập
+          </p>
+        </div>
       </div>
 
     </div>
