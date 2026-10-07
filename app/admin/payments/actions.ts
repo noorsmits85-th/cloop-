@@ -66,16 +66,33 @@ export async function getPendingPayoutsAction() {
     const confirmedRentalIds = new Set(confirmedAuditLogs.map(a => a.targetId));
     const items: PayoutItem[] = [];
 
+    // Lấy thông tin metadata (SĐT, STK mới nhất) từ auth.users cho các chủ tài khoản rút tiền
+    const withdrawalUserIds = Array.from(new Set(withdrawalRequests.map(r => r.userId)));
+    const authMetas = withdrawalUserIds.length > 0
+      ? await prisma.$queryRawUnsafe<any[]>(
+          `SELECT id, raw_user_meta_data FROM auth.users WHERE id = ANY($1::uuid[]);`,
+          withdrawalUserIds
+        ).catch(() => [])
+      : [];
+    const metaMap = new Map<string, any>();
+    authMetas.forEach(m => metaMap.set(m.id, m.raw_user_meta_data || {}));
+
     // Map withdrawal requests (Ưu tiên hiển thị đầu tiên)
     withdrawalRequests.forEach(req => {
+      const uMeta = metaMap.get(req.userId) || {};
+      const latestPhone = uMeta.phone || "—";
+      const latestHolder = req.bankAccountHolder || uMeta.bank_owner || uMeta.bankAccountHolder || req.user?.name || "Chủ tủ CLOOP";
+      const latestBank = req.bankName || uMeta.bank_name || uMeta.bankName || "—";
+      const latestAccount = req.bankAccountNumber || uMeta.bank_account || uMeta.bankAccountNumber || "—";
+
       items.push({
         id: req.id,
         orderCode: `WD-${req.id.substring(0, 8).toUpperCase()}`,
-        ownerName: req.bankAccountHolder || req.user?.name || "Chủ tủ CLOOP",
-        ownerPhone: "—",
-        bankName: req.bankName || "—",
-        bankAccount: req.bankAccountNumber || "—",
-        bankHolder: req.bankAccountHolder || req.user?.name || "—",
+        ownerName: latestHolder,
+        ownerPhone: latestPhone,
+        bankName: latestBank,
+        bankAccount: latestAccount,
+        bankHolder: latestHolder,
         rentalFee: req.amount,
         platformFee: 0,
         returnShippingFee: 0,

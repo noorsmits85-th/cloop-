@@ -2124,6 +2124,26 @@ export default function MobileAppClient({
           phone: profileForm.phone,
           recipientName: profileForm.name,
         }, true);
+
+        // ⚡ Đồng bộ ngay lập tức vào state nội bộ của Mobile App (0ms)
+        setClosetData((prev: any) => prev ? {
+          ...prev,
+          user: {
+            ...prev.user,
+            name: profileForm.name,
+            location: locationStr,
+            pickupAddress: fullAddr,
+            fullAddress: fullAddr,
+            phone: profileForm.phone
+          }
+        } : prev);
+
+        try {
+          const currentSaved = localStorage.getItem("cloop_auth_user");
+          const parsed = currentSaved ? JSON.parse(currentSaved) : {};
+          localStorage.setItem("cloop_auth_user", JSON.stringify({ ...parsed, name: profileForm.name }));
+        } catch (_) {}
+
         await refreshPersonalData();
         setTimeout(() => setProfileSaveSuccess(false), 2500);
       }
@@ -2152,10 +2172,13 @@ export default function MobileAppClient({
     setIsSavingBank(true);
     setBankError("");
     try {
+      const cleanAcc = bankForm.bankAccount.trim().replace(/\s+/g, "");
+      const cleanHolder = bankForm.bankOwner.trim().toUpperCase();
+
       const res = await saveUserBankInfoAction({
         bankName: effectiveBank,
-        bankAccountNumber: bankForm.bankAccount.trim().replace(/\s+/g, ""),
-        bankAccountHolder: bankForm.bankOwner.trim().toUpperCase(),
+        bankAccountNumber: cleanAcc,
+        bankAccountHolder: cleanHolder,
         clientUserId: closetData?.user?.id || currentUser?.id,
       });
 
@@ -2165,12 +2188,30 @@ export default function MobileAppClient({
           if (typeof window !== "undefined") {
             localStorage.setItem("cloop_saved_bank_info", JSON.stringify({
               bankName: effectiveBank,
-              bankAccount: bankForm.bankAccount.trim().replace(/\s+/g, ""),
-              bankOwner: bankForm.bankOwner.trim().toUpperCase(),
+              bankAccount: cleanAcc,
+              bankOwner: cleanHolder,
             }));
           }
         } catch (_) {}
+
         setBankForm(prev => ({ ...prev, bankName: effectiveBank }));
+
+        // ⚡ Đồng bộ ngay lập tức vào state nội bộ của Mobile App (0ms)
+        setClosetData((prev: any) => prev ? {
+          ...prev,
+          user: {
+            ...prev.user,
+            bankName: effectiveBank,
+            bankAccount: cleanAcc,
+            bankOwner: cleanHolder
+          },
+          withdrawals: (prev.withdrawals || []).map((w: any) => 
+            w.status === "PENDING" 
+              ? { ...w, bankName: effectiveBank, bankAccountNumber: cleanAcc, bankAccountHolder: cleanHolder } 
+              : w
+          )
+        } : prev);
+
         await refreshPersonalData();
         setTimeout(() => {
           setBankSaveSuccess(false);
@@ -2254,7 +2295,7 @@ export default function MobileAppClient({
     setTimeout(() => setAddedToCartToast(false), 2000);
   };
 
-  const displayName = closetData?.user?.name || (currentUser?.name ? currentUser.name.split(" ").pop() : "");
+  const displayName = closetData?.user?.name || currentUser?.name || "Thành viên CLOOP";
 
   return (
     // 🏛️ KHUNG NGOÀI THOÁNG ĐÃNG
@@ -3152,11 +3193,11 @@ export default function MobileAppClient({
                         <p className="text-[11px] text-emerald-200/80 truncate max-w-[190px]">
                           {closetData?.user?.email || currentUser?.email || "member@cloop.vn"}
                         </p>
-                        <p className="text-[9.5px] text-stone-400 mt-0.5">
-                          Gia nhập: {closetData?.user?.joinDate || "2026"} • {
+                        <p className="text-[10px] text-emerald-100/90 mt-0.5 truncate max-w-[210px]">
+                          Gia nhập: {closetData?.user?.joinDate || "2026"} &bull; {
                             (unifiedAddress.district && unifiedAddress.province)
                               ? `${unifiedAddress.district}, ${unifiedAddress.province}`
-                              : (unifiedAddress.province || closetData?.user?.location || "Chưa cập nhật địa chỉ")
+                              : (unifiedAddress.province || closetData?.user?.location || closetData?.user?.pickupAddress || closetData?.user?.fullAddress || "Chưa cập nhật địa chỉ")
                           }
                         </p>
                       </div>

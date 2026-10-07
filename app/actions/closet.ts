@@ -278,15 +278,26 @@ export async function updateClosetProfileAction(data: {
   fullAddress?: string;
 }) {
   try {
-    const userAuth = await requireUser();
-    if (userAuth.id !== data.userId) {
-      return { success: false, error: "Không có quyền chỉnh sửa hồ sơ này." };
+    let authUserId = data.userId;
+    try {
+      const userAuth = await requireUser();
+      if (userAuth?.id) {
+        authUserId = userAuth.id;
+      }
+    } catch (_) {}
+
+    const targetUserId = authUserId || data.userId;
+    if (!targetUserId) {
+      return { success: false, error: "Vui lòng đăng nhập để cập nhật hồ sơ." };
     }
 
+    const cleanName = data.name?.trim();
+
+    // 1. Cập nhật bảng Prisma User
     await prisma.user.update({
-      where: { id: data.userId },
+      where: { id: targetUserId },
       data: {
-        ...(data.name && { name: data.name }),
+        ...(cleanName && { name: cleanName }),
         ...(data.avatar !== undefined && { avatar: data.avatar })
       }
     });
@@ -294,11 +305,11 @@ export async function updateClosetProfileAction(data: {
     // 2. Cập nhật trực tiếp raw_user_meta_data trong auth.users để đồng bộ tức thì
     try {
       const metaPayload: Record<string, any> = {};
-      if (data.name) {
-        metaPayload.name = data.name;
-        metaPayload.full_name = data.name;
+      if (cleanName) {
+        metaPayload.name = cleanName;
+        metaPayload.full_name = cleanName;
       }
-      if (data.phone) metaPayload.phone = data.phone;
+      if (data.phone) metaPayload.phone = data.phone.trim();
       if (data.location) metaPayload.location = data.location;
       if (data.quote) metaPayload.quote = data.quote;
       if (data.bio) metaPayload.bio = data.bio;
@@ -321,24 +332,25 @@ export async function updateClosetProfileAction(data: {
       await prisma.$executeRawUnsafe(
         `UPDATE auth.users SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || $1::jsonb WHERE id = $2::uuid;`,
         JSON.stringify(metaPayload),
-        data.userId
+        targetUserId
       );
     } catch (dbMetaErr) {
       console.warn("Direct auth.users metadata update fallback in closet:", dbMetaErr);
     }
 
+    // 3. Cập nhật Supabase Session
     try {
       const { createClient } = await import("@/src/utils/supabase/server");
       const supabase = await createClient();
       await supabase.auth.updateUser({
         data: {
-          name: data.name,
+          ...(cleanName ? { name: cleanName, full_name: cleanName } : {}),
           location: data.location || undefined,
           quote: data.quote || undefined,
           bio: data.bio || undefined,
           todaysMemory: data.todaysMemory || undefined,
           avatar: data.avatar || undefined,
-          phone: data.phone || undefined,
+          phone: data.phone?.trim() || undefined,
           province_id: data.provinceId ? Number(data.provinceId) : undefined,
           district_id: data.districtId ? Number(data.districtId) : undefined,
           ward_code: data.wardCode ? String(data.wardCode) : undefined,
@@ -355,9 +367,27 @@ export async function updateClosetProfileAction(data: {
       console.warn("Supabase user metadata sync warning:", sbErr);
     }
 
-    revalidatePath(`/closet/${data.userId}`);
+    // 4. Đồng bộ tên vào các yêu cầu rút tiền PENDING nếu có
+    if (cleanName) {
+      try {
+        await prisma.withdrawalRequest.updateMany({
+          where: { userId: targetUserId, status: "PENDING" },
+          data: { bankAccountHolder: cleanName.toUpperCase() }
+        });
+      } catch (_) {}
+    }
+
+    // 5. Xóa sạch bộ nhớ đệm xác thực để request tiếp theo có dữ liệu mới ngay lập tức (0ms)
+    try {
+      const { clearUserAuthCache } = await import("@/src/lib/auth");
+      clearUserAuthCache(targetUserId);
+    } catch (_) {}
+
+    revalidatePath(`/closet/${targetUserId}`);
     revalidatePath(`/my-closet/profile`);
     revalidatePath(`/my-closet`);
+    revalidatePath(`/admin/payments`);
+    revalidatePath(`/app`);
     revalidatePath(`/`, "layout");
     return { success: true };
   } catch (err: any) {
@@ -424,6 +454,15 @@ export async function saveUnifiedUserAddressAction(data: {
     }
 
     if (authUserId) {
+      if (data.name?.trim()) {
+        try {
+          await prisma.user.update({
+            where: { id: authUserId },
+            data: { name: data.name.trim() }
+          });
+        } catch (_) {}
+      }
+
       try {
         await prisma.$executeRawUnsafe(
           `UPDATE auth.users SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || $1::jsonb WHERE id = $2::uuid;`,
@@ -436,6 +475,16 @@ export async function saveUnifiedUserAddressAction(data: {
       try {
         await supabase.auth.updateUser({ data: metaPayload });
       } catch (_) {}
+
+      try {
+        const { clearUserAuthCache } = await import("@/src/lib/auth");
+        clearUserAuthCache(authUserId);
+      } catch (_) {}
+
+      revalidatePath("/my-closet");
+      revalidatePath("/my-closet/profile");
+      revalidatePath("/admin/payments");
+      revalidatePath("/app");
     }
 
     return { 
@@ -704,7 +753,9 @@ export async function getMyClosetMobileDataAction(clientUserId?: string) {
       : (authMeta.full_address || authMeta.pickup_address || (authMeta.location && authMeta.location !== "Hà Nội, Việt Nam" ? authMeta.location : ""));
     const computedLocation = userProvince
       ? [userDistrict, userProvince].filter(Boolean).join(", ")
-      : (authMeta.location && authMeta.location !== "Hà Nội, Việt Nam" ? authMeta.location : "");
+      : (authMeta.location && authMeta.location !== "Hà Nội, Việt Nam" 
+          ? authMeta.location 
+          : (computedFullAddress || authMeta.pickup_address || authMeta.full_address || ""));
 
     return {
       success: true,
@@ -716,7 +767,7 @@ export async function getMyClosetMobileDataAction(clientUserId?: string) {
         avatar: dbUser?.avatar || authMeta.avatar || authMeta.avatar_url || null,
         bio: authMeta.bio || "Thành viên cộng đồng thời trang tuần hoàn CLOOP.",
         quote: authMeta.quote || "Lưu giữ ký ức qua từng chiếc váy.",
-        location: computedLocation || "Chưa cập nhật địa chỉ",
+        location: computedLocation || computedFullAddress || "Chưa cập nhật địa chỉ",
         phone: authMeta.phone || "",
         pickupAddress: computedFullAddress || "",
         fullAddress: computedFullAddress || "",

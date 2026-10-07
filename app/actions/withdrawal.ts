@@ -104,7 +104,28 @@ export async function saveUserBankInfoAction(data: {
       });
     } catch (_) {}
 
+    // ⚡ Đồng bộ ngay lập tức vào tất cả các yêu cầu rút tiền PENDING của người dùng
+    try {
+      await prisma.withdrawalRequest.updateMany({
+        where: { userId, status: "PENDING" },
+        data: {
+          bankName: cleanBank,
+          bankAccountNumber: cleanAccount,
+          bankAccountHolder: cleanHolder
+        }
+      });
+    } catch (wrErr) {
+      console.warn("Sync pending withdrawal requests with new bank info warning:", wrErr);
+    }
+
+    try {
+      const { clearUserAuthCache } = await import("@/src/lib/auth");
+      clearUserAuthCache(userId);
+    } catch (_) {}
+
     revalidatePath("/my-closet/wallet");
+    revalidatePath("/my-closet/settings");
+    revalidatePath("/admin/payments");
     revalidatePath("/app");
 
     return {

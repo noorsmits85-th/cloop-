@@ -85,9 +85,16 @@ export async function updateUserProfileWithValidation(input: ProfileUpdateInput)
 
     // 3. Cache Purge
     try {
+      const { clearUserAuthCache } = await import("@/src/lib/auth");
+      clearUserAuthCache(userAuth.id);
+    } catch (_) {}
+
+    try {
       revalidatePath("/my-closet/profile");
       revalidatePath(`/closet/${userAuth.id}`);
       revalidatePath("/my-closet");
+      revalidatePath("/admin/payments");
+      revalidatePath("/app");
       revalidatePath("/", "layout");
     } catch (e) {
       console.error("Cache purge failed:", e);
@@ -117,10 +124,17 @@ export async function updateUserProfile(data: { name?: string; bio?: string; ava
       }
     });
 
+    try {
+      const { clearUserAuthCache } = await import("@/src/lib/auth");
+      clearUserAuthCache(userAuth.id);
+    } catch (_) {}
+
     // Dọn dẹp bộ nhớ đệm (Cache Invalidation)
     try {
       revalidatePath("/my-closet/profile");
       revalidatePath(`/closet/${userAuth.id}`);
+      revalidatePath("/admin/payments");
+      revalidatePath("/app");
     } catch (e) {
       console.error("Cache purge failed:", e);
     }
@@ -156,27 +170,83 @@ export async function updateUserSettingsAction(input: UserSettingsInput) {
     }
 
     const validated = SettingsSchema.parse(input);
+    const normalizedPhone = validated.phone ? normalizeVietnamPhone(validated.phone) : undefined;
+    const cleanBank = validated.bank_name?.trim();
+    const cleanAccount = validated.bank_account?.trim().replace(/\s+/g, "");
+    const cleanOwner = validated.bank_owner?.trim().toUpperCase();
 
+    const metaPayload: Record<string, any> = {};
+    if (validated.pickup_address !== undefined) {
+      metaPayload.pickup_address = validated.pickup_address;
+      metaPayload.full_address = validated.pickup_address;
+      metaPayload.location = validated.pickup_address;
+    }
+    if (normalizedPhone !== undefined) {
+      metaPayload.phone = normalizedPhone;
+    }
+    if (cleanBank) {
+      metaPayload.bank_name = cleanBank;
+      metaPayload.bankName = cleanBank;
+    }
+    if (cleanAccount) {
+      metaPayload.bank_account = cleanAccount;
+      metaPayload.bankAccountNumber = cleanAccount;
+    }
+    if (cleanOwner) {
+      metaPayload.bank_owner = cleanOwner;
+      metaPayload.bankAccountHolder = cleanOwner;
+    }
+
+    // 1. Cập nhật trực tiếp raw_user_meta_data trong auth.users
+    try {
+      await prisma.$executeRawUnsafe(
+        `UPDATE auth.users SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || $1::jsonb WHERE id = $2::uuid;`,
+        JSON.stringify(metaPayload),
+        userAuth.id
+      );
+    } catch (e) {
+      console.warn("Direct auth.users metadata update in settings:", e);
+    }
+
+    // 2. Cập nhật Supabase Session
     try {
       const supabase = await createClient();
-      const normalizedPhone = validated.phone ? normalizeVietnamPhone(validated.phone) : undefined;
       await supabase.auth.updateUser({
-        data: {
-          pickup_address: validated.pickup_address,
-          phone: normalizedPhone,
-          bank_name: validated.bank_name,
-          bank_account: validated.bank_account,
-          bank_owner: validated.bank_owner,
-        }
+        data: metaPayload
       });
     } catch (sbErr) {
       console.warn("Supabase user metadata sync warning:", sbErr);
     }
 
+    // 3. Nếu đổi STK, đồng bộ ngay lập tức vào tất cả các yêu cầu rút tiền PENDING
+    if (cleanAccount && cleanBank) {
+      try {
+        await prisma.withdrawalRequest.updateMany({
+          where: { userId: userAuth.id, status: "PENDING" },
+          data: {
+            bankName: cleanBank,
+            bankAccountNumber: cleanAccount,
+            bankAccountHolder: cleanOwner || userAuth.name?.toUpperCase() || "CHỦ TÀI KHOẢN"
+          }
+        });
+      } catch (wrErr) {
+        console.warn("Sync pending withdrawals warning:", wrErr);
+      }
+    }
+
+    // 4. Xóa auth cache để phản hồi tức thì
+    try {
+      const { clearUserAuthCache } = await import("@/src/lib/auth");
+      clearUserAuthCache(userAuth.id);
+    } catch (_) {}
+
     try {
       revalidatePath("/my-closet/settings");
       revalidatePath("/my-closet/wallet");
+      revalidatePath("/my-closet/profile");
       revalidatePath("/my-closet");
+      revalidatePath("/admin/payments");
+      revalidatePath("/app");
     } catch (e) {
       console.error("Cache purge failed:", e);
     }
