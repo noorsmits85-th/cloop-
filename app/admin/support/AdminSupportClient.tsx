@@ -496,11 +496,17 @@ export default function AdminSupportClient({
                             : "text-stone-400 font-normal"
                         }`}
                       >
-                        {t.lastMessage?.includes("[IMAGE:")
-                          ? "📷 [Hình ảnh đính kèm]"
-                          : t.lastMessage?.includes("[VIDEO:")
-                          ? "🎥 [Video đính kèm]"
-                          : t.lastMessage || "Bắt đầu cuộc trò chuyện..."}
+                        {(() => {
+                          if (!t.lastMessage) return "Bắt đầu cuộc trò chuyện...";
+                          const parsed = parseMediaContent(t.lastMessage);
+                          if (parsed.images.length > 0) {
+                            return parsed.text ? `📷 ${parsed.text}` : "📷 [Hình ảnh đính kèm]";
+                          }
+                          if (parsed.videos.length > 0) {
+                            return parsed.text ? `🎥 ${parsed.text}` : "🎥 [Video đính kèm]";
+                          }
+                          return parsed.text || "Bắt đầu cuộc trò chuyện...";
+                        })()}
                       </p>
 
                       <div className="flex items-center gap-1.5">

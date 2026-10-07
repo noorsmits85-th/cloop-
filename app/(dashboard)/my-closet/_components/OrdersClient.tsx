@@ -193,7 +193,7 @@ export function OrdersClient({
           toast.error(`Tệp ${file.name} vượt quá giới hạn 100MB.`);
           continue;
         }
-        setDisputeUploadProgress(`Đang lưu tệp ${i + 1}/${files.length} vào Kho Google 10TB...`);
+        setDisputeUploadProgress(`Đang lưu tệp ${i + 1}/${files.length} lên hệ thống...`);
 
         const formData = new FormData();
         formData.append("file", file);
@@ -216,7 +216,7 @@ export function OrdersClient({
           setDisputeImages((prev) => [...prev, finalUrl]);
         }
       }
-      toast.success("Đã tải bằng chứng lên Kho Google 10TB an toàn!");
+      toast.success("Đã tải bằng chứng an toàn!");
     } catch (err: any) {
       console.error("Dispute upload error:", err);
       toast.error(err.message || "Lỗi tải ảnh/video lên Kho Google.");
@@ -239,7 +239,7 @@ export function OrdersClient({
           toast.error(`Tệp ${file.name} vượt quá giới hạn 100MB.`);
           continue;
         }
-        setCounterUploadProgress(`Đang tải video ${i + 1}/${files.length} lên Kho Google 10TB...`);
+        setCounterUploadProgress(`Đang tải video ${i + 1}/${files.length} lên hệ thống...`);
 
         const formData = new FormData();
         formData.append("file", file);
@@ -262,7 +262,7 @@ export function OrdersClient({
           setCounterVideos((prev) => [...prev, finalUrl]);
         }
       }
-      toast.success("Đã tải video bảo chứng lên Kho Google 10TB an toàn!");
+      toast.success("Đã tải video bảo chứng an toàn!");
     } catch (err: any) {
       console.error("Counter upload error:", err);
       toast.error(err.message || "Lỗi tải video lên Kho Google.");
@@ -285,7 +285,7 @@ export function OrdersClient({
           toast.error(`Tệp ${file.name} vượt quá giới hạn 100MB.`);
           continue;
         }
-        setPackagingUploadProgress(`Đang lưu tệp ${i + 1}/${files.length} vào Kho Google 10TB...`);
+        setPackagingUploadProgress(`Đang lưu tệp ${i + 1}/${files.length} lên hệ thống...`);
 
         const formData = new FormData();
         formData.append("file", file);
@@ -306,7 +306,7 @@ export function OrdersClient({
           setPackagingProofs((prev) => [...prev, json.url]);
         }
       }
-      toast.success("Đã lưu video/ảnh niêm phong vào Kho Google 10TB!");
+      toast.success("Đã lưu video/ảnh niêm phong an toàn!");
     } catch (err: any) {
       console.error("Packaging upload error:", err);
       toast.error(err.message || "Lỗi tải video/ảnh đóng gói.");
@@ -1544,13 +1544,13 @@ export function OrdersClient({
                   ) : (
                     <>
                       <Camera size={16} />
-                      <span className="text-[8px] font-bold mt-0.5">+Google</span>
+                      <span className="text-[8px] font-bold mt-0.5">+Ảnh/Video</span>
                     </>
                   )}
                 </label>
               </div>
               <p className="text-[10px] text-stone-400">
-                Tệp được lưu trữ an toàn không giới hạn trên Kho Google 10TB CLOOP Vault.
+                Tệp được lưu trữ an toàn và bảo mật trên hệ thống CLOOP.
               </p>
             </div>
 
@@ -1647,7 +1647,7 @@ export function OrdersClient({
                     className="hidden"
                   />
                   <Video size={14} />
-                  <span>+ Tải Video bảo chứng (Google 10TB)</span>
+                  <span>+ Tải Video bảo chứng</span>
                 </label>
               </div>
 
@@ -1794,7 +1794,7 @@ export function OrdersClient({
                   {isUploadingPackagingMedia ? (
                     <><Loader2 size={16} className="animate-spin text-emerald-700" /> {packagingUploadProgress || "Đang lưu..."}</>
                   ) : (
-                    <><Camera size={16} /> + Thêm video/ảnh (Kho Google 10TB)</>
+                    <><Camera size={16} /> + Thêm video/ảnh niêm phong</>
                   )}
                 </label>
               </div>

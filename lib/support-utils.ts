@@ -16,44 +16,53 @@ export function parseMediaContent(rawContent: string): ParsedMediaMessage {
   const videos: string[] = [];
   let text = rawContent;
 
+  const cleanMediaUrl = (url: string) =>
+    url.trim().replace(/^["'<(\[]+|["'>)\]]+$/g, "");
+
   // 1. Khớp thẻ ảnh: [IMAGE:url] hoặc [IMG:url] (kể cả có khoảng trắng trong tag)
   text = text.replace(/\[\s*(?:IMAGE|IMG)\s*:\s*([^\]]+)\]/gi, (_, url) => {
-    const cleanUrl = url.trim();
-    if (cleanUrl && !images.includes(cleanUrl)) images.push(cleanUrl);
+    const clean = cleanMediaUrl(url);
+    if (clean && !images.includes(clean)) images.push(clean);
     return "";
   });
 
   // 2. Khớp thẻ video: [VIDEO:url] hoặc [VID:url]
   text = text.replace(/\[\s*(?:VIDEO|VID)\s*:\s*([^\]]+)\]/gi, (_, url) => {
-    const cleanUrl = url.trim();
-    if (cleanUrl && !videos.includes(cleanUrl)) videos.push(cleanUrl);
+    const clean = cleanMediaUrl(url);
+    if (clean && !videos.includes(clean)) videos.push(clean);
     return "";
   });
 
   // 3. Khớp markdown ảnh tiêu chuẩn: ![alt](url)
   text = text.replace(/!\[.*?\]\((https?:\/\/[^\s\)]+)\)/gi, (_, url) => {
-    const cleanUrl = url.trim();
-    if (cleanUrl && !images.includes(cleanUrl)) images.push(cleanUrl);
+    const clean = cleanMediaUrl(url);
+    if (clean && !images.includes(clean)) images.push(clean);
     return "";
   });
 
-  // 4. Khớp trực tiếp URL ảnh Google Drive (lh3.googleusercontent.com) hoặc link đuôi ảnh
-  text = text.replace(/(https?:\/\/(?:lh3\.googleusercontent\.com\/[^\s\)]+|[^\s\)]+\.(?:png|jpg|jpeg|webp|gif)(?:\?[^\s\)]*)?))/gi, (matched) => {
-    const cleanUrl = matched.trim();
-    if (cleanUrl && !images.includes(cleanUrl)) {
-      images.push(cleanUrl);
+  // 4. Khớp trực tiếp URL video Google Drive hoặc link đuôi video
+  text = text.replace(
+    /(https?:\/\/(?:drive\.google\.com\/file\/[^\s\)]+\/preview|[^\s\)]+\.(?:mp4|webm|mov|m4v|quicktime)(?:\?[^\s\)]*)?))/gi,
+    (matched) => {
+      const clean = cleanMediaUrl(matched);
+      if (clean && !videos.includes(clean)) {
+        videos.push(clean);
+      }
+      return "";
     }
-    return "";
-  });
+  );
 
-  // 5. Khớp trực tiếp URL video Google Drive hoặc link đuôi video
-  text = text.replace(/(https?:\/\/(?:drive\.google\.com\/file\/[^\s\)]+|[^\s\)]+\.(?:mp4|webm|mov)(?:\?[^\s\)]*)?))/gi, (matched) => {
-    const cleanUrl = matched.trim();
-    if (cleanUrl && !videos.includes(cleanUrl)) {
-      videos.push(cleanUrl);
+  // 5. Khớp trực tiếp URL ảnh Google Drive (lh3.googleusercontent.com), Cloudinary (res.cloudinary.com) hoặc link đuôi ảnh
+  text = text.replace(
+    /(https?:\/\/(?:lh3\.googleusercontent\.com\/[^\s\)]+|res\.cloudinary\.com\/[^\s\)]+|drive\.google\.com\/uc\?[^\s\)]+|[^\s\)]+\.(?:png|jpg|jpeg|webp|gif|avif|heic)(?:\?[^\s\)]*)?))/gi,
+    (matched) => {
+      const clean = cleanMediaUrl(matched);
+      if (clean && !images.includes(clean)) {
+        images.push(clean);
+      }
+      return "";
     }
-    return "";
-  });
+  );
 
   return {
     text: text.trim(),

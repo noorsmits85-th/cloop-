@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { uploadToGoogleDrive } from "@/src/services/googleDriveStorage";
-import { uploadImage } from "@/src/lib/upload-image";
 
 export const runtime = "nodejs";
 
@@ -19,7 +18,7 @@ export async function POST(request: Request) {
     const isVideo = (file.type || "").startsWith("video/");
     const fileName = file.name || `${isVideo ? "video" : "media"}_${Date.now()}`;
 
-    // 1. Ưu tiên 1: Tải lên Google Drive 10TB (Không tốn Cloudinary, tiết kiệm tài nguyên)
+    // 1. Tải lên Google Drive qua Webhooks (Không tốn Cloudinary, tiết kiệm tài nguyên tối đa)
     const result = await uploadToGoogleDrive({
       fileName,
       mimeType: file.type || (isVideo ? "video/mp4" : "image/jpeg"),
@@ -47,26 +46,39 @@ export async function POST(request: Request) {
       });
     }
 
-    // 2. Dự phòng khẩn cấp: Nếu Google Drive tạm thời nghẽn mạng và tệp là ảnh, fallback an toàn
-    if (!isVideo) {
-      console.warn("⚠️ [Storage] Google Drive chưa phản hồi, chuyển sang lưu trữ dự phòng...");
-      try {
-        const fallbackRes = await uploadImage(buffer, "support_chat");
-        return NextResponse.json({
-          success: true,
-          url: fallbackRes.url,
-          viewUrl: fallbackRes.url,
-          downloadUrl: fallbackRes.url,
-          storageWarehouse: "Kho Lưu Trữ Dự Phòng",
-          name: fileName,
-          isVideo: false,
-        });
-      } catch (fbErr: any) {
-        console.error("Lỗi fallback upload:", fbErr);
+    // 2. Dự phòng an toàn: Supabase Storage (Tuyệt đối KHÔNG dùng Cloudinary)
+    try {
+      const { supabaseAdmin } = await import("@/src/lib/supabase");
+      if (supabaseAdmin) {
+        const safeName = `support_chat/${Date.now()}_${fileName.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+        const { data: sbData, error: sbError } = await supabaseAdmin.storage
+          .from("cloop-media")
+          .upload(safeName, buffer, {
+            contentType: file.type || (isVideo ? "video/mp4" : "image/jpeg"),
+            upsert: true,
+          });
+
+        if (!sbError && sbData) {
+          const { data: publicData } = supabaseAdmin.storage
+            .from("cloop-media")
+            .getPublicUrl(safeName);
+
+          return NextResponse.json({
+            success: true,
+            url: publicData.publicUrl,
+            viewUrl: publicData.publicUrl,
+            downloadUrl: publicData.publicUrl,
+            storageWarehouse: "Kho Lưu Trữ Dự Phòng",
+            name: fileName,
+            isVideo,
+          });
+        }
       }
+    } catch (sbErr) {
+      console.warn("⚠️ [Storage] Supabase fallback không khả dụng:", sbErr);
     }
 
-    return NextResponse.json({ error: "Lỗi tải tệp lên kho lưu trữ." }, { status: 500 });
+    return NextResponse.json({ error: "Lỗi tải tệp lên kho lưu trữ Google Drive." }, { status: 500 });
   } catch (error: any) {
     console.error("Lỗi API Upload Media:", error);
     return NextResponse.json({ error: error.message || "Lỗi không xác định khi tải tệp." }, { status: 500 });

@@ -5,8 +5,12 @@ function getStorageConfig() {
     clientEmail: process.env.GOOGLE_CLIENT_EMAIL,
     privateKey: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
     defaultFolderId: process.env.GOOGLE_DRIVE_FOLDER_ID,
-    webhookUrl1: process.env.GOOGLE_DRIVE_WEBHOOK_URL,
-    webhookUrl2: process.env.GOOGLE_DRIVE_WEBHOOK_URL_2,
+    webhookUrl1:
+      process.env.GOOGLE_DRIVE_WEBHOOK_URL ||
+      "https://script.google.com/macros/s/AKfycbzRfMGycO7ZUw9Vnzn7q3hpPiALwjx88EMt9IB9jlowRrQgr5q4VhnuNE30BlkEX5Ig/exec",
+    webhookUrl2:
+      process.env.GOOGLE_DRIVE_WEBHOOK_URL_2 ||
+      "https://script.google.com/macros/s/AKfycbyx3reJiJSS_AgTPIYToPJ4yD_YYE5dVHAS_ycxE-SqwBvhn5fc6siJQ_8j93u7Y9EKOw/exec",
   };
 }
 
