@@ -29,7 +29,7 @@ async function runTest() {
   });
   console.log("Khách gửi tin:", custMsgRes.success ? "THÀNH CÔNG" : "THẤT BẠI");
 
-  console.log("\n=== 3. TEST ADMIN TRẢ LỜI ẨN DANH ===");
+  console.log("\n=== 3. TEST ADMIN TRẢ LỜI (CHUYÊN VIÊN CSKH) ===");
   const adminMsgRes = await sendAdminMessage({
     ticketId,
     content: "Dạ chào bạn Thu Hà! CLOOP hỗ trợ đổi size miễn phí trong vòng 24h từ lúc nhận đầm ạ. Bạn gửi lại mã đơn hàng giúp shop nhé!",

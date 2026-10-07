@@ -4,7 +4,8 @@ import { useMemo, useRef, useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { 
   MapPin, Send, X, PhoneCall, MessageCircle, 
-  ArrowRight, ShieldCheck, Headphones, Camera, Image as ImageIcon, Sparkles
+  ArrowRight, ShieldCheck, Headphones, Camera, Image as ImageIcon,
+  Paperclip, Film, Loader2, ExternalLink
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -15,6 +16,7 @@ import {
   MessageItem 
 } from "@/app/actions/support";
 import { soundAlert } from "@/lib/sound-alert";
+import { parseMediaContent } from "@/lib/support-utils";
 
 // 🌟 ICON ĐẶC TRƯNG ĐỘC BẢN: CLOOP CHATBOT (Kết hợp Chat Bubble + Đôi Mắt Infinity Loop Tuần Hoàn)
 function CloopChatBotIcon({ className = "w-6 h-6" }: { className?: string }) {
@@ -327,6 +329,14 @@ export default function AiStylistChat({
   const [cskhInput, setCskhInput] = useState("");
   const [isCskhSending, setIsCskhSending] = useState(false);
   const [cskhUnreadCount, setCskhUnreadCount] = useState(0);
+  const [cskhAttachment, setCskhAttachment] = useState<{
+    file: File;
+    previewUrl: string;
+    isVideo: boolean;
+    name: string;
+    sizeStr: string;
+  } | null>(null);
+  const cskhFileInputRef = useRef<HTMLInputElement | null>(null);
   const prevAdminCountRef = useRef<number>(0);
   const cskhScrollContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -419,18 +429,38 @@ export default function AiStylistChat({
     }
   }, [activeTab]);
 
+  const handleCskhFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const isVid = file.type.startsWith("video/");
+    const maxMb = isVid ? 50 : 15;
+    if (file.size > maxMb * 1024 * 1024) {
+      alert(`Tệp quá lớn. Vui lòng chọn tệp nhỏ hơn ${maxMb}MB.`);
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    const sizeStr = (file.size / (1024 * 1024)).toFixed(1) + " MB";
+    setCskhAttachment({
+      file,
+      previewUrl,
+      isVideo: isVid,
+      name: file.name,
+      sizeStr,
+    });
+    if (cskhFileInputRef.current) cskhFileInputRef.current.value = "";
+  };
+
   const handleSendCskhMessage = async (textToSend?: string) => {
     const text = (textToSend || cskhInput).trim();
-    if (!text || isCskhSending) return;
+    if ((!text && !cskhAttachment) || isCskhSending) return;
 
-    setCskhInput("");
     setIsCskhSending(true);
 
     let activeId = cskhTicketId;
     if (!activeId) {
-      const initRes = await getOrCreateSupportTicket({
-        customerName: "Khách Hàng",
-      });
+      const initRes = await getOrCreateSupportTicket();
       if (initRes.success && initRes.ticket) {
         activeId = initRes.ticket.id;
         setCskhTicketId(activeId);
@@ -441,13 +471,52 @@ export default function AiStylistChat({
     }
 
     if (activeId) {
-      const sendRes = await sendCustomerMessage({
-        ticketId: activeId,
-        content: text,
-        senderName: "Khách Hàng",
-      });
-      if (sendRes.success && sendRes.message) {
-        setCskhMessages((prev) => [...prev, sendRes.message as any]);
+      let finalContent = text;
+
+      // 🛡️ Tải ảnh / video lên kho Google Drive 10TB trước khi gửi tin nhắn (tiết kiệm tài nguyên Cloudinary)
+      if (cskhAttachment) {
+        try {
+          const formData = new FormData();
+          formData.append("file", cskhAttachment.file);
+          formData.append("targetKho", "auto");
+
+          const upRes = await fetch("/api/upload-drive", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (upRes.ok) {
+            const data = await upRes.json();
+            if (data.success && data.url) {
+              const tag = data.isVideo ? `[VIDEO:${data.url}]` : `[IMAGE:${data.url}]`;
+              finalContent = finalContent ? `${tag} ${finalContent}` : tag;
+            }
+          } else {
+            console.error("Lỗi upload media lên kho Drive");
+          }
+        } catch (upErr) {
+          console.error("Ngoại lệ kết nối API kho Drive:", upErr);
+        }
+      }
+
+      if (finalContent.trim()) {
+        const sendRes = await sendCustomerMessage({
+          ticketId: activeId,
+          content: finalContent.trim(),
+        });
+        if (sendRes.success && sendRes.message) {
+          setCskhMessages((prev) => [...prev, sendRes.message as any]);
+          setCskhInput("");
+          setCskhAttachment(null);
+          setTimeout(() => {
+            if (cskhScrollContainerRef.current) {
+              cskhScrollContainerRef.current.scrollTo({
+                top: cskhScrollContainerRef.current.scrollHeight,
+                behavior: "smooth",
+              });
+            }
+          }, 50);
+        }
       }
     }
     setIsCskhSending(false);
@@ -830,9 +899,9 @@ export default function AiStylistChat({
                 </div>
               </>
             ) : (
-              /* TAB 2: CSKH TRỰC TUYẾN ẨN DANH 100% (CHUẨN SHOPEE) */
+              /* TAB 2: CSKH TRỰC TUYẾN CHÍNH CHỦ & MINH BẠCH */
               <div className="flex-1 flex flex-col overflow-hidden bg-[#FAF8F3] text-left">
-                {/* Banner Trực Tuyến & Ẩn Danh */}
+                {/* Banner Trực Tuyến & Minh Bạch */}
                 <div className="p-2.5 bg-[#EBF5EA] border-b border-[#CDE0CB] space-y-0.5 shrink-0">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#18422A] uppercase tracking-wider">
@@ -840,12 +909,12 @@ export default function AiStylistChat({
                       <ShieldCheck size={12} className="text-emerald-700" />
                       CSKH CLOOP Sẵn Sàng
                     </div>
-                    <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-white/80 border border-emerald-300 text-emerald-900 font-semibold font-ui">
-                      Ẩn danh 100%
+                    <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-white/90 border border-emerald-300 text-emerald-900 font-semibold font-ui">
+                      Minh Bạch & Chính Chủ
                     </span>
                   </div>
                   <p className="text-[9px] text-stone-600 font-light leading-tight">
-                    Tin nhắn kết nối trực tiếp với Đội ngũ Admin trực ban. Phản hồi trong 2 phút!
+                    Kết nối trực tiếp chuyên viên CSKH trực ban. Phản hồi trong 2 phút!
                   </p>
                 </div>
 
@@ -865,6 +934,8 @@ export default function AiStylistChat({
                   {/* Lịch sử tin nhắn thực giữa Khách và Admin */}
                   {cskhMessages.map((m) => {
                     const isMe = m.senderType === "USER";
+                    const parsed = parseMediaContent(m.content);
+
                     return (
                       <div
                         key={m.id}
@@ -878,13 +949,50 @@ export default function AiStylistChat({
                           })}
                         </span>
                         <div
-                          className={`max-w-[85%] p-2.5 rounded-2xl text-[10.5px] leading-relaxed shadow-2xs ${
+                          className={`max-w-[85%] p-2.5 rounded-2xl text-[10.5px] leading-relaxed shadow-2xs space-y-1.5 ${
                             isMe
                               ? "bg-[#183A2D] text-white rounded-tr-xs"
                               : "bg-white text-stone-800 border border-stone-200 rounded-tl-xs"
                           }`}
                         >
-                          {m.content}
+                          {/* Hiển thị hình ảnh nếu có */}
+                          {parsed.images.map((imgUrl, idx) => (
+                            <a
+                              key={idx}
+                              href={imgUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block overflow-hidden rounded-xl group/img relative border border-black/10 cursor-pointer"
+                            >
+                              <img
+                                src={imgUrl}
+                                alt="Ảnh đính kèm"
+                                className="max-h-52 max-w-full rounded-xl object-cover hover:scale-102 transition-transform duration-200"
+                                loading="lazy"
+                              />
+                              <div className="absolute bottom-1 right-1 bg-black/60 text-white text-[8px] px-1.5 py-0.5 rounded backdrop-blur-xs flex items-center gap-0.5 opacity-80 group-hover/img:opacity-100 transition-opacity">
+                                <ExternalLink size={9} />
+                                <span>Xem ảnh gốc</span>
+                              </div>
+                            </a>
+                          ))}
+
+                          {/* Hiển thị video nếu có */}
+                          {parsed.videos.map((vidUrl, idx) => (
+                            <div key={idx} className="rounded-xl overflow-hidden border border-black/10 bg-black/10">
+                              <video
+                                src={vidUrl}
+                                controls
+                                preload="metadata"
+                                className="max-h-56 max-w-full rounded-xl w-full"
+                              />
+                            </div>
+                          ))}
+
+                          {/* Hiển thị văn bản tin nhắn nếu có */}
+                          {parsed.text && (
+                            <p className="whitespace-pre-wrap">{parsed.text}</p>
+                          )}
                         </div>
                       </div>
                     );
@@ -916,6 +1024,44 @@ export default function AiStylistChat({
                   </button>
                 </div>
 
+                {/* Preview tệp ảnh/video đính kèm */}
+                {cskhAttachment && (
+                  <div className="px-2.5 py-1.5 bg-stone-100/90 border-t border-stone-200 flex items-center justify-between gap-2 shrink-0">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      {cskhAttachment.isVideo ? (
+                        <div className="w-6 h-6 rounded-md bg-emerald-900/10 text-[#183A2D] flex items-center justify-center shrink-0">
+                          <Film size={12} />
+                        </div>
+                      ) : (
+                        <div className="w-6 h-6 rounded-md overflow-hidden border border-stone-300 shrink-0">
+                          <img
+                            src={cskhAttachment.previewUrl}
+                            alt="preview"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+                      <div className="truncate min-w-0">
+                        <p className="text-[10px] font-semibold text-stone-800 truncate">
+                          {cskhAttachment.name}
+                        </p>
+                        <p className="text-[8.5px] text-stone-500 font-mono">
+                          {cskhAttachment.sizeStr} · Kho Google Drive (10TB)
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setCskhAttachment(null)}
+                      disabled={isCskhSending}
+                      className="p-1 hover:bg-stone-200 rounded-full text-stone-400 hover:text-stone-700 transition-colors cursor-pointer"
+                      title="Hủy đính kèm"
+                    >
+                      <X size={11} />
+                    </button>
+                  </div>
+                )}
+
                 {/* Khung soạn thảo & gửi tin cho CSKH */}
                 <form
                   onSubmit={(e) => {
@@ -924,6 +1070,23 @@ export default function AiStylistChat({
                   }}
                   className="p-2 bg-white border-t border-stone-200 flex items-center gap-1.5 shrink-0"
                 >
+                  <input
+                    ref={cskhFileInputRef}
+                    type="file"
+                    accept="image/*,video/*"
+                    className="hidden"
+                    onChange={handleCskhFileSelect}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => cskhFileInputRef.current?.click()}
+                    disabled={isCskhSending}
+                    title="Đính kèm ảnh hoặc video (Lưu trữ Google 10TB)"
+                    className="p-1.5 text-stone-500 hover:text-[#183A2D] hover:bg-emerald-50 rounded-full transition-colors cursor-pointer shrink-0"
+                  >
+                    <Paperclip size={13} />
+                  </button>
+
                   <input
                     type="text"
                     placeholder="Nhắn tin cho chuyên viên CSKH..."
@@ -934,10 +1097,14 @@ export default function AiStylistChat({
                   />
                   <button
                     type="submit"
-                    disabled={!cskhInput.trim() || isCskhSending}
+                    disabled={(!cskhInput.trim() && !cskhAttachment) || isCskhSending}
                     className="w-7 h-7 rounded-full bg-[#183A2D] text-white flex items-center justify-center hover:bg-emerald-900 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer shrink-0"
                   >
-                    <Send size={11} />
+                    {isCskhSending ? (
+                      <Loader2 size={11} className="animate-spin" />
+                    ) : (
+                      <Send size={11} />
+                    )}
                   </button>
                 </form>
               </div>
@@ -952,13 +1119,23 @@ export default function AiStylistChat({
         onClick={() => setShowChat(!showChat)}
         whileHover={{ scale: 1.08 }}
         whileTap={{ scale: 0.92 }}
-        className="relative flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gradient-to-br from-[#1E5638] to-[#2D7A51] ring-2 ring-red-100/90 text-white shadow-[0_4px_16px_rgba(30,86,56,0.38)] border border-white/20 transition-all duration-200 cursor-pointer group"
-        title="Trợ lý AI Stylist CLOOP"
+        animate={{
+          scale: [1, 1.04, 1],
+          boxShadow: [
+            "0 4px 16px rgba(30,86,56,0.35)",
+            "0 0 18px rgba(46,182,125,0.65), 0 0 6px rgba(255,255,255,0.35)",
+            "0 4px 16px rgba(30,86,56,0.35)",
+          ],
+        }}
+        transition={{
+          duration: 2.8,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+        className="relative flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gradient-to-br from-[#1E5638] to-[#2D7A51] ring-2 ring-emerald-200/60 text-white border border-white/20 transition-all duration-200 cursor-pointer group"
+        title="Trợ lý CLOOP"
       >
         <CloopChatBotIcon className="w-5.5 h-5.5 transition-transform duration-200 group-hover:scale-105" />
-        <span className="absolute -top-1 -right-1 px-1 py-0.2 rounded-full bg-[#C92A2A] text-white text-[7.5px] font-extrabold shadow-2xs font-ui tracking-tight border border-white/40">
-          AI
-        </span>
       </motion.button>
     </div>
   );

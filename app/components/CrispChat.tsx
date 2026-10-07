@@ -13,7 +13,7 @@ declare global {
  * Tích hợp Crisp Live Chat (Cách 1)
  * Hoạt động tự động khi có NEXT_PUBLIC_CRISP_WEBSITE_ID trong .env
  * Cung cấp ứng dụng di động (iOS / Android) cho Admin nhận chuông báo và trả lời khách mọi lúc mọi nơi.
- * Thiết lập ẩn danh 100% (Khách chỉ thấy tên thương hiệu CLOOP).
+ * Hỗ trợ khách hàng trực tuyến chính chủ & minh bạch.
  */
 export default function CrispChat() {
   const crispId = process.env.NEXT_PUBLIC_CRISP_WEBSITE_ID;
