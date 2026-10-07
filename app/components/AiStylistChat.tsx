@@ -18,7 +18,7 @@ import {
 import { soundAlert } from "@/lib/sound-alert";
 import { parseMediaContent } from "@/lib/support-utils";
 
-// 🌟 ICON ĐẶC TRƯNG ĐỘC BẢN: CLOOP CHATBOT (Kết hợp Chat Bubble + Đôi Mắt Infinity Loop Tuần Hoàn)
+// ICON ĐẶC TRƯNG ĐỘC BẢN: CLOOP CHATBOT (Kết hợp Chat Bubble + Đôi Mắt Infinity Loop Tuần Hoàn)
 function CloopChatBotIcon({ className = "w-6 h-6" }: { className?: string }) {
   return (
     <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
@@ -927,7 +927,7 @@ export default function AiStylistChat({
                     </div>
                     <div className="max-w-[85%] p-2.5 rounded-2xl rounded-tl-xs bg-white border border-stone-200 text-stone-700 text-[10.5px] leading-relaxed shadow-2xs">
                       <p className="font-bold text-[#183A2D] text-[10.5px] mb-0.5">CLOOP Chăm Sóc Khách Hàng</p>
-                      Dạ CLOOP xin chào bạn! Đội ngũ CSKH sẵn sàng hỗ trợ bạn về chọn size, giao nhận hỏa tốc và hoàn tiền cọc Escrow 100%. Bạn cần hỗ trợ gì cứ nhắn shop nhé!
+                      Dạ CLOOP xin chào bạn! Đội ngũ CSKH sẵn sàng hỗ trợ bạn về chọn size, giao nhận hỏa tốc và hoàn tiền cọc Escrow 100%. Bạn cần hỗ trợ gì cứ nhắn chúng mình nhé! 😊
                     </div>
                   </div>
 
@@ -1003,7 +1003,7 @@ export default function AiStylistChat({
                 <div className="px-2 py-1 bg-white border-t border-stone-200/80 flex items-center gap-1 overflow-x-auto text-[9.5px] shrink-0">
                   <button
                     type="button"
-                    onClick={() => handleSendCskhMessage("Shop cho mình hỏi về chính sách đổi size 24h?")}
+                    onClick={() => handleSendCskhMessage("Cho mình hỏi về chính sách đổi size 24h với ạ?")}
                     className="px-2 py-0.5 rounded-full bg-stone-100 hover:bg-emerald-50 hover:text-emerald-800 border border-stone-200 text-stone-600 whitespace-nowrap transition-colors cursor-pointer"
                   >
                     Đổi size 24h
@@ -1046,7 +1046,7 @@ export default function AiStylistChat({
                           {cskhAttachment.name}
                         </p>
                         <p className="text-[8.5px] text-stone-500 font-mono">
-                          {cskhAttachment.sizeStr} · Kho Google Drive (10TB)
+                          {cskhAttachment.sizeStr}
                         </p>
                       </div>
                     </div>
@@ -1081,7 +1081,7 @@ export default function AiStylistChat({
                     type="button"
                     onClick={() => cskhFileInputRef.current?.click()}
                     disabled={isCskhSending}
-                    title="Đính kèm ảnh hoặc video (Lưu trữ Google 10TB)"
+                    title="Đính kèm ảnh hoặc video"
                     className="p-1.5 text-stone-500 hover:text-[#183A2D] hover:bg-emerald-50 rounded-full transition-colors cursor-pointer shrink-0"
                   >
                     <Paperclip size={13} />

@@ -683,7 +683,7 @@ export default function AdminSupportClient({
                                 />
                                 <div className="absolute bottom-1 right-1 bg-black/60 text-white text-[9px] px-2 py-0.5 rounded backdrop-blur-xs flex items-center gap-1 opacity-80 group-hover/img:opacity-100 transition-opacity">
                                   <ExternalLink size={10} />
-                                  <span>Xem ảnh gốc (Google 10TB)</span>
+                                  <span>Xem ảnh gốc</span>
                                 </div>
                               </a>
                             ))}
@@ -773,7 +773,7 @@ export default function AdminSupportClient({
                           {adminAttachment.name}
                         </p>
                         <p className="text-[10px] text-stone-500 font-mono">
-                          {adminAttachment.sizeStr} · Kho Google Drive 10TB
+                          {adminAttachment.sizeStr}
                         </p>
                       </div>
                     </div>
@@ -805,7 +805,7 @@ export default function AdminSupportClient({
                     type="button"
                     onClick={() => adminFileInputRef.current?.click()}
                     disabled={isSending}
-                    title="Đính kèm ảnh hoặc video hướng dẫn gửi khách (Lưu Google 10TB)"
+                    title="Đính kèm ảnh hoặc video"
                     className="p-2 text-stone-500 hover:text-[#183A2D] hover:bg-emerald-50 rounded-xl transition-colors cursor-pointer shrink-0"
                   >
                     <Paperclip size={16} />

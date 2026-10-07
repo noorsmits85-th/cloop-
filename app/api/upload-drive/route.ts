@@ -41,7 +41,7 @@ export async function POST(request: Request) {
         downloadUrl: result.downloadUrl || `https://drive.google.com/uc?id=${result.fileId}&export=download`,
         previewUrl: `https://drive.google.com/file/d/${result.fileId}/preview`,
         thumbnailUrl: result.thumbnailUrl || `https://lh3.googleusercontent.com/d/${result.fileId}=w1000`,
-        storageWarehouse: result.storageWarehouse || "Kho Google Drive (10TB)",
+        storageWarehouse: "Google Drive",
         name: result.name,
         isVideo,
       });
