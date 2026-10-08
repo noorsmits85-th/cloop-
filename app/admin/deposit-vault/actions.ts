@@ -179,6 +179,26 @@ export async function getDepositVaultMetricsAction() {
       };
     });
 
+    // 3. CHIẾN LƯỢC QUẢN TRỊ NGUỒN VỐN KÝ QUỸ FLOAT 70/30 (LẤY NGẮN NUÔI DÀI)
+    const liquidityBuffer = Math.round(totalVault * 0.3); // 30% Thanh khoản tức thời T+0
+    const flexibleInvestment = Math.round(totalVault * 0.45); // 45% Sinh lời ngắn hạn linh hoạt T+1 (~4.8%/năm)
+    const fixedInvestment = Math.round(totalVault * 0.25); // 25% Kỳ hạn 1 tháng T+30 (~6.2%/năm)
+    const totalInvesting = flexibleInvestment + fixedInvestment; // 70% Tổng vốn đầu tư sinh lời
+
+    const estimatedAnnualYield = Math.round(flexibleInvestment * 0.048 + fixedInvestment * 0.062);
+    const estimatedMonthlyYield = Math.round(estimatedAnnualYield / 12);
+
+    const reinvestmentBreakdown = {
+      reserveFund: Math.round(estimatedAnnualYield * 0.5), // 50% Bồi đắp Quỹ Bảo Chứng Tín Nhiệm
+      paymentFeeOffset: Math.round(estimatedAnnualYield * 0.25), // 25% Bù phí PayOS
+      greenRewards: Math.round(estimatedAnnualYield * 0.15), // 15% Xu xanh Leaf Coins
+      techBuffer: Math.round(estimatedAnnualYield * 0.1), // 10% Dự phòng công nghệ
+    };
+
+    const liquiditySafetyRatio = pendingReturn > 0
+      ? Math.round((liquidityBuffer / pendingReturn) * 100)
+      : 100;
+
     return {
       success: true,
       data: {
@@ -189,6 +209,17 @@ export async function getDepositVaultMetricsAction() {
           activeCount: formattedActive.length,
           totalHistoricalSettled,
           settledCount: formattedSettled.length,
+        },
+        floatStrategy: {
+          totalVault,
+          liquidityBuffer,
+          totalInvesting,
+          flexibleInvestment,
+          fixedInvestment,
+          estimatedAnnualYield,
+          estimatedMonthlyYield,
+          reinvestmentBreakdown,
+          liquiditySafetyRatio,
         },
         activeTransactions: formattedActive,
         settledTransactions: formattedSettled,

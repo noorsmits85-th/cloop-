@@ -17,6 +17,7 @@ export default function DepositVaultAdmin() {
     totalHistoricalSettled: 0,
     settledCount: 0,
   });
+  const [floatStrategy, setFloatStrategy] = useState<any>(null);
   const [activeTransactions, setActiveTransactions] = useState<any[]>([]);
   const [settledTransactions, setSettledTransactions] = useState<any[]>([]);
   const [currentTab, setCurrentTab] = useState<"ACTIVE" | "SETTLED">("ACTIVE");
@@ -28,6 +29,7 @@ export default function DepositVaultAdmin() {
       const res = await getDepositVaultMetricsAction();
       if (res.success && res.data) {
         setVaultSummary(res.data.vaultSummary);
+        setFloatStrategy(res.data.floatStrategy);
         setActiveTransactions(res.data.activeTransactions);
         setSettledTransactions(res.data.settledTransactions);
       }
@@ -119,6 +121,185 @@ export default function DepositVaultAdmin() {
           </p>
         </div>
       </div>
+
+      {/* 🌟 MÔ HÌNH PHÂN BỔ VỐN KÝ QUỸ FLOAT 70/30 (LẤY NGẮN NUÔI DÀI) */}
+      {floatStrategy && (
+        <div className="bg-white rounded-lg border border-stone-200 p-6 space-y-6 shadow-xs">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-stone-100 pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-900 border border-emerald-200">
+                  Mô Hình Tỷ Lệ 70/30
+                </span>
+                <span className="text-[10px] font-bold text-stone-500 uppercase tracking-widest font-mono">
+                  Bảo Toàn Vốn Gốc 100%
+                </span>
+              </div>
+              <h2 className="text-base font-bold text-[#183A2D] uppercase mt-1">
+                Kế Hoạch Quản Trị & Sinh Lời Nguồn Vốn Ký Quỹ Nhàn Rỗi (Escrow Float)
+              </h2>
+            </div>
+            <div className="text-left sm:text-right">
+              <span className="text-[11px] font-bold text-stone-400 block uppercase">Lợi tức ước tính sinh ra</span>
+              <span className="text-lg font-bold font-mono text-emerald-700">
+                +{formatVnd(floatStrategy.estimatedAnnualYield)} / năm
+              </span>
+              <span className="text-[11px] font-mono text-stone-500 block">
+                (~{formatVnd(floatStrategy.estimatedMonthlyYield)} / tháng)
+              </span>
+            </div>
+          </div>
+
+          {/* Thanh Tiến Trình Phân Bổ 3 Tầng */}
+          <div className="space-y-2">
+            <div className="flex justify-between items-center text-xs font-bold text-stone-700">
+              <span>Cơ cấu phân bổ vốn: {formatVnd(floatStrategy.totalVault)}</span>
+              <span className="text-[11px] font-mono text-stone-500">
+                Thanh khoản 30% | Đầu tư ngắn hạn 70%
+              </span>
+            </div>
+            <div className="w-full h-4 bg-stone-100 rounded-full overflow-hidden flex border border-stone-200">
+              <div
+                style={{ width: "30%" }}
+                className="bg-[#183A2D] h-full flex items-center justify-center text-[9px] font-bold text-white tracking-wider"
+                title="30% Thanh khoản tức thời (T+0)"
+              >
+                30% T+0
+              </div>
+              <div
+                style={{ width: "45%" }}
+                className="bg-emerald-600 h-full flex items-center justify-center text-[9px] font-bold text-white tracking-wider"
+                title="45% Sinh lời linh hoạt (T+1)"
+              >
+                45% T+1
+              </div>
+              <div
+                style={{ width: "25%" }}
+                className="bg-amber-600 h-full flex items-center justify-center text-[9px] font-bold text-white tracking-wider"
+                title="25% Kỳ hạn 1 tháng (T+30)"
+              >
+                25% T+30
+              </div>
+            </div>
+          </div>
+
+          {/* 3 Thẻ Danh Mục Đầu Tư Cụ Thể */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Tầng 1: 30% Thanh khoản tức thời */}
+            <div className="p-4 rounded-lg bg-stone-50 border border-stone-200 space-y-2 relative">
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#183A2D] bg-[#183A2D]/10 px-2 py-0.5 rounded">
+                  Tầng 1: Đệm Thanh Khoản
+                </span>
+                <span className="text-xs font-bold text-[#183A2D]">30%</span>
+              </div>
+              <p className="text-xl font-bold font-mono text-[#183A2D]">
+                {formatVnd(floatStrategy.liquidityBuffer)}
+              </p>
+              <p className="text-[11px] text-stone-600 leading-relaxed">
+                Tài khoản thanh toán chuyên dụng PayOS/Ngân hàng. Đáp ứng rút tiền/hoàn cọc tức thì trong 3-30 giây khi khách trả đồ.
+              </p>
+              <div className="pt-2 border-t border-stone-200 flex justify-between items-center text-[10px] font-mono">
+                <span className="text-stone-500">Chu kỳ rút tiền:</span>
+                <span className="font-bold text-emerald-800">T+0 (Ngay lập tức)</span>
+              </div>
+            </div>
+
+            {/* Tầng 2: 45% Linh hoạt */}
+            <div className="p-4 rounded-lg bg-emerald-50/50 border border-emerald-200/80 space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-900 bg-emerald-100 px-2 py-0.5 rounded">
+                  Tầng 2: Sinh Lời Linh Hoạt
+                </span>
+                <span className="text-xs font-bold text-emerald-800">45%</span>
+              </div>
+              <p className="text-xl font-bold font-mono text-emerald-900">
+                {formatVnd(floatStrategy.flexibleInvestment)}
+              </p>
+              <p className="text-[11px] text-stone-600 leading-relaxed">
+                Tiền gửi bậc thang linh hoạt / Quỹ MMF an toàn. Rút vốn trong ngày mà không mất gốc khi cần điều phối thanh khoản.
+              </p>
+              <div className="pt-2 border-t border-emerald-200/60 flex justify-between items-center text-[10px] font-mono">
+                <span className="text-stone-500">Lãi suất kỳ vọng:</span>
+                <span className="font-bold text-emerald-800">~4.8% / năm (T+1)</span>
+              </div>
+            </div>
+
+            {/* Tầng 3: 25% Kỳ hạn ngắn 1 tháng */}
+            <div className="p-4 rounded-lg bg-amber-50/50 border border-amber-200/80 space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-950 bg-amber-100 px-2 py-0.5 rounded">
+                  Tầng 3: Tối Ưu Lợi Tức
+                </span>
+                <span className="text-xs font-bold text-amber-900">25%</span>
+              </div>
+              <p className="text-xl font-bold font-mono text-amber-900">
+                {formatVnd(floatStrategy.fixedInvestment)}
+              </p>
+              <p className="text-[11px] text-stone-600 leading-relaxed">
+                Chứng chỉ tiền gửi kỳ hạn 1 tháng quay vòng liên tục dựa trên số lượng đơn hàng thuê dự kiến ổn định của nền tảng.
+              </p>
+              <div className="pt-2 border-t border-amber-200/60 flex justify-between items-center text-[10px] font-mono">
+                <span className="text-stone-500">Lãi suất kỳ vọng:</span>
+                <span className="font-bold text-amber-800">~6.2% / năm (T+30)</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Vòng lặp: Lấy ngắn nuôi dài */}
+          <div className="p-4 rounded-lg bg-stone-50 border border-stone-200 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-stone-900 uppercase tracking-wide">
+                Kế hoạch luân chuyển lợi tức: Lấy ngắn nuôi dài
+              </span>
+              <span className="text-[11px] text-stone-500 font-mono">
+                Tổng lợi tức phân bổ: 100%
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+              <div className="p-3 bg-white rounded border border-stone-200">
+                <div className="flex justify-between font-bold text-emerald-800 mb-1">
+                  <span>50% Quỹ Bảo Chứng</span>
+                  <span className="font-mono">{formatVnd(floatStrategy.reinvestmentBreakdown.reserveFund)}</span>
+                </div>
+                <p className="text-[11px] text-stone-500 leading-normal">
+                  Bồi đắp Quỹ bảo lãnh tín nhiệm để tài trợ chính sách giảm cọc 10%-30% cho khách uy tín.
+                </p>
+              </div>
+
+              <div className="p-3 bg-white rounded border border-stone-200">
+                <div className="flex justify-between font-bold text-stone-800 mb-1">
+                  <span>25% Bù Phí PayOS</span>
+                  <span className="font-mono">{formatVnd(floatStrategy.reinvestmentBreakdown.paymentFeeOffset)}</span>
+                </div>
+                <p className="text-[11px] text-stone-500 leading-normal">
+                  Bù trừ toàn bộ chi phí xử lý cổng thanh toán, giúp người dùng không bị mất phí chuyển khoản.
+                </p>
+              </div>
+
+              <div className="p-3 bg-white rounded border border-stone-200">
+                <div className="flex justify-between font-bold text-stone-800 mb-1">
+                  <span>15% Xu Leaf Coins</span>
+                  <span className="font-mono">{formatVnd(floatStrategy.reinvestmentBreakdown.greenRewards)}</span>
+                </div>
+                <p className="text-[11px] text-stone-500 leading-normal">
+                  Tài trợ thưởng xu xanh và voucher kích thích người dùng tiếp tục thuê đồ tuần hoàn.
+                </p>
+              </div>
+
+              <div className="p-3 bg-white rounded border border-stone-200">
+                <div className="flex justify-between font-bold text-stone-800 mb-1">
+                  <span>10% Dự Phòng Hệ Thống</span>
+                  <span className="font-mono">{formatVnd(floatStrategy.reinvestmentBreakdown.techBuffer)}</span>
+                </div>
+                <p className="text-[11px] text-stone-500 leading-normal">
+                  Dự phòng chi phí hạ tầng máy chủ, nâng cấp bảo mật và vận hành kỹ thuật định kỳ.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* BẢNG DỮ LIỆU THẬT */}
       <div className="bg-white rounded-lg border border-stone-200 p-5 space-y-4">
