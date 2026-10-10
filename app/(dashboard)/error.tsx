@@ -73,7 +73,7 @@ export default function DashboardError({
             onClick={handleQuickReauth}
             className="w-full flex items-center justify-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 py-3 px-4 rounded-xl text-xs font-bold transition cursor-pointer"
           >
-            {isLoggingIn ? <Loader2 size={15} className="animate-spin" /> : <span>⚡ Đăng nhập lại 1-chạm</span>}
+            {isLoggingIn ? <Loader2 size={15} className="animate-spin" /> : <span>Đăng nhập lại 1-chạm</span>}
           </button>
         </div>
 

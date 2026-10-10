@@ -8,7 +8,7 @@ import { SignedShippingQuote } from "@/src/utils/shipping";
 import { 
   Loader2, ShieldCheck, MapPin, Calendar, Clock,
   Check, ArrowRight, User, Phone, Home, Shirt, Tag, AlertCircle, Navigation, Package, Truck,
-  Copy, CheckCircle2, ExternalLink, QrCode, X, Zap, Handshake, Leaf, RefreshCw, Edit3, Plus
+  Copy, CheckCircle2, ExternalLink, QrCode, X, Handshake, Leaf, RefreshCw, Edit3, Plus
 } from "lucide-react";
 import Image from "next/image";
 
@@ -1364,7 +1364,7 @@ export default function CheckoutClient({
                                 : "bg-stone-100 text-stone-600 border-stone-200 group-hover:bg-stone-200"
                             }`}>
                               {isExpress ? (
-                                <Zap size={15} strokeWidth={2} />
+                                <Clock size={15} strokeWidth={2} />
                               ) : isGHN ? (
                                 <Truck size={15} strokeWidth={1.8} />
                               ) : (

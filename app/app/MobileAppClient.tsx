@@ -10,9 +10,9 @@ import {
   Leaf, ArrowRight, Shirt, Calendar, ShieldCheck, Check,
   ChevronRight, ArrowLeft, Wallet, Droplet, Award, Clock,
   MapPin, Edit3, Menu, HelpCircle, LogOut, Package, Crop, Truck,
-  Zap, CreditCard, QrCode, Loader2, ExternalLink, Copy,
+  CreditCard, QrCode, Loader2, ExternalLink, Copy,
   Trash2, Eye, EyeOff, Edit, PackageX, Share2, MessageCircle,
-  Mic, Layers
+  Mic, Layers, TrendingUp
 } from "lucide-react";
 import Link from "next/link";
 import Cropper from "react-easy-crop";
@@ -3061,8 +3061,8 @@ export default function MobileAppClient({
                             </div>
                           </div>
                           {order.isOverdue && order.status !== "LENDER_COMPLETED" && (
-                            <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-[10.5px] text-amber-800 font-medium">
-                              <span>⚡ Đã qua hạn thuê ({order.endDate})</span>
+                            <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-[10.5px] text-stone-600 font-medium">
+                              <span>Đã qua hạn thuê ({order.endDate})</span>
                               <span className="underline font-bold text-[#183A2D]">Bấm để cập nhật &rarr;</span>
                             </div>
                           )}
@@ -3437,7 +3437,7 @@ export default function MobileAppClient({
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-stone-100 text-[#183A2D] flex items-center justify-center shrink-0">
-                          <Zap size={16} />
+                          <TrendingUp size={16} />
                         </div>
                         <span className="text-xs font-semibold text-stone-900 group-hover:text-[#183A2D] transition-colors">
                           Nạp Lá Đẩy Bài Lên Top
@@ -3644,7 +3644,7 @@ export default function MobileAppClient({
                                           </span>
                                         ) : Boolean(item.boostExpiresAt && new Date(item.boostExpiresAt) > new Date()) ? (
                                           <span className="text-[8.5px] bg-[#183A2D] text-white font-bold px-1.5 py-0.2 rounded ml-auto flex items-center gap-0.5">
-                                            <Zap size={9} />
+                                            <TrendingUp size={9} />
                                             <span>Đang Top</span>
                                           </span>
                                         ) : (
@@ -3683,7 +3683,7 @@ export default function MobileAppClient({
                                       }`}
                                       title="Đẩy bài lên vị trí đầu sàn"
                                     >
-                                      <Zap size={12} />
+                                      <TrendingUp size={12} />
                                       <span>{Boolean(item.boostExpiresAt && new Date(item.boostExpiresAt) > new Date()) ? "Gia hạn" : "Đẩy Top"}</span>
                                     </button>
 

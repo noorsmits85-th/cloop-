@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { 
-  Zap, 
+  TrendingUp, 
   X, 
   Check, 
   QrCode, 
@@ -325,7 +325,7 @@ export default function BoostListingModal({
         <div className="px-5 py-4 border-b border-stone-100 flex items-center justify-between bg-stone-50/70">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-[#183A2D] text-white flex items-center justify-center shadow-xs">
-              <Zap size={15} />
+              <TrendingUp size={15} />
             </div>
             <div>
               <h3 className="font-heading font-black text-sm text-[#183A2D] uppercase tracking-wide">
@@ -481,7 +481,7 @@ export default function BoostListingModal({
                   </span>
                   {selectedItem?.isBoostActive && (
                     <span className="text-[10px] text-[#183A2D] bg-stone-100 px-2.5 py-0.5 rounded-full font-bold border border-stone-200">
-                      ⚡ Đang Top: {(selectedItem.boostScore || 0)} Lá • Còn {selectedItem.boostRemainingHours}h (sẽ cộng dồn)
+                      Đang Top: {(selectedItem.boostScore || 0)} Lá • Còn {selectedItem.boostRemainingHours}h (cộng dồn)
                     </span>
                   )}
                 </div>
@@ -784,7 +784,7 @@ export default function BoostListingModal({
                     </>
                   ) : payMethod === "COINS" ? (
                     <>
-                      <Zap size={14} />
+                      <TrendingUp size={14} />
                       <span>Đẩy Top ({priceInfo.coins} Lá)</span>
                     </>
                   ) : payMethod === "WALLET" ? (

@@ -12,7 +12,7 @@ import {
   EyeOff, 
   Loader2, 
   Leaf, 
-  Zap, 
+  TrendingUp, 
   Gift, 
   ShieldCheck, 
   HelpCircle,
@@ -375,7 +375,7 @@ export function WalletClient({
                 <Leaf size={15} className="text-amber-300 fill-amber-300" /> Túi Điểm Lá (CloopCoins)
               </span>
               <span className="text-[10px] bg-amber-400/20 backdrop-blur-md px-2.5 py-0.5 rounded-full text-amber-200 border border-amber-300/30 font-semibold flex items-center gap-1">
-                <Zap size={11} className="text-amber-300 fill-amber-300" /> Đẩy Top & Quyền Lợi
+                <TrendingUp size={11} className="text-amber-300" /> Đẩy Top & Quyền Lợi
               </span>
             </div>
 
@@ -399,7 +399,7 @@ export function WalletClient({
               onClick={() => setShowCoinStoreModal(true)}
               className="flex-1 px-4 py-2.5 bg-amber-300 hover:bg-amber-400 text-stone-900 rounded-full text-xs font-bold shadow-md transition-all flex items-center justify-center gap-1.5 active:scale-95"
             >
-              <Zap size={14} className="fill-stone-900" /> Nạp thêm Lá
+              <TrendingUp size={14} /> Nạp thêm Lá
             </button>
             <button 
               onClick={() => setShowQuestModal(true)}

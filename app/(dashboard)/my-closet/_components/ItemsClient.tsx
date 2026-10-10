@@ -15,7 +15,6 @@ import {
   ChevronLeft, 
   ChevronRight, 
   EyeIcon,
-  Zap,
   Layers,
   CheckCircle2,
   AlertTriangle,
@@ -227,7 +226,7 @@ function ClosetItemCard({
         <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 z-10 pointer-events-none">
           {isBoosted && (
             <span className="px-2.5 py-1 bg-[#183A2D] text-white text-[10px] font-bold rounded-lg shadow-sm flex items-center gap-1">
-              <Zap size={11} className="fill-white" /> Đang Đẩy Top
+              <TrendingUp size={11} /> Đang Đẩy Top
             </span>
           )}
           {item.isShopHidden && (
@@ -604,7 +603,7 @@ export function ItemsClient({
                 : i
             )
           );
-          showToast("⚡ Đã kích hoạt Đẩy Top thành công!");
+          showToast("Đã kích hoạt Đẩy Top thành công!");
           setSelectedBoostItem(null);
           router.refresh();
         }}
