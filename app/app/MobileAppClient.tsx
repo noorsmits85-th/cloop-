@@ -19,6 +19,8 @@ import Cropper from "react-easy-crop";
 import VisualSearchModal from "@/app/components/VisualSearchModal";
 import VoiceSearchModal from "@/app/components/VoiceSearchModal";
 import DigitalProductPassport from "@/app/components/DigitalProductPassport";
+import BoostListingModal from "@/app/components/BoostListingModal";
+import OrderDetailModal, { formatOrderStatus } from "@/app/components/OrderDetailModal";
 import { useAuthModal } from "@/app/AuthModalContext";
 import { getShopProductsAction, createProductAction, updateProductFromAppAction } from "@/app/actions/product";
 import { toggleProductInteractionAction } from "@/app/actions/favorite";
@@ -491,6 +493,54 @@ export default function MobileAppClient({
   // 🏦 LIÊN KẾT NGÂN HÀNG & RÚT TIỀN ĐỒNG BỘ BẢN WEB
   const [isBankModalOpen, setIsBankModalOpen] = useState(false);
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
+
+  // ⚡ ĐẨY BÀI LÊN TOP (BOOST MODAL)
+  const [isBoostModalOpen, setIsBoostModalOpen] = useState(false);
+  const [boostTargetProductId, setBoostTargetProductId] = useState<string | undefined>(undefined);
+
+  // 📦 CHI TIẾT ĐƠN HÀNG (ORDER DETAIL MODAL)
+  const [selectedOrderForDetail, setSelectedOrderForDetail] = useState<any | null>(null);
+  const [orderDetailRole, setOrderDetailRole] = useState<"renter" | "lender">("renter");
+
+  const handleBoostSuccess = (productId: string, newExpiresAt: string, newCoins?: number, addedCoins?: number) => {
+    setClosetData((prev: any) => {
+      if (!prev) return prev;
+      const updatedProducts = (prev.myProducts || []).map((p: any) => {
+        if (p.id === productId) {
+          return {
+            ...p,
+            boostExpiresAt: newExpiresAt,
+            isBoostActive: true,
+            boostScore: (Number(p.boostScore) || 0) + (addedCoins || 0)
+          };
+        }
+        return p;
+      });
+      return {
+        ...prev,
+        myProducts: updatedProducts,
+        user: {
+          ...prev.user,
+          cloopCoins: newCoins !== undefined ? newCoins : prev.user?.cloopCoins
+        }
+      };
+    });
+
+    // ⚡ Đồng bộ ngay lập tức vào danh sách hiển thị trên Sàn Khám Phá để đua Top
+    setProducts((prev: any) => {
+      return (prev || []).map((p: any) => {
+        if (p.id === productId) {
+          return {
+            ...p,
+            boostExpiresAt: newExpiresAt,
+            isBoosted: true,
+            boostScore: (Number(p.boostScore) || 0) + (addedCoins || 0)
+          };
+        }
+        return p;
+      });
+    });
+  };
   const [bankForm, setBankForm] = useState({
     bankName: "",
     bankAccount: "",
@@ -1255,7 +1305,24 @@ export default function MobileAppClient({
         return title.includes(q) || occ.includes(q) || desc.includes(q);
       });
     }
-    return list;
+
+    // ⚡ THUẬT TOÁN ĐUA TOP SÀN:
+    // 1. Chỉ các bài có hạn Đẩy Top còn hiệu lực (boostExpiresAt > now) mới được ưu tiên cụm đầu.
+    // 2. Món đồ có TỔNG SỐ LÁ ĐÃ TÍCH LŨY (boostScore) cao nhất luôn đứng trên người nộp cùng gói ít Lá hơn.
+    // 3. Cùng điểm Lá tích lũy: Ai có hạn boostExpiresAt xa hơn sẽ đứng trước.
+    return [...list].sort((a: any, b: any) => {
+      const aActive = Boolean(a.boostExpiresAt && new Date(a.boostExpiresAt) > new Date());
+      const bActive = Boolean(b.boostExpiresAt && new Date(b.boostExpiresAt) > new Date());
+      if (aActive && !bActive) return -1;
+      if (!aActive && bActive) return 1;
+      if (aActive && bActive) {
+        const aScore = Number(a.boostScore) || 0;
+        const bScore = Number(b.boostScore) || 0;
+        if (bScore !== aScore) return bScore - aScore;
+        return new Date(b.boostExpiresAt).getTime() - new Date(a.boostExpiresAt).getTime();
+      }
+      return 0;
+    });
   }, [products, listingMode, selectedOccasion, searchQuery]);
 
   // ❤️ THẢ TIM LƯU DATABASE THẬT
@@ -2450,6 +2517,7 @@ export default function MobileAppClient({
               </div>
 
               <button
+                type="button"
                 onClick={() => {
                   if (!currentUser) {
                     setShowAuthModal(true);
@@ -2462,7 +2530,6 @@ export default function MobileAppClient({
                 {lang === "vi" ? "+ Đăng đồ" : "+ List"}
               </button>
             </div>
-
 
             {/* DÃY DANH MỤC LỰA CHỌN ĐI TIỆC */}
             <div className="px-3 pt-2 pb-2">
@@ -2550,8 +2617,13 @@ export default function MobileAppClient({
                             loading="lazy"
                           />
 
-                          {/* Tag phân loại: Thuê đồ / Mua sở hữu thật */}
+                          {/* Tag phân loại: TOP / Thuê đồ / Mua sở hữu thật */}
                           <div className="absolute top-2 left-2 flex items-center gap-1 z-10">
+                            {Boolean(p.boostExpiresAt && new Date(p.boostExpiresAt) > new Date()) && (
+                              <span className="bg-[#183A2D] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md shadow-xs uppercase tracking-wider">
+                                TOP
+                              </span>
+                            )}
                             <span className={`text-white text-[9.5px] font-bold px-2 py-0.5 rounded-md shadow-xs ${
                               isRent ? "bg-[#1E5638]/95 backdrop-blur-xs" : "bg-[#C92A2A]/95 backdrop-blur-xs"
                             }`}>
@@ -2634,15 +2706,6 @@ export default function MobileAppClient({
                                 </span>
                               )}
                             </div>
-
-                            {/* Tag Tiết kiệm % như bản web & GOYA */}
-                            {savedPercent > 0 && (
-                              <div className="flex items-center gap-1 pt-0.5">
-                                <span className="text-[9px] font-bold text-[#C92A2A] bg-red-50 border border-red-200/80 px-1.5 py-0.2 rounded font-mono">
-                                  Tiết kiệm {savedPercent}%
-                                </span>
-                              </div>
-                            )}
                           </div>
 
                           {/* Thông số Size, Tình trạng thật & Nút giỏ hàng */}
@@ -2784,19 +2847,24 @@ export default function MobileAppClient({
                           loading="lazy"
                         />
 
-                        {/* Tag phân loại: Thuê đồ / Mua sở hữu thật */}
+                        {/* Tag phân loại: TOP / Thuê đồ / Mua sở hữu thật */}
                         <div className="absolute top-2 left-2 flex items-center gap-1 z-10">
-                            <span className={`text-white text-[9.5px] font-bold px-2 py-0.5 rounded-md shadow-xs ${
-                              isRent ? "bg-[#1E5638]/95 backdrop-blur-xs" : "bg-[#C92A2A]/95 backdrop-blur-xs"
-                            }`}>
-                              {isRent ? "Thuê đồ" : "Mua sở hữu"}
+                          {Boolean(p.boostExpiresAt && new Date(p.boostExpiresAt) > new Date()) && (
+                            <span className="bg-[#183A2D] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md shadow-xs uppercase tracking-wider">
+                              TOP
                             </span>
-                            {savedPercent > 0 && (
-                              <span className="bg-[#C92A2A] text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs font-mono tracking-tight">
-                                -{savedPercent}%
-                              </span>
-                            )}
-                          </div>
+                          )}
+                          <span className={`text-white text-[9.5px] font-bold px-2 py-0.5 rounded-md shadow-xs ${
+                            isRent ? "bg-[#1E5638]/95 backdrop-blur-xs" : "bg-[#C92A2A]/95 backdrop-blur-xs"
+                          }`}>
+                            {isRent ? "Thuê đồ" : "Mua sở hữu"}
+                          </span>
+                          {savedPercent > 0 && (
+                            <span className="bg-[#C92A2A] text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs font-mono tracking-tight">
+                              -{savedPercent}%
+                            </span>
+                          )}
+                        </div>
 
                         {/* Nút tim lưu DB thật */}
                         <button
@@ -2868,15 +2936,6 @@ export default function MobileAppClient({
                                 </span>
                               )}
                             </div>
-
-                            {/* Tag Tiết kiệm % như bản web & GOYA */}
-                            {savedPercent > 0 && (
-                              <div className="flex items-center gap-1 pt-0.5">
-                                <span className="text-[9px] font-bold text-[#C92A2A] bg-red-50 border border-red-200/80 px-1.5 py-0.2 rounded font-mono">
-                                  Tiết kiệm {savedPercent}%
-                                </span>
-                              </div>
-                            )}
                           </div>
 
                           {/* Thông số Size, Tình trạng thật & Nút giỏ hàng */}
@@ -2968,26 +3027,48 @@ export default function MobileAppClient({
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {safeOrdersAsRenter.map((order: any, idx: number) => (
-                      <div key={order.id || idx} className="bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs space-y-2">
-                        <div className="flex items-center justify-between text-[11px]">
-                          <span className="font-mono text-stone-400">Đơn #{order.id?.slice(-6) || idx + 1}</span>
-                          <span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full text-[10px]">
-                            {order.status === "COMPLETED" ? "Đã trả đồ" : "Đang thuê"}
-                          </span>
-                        </div>
-                        <div className="flex gap-3 items-center">
-                          <div className="relative w-14 h-16 rounded-xl overflow-hidden bg-stone-100 shrink-0">
-                            <Image src={order.productImage || FALLBACK_CLOUDINARY_IMG} alt={order.productTitle || "Trang phục"} fill className="object-cover" unoptimized />
+                    {safeOrdersAsRenter.map((order: any, idx: number) => {
+                      const statusInfo = formatOrderStatus(order.status);
+                      return (
+                        <div 
+                          key={order.id || idx} 
+                          onClick={() => {
+                            setSelectedOrderForDetail(order);
+                            setOrderDetailRole("renter");
+                          }}
+                          className="bg-white rounded-2xl p-3.5 border border-stone-200/80 hover:border-[#183A2D] shadow-2xs space-y-2.5 transition cursor-pointer active:scale-[0.99] group"
+                        >
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="font-mono text-stone-400 font-medium">Đơn #{order.orderCode || order.id?.slice(-6) || idx + 1}</span>
+                            <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border shadow-2xs ${statusInfo.badgeClass}`}>
+                              {statusInfo.label}
+                            </span>
                           </div>
-                          <div className="flex-1 min-w-0 text-xs">
-                            <h5 className="font-bold text-stone-900 truncate">{order.productTitle}</h5>
-                            <p className="text-stone-500 text-[11px] mt-0.5">Lịch thuê: {order.startDate} - {order.endDate}</p>
-                            <p className="font-black text-[#16442C] mt-1">{(Number(order.amount) || 0).toLocaleString("vi-VN")}đ</p>
+                          <div className="flex gap-3 items-center">
+                            <div className="relative w-14 h-16 rounded-xl overflow-hidden bg-stone-100 shrink-0 border border-stone-200 shadow-2xs">
+                              <Image src={order.productImage || FALLBACK_CLOUDINARY_IMG} alt={order.productTitle || "Trang phục"} fill className="object-cover" unoptimized />
+                            </div>
+                            <div className="flex-1 min-w-0 text-xs">
+                              <h5 className="font-bold text-stone-900 truncate group-hover:text-[#183A2D] transition">{order.productTitle}</h5>
+                              <p className="text-stone-500 text-[11px] mt-0.5">Lịch thuê: {order.startDate} - {order.endDate}</p>
+                              <div className="flex items-center justify-between mt-1">
+                                <span className="font-black text-[#16442C]">{(Number(order.amount) || 0).toLocaleString("vi-VN")}đ</span>
+                                <span className="text-[10.5px] text-[#183A2D] font-bold group-hover:underline flex items-center gap-0.5">
+                                  <span>Xem chi tiết</span>
+                                  <span>&rarr;</span>
+                                </span>
+                              </div>
+                            </div>
                           </div>
+                          {order.isOverdue && order.status !== "LENDER_COMPLETED" && (
+                            <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-[10.5px] text-amber-800 font-medium">
+                              <span>⚡ Đã qua hạn thuê ({order.endDate})</span>
+                              <span className="underline font-bold text-[#183A2D]">Bấm để cập nhật &rarr;</span>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -3013,29 +3094,42 @@ export default function MobileAppClient({
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {safeOrdersAsLender.map((order: any, idx: number) => (
-                      <div key={order.id || idx} className="bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs space-y-2">
-                        <div className="flex items-center justify-between text-[11px]">
-                          <span className="font-mono text-stone-400">Yêu cầu #{order.id?.slice(-6) || idx + 1}</span>
-                          <span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full text-[10px]">
-                            {order.status === "COMPLETED" ? "Hoàn tất" : "Chờ giao"}
-                          </span>
-                        </div>
-                        <div className="flex gap-3 items-center">
-                          <div className="relative w-14 h-16 rounded-xl overflow-hidden bg-stone-100 shrink-0">
-                            <Image src={order.productImage || FALLBACK_CLOUDINARY_IMG} alt={order.productTitle || "Trang phục"} fill className="object-cover" unoptimized />
+                    {safeOrdersAsLender.map((order: any, idx: number) => {
+                      const statusInfo = formatOrderStatus(order.status);
+                      return (
+                        <div 
+                          key={order.id || idx} 
+                          onClick={() => {
+                            setSelectedOrderForDetail(order);
+                            setOrderDetailRole("lender");
+                          }}
+                          className="bg-white rounded-2xl p-3.5 border border-stone-200/80 hover:border-[#183A2D] shadow-2xs space-y-2.5 transition cursor-pointer active:scale-[0.99] group"
+                        >
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="font-mono text-stone-400 font-medium">Yêu cầu #{order.orderCode || order.id?.slice(-6) || idx + 1}</span>
+                            <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border shadow-2xs ${statusInfo.badgeClass}`}>
+                              {statusInfo.label}
+                            </span>
                           </div>
-                          <div className="flex-1 min-w-0 text-xs">
-                            <h5 className="font-bold text-stone-900 truncate">{order.productTitle}</h5>
-                            <p className="text-stone-500 text-[11px] mt-0.5">Lịch: {order.startDate} - {order.endDate}</p>
-                            <div className="flex items-center justify-between mt-1">
-                              <span className="font-black text-[#16442C]">{(Number(order.amount) || 0).toLocaleString("vi-VN")}đ</span>
-                              <span className="text-[10px] text-stone-400">Cọc: {(Number(order.depositAmount) || 0).toLocaleString("vi-VN")}đ</span>
+                          <div className="flex gap-3 items-center">
+                            <div className="relative w-14 h-16 rounded-xl overflow-hidden bg-stone-100 shrink-0 border border-stone-200 shadow-2xs">
+                              <Image src={order.productImage || FALLBACK_CLOUDINARY_IMG} alt={order.productTitle || "Trang phục"} fill className="object-cover" unoptimized />
+                            </div>
+                            <div className="flex-1 min-w-0 text-xs">
+                              <h5 className="font-bold text-stone-900 truncate group-hover:text-[#183A2D] transition">{order.productTitle}</h5>
+                              <p className="text-stone-500 text-[11px] mt-0.5">Lịch: {order.startDate} - {order.endDate}</p>
+                              <div className="flex items-center justify-between mt-1">
+                                <span className="font-black text-[#16442C]">{(Number(order.amount) || 0).toLocaleString("vi-VN")}đ</span>
+                                <span className="text-[10.5px] text-[#183A2D] font-bold group-hover:underline flex items-center gap-0.5">
+                                  <span>Xem chi tiết</span>
+                                  <span>&rarr;</span>
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -3335,15 +3429,18 @@ export default function MobileAppClient({
 
                     {/* MỤC 4: ĐIỂM LÁ CLOOP (NẠP & ĐẨY BÀI) */}
                     <button
-                      onClick={() => setActiveClosetView("wallet")}
+                      onClick={() => {
+                        setBoostTargetProductId(undefined);
+                        setIsBoostModalOpen(true);
+                      }}
                       className="w-full bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs flex items-center justify-between hover:border-[#183A2D]/50 transition active:scale-[0.99] cursor-pointer text-left group"
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-stone-100 text-[#183A2D] flex items-center justify-center shrink-0">
-                          <Leaf size={17} />
+                          <Zap size={16} />
                         </div>
                         <span className="text-xs font-semibold text-stone-900 group-hover:text-[#183A2D] transition-colors">
-                          Ví Điểm Lá (Nạp &amp; Đẩy bài)
+                          Nạp Lá Đẩy Bài Lên Top
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
@@ -3521,13 +3618,17 @@ export default function MobileAppClient({
                                   <div className="flex gap-3 items-center">
                                     <div className="relative w-16 h-20 rounded-xl overflow-hidden bg-stone-100 shrink-0 border border-stone-100">
                                       <Image src={item.image || FALLBACK_CLOUDINARY_IMG} alt={item.title || "Trang phục"} fill className="object-cover" unoptimized />
-                                      {isHidden && (
+                                      {isHidden ? (
                                         <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center">
                                           <span className="text-[8px] font-bold text-white bg-stone-900/80 px-1 py-0.5 rounded">
                                             Đã ẩn
                                           </span>
                                         </div>
-                                      )}
+                                      ) : Boolean(item.boostExpiresAt && new Date(item.boostExpiresAt) > new Date()) ? (
+                                        <div className="absolute top-1 left-1 bg-[#183A2D] text-white font-bold text-[8px] px-1.5 py-0.5 rounded shadow-xs tracking-wider uppercase">
+                                          TOP
+                                        </div>
+                                      ) : null}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-1.5">
@@ -3540,6 +3641,11 @@ export default function MobileAppClient({
                                         {isHidden ? (
                                           <span className="text-[8.5px] bg-stone-100 text-stone-600 font-bold px-1.5 py-0.2 rounded ml-auto">
                                             Đã ẩn khỏi sàn
+                                          </span>
+                                        ) : Boolean(item.boostExpiresAt && new Date(item.boostExpiresAt) > new Date()) ? (
+                                          <span className="text-[8.5px] bg-[#183A2D] text-white font-bold px-1.5 py-0.2 rounded ml-auto flex items-center gap-0.5">
+                                            <Zap size={9} />
+                                            <span>Đang Top</span>
                                           </span>
                                         ) : (
                                           <span className="text-[8.5px] bg-emerald-100 text-emerald-900 font-bold px-1.5 py-0.2 rounded ml-auto">
@@ -3562,8 +3668,25 @@ export default function MobileAppClient({
                                     </div>
                                   </div>
 
-                                  {/* THANH HÀNH ĐỘNG ĐỒNG BỘ: SỬA, ẨN/HIỆN, XÓA */}
+                                  {/* THANH HÀNH ĐỘNG ĐỒNG BỘ: ĐẨY TOP, SỬA, ẨN/HIỆN, XÓA */}
                                   <div className="flex items-center gap-1.5 pt-2 border-t border-stone-100">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setBoostTargetProductId(item.id);
+                                        setIsBoostModalOpen(true);
+                                      }}
+                                      className={`py-1.5 px-2.5 active:scale-95 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition cursor-pointer ${
+                                        Boolean(item.boostExpiresAt && new Date(item.boostExpiresAt) > new Date())
+                                          ? "bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300"
+                                          : "bg-emerald-50 hover:bg-emerald-100 text-[#183A2D] border border-emerald-200/80"
+                                      }`}
+                                      title="Đẩy bài lên vị trí đầu sàn"
+                                    >
+                                      <Zap size={12} />
+                                      <span>{Boolean(item.boostExpiresAt && new Date(item.boostExpiresAt) > new Date()) ? "Gia hạn" : "Đẩy Top"}</span>
+                                    </button>
+
                                     <button
                                       type="button"
                                       onClick={() => {
@@ -3573,7 +3696,7 @@ export default function MobileAppClient({
                                       title="Chỉnh sửa thông tin món đồ"
                                     >
                                       <Edit size={12} className="text-stone-500" />
-                                      <span>Sửa bài</span>
+                                      <span>Sửa</span>
                                     </button>
 
                                     <button
@@ -3592,12 +3715,12 @@ export default function MobileAppClient({
                                       ) : isHidden ? (
                                         <>
                                           <Eye size={12} className="text-emerald-700" />
-                                          <span>Hiện sàn</span>
+                                          <span>Hiện</span>
                                         </>
                                       ) : (
                                         <>
                                           <EyeOff size={12} className="text-stone-500" />
-                                          <span>Ẩn sàn</span>
+                                          <span>Ẩn</span>
                                         </>
                                       )}
                                     </button>
@@ -3606,7 +3729,7 @@ export default function MobileAppClient({
                                       type="button"
                                       disabled={isDeleting}
                                       onClick={() => handleDeleteProduct(item.id, item.title)}
-                                      className="py-1.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 active:scale-95 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition cursor-pointer border border-rose-200/60"
+                                      className="py-1.5 px-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 active:scale-95 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition cursor-pointer border border-rose-200/60"
                                       title="Xóa vĩnh viễn món đồ khỏi tủ đồ"
                                     >
                                       {isDeleting ? (
@@ -3614,7 +3737,7 @@ export default function MobileAppClient({
                                       ) : (
                                         <>
                                           <Trash2 size={12} className="text-rose-600" />
-                                          <span>Xóa bài</span>
+                                          <span>Xóa</span>
                                         </>
                                       )}
                                     </button>
@@ -7280,6 +7403,56 @@ export default function MobileAppClient({
           onTranscript={(text) => {
             setSearchQuery(text);
             setActiveTab("shop");
+          }}
+        />
+
+        {/* MODAL ĐẨY BÀI LÊN TOP (VÍ LÁ / VÍ TIỀN / CHUYỂN KHOẢN NGÂN HÀNG) */}
+        <BoostListingModal
+          isOpen={isBoostModalOpen}
+          onClose={() => {
+            setIsBoostModalOpen(false);
+            setBoostTargetProductId(undefined);
+          }}
+          items={safeMyProducts.map((p: any) => ({
+            id: p.id,
+            title: p.title,
+            image: p.image || FALLBACK_CLOUDINARY_IMG,
+            size: p.size,
+            rentalPrice: p.rentalPrice,
+            salePrice: p.salePrice,
+            boostExpiresAt: p.boostExpiresAt,
+            isBoostActive: Boolean(p.boostExpiresAt && new Date(p.boostExpiresAt) > new Date()),
+            boostRemainingHours: p.boostExpiresAt && new Date(p.boostExpiresAt) > new Date()
+              ? Math.max(1, Math.round((new Date(p.boostExpiresAt).getTime() - Date.now()) / (3600 * 1000)))
+              : 0,
+            boostScore: p.boostScore || 0
+          }))}
+          preSelectedItemId={boostTargetProductId}
+          userCoins={closetData?.user?.cloopCoins || 0}
+          walletBalance={closetData?.user?.walletBalance || 0}
+          clientUserId={currentUser?.id || closetData?.user?.id}
+          onSuccess={handleBoostSuccess}
+        />
+
+        {/* MODAL CHI TIẾT ĐƠN HÀNG TRÊN APP MOBILE */}
+        <OrderDetailModal
+          isOpen={Boolean(selectedOrderForDetail)}
+          onClose={() => setSelectedOrderForDetail(null)}
+          order={selectedOrderForDetail}
+          role={orderDetailRole}
+          clientUserId={currentUser?.id || closetData?.user?.id}
+          onStatusUpdated={(orderId, newStatus) => {
+            setClosetData((prev: any) => {
+              if (!prev) return prev;
+              const updateList = (list: any[]) =>
+                (list || []).map((o: any) => (o.id === orderId ? { ...o, status: newStatus } : o));
+              return {
+                ...prev,
+                ordersAsRenter: updateList(prev.ordersAsRenter),
+                ordersAsLender: updateList(prev.ordersAsLender)
+              };
+            });
+            setSelectedOrderForDetail((prev: any) => (prev ? { ...prev, status: newStatus } : null));
           }}
         />
 

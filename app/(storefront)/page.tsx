@@ -127,7 +127,15 @@ export default function Home() {
   const [isVisualSearchOpen, setIsVisualSearchOpen] = useState(false);
   const [activeClosetIndex, setActiveClosetIndex] = useState(0);
   const [products, setProducts] = useState<any[]>(REAL_DEFAULT_PRODUCTS);
+  const [activePassportStop, setActivePassportStop] = useState(3);
   const occasionScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActivePassportStop((prev) => (prev + 1) % 4);
+    }, 2200);
+    return () => clearInterval(timer);
+  }, []);
 
   const handleOccasionWheel = (e: React.WheelEvent) => {
     if (!occasionScrollRef.current) return;
@@ -425,10 +433,7 @@ export default function Home() {
       <section className="w-full max-w-7xl xl:max-w-[1380px] mx-auto px-4 md:px-6 lg:px-8 py-8 md:py-12">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-3">
           <div>
-            <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200/80 font-ui">
-              BỘ SƯU TẬP TUYỂN CHỌN
-            </span>
-            <h2 className="font-heading text-2xl sm:text-3xl md:text-4xl text-[#0A2517] font-extrabold tracking-tight mt-1.5">
+            <h2 className="font-heading text-2xl sm:text-3xl md:text-4xl text-[#0A2517] font-extrabold tracking-tight">
               Tìm Phong Cách Theo Dịp Của Bạn
             </h2>
           </div>
@@ -507,15 +512,9 @@ export default function Home() {
         {/* Header & Filter Row */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
           <div>
-            <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200/80 font-ui">
-              THỜI TRANG THỊNH HÀNH
-            </span>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-heading font-extrabold text-[#0A2517] tracking-tight mt-1.5">
-              Đang Được Xoay Vòng Nhiều Nhất
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-heading font-extrabold text-[#0A2517] tracking-tight">
+              Thời Trang Thịnh Hành
             </h2>
-            <p className="text-xs sm:text-sm text-stone-600 font-body font-light mt-1">
-              Trải nghiệm các thiết kế chính hãng từ các thương hiệu lớn với mức giá chỉ từ 10%.
-            </p>
           </div>
 
           <Link 
@@ -803,28 +802,45 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Travel route stamp milestones */}
+                {/* Travel route stamp milestones with jumping active stop indicator */}
                 <div className="pt-4 border-t border-stone-100 space-y-2.5">
                   <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">
                     Hành Trình Du Ngoạn Của Trang Phục:
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs font-mono">
-                    <div className="p-2.5 bg-[#FAF9F5] rounded-xl border border-stone-200/70">
-                      <p className="font-bold text-[#183A2D]">Hà Nội</p>
-                      <span className="text-[9.5px] text-stone-400">Dạ Vũ 2024</span>
-                    </div>
-                    <div className="p-2.5 bg-[#FAF9F5] rounded-xl border border-stone-200/70">
-                      <p className="font-bold text-[#183A2D]">Đà Lạt</p>
-                      <span className="text-[9.5px] text-stone-400">Ảnh Cưới 2025</span>
-                    </div>
-                    <div className="p-2.5 bg-[#FAF9F5] rounded-xl border border-stone-200/70">
-                      <p className="font-bold text-[#183A2D]">TP.HCM</p>
-                      <span className="text-[9.5px] text-stone-400">Gala 2026</span>
-                    </div>
-                    <div className="p-2.5 bg-emerald-50 rounded-xl border border-emerald-300 text-emerald-900 font-bold">
-                      <p>Đà Nẵng</p>
-                      <span className="text-[9.5px] text-emerald-700">Sẵn sàng</span>
-                    </div>
+                    {[
+                      { city: "Hà Nội", sub: "Dạ Vũ 2024", isReady: false },
+                      { city: "Đà Lạt", sub: "Ảnh Cưới 2025", isReady: false },
+                      { city: "TP.HCM", sub: "Gala 2026", isReady: false },
+                      { city: "Đà Nẵng", sub: "Sẵn sàng", isReady: true },
+                    ].map((stop, idx) => {
+                      const isActive = activePassportStop === idx;
+                      return (
+                        <div
+                          key={stop.city}
+                          className={`p-2.5 rounded-xl border transition-all duration-300 relative ${
+                            isActive
+                              ? "bg-emerald-50 border-emerald-500 shadow-md scale-105 text-emerald-950 font-bold ring-2 ring-emerald-400/40"
+                              : stop.isReady
+                              ? "bg-emerald-50/60 border-emerald-300 text-emerald-900 font-bold"
+                              : "bg-[#FAF9F5] border-stone-200/70 text-[#183A2D]"
+                          }`}
+                        >
+                          {isActive && (
+                            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-600"></span>
+                            </span>
+                          )}
+                          <p className={`font-bold ${isActive ? "text-emerald-950" : stop.isReady ? "text-emerald-900" : "text-[#183A2D]"}`}>
+                            {stop.city}
+                          </p>
+                          <span className={`text-[9.5px] ${isActive ? "text-emerald-700 font-semibold" : stop.isReady ? "text-emerald-700" : "text-stone-400"}`}>
+                            {stop.sub}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 

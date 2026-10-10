@@ -118,6 +118,31 @@ export async function POST(req: Request) {
               }
             }
           });
+
+          // Xử lý nếu đây là đơn Đẩy Bài (PRODUCT_BOOST)
+          const raw = (coinTopUp.rawPayload as any) || {};
+          if (raw.type === "PRODUCT_BOOST" && raw.productId) {
+            const hours = Number(raw.hours || 24);
+            const targetProduct = await tx.product.findUnique({
+              where: { id: raw.productId },
+              select: { id: true, title: true, boostExpiresAt: true }
+            });
+            if (targetProduct) {
+              const now = new Date();
+              const currentExpiry =
+                targetProduct.boostExpiresAt && targetProduct.boostExpiresAt > now
+                  ? targetProduct.boostExpiresAt
+                  : now;
+              const newExpiresAt = new Date(currentExpiry.getTime() + hours * 3600 * 1000);
+              await tx.product.update({
+                where: { id: targetProduct.id },
+                data: {
+                  boostExpiresAt: newExpiresAt,
+                  lastBumpedAt: now
+                }
+              });
+            }
+          }
         });
 
         console.log(`✅ [CoinTopUp] Đã cộng thành công ${coinTopUp.totalCoins} Lá cho User ${coinTopUp.userId}`);

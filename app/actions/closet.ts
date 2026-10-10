@@ -652,23 +652,41 @@ export async function getMyClosetMobileDataAction(clientUserId?: string) {
         }
       }),
       prisma.rentalHistory.findMany({
-        where: { product: { userId } },
+        where: { product: { userId }, isDeleted: false },
         orderBy: { createdAt: "desc" },
-        take: 10,
+        take: 20,
         include: {
           product: {
-            select: { id: true, title: true, images: { take: 1, select: { url: true } } }
+            select: {
+              id: true,
+              title: true,
+              size: true,
+              material: true,
+              category: true,
+              province: true,
+              specificAddress: true,
+              images: { select: { url: true } }
+            }
           },
           invoice: true
         }
       }),
       prisma.rentalHistory.findMany({
-        where: { renterId: userId },
+        where: { renterId: userId, isDeleted: false },
         orderBy: { createdAt: "desc" },
-        take: 10,
+        take: 20,
         include: {
           product: {
-            select: { id: true, title: true, images: { take: 1, select: { url: true } } }
+            select: {
+              id: true,
+              title: true,
+              size: true,
+              material: true,
+              category: true,
+              province: true,
+              specificAddress: true,
+              images: { select: { url: true } }
+            }
           },
           invoice: true
         }
@@ -738,6 +756,10 @@ export async function getMyClosetMobileDataAction(clientUserId?: string) {
         isShopHidden,
         isRentalActive,
         isSaleActive,
+        boostExpiresAt: p.boostExpiresAt ? p.boostExpiresAt.toISOString() : null,
+        isBoostActive: Boolean(p.boostExpiresAt && new Date(p.boostExpiresAt) > new Date()),
+        boostScore: p.boostScore || 0,
+        lastBumpedAt: p.lastBumpedAt ? p.lastBumpedAt.toISOString() : null,
         createdAt: p.createdAt.toISOString()
       };
     });
@@ -807,32 +829,190 @@ export async function getMyClosetMobileDataAction(clientUserId?: string) {
         greenPoints: dbUser?.cloopCoins ?? 120
       },
       myProducts: formattedProducts,
-      ordersAsLender: rentalsAsOwner.map(r => ({
-        id: r.id,
-        status: r.status,
-        startDate: r.start_date ? new Date(r.start_date).toLocaleDateString("vi-VN") : "",
-        endDate: r.end_date ? new Date(r.end_date).toLocaleDateString("vi-VN") : "",
-        productTitle: r.product?.title || "Trang phục tiệc",
-        productImage: r.product?.images?.[0]?.url || "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530424/cloop_mobile_closet/pt4xccwmvrjsrnhrgnib.png",
-        amount: r.invoice?.amount || r.invoice?.rentalFee || 0,
-        depositAmount: r.invoice?.depositAmount || 0,
-        createdAt: r.createdAt ? new Date(r.createdAt).toLocaleDateString("vi-VN") : ""
-      })),
-      ordersAsRenter: rentalsAsRenter.map(r => ({
-        id: r.id,
-        status: r.status,
-        startDate: r.start_date ? new Date(r.start_date).toLocaleDateString("vi-VN") : "",
-        endDate: r.end_date ? new Date(r.end_date).toLocaleDateString("vi-VN") : "",
-        productTitle: r.product?.title || "Trang phục tiệc",
-        productImage: r.product?.images?.[0]?.url || "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530424/cloop_mobile_closet/pt4xccwmvrjsrnhrgnib.png",
-        amount: r.invoice?.amount || r.invoice?.rentalFee || 0,
-        depositAmount: r.invoice?.depositAmount || 0,
-        createdAt: r.createdAt ? new Date(r.createdAt).toLocaleDateString("vi-VN") : ""
-      }))
+      ordersAsLender: rentalsAsOwner.map(r => {
+        const primaryImg = r.product?.images?.[0]?.url || "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530424/cloop_mobile_closet/pt4xccwmvrjsrnhrgnib.png";
+        const rentalFee = r.invoice?.rentalFee || (r.invoice?.amount ? Math.max(0, r.invoice.amount - (r.invoice.depositAmount || 0)) : 0);
+        const depositAmount = r.invoice?.depositAmount || 0;
+        const totalAmount = r.invoice?.amount || (rentalFee + depositAmount);
+        const isOverdue = Boolean(r.end_date && new Date(r.end_date) < new Date() && r.status !== "LENDER_COMPLETED" && r.status !== "CANCELLED");
+
+        return {
+          id: r.id,
+          orderCode: r.invoice?.orderCode ? String(r.invoice.orderCode) : r.id.slice(-6).toUpperCase(),
+          status: r.status,
+          startDate: r.start_date ? new Date(r.start_date).toLocaleDateString("vi-VN") : "",
+          endDate: r.end_date ? new Date(r.end_date).toLocaleDateString("vi-VN") : "",
+          rawStartDate: r.start_date ? r.start_date.toISOString() : null,
+          rawEndDate: r.end_date ? r.end_date.toISOString() : null,
+          isOverdue,
+          productTitle: r.product?.title || "Trang phục tiệc",
+          productImage: primaryImg,
+          productSize: r.product?.size || "M",
+          productCategory: r.product?.category || "Trang phục",
+          productMaterial: r.product?.material || "Cao cấp",
+          productLocation: r.product?.specificAddress || r.product?.province || "Hà Nội",
+          amount: totalAmount,
+          rentalFee,
+          depositAmount,
+          shippingFee: r.invoice?.shippingFeeCollected || 0,
+          renterName: r.renter_name || "Khách thuê",
+          renterPhone: r.renter_phone || "",
+          ownerName: r.owner_name || "Chủ đồ CLOOP",
+          ownerPhone: r.owner_phone || "",
+          shippingCode: r.shippingCode || `GHN${r.id.slice(-8).toUpperCase()}VN`,
+          createdAt: r.createdAt ? new Date(r.createdAt).toLocaleDateString("vi-VN") : ""
+        };
+      }),
+      ordersAsRenter: rentalsAsRenter.map(r => {
+        const primaryImg = r.product?.images?.[0]?.url || "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530424/cloop_mobile_closet/pt4xccwmvrjsrnhrgnib.png";
+        const rentalFee = r.invoice?.rentalFee || (r.invoice?.amount ? Math.max(0, r.invoice.amount - (r.invoice.depositAmount || 0)) : 0);
+        const depositAmount = r.invoice?.depositAmount || 0;
+        const totalAmount = r.invoice?.amount || (rentalFee + depositAmount);
+        const isOverdue = Boolean(r.end_date && new Date(r.end_date) < new Date() && r.status !== "LENDER_COMPLETED" && r.status !== "CANCELLED");
+
+        return {
+          id: r.id,
+          orderCode: r.invoice?.orderCode ? String(r.invoice.orderCode) : r.id.slice(-6).toUpperCase(),
+          status: r.status,
+          startDate: r.start_date ? new Date(r.start_date).toLocaleDateString("vi-VN") : "",
+          endDate: r.end_date ? new Date(r.end_date).toLocaleDateString("vi-VN") : "",
+          rawStartDate: r.start_date ? r.start_date.toISOString() : null,
+          rawEndDate: r.end_date ? r.end_date.toISOString() : null,
+          isOverdue,
+          productTitle: r.product?.title || "Trang phục tiệc",
+          productImage: primaryImg,
+          productSize: r.product?.size || "M",
+          productCategory: r.product?.category || "Trang phục",
+          productMaterial: r.product?.material || "Cao cấp",
+          productLocation: r.product?.specificAddress || r.product?.province || "Hà Nội",
+          amount: totalAmount,
+          rentalFee,
+          depositAmount,
+          shippingFee: r.invoice?.shippingFeeCollected || 0,
+          renterName: r.renter_name || "Khách thuê",
+          renterPhone: r.renter_phone || "",
+          ownerName: r.owner_name || "Chủ đồ CLOOP",
+          ownerPhone: r.owner_phone || "",
+          shippingCode: r.shippingCode || `GHN${r.id.slice(-8).toUpperCase()}VN`,
+          createdAt: r.createdAt ? new Date(r.createdAt).toLocaleDateString("vi-VN") : ""
+        };
+      })
     };
   } catch (error: any) {
     console.error("Lỗi getMyClosetMobileDataAction:", error);
     return { success: false, error: error.message || "Lỗi nạp dữ liệu cá nhân" };
+  }
+}
+
+// ==========================================
+// 🛡️ CHUYỂN TRẠNG THÁI ĐƠN HÀNG TRÊN APP MOBILE (1 CHẠM TỨC THÌ)
+// ==========================================
+export async function advanceMobileOrderStatusAction({
+  orderId,
+  action,
+  clientUserId
+}: {
+  orderId: string;
+  action: "CONFIRM_RECEIVED" | "CONFIRM_RETURNED" | "COMPLETE_ORDER";
+  clientUserId?: string;
+}) {
+  try {
+    if (!orderId) {
+      return { success: false, error: "Thiếu mã đơn hàng" };
+    }
+
+    let authUser: any = null;
+    try {
+      authUser = await requireUser();
+    } catch {}
+
+    const userId = authUser?.id || clientUserId;
+    if (!userId) {
+      return { success: false, error: "Vui lòng đăng nhập" };
+    }
+
+    const rental = await prisma.rentalHistory.findUnique({
+      where: { id: orderId },
+      include: { product: true, invoice: true }
+    });
+
+    if (!rental) {
+      return { success: false, error: "Không tìm thấy đơn hàng" };
+    }
+
+    const now = new Date();
+    let nextStatus = rental.status;
+
+    if (action === "CONFIRM_RECEIVED") {
+      nextStatus = "BORROWER_RECEIVED";
+      await prisma.rentalHistory.update({
+        where: { id: orderId },
+        data: { status: "BORROWER_RECEIVED" }
+      });
+    } else if (action === "CONFIRM_RETURNED") {
+      nextStatus = "BORROWER_RETURNED";
+      await prisma.rentalHistory.update({
+        where: { id: orderId },
+        data: {
+          status: "BORROWER_RETURNED",
+          actual_return_date: now
+        }
+      });
+    } else if (action === "COMPLETE_ORDER") {
+      nextStatus = "LENDER_COMPLETED";
+      await prisma.$transaction(async (tx) => {
+        await tx.rentalHistory.update({
+          where: { id: orderId },
+          data: {
+            status: "LENDER_COMPLETED",
+            completedAt: now,
+            actual_return_date: rental.actual_return_date || now
+          }
+        });
+
+        // Cập nhật trạng thái sản phẩm trở lại sẵn sàng cho thuê
+        if (rental.product_id) {
+          await tx.listing.updateMany({
+            where: { productId: rental.product_id, isDeleted: false },
+            data: { status: "AVAILABLE" }
+          });
+          await tx.product.update({
+            where: { id: rental.product_id },
+            data: { status: "ON_MARKET" }
+          });
+        }
+
+        // Hoàn cọc về ví của người thuê nếu có cọc và invoice
+        if (rental.invoice && rental.invoice.depositAmount > 0) {
+          await tx.user.update({
+            where: { id: rental.renterId },
+            data: {
+              walletBalance: { increment: rental.invoice.depositAmount }
+            }
+          });
+        }
+      });
+    }
+
+    try {
+      revalidatePath("/app");
+      revalidatePath("/my-closet/orders");
+      revalidatePath("/my-closet");
+      revalidatePath("/shop");
+    } catch (_) {}
+
+    return {
+      success: true,
+      newStatus: nextStatus,
+      message: action === "CONFIRM_RECEIVED"
+        ? "Đã xác nhận nhận đồ thành công!"
+        : action === "CONFIRM_RETURNED"
+        ? "Đã báo gửi trả đồ thành công!"
+        : "Đã hoàn tất đơn hàng và hoàn cọc thành công!"
+    };
+  } catch (err: any) {
+    console.error("Lỗi advanceMobileOrderStatusAction:", err);
+    return { success: false, error: err.message || "Không thể cập nhật đơn hàng" };
   }
 }
 

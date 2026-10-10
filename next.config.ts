@@ -105,6 +105,20 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: "/amin",
+        destination: "/admin",
+        permanent: true,
+      },
+      {
+        source: "/amin/:path*",
+        destination: "/admin/:path*",
+        permanent: true,
+      },
+    ];
+  },
   typescript: {
     ignoreBuildErrors: true,
   },

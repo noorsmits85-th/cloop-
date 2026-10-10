@@ -70,6 +70,7 @@ model Product {
   boostExpiresAt  DateTime?
   lastBumpedAt    DateTime?
   isHighlighted   Boolean            @default(false)
+  boostScore      Int                @default(0)
   likeCount       Int                @default(0)
   saveCount       Int                @default(0)
   aiCategory      String?

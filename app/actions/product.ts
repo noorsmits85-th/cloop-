@@ -451,6 +451,36 @@ async function fetchShopProductsDirect(
     }
   });
 
+  // ⚡ THUẬT TOÁN ĐUA TOP SÀN:
+  // 1. Chỉ các sản phẩm đang có hiệu lực đẩy bài (boostExpiresAt > now) mới được lên cụm TOP đầu feed.
+  // 2. Trong cụm TOP: Xếp hạng tuyệt đối theo TỔNG SỐ LÁ ĐÃ TÍCH LŨY (boostScore) GIẢM DẦN.
+  //    Món đồ có tổng lịch sử nạp cộng lại nhiều Lá nhất luôn đánh bại người nộp cùng gói ít Lá hơn.
+  //    Cho phép nộp nhiều gói / nhiều Lá trong cùng ngày để chạy đua vị trí #1!
+  // 3. Cùng điểm Lá tích lũy: Ai có thời hạn boostExpiresAt còn dài hơn sẽ đứng trước.
+  // 4. Các sản phẩm thường: Xếp theo lastBumpedAt / createdAt mới nhất.
+  const now = new Date();
+  rawProducts.sort((a, b) => {
+    const aActive = Boolean(a.boostExpiresAt && new Date(a.boostExpiresAt) > now);
+    const bActive = Boolean(b.boostExpiresAt && new Date(b.boostExpiresAt) > now);
+
+    if (aActive && !bActive) return -1;
+    if (!aActive && bActive) return 1;
+
+    if (aActive && bActive) {
+      const aScore = (a as any).boostScore || 0;
+      const bScore = (b as any).boostScore || 0;
+      if (bScore !== aScore) return bScore - aScore;
+
+      const aTime = new Date(a.boostExpiresAt!).getTime();
+      const bTime = new Date(b.boostExpiresAt!).getTime();
+      if (bTime !== aTime) return bTime - aTime;
+    }
+
+    const aBump = (a.lastBumpedAt ? new Date(a.lastBumpedAt) : new Date(a.createdAt)).getTime();
+    const bBump = (b.lastBumpedAt ? new Date(b.lastBumpedAt) : new Date(b.createdAt)).getTime();
+    return bBump - aBump;
+  });
+
   const hasMore = rawProducts.length > limit;
   const items = hasMore ? rawProducts.slice(0, limit) : rawProducts;
 
@@ -516,7 +546,9 @@ async function fetchShopProductsDirect(
       waist: p.waist || null,
       hips: p.hips || null,
       createdAt: p.createdAt.toISOString(),
-      isBoosted: Boolean(p.isHighlighted || (p.boostExpiresAt && new Date(p.boostExpiresAt) > new Date()))
+      isBoosted: Boolean(p.isHighlighted || (p.boostExpiresAt && new Date(p.boostExpiresAt) > new Date())),
+      boostExpiresAt: p.boostExpiresAt?.toISOString() || null,
+      boostScore: (p as any).boostScore || 0
     };
   });
 

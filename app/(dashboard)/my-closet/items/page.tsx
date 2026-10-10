@@ -99,7 +99,9 @@ export default async function MyClosetItemsPage() {
       isShopHidden,
       hasBlog,
       blogTitle,
-      isBlogHidden
+      isBlogHidden,
+      boostExpiresAt: item.boostExpiresAt ? item.boostExpiresAt.toISOString() : null,
+      isHighlighted: item.isHighlighted || false
     };
   });
 
