@@ -3028,7 +3028,7 @@ export default function MobileAppClient({
                 ) : (
                   <div className="space-y-2">
                     {safeOrdersAsRenter.map((order: any, idx: number) => {
-                      const statusInfo = formatOrderStatus(order.status);
+                      const statusInfo = formatOrderStatus(order.status, order.isOverdue);
                       return (
                         <div 
                           key={order.id || idx} 
@@ -3095,7 +3095,7 @@ export default function MobileAppClient({
                 ) : (
                   <div className="space-y-2">
                     {safeOrdersAsLender.map((order: any, idx: number) => {
-                      const statusInfo = formatOrderStatus(order.status);
+                      const statusInfo = formatOrderStatus(order.status, order.isOverdue);
                       return (
                         <div 
                           key={order.id || idx} 

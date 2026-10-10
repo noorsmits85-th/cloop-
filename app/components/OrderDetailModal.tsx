@@ -57,7 +57,31 @@ interface OrderDetailModalProps {
   onStatusUpdated?: (orderId: string, newStatus: string) => void;
 }
 
-export function formatOrderStatus(status: string) {
+export function formatOrderStatus(status: string, isOverdue: boolean = false) {
+  if (isOverdue && status !== "LENDER_COMPLETED" && status !== "COMPLETED" && status !== "CANCELLED") {
+    if (status === "LENDER_SHIPPED") {
+      return {
+        label: "Giao trễ / Quá hạn",
+        badgeClass: "bg-amber-50 text-amber-900 border-amber-300 font-bold",
+        stepIndex: 1
+      };
+    }
+    if (status === "BORROWER_RECEIVED") {
+      return {
+        label: "Quá hạn trả đồ",
+        badgeClass: "bg-rose-50 text-rose-900 border-rose-300 font-bold",
+        stepIndex: 2
+      };
+    }
+    if (status === "BORROWER_RETURNED") {
+      return {
+        label: "Chờ kiểm & Trả cọc",
+        badgeClass: "bg-purple-50 text-purple-900 border-purple-300 font-bold",
+        stepIndex: 3
+      };
+    }
+  }
+
   switch (status) {
     case "PENDING_APPROVAL":
       return {
@@ -140,7 +164,7 @@ export default function OrderDetailModal({
 
   if (!isOpen || !order) return null;
 
-  const statusInfo = formatOrderStatus(order.status);
+  const statusInfo = formatOrderStatus(order.status, order.isOverdue);
   const orderCodeDisplay = order.orderCode || order.id.slice(-6).toUpperCase();
 
   const handleCopy = (text: string, key: string) => {
