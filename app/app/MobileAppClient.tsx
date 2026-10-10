@@ -3517,6 +3517,7 @@ export default function MobileAppClient({
                   <div className="space-y-3 animate-in fade-in slide-in-from-right-2 duration-200">
                     {/* Nút quay lại Menu danh mục */}
                     <button
+                      type="button"
                       onClick={() => setActiveClosetView("menu")}
                       className="flex items-center gap-1.5 text-xs font-bold text-[#16442C] hover:underline cursor-pointer py-1"
                     >
@@ -3844,15 +3845,6 @@ export default function MobileAppClient({
                     {/* CHI TIẾT PHÂN MỤC 3: VÍ THU NHẬP & LIÊN KẾT RÚT TIỀN (ĐỒNG BỘ 100% BẢN WEB) */}
                     {activeClosetView === "wallet" && (
                       <div className="space-y-3">
-                        {/* Nút quay lại danh mục */}
-                        <button
-                          type="button"
-                          onClick={() => setActiveClosetView("menu")}
-                          className="flex items-center gap-1.5 text-xs font-bold text-stone-600 hover:text-[#1E5638] transition cursor-pointer"
-                        >
-                          <ArrowLeft size={14} /> Quay lại danh mục quản lý
-                        </button>
-
                         {/* Thẻ Số Dư Ví Thu Nhập */}
                         <div className="bg-gradient-to-br from-[#1E5638] to-[#133c26] rounded-3xl p-5 text-white shadow-md relative overflow-hidden">
                           <div className="absolute top-0 right-0 w-36 h-36 bg-emerald-400/10 rounded-full blur-2xl pointer-events-none" />
