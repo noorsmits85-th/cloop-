@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { getShopProductsAction } from "@/app/actions/product";
+import { getShopProducts } from "@/src/lib/queries/shop";
 import { ShopClient } from "./ShopClient";
 
 export const dynamic = "force-dynamic";
@@ -11,17 +11,16 @@ interface PageProps {
 async function ShopContentAsync({ searchParams }: PageProps) {
   const resolvedParams = await searchParams;
   const type = (resolvedParams.type as string) || "all";
-  const category = (resolvedParams.category as string) || null;
-  const occasion = (resolvedParams.occasion as string) || null;
+  const categoryParam = (resolvedParams.category as string) || (resolvedParams.occasion as string) || null;
   const size = (resolvedParams.size as string) || "all";
   const material = (resolvedParams.material as string) || "all";
-  const search = (resolvedParams.search as string) || "";
+  const search = (resolvedParams.search as string) || (resolvedParams.q as string) || "";
 
-  // ⚡ SERVER-FIRST PRELOAD: Fetch cached products directly on the server (<10ms)
-  const initialRes = await getShopProductsAction({
+  // ⚡ SERVER-FIRST PRELOAD: Fetch directly from Server Query with 30s cache (<10ms)
+  const result = await getShopProducts({
     type,
-    category,
-    occasion: occasion && occasion !== "Tất cả" ? occasion : undefined,
+    category: categoryParam,
+    occasion: categoryParam,
     search: search.trim() || undefined,
     size: size !== "all" ? size : undefined,
     material: material !== "all" ? material : undefined,
@@ -29,17 +28,13 @@ async function ShopContentAsync({ searchParams }: PageProps) {
     limit: 24,
   });
 
-  const initialProducts = initialRes.success && initialRes.products ? initialRes.products : [];
-  const initialTotalCount = initialRes.totalCount || 0;
-  const initialHasMore = Boolean(initialRes.hasMore);
-
   return (
     <ShopClient
-      initialProducts={initialProducts as any}
-      initialTotalCount={initialTotalCount}
-      initialHasMore={initialHasMore}
+      initialProducts={result.products as any}
+      initialTotalCount={result.totalCount}
+      initialHasMore={result.hasMore}
       initialType={type}
-      initialOccasion={occasion || category || "Tất cả"}
+      initialOccasion={categoryParam || "Tất cả"}
       initialSize={size}
       initialMaterial={material}
       initialSearch={search}

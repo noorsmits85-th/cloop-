@@ -53,19 +53,18 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type") || "all";
-    const category = searchParams.get("category");
-    const occasion = searchParams.get("occasion");
+    const category = searchParams.get("category") || searchParams.get("occasion");
     const search = searchParams.get("search");
     const size = searchParams.get("size");
     const material = searchParams.get("material");
     const page = parseInt(searchParams.get("page") || "1", 10);
-    const limit = parseInt(searchParams.get("limit") || "16", 10);
+    const limit = parseInt(searchParams.get("limit") || "24", 10);
 
-    const { getShopProductsAction } = await import("@/app/actions/product");
-    const result = await getShopProductsAction({
+    const { getShopProducts } = await import("@/src/lib/queries/shop");
+    const result = await getShopProducts({
       type,
       category,
-      occasion,
+      occasion: category,
       search: search || undefined,
       size: size || undefined,
       material: material || undefined,
@@ -73,7 +72,7 @@ export async function GET(request: Request) {
       limit
     });
 
-    return NextResponse.json(result);
+    return NextResponse.json({ success: true, ...result });
   } catch (error: any) {
     console.error("GET /api/products error:", error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
