@@ -273,6 +273,7 @@ export async function getShopProducts(params: ShopFilterParams): Promise<ShopQue
   // ⚡ HỢP NHẤT VÀ CHUẨN HÓA CATEGORY / OCCASION:
   // Dù URL truyền ?category= hay ?occasion=, đều được quy về 1 giá trị duy nhất
   // giúp unstable_cache luôn trúng 100% Cache Key duy nhất cho cùng một danh mục lọc
+  const type = (params.type || "all").trim().toLowerCase();
   const unifiedCategory = (params.category || params.occasion || "").trim();
   const category = unifiedCategory && unifiedCategory !== "Tất cả" && unifiedCategory !== "all"
     ? unifiedCategory
