@@ -1594,7 +1594,7 @@ export default function MobileAppClient({
     syncUnifiedAddress(deliveryAddressPayload, true);
 
     try {
-      const res = await createBooking({
+      const bookingPromise = createBooking({
         productId: checkoutProduct.id,
         startDate: checkoutStartDate,
         endDate: checkoutEndDate,
@@ -1607,6 +1607,13 @@ export default function MobileAppClient({
         shippingFee: effectiveShipping,
         deliveryAddress: deliveryAddressPayload,
       });
+
+      // 🛡️ Client Timeout Guard (10 giây): Ngăn chặn nút bấm quay vô tận khi mạng 4G chập chờn
+      const timeoutGuard = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Quá thời gian kết nối (10s). Vui lòng bấm thử lại để hệ thống khôi phục mã QR thanh toán của bạn.")), 10000)
+      );
+
+      const res: any = await Promise.race([bookingPromise, timeoutGuard]);
 
       if (res.success && res.rentalId) {
         setCartItems(prev => prev.filter(item => item.id !== checkoutProduct.id));
@@ -6915,6 +6922,14 @@ export default function MobileAppClient({
                         </span>
                       </div>
                     </div>
+
+                    {/* Thông báo lỗi tạo đơn (Hiển thị ngay sát trên nút bấm để không bị khuất màn hình) */}
+                    {bookingError && (
+                      <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-start gap-2 shadow-xs">
+                        <span className="text-sm">⚠️</span>
+                        <div className="flex-1 leading-relaxed">{bookingError}</div>
+                      </div>
+                    )}
 
                     {/* Nút gửi đơn hàng */}
                     <div className="pt-1">

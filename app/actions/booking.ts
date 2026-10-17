@@ -152,6 +152,219 @@ export async function createBooking({
       ? (subTotal + deposit + serviceFee + shippingFee)
       : (subTotal + serviceFee + shippingFee);
 
+    // 🛡️ CHỐT CHẶN BẢO VỆ ĐƠN ĐÃ THANH TOÁN (Risk 1):
+    // Tuyệt đối không mở khóa hoặc ghi đè những đơn đã thanh toán thành công (PAID) hoặc đang giao nhận
+    const activePaidRental = await prisma.rentalHistory.findFirst({
+      where: {
+        product_id: productId,
+        isDeleted: false,
+        OR: [
+          { status: { in: ["OWNER_PACKED", "LENDER_SHIPPED", "BORROWER_RECEIVED"] } },
+          { invoice: { status: "PAID" } }
+        ]
+      }
+    });
+
+    if (activePaidRental) {
+      return {
+        success: false,
+        error: "Sản phẩm hiện đang có đơn thuê đã thanh toán hoặc đang được giao nhận."
+      };
+    }
+
+    // 🌟 1.1 IDEMPOTENCY & SOFT-LOCK AUTO-RELEASE (CHỐNG TỰ KHÓA CHÍNH MÌNH & ZOMBIE LOCK)
+    const existingPendingRental = await prisma.rentalHistory.findFirst({
+      where: {
+        product_id: productId,
+        status: "PENDING_APPROVAL",
+        isDeleted: false,
+        invoice: {
+          status: "PENDING"
+        }
+      },
+      orderBy: { createdAt: "desc" },
+      include: {
+        invoice: true
+      }
+    });
+
+    if (existingPendingRental) {
+      const orderAgeMs = Date.now() - new Date(existingPendingRental.createdAt).getTime();
+      const isExpired = orderAgeMs > 15 * 60 * 1000; // Quá 15 phút chưa thanh toán
+      const isSameUser = existingPendingRental.renterId === user.id || 
+        (Boolean(verifiedRenterPhone) && existingPendingRental.renter_phone === verifiedRenterPhone);
+
+      if (!isExpired && isSameUser) {
+        // TRƯỜNG HỢP 1: CÙNG MỘT KHÁCH HÀNG BẤM LẠI DO RỚT MẠNG 4G / F5
+        log.info("Idempotent booking hit: Resuming pending order", {
+          rentalId: existingPendingRental.id,
+          orderCode: existingPendingRental.invoice?.orderCode
+        });
+
+        const host = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://cloop-sable.vercel.app");
+        const inv = existingPendingRental.invoice;
+        let qrCode = null;
+        let checkoutUrl = inv?.paymentLinkId ? `https://pay.payos.vn/web/${inv.paymentLinkId}` : null;
+        let orderCodeNum = inv?.orderCode ? Number(inv.orderCode) : Number(existingPendingRental.id.slice(-6).toUpperCase());
+        let accountNumber = "0335805562";
+        let accountName = "CLOOP VIETNAM";
+        let bin = "970422";
+        let description = `CLOOP GD ${String(orderCodeNum).slice(-15)}`;
+
+        if (payos && inv?.orderCode) {
+          try {
+            const payosInfo: any = await Promise.race([
+              (payos as any).paymentRequests.get(inv.orderCode.toString()),
+              new Promise((_, reject) => setTimeout(() => reject(new Error("PayOS get timeout")), 4000))
+            ]);
+
+            if (payosInfo) {
+              if (payosInfo.status === "PAID") {
+                return {
+                  success: false,
+                  error: "Đơn hàng này đã được thanh toán thành công trước đó."
+                };
+              }
+              if (payosInfo.status === "PENDING") {
+                if (payosInfo.checkoutUrl) checkoutUrl = payosInfo.checkoutUrl;
+                if (payosInfo.qrCode) qrCode = payosInfo.qrCode;
+                if (payosInfo.accountNumber) accountNumber = payosInfo.accountNumber;
+                if (payosInfo.accountName) accountName = payosInfo.accountName;
+                if (payosInfo.bin) bin = payosInfo.bin;
+                if (payosInfo.description) description = payosInfo.description;
+              } else {
+                // Link cũ trên PayOS đã CANCELLED hoặc EXPIRED -> Đặt null để kích hoạt sinh freshOrderCode mới
+                checkoutUrl = null;
+                qrCode = null;
+              }
+            }
+          } catch (payosCheckErr) {
+            console.warn("PayOS check fallback notice:", payosCheckErr);
+          }
+        }
+
+        // 🛡️ CHỐT CHẶN BẪY ĐƠN RỖNG & TRÁNH TRÙNG ORDER CODE (Risk 2):
+        // Nếu đơn cũ chưa có link PayOS (hoặc link đã CANCELLED/EXPIRED), cấp mã orderCode MỚI để không bị PayOS báo "Mã đơn hàng đã tồn tại"
+        if (payos && inv && (!checkoutUrl || !inv.paymentLinkId)) {
+          try {
+            const freshOrderCode = generatePayOSOrderCode();
+            const recreatePayos: any = await Promise.race([
+              (payos as any).paymentRequests.create({
+                orderCode: freshOrderCode,
+                amount: inv.amount || totalAmount,
+                description: `CLOOP GD ${String(freshOrderCode).slice(-15)}`,
+                returnUrl: `${host}/payment/result?orderCode=${freshOrderCode}`,
+                cancelUrl: `${host}/app?cancel=true`
+              }),
+              new Promise((_, reject) => setTimeout(() => reject(new Error("PayOS create timeout")), 5000))
+            ]);
+
+            if (recreatePayos?.paymentLinkId) {
+              checkoutUrl = recreatePayos.checkoutUrl || `https://pay.payos.vn/web/${recreatePayos.paymentLinkId}`;
+              qrCode = recreatePayos.qrCode || null;
+              accountNumber = recreatePayos.accountNumber || accountNumber;
+              accountName = recreatePayos.accountName || accountName;
+              bin = recreatePayos.bin || bin;
+              orderCodeNum = freshOrderCode;
+              description = `CLOOP GD ${String(freshOrderCode).slice(-15)}`;
+
+              await prisma.invoice.update({
+                where: { id: inv.id },
+                data: {
+                  orderCode: BigInt(freshOrderCode),
+                  paymentLinkId: recreatePayos.paymentLinkId
+                }
+              });
+            }
+          } catch (recreateErr) {
+            console.warn("Could not create missing PayOS link on resume:", recreateErr);
+          }
+        }
+
+        // 🛡️ Nếu sau tất cả vẫn không có link PayOS hợp lệ -> Hủy đơn dở dang để luồng chảy tiếp tạo đơn mới tinh
+        if (!checkoutUrl && !inv?.paymentLinkId) {
+          log.warn("Resumed order had missing PayOS link, auto-cancelling to recreate cleanly", {
+            rentalId: existingPendingRental.id
+          });
+          try {
+            await prisma.$transaction([
+              prisma.rentalHistory.update({
+                where: { id: existingPendingRental.id },
+                data: { status: "CANCELLED" }
+              }),
+              prisma.invoice.update({
+                where: { id: existingPendingRental.invoice!.id },
+                data: { status: "CANCELLED" }
+              })
+            ]);
+          } catch (_) {}
+          // Luồng sẽ tự động chạy tiếp xuống dưới để tạo đơn mới hoàn chỉnh
+        } else {
+          return {
+            success: true,
+            rentalId: existingPendingRental.id,
+            orderCode: orderCodeNum,
+            qrCode,
+            checkoutUrl,
+            accountNumber,
+            accountName,
+            bin,
+            description,
+            totalAmount: inv?.amount || totalAmount,
+            depositAmount: inv?.depositAmount ?? deposit,
+            rentalFee: inv?.rentalFee || subTotal,
+            depositDiscount: depositCalculation.discountAmount,
+            trustTier: trustBreakdown.tier,
+            trustScore: trustBreakdown.score,
+            depositExplanation: depositCalculation.explanation,
+            message: "Khôi phục phiên thanh toán thành công!"
+          };
+        }
+      } else if (isExpired) {
+        // TRƯỜNG HỢP 2: ĐƠN GIỮ LỊCH ĐÃ QUÁ 15 PHÚT MÀ KHÔNG THANH TOÁN (ZOMBIE LOCK)
+        log.info("Soft-lock TTL expired: Auto-releasing zombie lock", {
+          rentalId: existingPendingRental.id,
+          ageMinutes: Math.round(orderAgeMs / 60000)
+        });
+
+        try {
+          await prisma.$transaction([
+            prisma.rentalHistory.update({
+              where: { id: existingPendingRental.id },
+              data: { status: "CANCELLED" }
+            }),
+            prisma.invoice.update({
+              where: { id: existingPendingRental.invoice!.id },
+              data: { status: "CANCELLED" }
+            }),
+            prisma.listing.updateMany({
+              where: { productId, status: "RESERVED" },
+              data: { status: "AVAILABLE" }
+            })
+          ]);
+        } catch (releaseErr) {
+          console.warn("Auto-release zombie lock notice:", releaseErr);
+        }
+      } else {
+        // TRƯỜNG HỢP 3: KHÁCH HÀNG KHÁC ĐANG TRONG 15 PHÚT GIỮ CHỖ
+        return {
+          success: false,
+          error: "Sản phẩm hiện đang có khách hàng khác giữ lịch thanh toán. Vui lòng thử lại sau ít phút!"
+        };
+      }
+    } else if (listing.status === "RESERVED") {
+      // Listing bị kẹt RESERVED nhưng không có đơn PENDING nào -> Tự động đưa về AVAILABLE
+      await prisma.listing.updateMany({
+        where: { productId, status: "RESERVED" },
+        data: { status: "AVAILABLE" }
+      });
+    } else if (listing.status === "RENTED" || listing.status === "SOLD") {
+      return {
+        success: false,
+        error: `Sản phẩm hiện đã được ${listing.status === "RENTED" ? "thuê" : "bán"}.`
+      };
+    }
+
     // 2. Chặn trùng lịch (Overlap check) trên Server (Sử dụng Prisma Transaction để an toàn)
     const txResult = await prisma.$transaction(async (tx) => {
       // 🚀 BƯỚC KHÓA BẢNG PESSIMISTIC LOCK: NGĂN CHẶN DOUBLE BOOKING
@@ -172,7 +385,7 @@ export async function createBooking({
         const overlapping = await tx.rentalHistory.findFirst({
           where: {
             product_id: productId,
-            status: "BORROWER_RECEIVED",
+            status: { in: ["BORROWER_RECEIVED", "LENDER_SHIPPED", "OWNER_PACKED"] },
             start_date: { lte: end },
             end_date: { gte: start },
           }
@@ -299,19 +512,25 @@ export async function createBooking({
       };
     });
 
-    // 6. Tạo Link PayOS sau khi Transaction Database đã Commit thành công
+    // 6. Tạo Link PayOS ngoài Transaction Database (Bọc Timeout 6s & Rollback an toàn)
     const host = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://cloop-sable.vercel.app");
     let paymentLinkRes: any = null;
 
     if (payos) {
       try {
-        paymentLinkRes = await (payos as any).paymentRequests.create({
+        const payosCreatePromise = (payos as any).paymentRequests.create({
           orderCode: txResult.orderCode,
           amount: totalAmount,
           description: `CLOOP GD ${String(txResult.orderCode).slice(-15)}`,
           returnUrl: `${host}/payment/result?orderCode=${txResult.orderCode}`,
           cancelUrl: `${host}/app?cancel=true`
         });
+
+        const payosTimeout = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("PayOS API Timeout (quá 6s không phản hồi)")), 6000)
+        );
+
+        paymentLinkRes = await Promise.race([payosCreatePromise, payosTimeout]);
 
         if (paymentLinkRes?.paymentLinkId) {
           await prisma.invoice.update({
@@ -320,7 +539,32 @@ export async function createBooking({
           });
         }
       } catch (payosErr: any) {
-        console.warn("PayOS payment link creation notice:", payosErr?.message || payosErr);
+        console.error("PayOS payment link creation failed, auto-rolling back reservation:", payosErr?.message || payosErr);
+
+        // Tự động Rollback trạng thái Listing về AVAILABLE và hủy đơn để không bị kẹt RESERVED
+        try {
+          await prisma.$transaction([
+            prisma.listing.updateMany({
+              where: { productId, status: "RESERVED" },
+              data: { status: "AVAILABLE" }
+            }),
+            prisma.rentalHistory.update({
+              where: { id: txResult.rentalId },
+              data: { status: "CANCELLED" }
+            }),
+            prisma.invoice.update({
+              where: { id: txResult.invoiceId },
+              data: { status: "CANCELLED" }
+            })
+          ]);
+        } catch (rollbackErr) {
+          console.error("Rollback failed:", rollbackErr);
+        }
+
+        return {
+          success: false,
+          error: "Cổng thanh toán PayOS đang bận hoặc quá thời gian phản hồi (quá 6s). Trạng thái sản phẩm đã được mở lại an toàn, vui lòng bấm thử lại!"
+        };
       }
     }
 
@@ -348,16 +592,6 @@ export async function createBooking({
     const message = err instanceof Error ? err.message : "Lỗi hệ thống khi tạo đơn hàng.";
     console.error("SERVER ACTION ERROR:", err);
     return { success: false, error: message };
-  } finally {
-    // 7. Kích nổ Cache của Next.js để đồng bộ giao diện
-    try {
-      revalidatePath(`/product/${productId}`, "page");
-      revalidatePath("/", "page");
-      revalidatePath("/shop", "page");
-      revalidatePath("/my-closet/orders", "page");
-    } catch (e) {
-      console.error("Cache purge failed:", e);
-    }
   }
 }
 

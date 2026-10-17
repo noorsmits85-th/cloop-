@@ -272,15 +272,19 @@ export async function POST(req: Request) {
     }
 
     // Dọn rác cache sau khi giao dịch thành công (đặt trong try-catch riêng để webhook không văng lỗi)
-    if (productIdToRevalidate) {
-      try {
-        const { revalidatePath } = require('next/cache');
-        revalidatePath('/shop');
+    try {
+      const { revalidatePath, revalidateTag } = require('next/cache');
+      revalidateTag('products');
+      revalidateTag('shop-products');
+      revalidatePath('/shop');
+      revalidatePath('/');
+      revalidatePath('/app');
+      if (productIdToRevalidate) {
         revalidatePath(`/product/${productIdToRevalidate}`);
-        revalidatePath('/my-closet/orders');
-      } catch (cacheError) {
-        console.error("Lỗi dọn rác cache, nhưng tiền đã vào ví nên cứ kệ nó:", cacheError);
       }
+      revalidatePath('/my-closet/orders');
+    } catch (cacheError) {
+      console.error("Lỗi dọn rác cache, nhưng tiền đã vào ví nên cứ kệ nó:", cacheError);
     }
 
     // Phản hồi 200 OK cho PayOS sau khi đã cầm chắc tiền trong Database

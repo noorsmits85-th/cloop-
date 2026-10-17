@@ -379,7 +379,7 @@ async function fetchShopProductsDirect(
     listings: {
       some: {
         isDeleted: false,
-        status: "AVAILABLE",
+        status: { in: ["AVAILABLE", "RESERVED"] },
         ...(type === "rent" ? { listingType: "RENT" } : {}),
         ...(type === "sell" ? { listingType: { in: ["SELL", "RECYCLE"] } } : {}),
       }
@@ -435,7 +435,7 @@ async function fetchShopProductsDirect(
         orderBy: { sortOrder: "asc" }
       },
       listings: {
-        where: { isDeleted: false, status: "AVAILABLE" }
+        where: { isDeleted: false, status: { in: ["AVAILABLE", "RESERVED"] } }
       },
       user: {
         select: {

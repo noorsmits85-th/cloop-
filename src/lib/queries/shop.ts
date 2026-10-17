@@ -72,13 +72,14 @@ async function fetchShopProductsFromDb(
   page: number = 1,
   limit: number = 24
 ): Promise<ShopQueryResult> {
+
   const where: any = {
     isDeleted: false,
     status: { in: ["ON_MARKET", "IN_CLOSET"] },
     listings: {
       some: {
         isDeleted: false,
-        status: "AVAILABLE",
+        status: { in: ["AVAILABLE", "RESERVED"] },
         ...(type === "rent" ? { listingType: "RENT" } : {}),
         ...(type === "sell" ? { listingType: { in: ["SELL", "RECYCLE"] } } : {}),
       }
@@ -134,7 +135,7 @@ async function fetchShopProductsFromDb(
         orderBy: { sortOrder: "asc" }
       },
       listings: {
-        where: { isDeleted: false, status: "AVAILABLE" }
+        where: { isDeleted: false, status: { in: ["AVAILABLE", "RESERVED"] } }
       },
       user: {
         select: {
@@ -244,7 +245,7 @@ async function fetchShopProductsFromDb(
       isBoosted: Boolean(p.isHighlighted || (p.boostExpiresAt && new Date(p.boostExpiresAt) > new Date())),
       boostExpiresAt: p.boostExpiresAt?.toISOString() || null,
       boostScore: (p as any).boostScore || 0,
-      storeRetailPrice: Number(p.originalPrice || 0)
+      storeRetailPrice: Number((p as any).originalPrice || 0)
     };
   });
 

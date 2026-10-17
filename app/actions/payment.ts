@@ -102,6 +102,17 @@ export async function checkAndSyncPaymentStatusAction(orderCode: number | string
           });
         });
 
+        // Dọn dẹp cache đồng bộ ngay lập tức cho /shop, /app, và /my-closet/orders
+        try {
+          const { revalidatePath, revalidateTag } = require("next/cache");
+          revalidateTag("products");
+          revalidateTag("shop-products");
+          revalidatePath("/shop");
+          revalidatePath("/");
+          revalidatePath("/app");
+          revalidatePath("/my-closet/orders");
+        } catch (_) {}
+
         return { success: true, isPaid: true, status: "PAID" };
       }
 

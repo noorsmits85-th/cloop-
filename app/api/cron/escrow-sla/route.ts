@@ -140,18 +140,59 @@ export async function GET(req: Request) {
     }
 
     // =========================================================================
-    // NHÁNH 3: GIẢI PHÓNG KHÓA ĐỒ TẠM THỜI (RESERVED > 15 PHÚT)
+    // NHÁNH 3: GIẢI PHÓNG KHÓA ĐỒ TẠM THỜI (PENDING > 15 PHÚT)
     // =========================================================================
-    const released = await prisma.listing.updateMany({
+    const expiredPendingRentals = await prisma.rentalHistory.findMany({
       where: {
-        status: "RESERVED",
-        updatedAt: { lte: fifteenMinutesAgo }
+        status: "PENDING_APPROVAL",
+        createdAt: { lte: fifteenMinutesAgo },
+        invoice: {
+          status: "PENDING"
+        }
       },
-      data: {
-        status: "AVAILABLE"
-      }
+      select: { id: true, product_id: true, invoice: { select: { id: true } } }
     });
-    results.releasedLocksCount = released.count;
+
+    if (expiredPendingRentals.length > 0) {
+      const rentalIds = expiredPendingRentals.map(r => r.id);
+      const invoiceIds = expiredPendingRentals.map(r => r.invoice?.id).filter(Boolean) as string[];
+      const productIds = Array.from(new Set(expiredPendingRentals.map(r => r.product_id)));
+
+      // 🛡️ CHỐT CHẶN BẢO VỆ: Loại trừ bất kỳ sản phẩm nào ĐÃ CÓ ĐƠN THANH TOÁN (PAID) HOẶC ĐANG GIAO NHẬN
+      const paidRentals = await prisma.rentalHistory.findMany({
+        where: {
+          product_id: { in: productIds },
+          OR: [
+            { status: { in: ["OWNER_PACKED", "LENDER_SHIPPED", "BORROWER_RECEIVED"] } },
+            { invoice: { status: "PAID" } }
+          ]
+        },
+        select: { product_id: true }
+      });
+      const paidProductIds = new Set(paidRentals.map(p => p.product_id));
+      const safeToReleaseProductIds = productIds.filter(id => !paidProductIds.has(id));
+
+      await prisma.$transaction([
+        prisma.rentalHistory.updateMany({
+          where: { id: { in: rentalIds } },
+          data: { status: "CANCELLED" }
+        }),
+        prisma.invoice.updateMany({
+          where: { id: { in: invoiceIds } },
+          data: { status: "CANCELLED" }
+        }),
+        prisma.listing.updateMany({
+          where: {
+            productId: { in: safeToReleaseProductIds },
+            status: "RESERVED"
+          },
+          data: { status: "AVAILABLE" }
+        })
+      ]);
+      results.releasedLocksCount = safeToReleaseProductIds.length;
+    } else {
+      results.releasedLocksCount = 0;
+    }
 
     if (results.autoCompletedCount > 0 || results.autoCancelledCount > 0 || results.releasedLocksCount > 0) {
       revalidatePath("/shop");
