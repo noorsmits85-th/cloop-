@@ -3,6 +3,7 @@ import { requireUser } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { redirect } from "next/navigation";
 import { OrdersClient } from "../_components/OrdersClient";
+import { maskOrderPii } from "@/src/utils/shipping";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,11 @@ export default async function MyClosetOrdersPage() {
           id: true,
           renterId: true,
           ownerId: true,
+          renter_name: true,
+          renter_phone: true,
+          owner_name: true,
+          owner_phone: true,
+          shippingCode: true,
           start_date: true,
           end_date: true,
           status: true,
@@ -40,6 +46,7 @@ export default async function MyClosetOrdersPage() {
               id: true,
               title: true,
               province: true,
+              specificAddress: true,
               userId: true,
               images: { select: { url: true }, orderBy: { sortOrder: "asc" }, take: 1 },
               user: { select: { id: true, name: true, rating: true, reviewCount: true } }
@@ -99,6 +106,11 @@ export default async function MyClosetOrdersPage() {
           id: true,
           renterId: true,
           ownerId: true,
+          renter_name: true,
+          renter_phone: true,
+          owner_name: true,
+          owner_phone: true,
+          shippingCode: true,
           start_date: true,
           end_date: true,
           status: true,
@@ -135,6 +147,7 @@ export default async function MyClosetOrdersPage() {
               id: true,
               title: true,
               province: true,
+              specificAddress: true,
               userId: true,
               images: { select: { url: true }, orderBy: { sortOrder: "asc" }, take: 1 },
               user: {
@@ -185,7 +198,7 @@ export default async function MyClosetOrdersPage() {
   const initialEscrow = pagedEscrow.map(order => {
     const renterStats = getReviewStats(order.renter?.reviewsReceived || []);
     const serialized = serializeData(order);
-    return {
+    return maskOrderPii({
       ...serialized,
       startDate: order.start_date,
       endDate: order.end_date,
@@ -196,13 +209,13 @@ export default async function MyClosetOrdersPage() {
         title: order.product?.title || "Trang phục CLOOP",
         image_url: order.product?.images?.[0]?.url || "/1.1.jpg"
       }
-    };
+    });
   });
 
   const initialRented = pagedRented.map(order => {
     const ownerStats = getReviewStats(order.product?.user?.reviewsReceived || []);
     const serialized = serializeData(order);
-    return {
+    return maskOrderPii({
       ...serialized,
       startDate: order.start_date,
       endDate: order.end_date,
@@ -213,7 +226,7 @@ export default async function MyClosetOrdersPage() {
         title: order.product?.title || "Trang phục CLOOP",
         image_url: order.product?.images?.[0]?.url || "/1.1.jpg"
       }
-    };
+    });
   });
 
   return (

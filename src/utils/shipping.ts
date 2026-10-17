@@ -111,6 +111,76 @@ export function maskPublicAddress(fullAddress?: string | null, fallback: string 
   return cleaned;
 }
 
+/**
+ * 🛡️ MASK SỐ ĐIỆN THOẠI (Chỉ giữ lại 3 số đầu và 3 số cuối)
+ * Ví dụ: "0912345678" -> "091****678"
+ */
+export function maskPhone(phone?: string | null): string {
+  if (!phone || typeof phone !== "string") return "";
+  const cleaned = phone.trim();
+  if (cleaned.length < 7) return cleaned;
+  return cleaned.slice(0, 3) + "****" + cleaned.slice(-3);
+}
+
+export const ACTIVE_LIFECYCLE_STATUSES = new Set(["OWNER_PACKED", "LENDER_SHIPPED", "BORROWER_RECEIVED"]);
+
+/**
+ * 🛡️ PII DATA MASKING POLICY (Chính sách bảo mật thông tin cá nhân)
+ * Chỉ unmask địa chỉ chi tiết (số nhà, ngõ ngách) và số điện thoại khi đơn hàng đang trong vòng đời hiệu lực:
+ * - OWNER_PACKED
+ * - LENDER_SHIPPED
+ * - BORROWER_RECEIVED
+ * Tự động mask lại khi đơn hàng ở trạng thái PENDING_APPROVAL, BORROWER_RETURNED, LENDER_COMPLETED, DISPUTE, CANCELLED.
+ */
+export function maskOrderPii<T extends Record<string, any>>(order: T): T {
+  const isActive = ACTIVE_LIFECYCLE_STATUSES.has(order.status);
+  if (isActive) return order;
+
+  const cloned: any = { ...order };
+
+  if (cloned.product && typeof cloned.product === "object") {
+    cloned.product = {
+      ...cloned.product,
+      specificAddress: maskPublicAddress(cloned.product.specificAddress),
+    };
+  }
+
+  if (cloned.renter_phone) {
+    cloned.renter_phone = maskPhone(cloned.renter_phone);
+  }
+
+  if (cloned.owner_phone) {
+    cloned.owner_phone = maskPhone(cloned.owner_phone);
+  }
+
+  if (Array.isArray(cloned.shipments)) {
+    cloned.shipments = cloned.shipments.map((s: any) => {
+      const p = s.pickupAddress ? { ...s.pickupAddress } : null;
+      const d = s.deliveryAddress ? { ...s.deliveryAddress } : null;
+      if (p) {
+        if (p.specificAddress || p.address) {
+          const masked = maskPublicAddress(p.specificAddress || p.address);
+          p.specificAddress = masked;
+          p.address = masked;
+        }
+        if (p.phone) p.phone = maskPhone(p.phone);
+      }
+      if (d) {
+        if (d.specificAddress || d.fullAddress || d.address) {
+          const masked = maskPublicAddress(d.specificAddress || d.fullAddress || d.address);
+          d.specificAddress = masked;
+          d.fullAddress = masked;
+          d.address = masked;
+        }
+        if (d.phone) d.phone = maskPhone(d.phone);
+      }
+      return { ...s, pickupAddress: p, deliveryAddress: d };
+    });
+  }
+
+  return cloned;
+}
+
 export function getRegion(provinceName: string): "NORTH" | "CENTRAL" | "SOUTH" {
   const p = (provinceName || "").toLowerCase();
   if (NORTH_PROVINCES.some(prov => p.includes(prov))) return "NORTH";

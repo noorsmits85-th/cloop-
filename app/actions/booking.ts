@@ -30,7 +30,7 @@ export async function createBooking({
   ownerName: string;
   ownerPhone: string;
   isRental: boolean;
-  shippingMode: "CLOOP_BOOK" | "SELF_BOOK";
+  shippingMode: "CLOOP_BOOK" | "SELF_BOOK" | "GHN" | "GHTK" | "GRAB" | "SELF_PICKUP";
   shippingFee?: number;
   fastTrackMode?: boolean;
   deliveryAddress?: any;
@@ -147,7 +147,8 @@ export async function createBooking({
     }
 
     const subTotal = itemPrice;
-    const shippingFee = shippingMode === "CLOOP_BOOK" ? (Number(clientShippingFee) || 0) : 0;
+    const isSelfPickup = shippingMode === "SELF_BOOK" || shippingMode === "SELF_PICKUP";
+    const shippingFee = isSelfPickup ? 0 : (Number(clientShippingFee) || 0);
     const totalAmount = isRental 
       ? (subTotal + deposit + serviceFee + shippingFee)
       : (subTotal + serviceFee + shippingFee);
@@ -441,15 +442,22 @@ export async function createBooking({
           const fullAddr = deliveryAddress.fullAddress || (ghnParts.join(", ") + (nt ? ` (Ghi chú: ${nt})` : ""));
           const locStr = [distName, provName].filter(Boolean).join(", ") || provName || "";
 
+          const isSelfPickup = shippingMode === "SELF_BOOK" || shippingMode === "SELF_PICKUP";
+          const isGrab = shippingMode === "GRAB";
+          const isGhtk = shippingMode === "GHTK";
+          const resolvedProvider = isSelfPickup ? "SELF_PICKUP" : isGrab ? "GRAB" : isGhtk ? "GHTK" : "GHN";
+
           await tx.shipment.create({
             data: {
               rentalId: rental.id,
               direction: "DELIVERY",
-              provider: "GHN",
+              provider: resolvedProvider,
               status: "PENDING_BOOKING",
               shippingFeeCollected: shippingFee,
               deliveryAddress: {
                 ...deliveryAddress,
+                shippingMode,
+                provider: resolvedProvider,
                 recipientName: verifiedRenterName,
                 phone: verifiedRenterPhone,
                 fullAddress: fullAddr

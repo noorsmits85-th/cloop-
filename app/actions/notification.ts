@@ -2,6 +2,7 @@
 
 import { prisma } from "@/src/lib/prisma";
 import { createClient } from "@/src/utils/supabase/server";
+import { maskPublicAddress } from "@/src/utils/shipping";
 
 export interface NotificationItem {
   id: string;
@@ -115,9 +116,13 @@ export async function getUserNotificationsAction(passedUserId?: string): Promise
             renterId: true,
             ownerId: true,
             renter_name: true,
+            owner_name: true,
+            owner_phone: true,
             product: {
               select: {
                 title: true,
+                province: true,
+                specificAddress: true,
                 userId: true,
                 user: { select: { name: true } }
               }
@@ -134,6 +139,12 @@ export async function getUserNotificationsAction(passedUserId?: string): Promise
             },
             renter: {
               select: { name: true }
+            },
+            shippingCode: true,
+            shipments: {
+              where: { direction: "DELIVERY" },
+              select: { provider: true, trackingCode: true, deliveryAddress: true, pickupAddress: true },
+              take: 1
             }
           },
           orderBy: { updatedAt: "desc" },
@@ -186,19 +197,44 @@ export async function getUserNotificationsAction(passedUserId?: string): Promise
         // Nếu tôi là Chủ tủ: CHỈ thông báo khi khách ĐÃ thanh toán cọc thành công vào Két Escrow
         if (isOwner) {
           const renterName = order.renter?.name || order.renter_name || "Khách thuê";
-          if (isPaid && (order.status === "PENDING_APPROVAL" || order.status === "OWNER_PACKED")) {
+          const deliveryShipment = order.shipments?.[0];
+          const isSelf = deliveryShipment?.provider === "SELF_PICKUP" ||
+            (deliveryShipment?.deliveryAddress as any)?.shippingMode === "SELF_BOOK";
+          const tracking = order.shippingCode || deliveryShipment?.trackingCode;
+
+          if (isPaid && order.status === "PENDING_APPROVAL") {
             const { formatted, relative } = formatDateTimeVN(order.createdAt);
             notifList.push({
               id: `order-owner-new-${order.id}`,
               type: "ORDER",
               title: `Đơn thuê mới: "${itemTitle}"`,
-              message: `${renterName} vừa đặt cọc & thanh toán đơn #${orderShortId}. Vui lòng đóng gói và bàn giao cho GHN.`,
+              message: isSelf
+                ? `${renterName} vừa đặt cọc đơn #${orderShortId} (Tự lấy tại trạm). Vui lòng chuẩn bị và đóng gói đồ.`
+                : `${renterName} vừa đặt cọc & thanh toán đơn #${orderShortId}. Vui lòng đóng gói và bàn giao cho GHN.`,
               timestamp: order.createdAt.toISOString(),
               timeFormatted: formatted,
               timeRelative: relative,
               link: "/my-closet/orders?mode=owner",
               isRead: false,
               iconType: "package",
+              metadata: { orderId: order.id, status: order.status }
+            });
+          } else if (order.status === "OWNER_PACKED") {
+            const dateObj = order.updatedAt || order.createdAt;
+            const { formatted, relative } = formatDateTimeVN(dateObj);
+            notifList.push({
+              id: `order-owner-packed-${order.id}`,
+              type: "ORDER",
+              title: isSelf ? `Đã sẵn sàng tại trạm: "${itemTitle}"` : `Đã lên đơn GHN: "${itemTitle}"`,
+              message: isSelf
+                ? `Đơn #${orderShortId} đã chuẩn bị xong. Đang chờ khách đến trạm nhận đồ.`
+                : `Đơn #${orderShortId} đã đóng gói xong. ${tracking ? `Bưu tá GHN sẽ sớm liên hệ lấy hàng (Mã: ${tracking}).` : "Hệ thống đang điều phối bưu tá."}`,
+              timestamp: dateObj.toISOString(),
+              timeFormatted: formatted,
+              timeRelative: relative,
+              link: "/my-closet/orders?mode=owner",
+              isRead: false,
+              iconType: isSelf ? "package" : "truck",
               metadata: { orderId: order.id, status: order.status }
             });
           } else if (order.status === "BORROWER_RETURNED") {
@@ -286,6 +322,36 @@ export async function getUserNotificationsAction(passedUserId?: string): Promise
               isRead: false,
               iconType: "package",
               metadata: { orderId: order.id }
+            });
+          } else if (order.status === "OWNER_PACKED") {
+            const deliveryShipment = order.shipments?.[0];
+            const isSelf = deliveryShipment?.provider === "SELF_PICKUP" ||
+              (deliveryShipment?.deliveryAddress as any)?.shippingMode === "SELF_BOOK";
+            const tracking = order.shippingCode || deliveryShipment?.trackingCode;
+            const dateObj = order.updatedAt || order.createdAt;
+            const { formatted, relative } = formatDateTimeVN(dateObj);
+            const pickupAddr = (deliveryShipment?.pickupAddress as any) || {};
+            const isActiveLifecycle = ["OWNER_PACKED", "LENDER_SHIPPED", "BORROWER_RECEIVED"].includes(order.status);
+            const stationAddress = isActiveLifecycle
+              ? (order.product?.specificAddress || pickupAddr?.address || pickupAddr?.specificAddress || order.product?.province || "trạm chủ tủ")
+              : maskPublicAddress(order.product?.specificAddress || pickupAddr?.address || order.product?.province);
+            const ownerPhone = isActiveLifecycle ? (order.owner_phone || pickupAddr?.phone || "") : "";
+            const phoneNote = ownerPhone ? ` (SĐT: ${ownerPhone})` : "";
+
+            notifList.push({
+              id: `order-renter-packed-${order.id}`,
+              type: "ORDER",
+              title: isSelf ? `Đồ đã sẵn sàng tại trạm: "${itemTitle}"` : `Chủ đồ đã đóng gói: "${itemTitle}"`,
+              message: isSelf
+                ? `Trang phục đơn #${orderShortId} đã sẵn sàng tại trạm: ${stationAddress}${phoneNote}. Vui lòng liên hệ và đến nhận đồ.`
+                : `Chủ tủ đã đóng gói xong đơn #${orderShortId}. Bưu tá GHN đang đến lấy để vận chuyển tới bạn${tracking ? ` (Mã: ${tracking})` : ""}.`,
+              timestamp: dateObj.toISOString(),
+              timeFormatted: formatted,
+              timeRelative: relative,
+              link: "/my-closet/orders?mode=renter",
+              isRead: false,
+              iconType: isSelf ? "package" : "truck",
+              metadata: { orderId: order.id, status: order.status }
             });
           } else if (order.status === "LENDER_SHIPPED") {
             const dateObj = order.updatedAt || order.createdAt;
@@ -454,15 +520,23 @@ export async function getUserNotificationsAction(passedUserId?: string): Promise
       });
     }
 
-    // Sắp xếp giảm dần theo mốc thời gian thực tế mới nhất
-    notifList.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    // 🛡️ Chống spam / deduplication kiểm soát lặp thông báo
+    const seenIds = new Set<string>();
+    const deduplicatedList = notifList.filter((n) => {
+      if (seenIds.has(n.id)) return false;
+      seenIds.add(n.id);
+      return true;
+    });
 
-    const unreadCount = notifList.filter(n => !n.isRead).length;
+    // Sắp xếp giảm dần theo mốc thời gian thực tế mới nhất
+    deduplicatedList.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+    const unreadCount = deduplicatedList.filter((n) => !n.isRead).length;
 
     const result = {
       success: true,
-      notifications: notifList,
-      unreadCount
+      notifications: deduplicatedList,
+      unreadCount,
     };
 
     if (userId) {

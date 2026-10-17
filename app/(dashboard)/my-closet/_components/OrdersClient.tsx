@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { History, ShoppingBag, Star, X, Check, Truck, Package, RotateCcw, AlertTriangle, CheckCircle, ShieldAlert, Store, PartyPopper, Loader2, Video, Camera, CheckCircle2, Clock } from "lucide-react";
+import { History, ShoppingBag, Star, X, Check, Truck, Package, RotateCcw, AlertTriangle, CheckCircle, ShieldAlert, Store, PartyPopper, Loader2, Video, Camera, CheckCircle2, Clock, PackageCheck } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { submitReviewAction, raiseDisputeWithProposalAction, acceptDisputeProposalAction, rejectAndEscalateDisputeAction, completeOrderAction, loadMoreOrdersAction, renterReceivedAction, renterReturnAction } from "../orders/actions"; 
-import { requestPickupAction } from "@/app/actions/shipment";
+import { requestPickupAction, confirmHandoverAction } from "@/app/actions/shipment";
 import Link from "next/link";
 import { toast } from "sonner";
 import { calculateDynamicGhnFee, extractProvince } from "@/src/utils/shipping";
@@ -489,16 +489,33 @@ export function OrdersClient({
     }
   };
 
+  const [handingOverIds, setHandingOverIds] = useState<Record<string, boolean>>({});
+
   const handleRequestPickup = async (orderId: string, packagingProofUrls: string[] = []) => {
     if (requestingPickupIds[orderId]) return;
     
     setRequestingPickupIds(prev => ({ ...prev, [orderId]: true }));
-    setEscrowOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "LENDER_SHIPPED" } : o));
-    setRentedOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "LENDER_SHIPPED" } : o));
+    setEscrowOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "OWNER_PACKED" } : o));
+    setRentedOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "OWNER_PACKED" } : o));
     try {
       const res = await requestPickupAction(orderId, packagingProofUrls);
       if (res.success) {
-        toast.success("🚚 Đã bàn giao cho Shipper!", { description: "Đơn hàng đã chuyển sang trạng thái Đang Vận Chuyển." });
+        if (res.isSelfPickup) {
+          toast.success("👗 Đã chuẩn bị đồ xong!", {
+            description: "Trang phục đã sẵn sàng tại trạm. Đang chờ khách thuê đến nhận đồ.",
+            duration: 6000,
+          });
+        } else if (res.trackingCode) {
+          toast.success("📦 Đã lên đơn GHN thành công!", {
+            description: `Mã vận đơn: ${res.trackingCode}. Bưu tá GHN sẽ sớm liên hệ đến lấy hàng.`,
+            duration: 7000,
+          });
+        } else {
+          toast.info("📦 Đã ghi nhận đóng gói!", {
+            description: "Hệ thống đang điều phối bưu tá cho địa chỉ của bạn, mã vận đơn sẽ cập nhật sau ít phút.",
+            duration: 6000,
+          });
+        }
         setPackagingOrder(null);
         setPackagingProofs([]);
         router.refresh();
@@ -512,6 +529,30 @@ export function OrdersClient({
     }
   };
 
+  const handleConfirmHandover = async (orderId: string) => {
+    if (handingOverIds[orderId]) return;
+
+    setHandingOverIds(prev => ({ ...prev, [orderId]: true }));
+    setEscrowOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "LENDER_SHIPPED" } : o));
+    setRentedOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "LENDER_SHIPPED" } : o));
+    try {
+      const res = await confirmHandoverAction(orderId);
+      if (res.success) {
+        toast.success("🚚 Đã bàn giao bưu tá!", {
+          description: "Đơn hàng đã chính thức chuyển sang trạng thái Đang Vận Chuyển.",
+          duration: 5000,
+        });
+        router.refresh();
+      } else {
+        toast.error("Lỗi xác nhận", { description: res.error });
+      }
+    } catch (e: any) {
+      toast.error("Lỗi hệ thống", { description: e.message });
+    } finally {
+      setHandingOverIds(prev => ({ ...prev, [orderId]: false }));
+    }
+  };
+
   const handleRenterReceived = async (orderId: string) => {
     if (receivingIds[orderId]) return;
     
@@ -521,7 +562,16 @@ export function OrdersClient({
     try {
       const res = await renterReceivedAction(orderId);
       if (res.success) {
-        toast.success("👗 Đã xác nhận nhận đồ!", { description: "Thời gian gói thuê chính thức bắt đầu đếm ngược." });
+        if (res.forcedByRenter) {
+          toast.warning("⚡ Đã ghi nhận nhận đồ sớm!", {
+            description: res.message || "Đơn hàng đã được kích hoạt. Chủ tủ có thời hạn 24h đối soát bảo vệ quyền lợi.",
+            duration: 8000,
+          });
+        } else {
+          toast.success("👗 Đã xác nhận nhận đồ!", {
+            description: res.message || "Thời gian gói thuê chính thức bắt đầu đếm ngược.",
+          });
+        }
         router.refresh();
       } else {
         toast.error("Lỗi xác nhận", { description: res.error });
@@ -885,16 +935,60 @@ export function OrdersClient({
                                       <>
                                         <Loader2 size={14} className="animate-spin" /> Đang xử lý...
                                       </>
-                                    ) : (
-                                      <>Đã đóng gói - Gọi Shipper</>
-                                    )}
+                                    ) : (() => {
+                                      const deliveryShipment = order.shipments?.find((s: any) => s.direction === "DELIVERY");
+                                      const isSelfPickup = deliveryShipment?.provider === "SELF_PICKUP" ||
+                                        (deliveryShipment?.deliveryAddress as any)?.shippingMode === "SELF_BOOK";
+                                      return isSelfPickup ? <>Đã chuẩn bị đồ - Khách tự lấy</> : <>Đã đóng gói - Gọi Shipper GHN</>;
+                                    })()}
                                   </button>
                                 )}
-                                {order.status === "OWNER_PACKED" && (
-                                  <div className="bg-[#183A2D]/10 text-[#183A2D] border border-[#183A2D]/20 text-xs font-medium px-5 py-2.5 rounded-md flex items-center gap-2">
-                                    <Truck size={14} strokeWidth={2} /> Chờ điều phối Shipper...
-                                  </div>
-                                )}
+                                {order.status === "OWNER_PACKED" && (() => {
+                                  const deliveryShipment = order.shipments?.find((s: any) => s.direction === "DELIVERY");
+                                  const isSelfPickup = deliveryShipment?.provider === "SELF_PICKUP" ||
+                                    (deliveryShipment?.deliveryAddress as any)?.shippingMode === "SELF_BOOK";
+                                  const trackingCode = order.shippingCode || deliveryShipment?.trackingCode;
+
+                                  if (isSelfPickup) {
+                                    return (
+                                      <div className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-medium px-4 py-2.5 rounded-md flex items-center gap-2">
+                                        <PackageCheck size={14} className="text-emerald-700" />
+                                        <span>Đã chuẩn bị đồ • Đang chờ khách đến nhận tại trạm (0đ)</span>
+                                      </div>
+                                    );
+                                  }
+
+                                  if (trackingCode) {
+                                    return (
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <div className="bg-blue-50 text-blue-800 border border-blue-200 text-xs font-medium px-3.5 py-2.5 rounded-md flex items-center gap-1.5">
+                                          <Truck size={14} className="text-blue-600" />
+                                          <span>Đã lên đơn GHN • Chờ bưu tá lấy (Mã: <strong className="font-mono">{trackingCode}</strong>)</span>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleConfirmHandover(order.id)}
+                                          disabled={handingOverIds[order.id]}
+                                          className="border border-[#183A2D] bg-[#183A2D] hover:bg-transparent text-white hover:text-[#183A2D] text-xs font-medium px-3.5 py-2.5 rounded-md transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-xs"
+                                          title="Bấm khi bưu tá GHN đã đến nhận kiện hàng"
+                                        >
+                                          {handingOverIds[order.id] ? (
+                                            <><Loader2 size={13} className="animate-spin" /> Đang cập nhật...</>
+                                          ) : (
+                                            <><CheckCircle2 size={13} /> Đã bàn giao bưu tá</>
+                                          )}
+                                        </button>
+                                      </div>
+                                    );
+                                  }
+
+                                  return (
+                                    <div className="bg-amber-50 text-amber-900 border border-amber-200 text-xs font-medium px-4 py-2.5 rounded-md flex items-center gap-2">
+                                      <Clock size={14} className="text-amber-700" />
+                                      <span>Đã đóng gói • Hệ thống đang điều phối bưu tá...</span>
+                                    </div>
+                                  );
+                                })()}
                                 {order.status === "LENDER_SHIPPED" && (
                                   <div className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-medium px-4 py-2.5 rounded-md flex items-center gap-2">
                                     <Truck size={14} className="text-emerald-700" /> Đang vận chuyển • Chờ khách nhận đồ
@@ -1136,15 +1230,83 @@ export function OrdersClient({
 
                               {/* Lộ trình & Lịch trình dự kiến (Shopee Standard) */}
                               <div className="mt-2 p-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200/60 text-[10.5px] text-emerald-950 space-y-1">
-                                <div className="flex items-center gap-1.5">
-                                  <Truck size={12} className="text-emerald-700 shrink-0" />
-                                  <span>Gửi từ: <strong>{order.product?.province || "Hà Nội"}</strong> → Giao tới bạn</span>
-                                </div>
+                                {(() => {
+                                  const deliveryShipment = order.shipments?.find((s: any) => s.direction === "DELIVERY");
+                                  const isSelfPickup = deliveryShipment?.provider === "SELF_PICKUP" ||
+                                    (deliveryShipment?.deliveryAddress as any)?.shippingMode === "SELF_BOOK";
+
+                                  if (isSelfPickup) {
+                                    return (
+                                      <div className="flex items-center gap-1.5 font-semibold text-emerald-900">
+                                        <Store size={12} className="text-emerald-700 shrink-0" />
+                                        <span>Hình thức: <strong>Tự lấy tại trạm chủ tủ (0đ)</strong></span>
+                                      </div>
+                                    );
+                                  }
+
+                                  return (
+                                    <div className="flex items-center gap-1.5">
+                                      <Truck size={12} className="text-emerald-700 shrink-0" />
+                                      <span>Gửi từ: <strong>{order.product?.province || "Hà Nội"}</strong> → Giao tới bạn</span>
+                                    </div>
+                                  );
+                                })()}
                                 <div className="text-[10px] text-emerald-800 font-mono flex flex-wrap items-center gap-2">
                                   <span>Bắt đầu thuê: <strong>{order.startDate ? new Date(order.startDate).toLocaleDateString('vi-VN') : 'Khi nhận đồ'}</strong></span>
                                   <span>•</span>
                                   <span>Hạn trả: <strong>{order.endDate ? new Date(order.endDate).toLocaleDateString('vi-VN') : 'Dự kiến'}</strong></span>
                                 </div>
+                                {order.status === "OWNER_PACKED" && (() => {
+                                  const deliveryShipment = order.shipments?.find((s: any) => s.direction === "DELIVERY");
+                                  const isSelfPickup = deliveryShipment?.provider === "SELF_PICKUP" ||
+                                    (deliveryShipment?.deliveryAddress as any)?.shippingMode === "SELF_BOOK";
+                                  const trackingCode = order.shippingCode || deliveryShipment?.trackingCode;
+                                  const pickupAddr = (deliveryShipment?.pickupAddress as any) || {};
+                                  const unmaskedStationAddress = order.product?.specificAddress || pickupAddr?.address || pickupAddr?.specificAddress || order.product?.province || "Hưng lĩnh, Nghệ An";
+                                  const ownerContactPhone = order.owner_phone || pickupAddr?.phone || "";
+                                  const ownerContactName = order.owner_name || pickupAddr?.name || order.product?.user?.name || "Chủ tủ CLOOP";
+
+                                  return (
+                                    <div className="mt-2 p-2.5 rounded-lg bg-blue-50/70 border border-blue-200/70 text-[10.5px] text-blue-950 space-y-1">
+                                      {isSelfPickup ? (
+                                        <div className="space-y-1.5">
+                                          <p className="font-semibold text-blue-900 flex items-center gap-1.5">
+                                            <PackageCheck size={14} className="text-blue-700 shrink-0" />
+                                            <span>Trang phục đã sẵn sàng tại trạm chủ tủ! Bạn có thể qua nhận đồ.</span>
+                                          </p>
+                                          <div className="p-2.5 bg-white/95 rounded-md border border-blue-200/90 text-[11px] text-stone-800 space-y-1 shadow-2xs">
+                                            <div className="flex items-start gap-1.5 text-stone-900">
+                                              <Store size={13} className="text-emerald-700 shrink-0 mt-0.5" />
+                                              <div>
+                                                <span className="text-[10px] text-stone-500 uppercase font-bold block">Địa chỉ nhận đồ chính xác:</span>
+                                                <strong className="text-xs text-stone-900">{unmaskedStationAddress}</strong>
+                                              </div>
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-stone-100 text-[10.5px]">
+                                              <span>Chủ tủ: <strong>{ownerContactName}</strong></span>
+                                              {ownerContactPhone && (
+                                                <>
+                                                  <span>•</span>
+                                                  <span>SĐT liên hệ: <a href={`tel:${ownerContactPhone}`} className="font-mono font-bold text-emerald-800 underline">{ownerContactPhone}</a></span>
+                                                </>
+                                              )}
+                                            </div>
+                                            <p className="text-[9.5px] text-stone-500 italic pt-0.5">
+                                              💡 Hãy liên hệ với chủ tủ trước khi đến và bấm &quot;Đã nhận được đồ&quot; sau khi nhận trang phục.
+                                            </p>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <p className="font-semibold text-blue-900 flex items-center gap-1.5">
+                                          <Truck size={14} className="text-blue-700 shrink-0" />
+                                          <span>
+                                            Chủ đồ đã đóng gói xong! {trackingCode ? `Đang chờ bưu tá GHN đến lấy (Mã: ${trackingCode})` : "Hệ thống đang điều phối bưu tá."}
+                                          </span>
+                                        </p>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
                                 {order.status === "LENDER_SHIPPED" && (
                                   <>
                                     <p className="text-[9.5px] text-emerald-700 italic pt-0.5">
@@ -1168,11 +1330,11 @@ export function OrdersClient({
                               </div>
                               
                               <div className="flex flex-wrap gap-3 mt-3">
-                                {order.status === "LENDER_SHIPPED" && (
+                                {(order.status === "LENDER_SHIPPED" || order.status === "OWNER_PACKED") && (
                                   <button 
                                     disabled={receivingIds[order.id]}
                                     onClick={() => handleRenterReceived(order.id)}
-                                    className="border border-slate-900 bg-slate-900 hover:bg-transparent text-white hover:text-slate-900 text-xs font-medium px-5 py-2.5 rounded-md transition-all duration-500 disabled:opacity-50 flex items-center gap-2"
+                                    className="border border-slate-900 bg-slate-900 hover:bg-transparent text-white hover:text-slate-900 text-xs font-medium px-5 py-2.5 rounded-md transition-all duration-500 disabled:opacity-50 flex items-center gap-2 cursor-pointer shadow-xs"
                                   >
                                     {receivingIds[order.id] ? <><Loader2 size={14} className="animate-spin" /> Đang xử lý...</> : "Đã nhận được đồ"}
                                   </button>
@@ -1817,9 +1979,16 @@ export function OrdersClient({
               >
                 {requestingPickupIds[packagingOrder.id] ? (
                   <><Loader2 size={14} className="animate-spin" /> Đang điều phối...</>
-                ) : (
-                  <><Check size={14} /> Xác nhận & Gọi Shipper</>
-                )}
+                ) : (() => {
+                  const deliveryShipment = packagingOrder.shipments?.find((s: any) => s.direction === "DELIVERY");
+                  const isSelfPickup = deliveryShipment?.provider === "SELF_PICKUP" ||
+                    (deliveryShipment?.deliveryAddress as any)?.shippingMode === "SELF_BOOK";
+                  return isSelfPickup ? (
+                    <><Check size={14} /> Xác nhận đã chuẩn bị đồ</>
+                  ) : (
+                    <><Check size={14} /> Xác nhận & Gọi GHN</>
+                  );
+                })()}
               </button>
             </div>
           </motion.div>

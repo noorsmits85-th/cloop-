@@ -5,10 +5,11 @@ import { z } from "zod";
 import { prisma } from "@/src/lib/prisma";
 import { requireAdmin, requireUser } from "@/src/lib/auth";
 import { createGhnShippingOrder } from "@/src/lib/ghn";
+import { createGhtkShippingOrder } from "@/src/lib/ghtk";
 
 const manualBookingSchema = z.object({
   shipmentId: z.string().min(1),
-  provider: z.enum(["GHN", "GHTK", "MANUAL"]),
+  provider: z.enum(["GHN", "GHTK", "GRAB", "MANUAL"]),
   trackingCode: z.string().trim().min(3).max(80),
   providerOrderCode: z.string().trim().min(3).max(80).optional(),
   actualShippingFee: z.coerce.number().int().min(0).optional(),
@@ -38,6 +39,7 @@ export async function requestPickupAction(rentalId: string, packagingProofUrls: 
       include: {
         invoice: true,
         product: true,
+        shipments: true,
       },
     });
 
@@ -45,31 +47,208 @@ export async function requestPickupAction(rentalId: string, packagingProofUrls: 
       return { success: false, error: "Không tìm thấy đơn hàng." };
     }
 
-    // Cập nhật trạng thái đơn hàng sang LENDER_SHIPPED
-    await prisma.rentalHistory.update({
-      where: { id: rental.id },
-      data: {
-        status: "LENDER_SHIPPED",
-      },
-    });
+    // 🛡️ Kiểm tra quyền: Phải là chủ tủ đồ của món hàng này
+    if (rental.ownerId !== user.id && rental.product?.userId !== user.id) {
+      return { success: false, error: "Bạn không có quyền thao tác trên đơn hàng này." };
+    }
 
-    // Tạo / cập nhật bản ghi shipment
-    try {
-      const clientOrderCode = `${rental.id}-DELIVERY`;
+    // 1. Phân loại phương thức giao nhận theo Multi-Carrier: GHN | GHTK | GRAB | SELF_PICKUP
+    const existingShipment = rental.shipments.find((s) => s.direction === "DELIVERY");
+    const rawShippingMode = String((existingShipment?.deliveryAddress as any)?.shippingMode || "").toUpperCase();
+    const rawProvider = String(existingShipment?.provider || "").toUpperCase();
+
+    const isSelfPickup =
+      rawProvider === "SELF_PICKUP" ||
+      rawShippingMode === "SELF_BOOK" ||
+      rawShippingMode === "SELF_PICKUP" ||
+      (rental.invoice?.shippingFeeCollected === 0 && (rawShippingMode === "SELF_BOOK" || rawShippingMode === "SELF_PICKUP"));
+
+    const isGrab = rawProvider === "GRAB" || rawShippingMode === "GRAB";
+    const isGhtk = rawProvider === "GHTK" || rawShippingMode === "GHTK";
+
+    // ==========================================
+    // NHÁNH 1: ĐƠN TỰ ĐẾN LẤY TẠI TRẠM CHỦ TỦ / TEST NỘI BỘ (0Đ)
+    // ==========================================
+    if (isSelfPickup) {
+      await prisma.$transaction(async (tx) => {
+        await tx.rentalHistory.update({
+          where: { id: rental.id },
+          data: {
+            status: "OWNER_PACKED",
+          },
+        });
+
+        await tx.shipment.upsert({
+          where: {
+            rentalId_direction: {
+              rentalId: rental.id,
+              direction: "DELIVERY",
+            },
+          },
+          update: {
+            provider: "SELF_PICKUP",
+            status: "BOOKED",
+            bookedByUserId: user.id,
+            providerRawPayload: packagingProofUrls.length > 0 ? { packagingProofUrls, type: "SELF_PICKUP" } : { type: "SELF_PICKUP" },
+          },
+          create: {
+            rentalId: rental.id,
+            direction: "DELIVERY",
+            provider: "SELF_PICKUP",
+            status: "BOOKED",
+            clientOrderCode: `${rental.id.slice(0, 8).toUpperCase()}-SELF`,
+            shippingFeeCollected: 0,
+            bookedByUserId: user.id,
+            providerRawPayload: packagingProofUrls.length > 0 ? { packagingProofUrls, type: "SELF_PICKUP" } : { type: "SELF_PICKUP" },
+          },
+        });
+
+        await tx.auditLog.create({
+          data: {
+            adminId: user.id,
+            action: "OWNER_PREPARED_STATION_PICKUP",
+            targetType: "SHIPMENT",
+            targetId: rental.id,
+            beforeStatus: rental.status,
+            afterStatus: "OWNER_PACKED",
+            metadata: JSON.stringify({
+              rentalId: rental.id,
+              packagingProofUrls,
+              mode: "SELF_PICKUP",
+            }),
+          },
+        });
+      });
+
+      revalidateShipmentViews(rental.id);
+      return {
+        success: true,
+        isSelfPickup: true,
+        status: "OWNER_PACKED",
+        message: "👗 Trang phục đã sẵn sàng tại trạm chủ tủ! Vui lòng chờ khách đến nhận đồ.",
+      };
+    }
+
+    // ==========================================
+    // NHÁNH 2: ĐƠN GIAO HỎA TỐC GRABEXPRESS (1H)
+    // ==========================================
+    if (isGrab) {
+      const grabTrackingCode = existingShipment?.trackingCode || `GRAB-${rental.id.slice(0, 8).toUpperCase()}`;
+
+      await prisma.$transaction(async (tx) => {
+        await tx.rentalHistory.update({
+          where: { id: rental.id },
+          data: {
+            status: "OWNER_PACKED",
+            shippingCode: grabTrackingCode,
+          },
+        });
+
+        await tx.shipment.upsert({
+          where: {
+            rentalId_direction: {
+              rentalId: rental.id,
+              direction: "DELIVERY",
+            },
+          },
+          update: {
+            provider: "GRAB",
+            status: "BOOKED",
+            trackingCode: grabTrackingCode,
+            bookedByUserId: user.id,
+            providerRawPayload: {
+              ...((existingShipment?.providerRawPayload as any) || {}),
+              packagingProofUrls,
+              type: "GRABEXPRESS",
+              expressMode: "INSTANT_1H",
+            },
+          },
+          create: {
+            rentalId: rental.id,
+            direction: "DELIVERY",
+            provider: "GRAB",
+            status: "BOOKED",
+            trackingCode: grabTrackingCode,
+            clientOrderCode: `${rental.id.slice(0, 8).toUpperCase()}-GRAB`,
+            shippingFeeCollected: rental.invoice?.shippingFeeCollected || 0,
+            bookedByUserId: user.id,
+            providerRawPayload: {
+              packagingProofUrls,
+              type: "GRABEXPRESS",
+              expressMode: "INSTANT_1H",
+            },
+          },
+        });
+
+        await tx.auditLog.create({
+          data: {
+            adminId: user.id,
+            action: "OWNER_PACKED_GRABEXPRESS",
+            targetType: "SHIPMENT",
+            targetId: rental.id,
+            beforeStatus: rental.status,
+            afterStatus: "OWNER_PACKED",
+            metadata: JSON.stringify({
+              rentalId: rental.id,
+              trackingCode: grabTrackingCode,
+              packagingProofUrls,
+            }),
+          },
+        });
+      });
+
+      revalidateShipmentViews(rental.id);
+      return {
+        success: true,
+        isGrab: true,
+        status: "OWNER_PACKED",
+        trackingCode: grabTrackingCode,
+        message: `⚡ Đơn GrabExpress Hỏa tốc đã sẵn sàng! Mã chuyến: ${grabTrackingCode}. Vui lòng bàn giao kiện hàng cho tài xế Grab trong 15-30 phút.`,
+      };
+    }
+
+    // ==========================================
+    // NHÁNH 3: ĐƠN GIAO TIẾT KIỆM GHTK (TEXT-BASED API)
+    // ==========================================
+    if (isGhtk) {
+      if (existingShipment?.trackingCode && existingShipment.status === "BOOKED") {
+        await prisma.rentalHistory.updateMany({
+          where: { id: rental.id, status: { in: ["PENDING_APPROVAL", "OWNER_PACKED"] } },
+          data: { status: "OWNER_PACKED", shippingCode: existingShipment.trackingCode },
+        });
+        revalidateShipmentViews(rental.id);
+        return {
+          success: true,
+          provider: "GHTK",
+          trackingCode: existingShipment.trackingCode,
+          actualShippingFee: existingShipment.actualShippingFee,
+          message: `✅ Đơn hàng đã có mã vận đơn GHTK: ${existingShipment.trackingCode}. Bưu tá GHTK sẽ sớm liên hệ lấy hàng.`,
+        };
+      }
+
+      await prisma.rentalHistory.update({
+        where: { id: rental.id },
+        data: { status: "OWNER_PACKED" },
+      });
+
+      const clientOrderCode = existingShipment?.clientOrderCode || `${rental.id.slice(0, 8).toUpperCase()}-DELIVERY`;
       const pickupAddress = {
-        name: rental.owner_name || "Chủ tủ",
-        phone: rental.owner_phone || "",
-        province: rental.product?.province || "Hà Nội",
-        districtId: rental.product?.districtId,
-        wardCode: rental.product?.wardCode,
-        specificAddress: rental.product?.specificAddress,
-      };
-      const deliveryAddress = {
-        name: rental.renter_name || "Khách thuê",
-        phone: rental.renter_phone || "",
+        name: rental.owner_name || (existingShipment?.pickupAddress as any)?.name || "Chủ tủ CLOOP",
+        phone: rental.owner_phone || (existingShipment?.pickupAddress as any)?.phone || "",
+        province: rental.product?.province || (existingShipment?.pickupAddress as any)?.province || "Hà Nội",
+        specificAddress: rental.product?.specificAddress || (existingShipment?.pickupAddress as any)?.specificAddress || (existingShipment?.pickupAddress as any)?.address || "",
       };
 
-      await prisma.shipment.upsert({
+      const deliveryAddress = {
+        name: rental.renter_name || (existingShipment?.deliveryAddress as any)?.recipientName || (existingShipment?.deliveryAddress as any)?.name || "Khách thuê CLOOP",
+        phone: rental.renter_phone || (existingShipment?.deliveryAddress as any)?.phone || "",
+        province: (existingShipment?.deliveryAddress as any)?.province || (existingShipment?.deliveryAddress as any)?.provinceName || "Hà Nội",
+        district: (existingShipment?.deliveryAddress as any)?.district || (existingShipment?.deliveryAddress as any)?.districtName || "",
+        ward: (existingShipment?.deliveryAddress as any)?.ward || (existingShipment?.deliveryAddress as any)?.wardName || "",
+        specificAddress: (existingShipment?.deliveryAddress as any)?.fullAddress || (existingShipment?.deliveryAddress as any)?.specificAddress || (existingShipment?.deliveryAddress as any)?.address || "",
+      };
+
+      const savedGhtkShipment = await prisma.shipment.upsert({
         where: {
           rentalId_direction: {
             rentalId: rental.id,
@@ -77,6 +256,7 @@ export async function requestPickupAction(rentalId: string, packagingProofUrls: 
           },
         },
         update: {
+          provider: "GHTK",
           status: "PENDING_BOOKING",
           shippingFeeCollected: rental.invoice?.shippingFeeCollected || 0,
           pickupAddress,
@@ -87,6 +267,7 @@ export async function requestPickupAction(rentalId: string, packagingProofUrls: 
         create: {
           rentalId: rental.id,
           direction: "DELIVERY",
+          provider: "GHTK",
           status: "PENDING_BOOKING",
           clientOrderCode,
           shippingFeeCollected: rental.invoice?.shippingFeeCollected || 0,
@@ -97,31 +278,371 @@ export async function requestPickupAction(rentalId: string, packagingProofUrls: 
         },
       });
 
+      const ghtkResult = await createGhtkShippingOrder({
+        clientOrderCode,
+        sender: pickupAddress,
+        receiver: deliveryAddress,
+        product: {
+          title: rental.product?.title || "Sản phẩm thời trang CLOOP",
+          declaredValue: rental.invoice?.depositAmount || 0,
+          weightGram: 500,
+        },
+        note: `CLOOP #${rental.id.slice(0, 8).toUpperCase()} - Giao GHTK`,
+      });
+
+      if (ghtkResult.success) {
+        await prisma.$transaction(async (tx) => {
+          await tx.shipment.update({
+            where: { id: savedGhtkShipment.id },
+            data: {
+              provider: "GHTK",
+              status: "BOOKED",
+              trackingCode: ghtkResult.trackingCode,
+              providerOrderCode: ghtkResult.orderCode,
+              actualShippingFee: ghtkResult.actualShippingFee,
+              providerRawPayload: {
+                ...((savedGhtkShipment.providerRawPayload as any) || {}),
+                packagingProofUrls,
+                ghtkRaw: ghtkResult.raw,
+              },
+            },
+          });
+
+          await tx.rentalHistory.update({
+            where: { id: rental.id },
+            data: { shippingCode: ghtkResult.trackingCode },
+          });
+
+          await tx.auditLog.create({
+            data: {
+              adminId: user.id,
+              action: "AUTO_CREATED_GHTK_SHIPMENT",
+              targetType: "SHIPMENT",
+              targetId: savedGhtkShipment.id,
+              beforeStatus: "PENDING_BOOKING",
+              afterStatus: "BOOKED",
+              metadata: JSON.stringify({
+                rentalId: rental.id,
+                trackingCode: ghtkResult.trackingCode,
+              }),
+            },
+          });
+        });
+
+        revalidateShipmentViews(rental.id);
+        return {
+          success: true,
+          provider: "GHTK",
+          trackingCode: ghtkResult.trackingCode,
+          actualShippingFee: ghtkResult.actualShippingFee,
+          message: `✅ Đã đóng gói & lên đơn GHTK thành công! Mã vận đơn: ${ghtkResult.trackingCode}. Bưu tá GHTK sẽ sớm liên hệ lấy hàng.`,
+        };
+      }
+
+      await prisma.shipment.update({
+        where: { id: savedGhtkShipment.id },
+        data: {
+          status: "PENDING_BOOKING",
+          providerRawPayload: {
+            ...((savedGhtkShipment.providerRawPayload as any) || {}),
+            packagingProofUrls,
+            lastGhtkError: ghtkResult.error,
+            failedAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      revalidateShipmentViews(rental.id);
+      return {
+        success: true,
+        fallback: true,
+        errorDetail: ghtkResult.error,
+        message: "📦 Đã lưu bằng chứng đóng gói! Hệ thống đang điều phối bưu tá GHTK cho đơn hàng của bạn.",
+      };
+    }
+
+    // ==========================================
+    // NHÁNH 2: ĐƠN GIAO QUA SHIPPER GHN (Auto-First + Graceful Fallback)
+    // ==========================================
+
+    // 🛡️ CHỐT CHẶN CHỐNG TRÙNG VẬN ĐƠN (Idempotency Guard)
+    if (existingShipment?.trackingCode && existingShipment.status === "BOOKED") {
+      await prisma.rentalHistory.updateMany({
+        where: { id: rental.id, status: { in: ["PENDING_APPROVAL", "OWNER_PACKED"] } },
+        data: { status: "OWNER_PACKED", shippingCode: existingShipment.trackingCode },
+      });
+      revalidateShipmentViews(rental.id);
+      return {
+        success: true,
+        trackingCode: existingShipment.trackingCode,
+        actualShippingFee: existingShipment.actualShippingFee,
+        message: `✅ Đơn hàng đã có mã vận đơn GHN: ${existingShipment.trackingCode}. Bưu tá GHN sẽ sớm liên hệ lấy hàng.`,
+      };
+    }
+
+    // LỚP 1: Lưu an toàn nội bộ trước (Cập nhật OWNER_PACKED, KHÔNG nhảy cóc sang LENDER_SHIPPED)
+    await prisma.rentalHistory.update({
+      where: { id: rental.id },
+      data: {
+        status: "OWNER_PACKED",
+      },
+    });
+
+    const clientOrderCode = existingShipment?.clientOrderCode || `${rental.id.slice(0, 8).toUpperCase()}-DELIVERY`;
+    const pickupAddress = {
+      name: rental.owner_name || (existingShipment?.pickupAddress as any)?.name || "Chủ tủ CLOOP",
+      phone: rental.owner_phone || (existingShipment?.pickupAddress as any)?.phone || "",
+      province: rental.product?.province || (existingShipment?.pickupAddress as any)?.province || "Hà Nội",
+      districtId: rental.product?.districtId || (existingShipment?.pickupAddress as any)?.districtId,
+      wardCode: rental.product?.wardCode || (existingShipment?.pickupAddress as any)?.wardCode,
+      specificAddress: rental.product?.specificAddress || (existingShipment?.pickupAddress as any)?.specificAddress || (existingShipment?.pickupAddress as any)?.address || "",
+    };
+
+    const deliveryAddress = {
+      name: rental.renter_name || (existingShipment?.deliveryAddress as any)?.recipientName || (existingShipment?.deliveryAddress as any)?.name || "Khách thuê CLOOP",
+      phone: rental.renter_phone || (existingShipment?.deliveryAddress as any)?.phone || "",
+      province: (existingShipment?.deliveryAddress as any)?.province || (existingShipment?.deliveryAddress as any)?.provinceName || "Hà Nội",
+      districtId: (existingShipment?.deliveryAddress as any)?.districtId ? Number((existingShipment?.deliveryAddress as any)?.districtId) : undefined,
+      wardCode: (existingShipment?.deliveryAddress as any)?.wardCode ? String((existingShipment?.deliveryAddress as any)?.wardCode) : undefined,
+      specificAddress: (existingShipment?.deliveryAddress as any)?.fullAddress || (existingShipment?.deliveryAddress as any)?.specificAddress || (existingShipment?.deliveryAddress as any)?.address || "",
+      shippingMode: (existingShipment?.deliveryAddress as any)?.shippingMode || "CLOOP_BOOK",
+    };
+
+    const savedShipment = await prisma.shipment.upsert({
+      where: {
+        rentalId_direction: {
+          rentalId: rental.id,
+          direction: "DELIVERY",
+        },
+      },
+      update: {
+        provider: "GHN",
+        status: "PENDING_BOOKING",
+        shippingFeeCollected: rental.invoice?.shippingFeeCollected || 0,
+        pickupAddress,
+        deliveryAddress,
+        bookedByUserId: user.id,
+        providerRawPayload: packagingProofUrls.length > 0 ? { packagingProofUrls } : undefined,
+      },
+      create: {
+        rentalId: rental.id,
+        direction: "DELIVERY",
+        provider: "GHN",
+        status: "PENDING_BOOKING",
+        clientOrderCode,
+        shippingFeeCollected: rental.invoice?.shippingFeeCollected || 0,
+        pickupAddress,
+        deliveryAddress,
+        bookedByUserId: user.id,
+        providerRawPayload: packagingProofUrls.length > 0 ? { packagingProofUrls } : undefined,
+      },
+    });
+
+    // LỚP 2: Tự động gọi API GHN Gateway ngay lập tức kèm Timeout Guard 6s
+    let ghnResult: any = null;
+    try {
+      const ghnPromise = createGhnShippingOrder({
+        clientOrderCode,
+        sender: {
+          name: pickupAddress.name,
+          phone: pickupAddress.phone,
+          province: pickupAddress.province,
+          districtId: pickupAddress.districtId,
+          wardCode: pickupAddress.wardCode,
+          specificAddress: pickupAddress.specificAddress,
+        },
+        receiver: {
+          name: deliveryAddress.name,
+          phone: deliveryAddress.phone,
+          province: deliveryAddress.province,
+          districtId: deliveryAddress.districtId,
+          wardCode: deliveryAddress.wardCode,
+          specificAddress: deliveryAddress.specificAddress,
+        },
+        product: {
+          title: rental.product?.title || "Sản phẩm thời trang CLOOP",
+          declaredValue: rental.invoice?.depositAmount || 0,
+          weightGram: 500,
+        },
+        note: `CLOOP #${rental.id.slice(0, 8).toUpperCase()} - Chiều giao đồ`,
+      });
+
+      const timeoutPromise = new Promise<{ success: false; error: string }>((_, reject) =>
+        setTimeout(() => reject(new Error("GHN Gateway timeout sau 6 giây")), 6000)
+      );
+
+      ghnResult = await Promise.race([ghnPromise, timeoutPromise]);
+    } catch (err: any) {
+      ghnResult = {
+        success: false,
+        error: err?.message || "Lỗi kết nối cổng GHN",
+      };
+    }
+
+    // TRƯỜNG HỢP A: GHN TẠO THÀNH CÔNG (Có mã vận đơn thật)
+    if (ghnResult?.success && ghnResult.trackingCode) {
+      await prisma.$transaction(async (tx) => {
+        await tx.shipment.update({
+          where: { id: savedShipment.id },
+          data: {
+            provider: "GHN",
+            status: "BOOKED",
+            trackingCode: ghnResult.trackingCode,
+            providerOrderCode: ghnResult.orderCode,
+            actualShippingFee: ghnResult.actualShippingFee,
+            providerRawPayload: {
+              ...((savedShipment.providerRawPayload as any) || {}),
+              packagingProofUrls,
+              ghnRaw: ghnResult.raw,
+            },
+          },
+        });
+
+        await tx.rentalHistory.update({
+          where: { id: rental.id },
+          data: {
+            status: "OWNER_PACKED",
+            shippingCode: ghnResult.trackingCode,
+          },
+        });
+
+        await tx.auditLog.create({
+          data: {
+            adminId: user.id,
+            action: "AUTO_CREATED_GHN_SHIPMENT",
+            targetType: "SHIPMENT",
+            targetId: savedShipment.id,
+            beforeStatus: "PENDING_BOOKING",
+            afterStatus: "BOOKED",
+            metadata: JSON.stringify({
+              rentalId: rental.id,
+              trackingCode: ghnResult.trackingCode,
+              orderCode: ghnResult.orderCode,
+              actualShippingFee: ghnResult.actualShippingFee,
+              packagingProofUrls,
+            }),
+          },
+        });
+      });
+
+      revalidateShipmentViews(rental.id);
+
+      return {
+        success: true,
+        trackingCode: ghnResult.trackingCode,
+        actualShippingFee: ghnResult.actualShippingFee,
+        message: `✅ Đã đóng gói & lên đơn GHN thành công! Mã vận đơn: ${ghnResult.trackingCode}. Bưu tá GHN sẽ sớm liên hệ lấy hàng.`,
+      };
+    }
+
+    // TRƯỜNG HỢP B: NGOẠI LỆ / THIẾU MÃ QUẬN PHƯỜNG / GHN QUÁ TẢI (Graceful Fallback)
+    // Tuyệt đối không làm sập request! Giữ PENDING_BOOKING để Admin can thiệp ở /admin/shipments
+    console.warn("GHN Auto-Dispatch Fallback Notice:", ghnResult?.error);
+
+    await prisma.shipment.update({
+      where: { id: savedShipment.id },
+      data: {
+        status: "PENDING_BOOKING",
+        providerRawPayload: {
+          ...((savedShipment.providerRawPayload as any) || {}),
+          packagingProofUrls,
+          lastGhnError: ghnResult?.error || "Không thể kết nối cổng GHN",
+          failedAt: new Date().toISOString(),
+        },
+      },
+    });
+
+    try {
       await prisma.auditLog.create({
         data: {
           adminId: user.id,
-          action: "OWNER_REQUEST_PICKUP",
+          action: "GHN_AUTO_DISPATCH_FALLBACK",
           targetType: "SHIPMENT",
-          targetId: rental.id,
-          beforeStatus: "PENDING_APPROVAL",
-          afterStatus: "LENDER_SHIPPED",
+          targetId: savedShipment.id,
+          beforeStatus: rental.status,
+          afterStatus: "OWNER_PACKED",
           metadata: JSON.stringify({
             rentalId: rental.id,
-            clientOrderCode,
             packagingProofUrls,
+            ghnError: ghnResult?.error,
           }),
         },
       });
-    } catch (shipmentErr) {
-      console.warn("Shipment record non-blocking log:", shipmentErr);
+    } catch (logErr) {
+      console.warn("Audit non-blocking log error:", logErr);
     }
 
     revalidateShipmentViews(rental.id);
-    return { success: true, shipmentId: rental.id };
+
+    return {
+      success: true,
+      fallback: true,
+      errorDetail: ghnResult?.error,
+      message: "📦 Đã lưu bằng chứng đóng gói! Hệ thống đang điều phối bưu tá cho địa chỉ của bạn, mã vận đơn sẽ cập nhật sau ít phút.",
+    };
   } catch (error: any) {
-    console.error("Lỗi gọi bưu tá:", error);
-    const message = error instanceof Error ? error.message : "Không thể gọi lấy hàng.";
+    console.error("Lỗi xác nhận đóng gói:", error);
+    const message = error instanceof Error ? error.message : "Không thể hoàn tất đóng gói.";
     return { success: false, error: message };
+  }
+}
+
+/**
+ * 🚚 XÁC NHẬN BÀN GIAO BƯU TÁ
+ * Chủ tủ bấm nút này khi bưu tá GHN đã đến nhà nhận kiện hàng
+ */
+export async function confirmHandoverAction(rentalId: string) {
+  try {
+    const user = await requireUser();
+    if (!user) {
+      return { success: false, error: "Chưa đăng nhập." };
+    }
+
+    const rental = await prisma.rentalHistory.findUnique({
+      where: { id: rentalId },
+      include: { product: true },
+    });
+
+    if (!rental) {
+      return { success: false, error: "Không tìm thấy đơn hàng." };
+    }
+
+    if (rental.ownerId !== user.id && rental.product?.userId !== user.id) {
+      return { success: false, error: "Bạn không có quyền thao tác trên đơn hàng này." };
+    }
+
+    await prisma.rentalHistory.update({
+      where: { id: rental.id },
+      data: { status: "LENDER_SHIPPED" },
+    });
+
+    await prisma.shipment.updateMany({
+      where: { rentalId: rental.id, direction: "DELIVERY" },
+      data: { status: "IN_TRANSIT" },
+    });
+
+    try {
+      await prisma.auditLog.create({
+        data: {
+          adminId: user.id,
+          action: "OWNER_CONFIRMED_HANDOVER",
+          targetType: "RENTAL",
+          targetId: rental.id,
+          beforeStatus: rental.status,
+          afterStatus: "LENDER_SHIPPED",
+        },
+      });
+    } catch (e) {
+      console.warn("Audit non-blocking log:", e);
+    }
+
+    revalidateShipmentViews(rental.id);
+    return {
+      success: true,
+      message: "🚚 Đã xác nhận bàn giao cho Shipper! Đơn hàng đã chuyển sang trạng thái Đang Vận Chuyển.",
+    };
+  } catch (error: any) {
+    return { success: false, error: error?.message || "Lỗi xác nhận bàn giao." };
   }
 }
 
@@ -147,6 +668,16 @@ export async function createGhnShipmentAction(shipmentId: string) {
 
     if (!shipment) {
       return { success: false, error: "Không tìm thấy thông tin đơn giao vận." };
+    }
+
+    // 🛡️ CHỐT CHẶN CHỐNG GỌI TRÙNG GHN (Idempotency Guard)
+    if (shipment.status === "BOOKED" && shipment.trackingCode) {
+      return {
+        success: true,
+        trackingCode: shipment.trackingCode,
+        actualShippingFee: shipment.actualShippingFee || 0,
+        message: `Đơn giao vận đã có sẵn mã GHN: ${shipment.trackingCode}. Không gọi lại API.`,
+      };
     }
 
     const rental = shipment.rental;
@@ -238,7 +769,7 @@ export async function createGhnShipmentAction(shipmentId: string) {
             status: { in: ["OWNER_PACKED", "PENDING_APPROVAL"] },
           },
           data: {
-            status: "LENDER_SHIPPED",
+            status: "OWNER_PACKED",
             shippingCode: ghnResult.trackingCode,
           },
         });

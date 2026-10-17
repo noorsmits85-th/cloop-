@@ -3,7 +3,7 @@
 import { prisma } from "@/src/lib/prisma";
 import { requireUser } from "@/src/lib/auth";
 import { revalidatePath } from "next/cache";
-import { calculateDynamicGhnFee, extractProvince } from "@/src/utils/shipping";
+import { calculateDynamicGhnFee, extractProvince, maskOrderPii } from "@/src/utils/shipping";
 import { settleCompletedRentalOrder, settleDisputedRentalOrder } from "@/lib/settlement-engine";
 
 
@@ -11,32 +11,72 @@ export async function renterReceivedAction(orderId: string) {
   try {
     const userAuth = await requireUser();
 
-    const updateResult = await prisma.rentalHistory.updateMany({
-      where: { id: orderId, renterId: userAuth.id, status: "LENDER_SHIPPED" },
-      data: { status: "BORROWER_RECEIVED" }
+    // 🛡️ 1. IDOR & State Verification
+    const rental = await prisma.rentalHistory.findFirst({
+      where: { id: orderId, renterId: userAuth.id },
+      include: {
+        product: { select: { title: true, userId: true } },
+      },
     });
 
-    if (updateResult.count === 0) {
-      return { success: false, error: "Forbidden hoac trang thai don hang khong hop le." };
+    if (!rental) {
+      return { success: false, error: "Không tìm thấy đơn hàng hoặc bạn không có quyền thao tác." };
     }
 
-    try {
-      await prisma.auditLog.create({
+    if (rental.status !== "LENDER_SHIPPED" && rental.status !== "OWNER_PACKED") {
+      return { success: false, error: "Trạng thái đơn hàng không hợp lệ để xác nhận nhận hàng." };
+    }
+
+    // 🛡️ 2. Phát hiện kịch bản "Bẻ gãy điểm nghẽn hành vi": Khách nhận hàng từ OWNER_PACKED
+    const forcedByRenter = rental.status === "OWNER_PACKED";
+
+    // 🛡️ 3. Atomic Multi-table Transaction
+    await prisma.$transaction(async (tx) => {
+      const lock = await tx.rentalHistory.updateMany({
+        where: { id: orderId, renterId: userAuth.id, status: { in: ["LENDER_SHIPPED", "OWNER_PACKED"] } },
+        data: { status: "BORROWER_RECEIVED" },
+      });
+
+      if (lock.count === 0) {
+        throw new Error("Xung đột dữ liệu: Đơn hàng đã được cập nhật bởi một tiến trình khác.");
+      }
+
+      await tx.shipment.updateMany({
+        where: { rentalId: orderId, direction: "DELIVERY" },
+        data: { status: "DELIVERED" },
+      });
+
+      await tx.auditLog.create({
         data: {
           adminId: userAuth.id,
           action: "RENTER_RECEIVED_ITEM",
           targetType: "RENTAL",
           targetId: orderId,
-          beforeStatus: "LENDER_SHIPPED",
-          afterStatus: "BORROWER_RECEIVED"
-        }
+          beforeStatus: rental.status,
+          afterStatus: "BORROWER_RECEIVED",
+          metadata: JSON.stringify({
+            forced_by_renter: forcedByRenter,
+            escrow_protection_window_hours: forcedByRenter ? 24 : 0,
+            dispute_protection_deadline: forcedByRenter
+              ? new Date(Date.now() + 24 * 3600 * 1000).toISOString()
+              : null,
+            item_title: rental.product?.title || "Trang phục CLOOP",
+            notice: forcedByRenter
+              ? "Khách bấm nhận đồ khi chủ tủ chưa bấm bàn giao bưu tá. Hệ thống kích hoạt cửa sổ bảo vệ khiếu nại 24h cho chủ tủ trước khi giải phóng Escrow."
+              : "Khách xác nhận nhận hàng chuẩn quy trình sau khi bưu tá đã giao.",
+          }),
+        },
       });
-    } catch (e) {
-      console.warn("Audit non-blocking log:", e);
-    }
+    });
 
     revalidatePath("/my-closet/orders");
-    return { success: true };
+    return {
+      success: true,
+      forcedByRenter,
+      message: forcedByRenter
+        ? "👗 Đã xác nhận nhận đồ! Thời hạn gói thuê chính thức bắt đầu (Kèm cửa sổ 24h bảo vệ quyền lợi đối soát cho chủ tủ)."
+        : "👗 Đã xác nhận nhận đồ thành công! Gói thuê chính thức bắt đầu đếm ngược.",
+    };
   } catch (error: any) {
     return { success: false, error: error.message || "Lỗi khi xác nhận nhận hàng." };
   }
@@ -833,6 +873,11 @@ export async function loadMoreOrdersAction({
             id: true,
             renterId: true,
             ownerId: true,
+            renter_name: true,
+            renter_phone: true,
+            owner_name: true,
+            owner_phone: true,
+            shippingCode: true,
             start_date: true,
             end_date: true,
             status: true,
@@ -851,11 +896,25 @@ export async function loadMoreOrdersAction({
               },
             },
             disputes: { orderBy: { createdAt: "desc" } },
+            shipments: {
+              select: {
+                id: true,
+                direction: true,
+                status: true,
+                trackingCode: true,
+                shippingFeeCollected: true,
+                actualShippingFee: true,
+                pickupAddress: true,
+                deliveryAddress: true,
+                providerRawPayload: true,
+              },
+            },
             product: {
               select: {
                 id: true,
                 title: true,
                 province: true,
+                specificAddress: true,
                 userId: true,
                 images: { select: { url: true }, orderBy: { sortOrder: "asc" }, take: 1 },
               },
@@ -867,14 +926,19 @@ export async function loadMoreOrdersAction({
                 avatar: true,
                 rating: true,
                 reviewCount: true,
-                reviewsReceived: { select: { rating: true }, where: { type: "OWNER_TO_RENTER" } }
-              }
-            }
+                reviewsReceived: { select: { rating: true }, where: { type: "OWNER_TO_RENTER" } },
+              },
+            },
           }
         : {
             id: true,
             renterId: true,
             ownerId: true,
+            renter_name: true,
+            renter_phone: true,
+            owner_name: true,
+            owner_phone: true,
+            shippingCode: true,
             start_date: true,
             end_date: true,
             status: true,
@@ -893,11 +957,25 @@ export async function loadMoreOrdersAction({
               },
             },
             disputes: { orderBy: { createdAt: "desc" } },
+            shipments: {
+              select: {
+                id: true,
+                direction: true,
+                status: true,
+                trackingCode: true,
+                shippingFeeCollected: true,
+                actualShippingFee: true,
+                pickupAddress: true,
+                deliveryAddress: true,
+                providerRawPayload: true,
+              },
+            },
             product: {
               select: {
                 id: true,
                 title: true,
                 province: true,
+                specificAddress: true,
                 userId: true,
                 images: { select: { url: true }, orderBy: { sortOrder: "asc" }, take: 1 },
                 user: {
@@ -906,47 +984,53 @@ export async function loadMoreOrdersAction({
                     name: true,
                     rating: true,
                     reviewCount: true,
-                    reviewsReceived: { select: { rating: true }, where: { type: "RENTER_TO_OWNER" } }
-                  }
-                }
-              }
-            }
-          }
+                    reviewsReceived: { select: { rating: true }, where: { type: "RENTER_TO_OWNER" } },
+                  },
+                },
+              },
+            },
+          },
     });
 
     const hasMore = rawOrders.length > safeLimit;
     const pagedOrders = hasMore ? rawOrders.slice(0, safeLimit) : rawOrders;
 
     const mapped = pagedOrders.map((order: any) => {
+      let mappedOrder: any;
       if (isOwner) {
         const renterStats = getReviewStats(order.renter?.reviewsReceived || []);
-        return {
+        mappedOrder = {
           ...order,
           startDate: order.start_date,
           endDate: order.end_date,
-          renter_name: order.renter?.name || order.renterId,
+          renter_name: order.renter_name || order.renter?.name || order.renterId,
+          renter_phone: order.renter_phone || "",
+          owner_phone: order.owner_phone || "",
           renterAvg: renterStats.avg,
           renterReviewCount: renterStats.count,
           products: {
             title: order.product?.title,
-            image_url: order.product?.images?.[0]?.url
-          }
+            image_url: order.product?.images?.[0]?.url,
+          },
         };
       } else {
         const ownerStats = getReviewStats(order.product?.user?.reviewsReceived || []);
-        return {
+        mappedOrder = {
           ...order,
           startDate: order.start_date,
           endDate: order.end_date,
-          owner_name: order.product?.user?.name || order.product?.userId,
+          owner_name: order.owner_name || order.product?.user?.name || order.product?.userId,
+          owner_phone: order.owner_phone || "",
+          renter_phone: order.renter_phone || "",
           ownerAvg: ownerStats.avg,
           ownerReviewCount: ownerStats.count,
           products: {
             title: order.product?.title,
-            image_url: order.product?.images?.[0]?.url
-          }
+            image_url: order.product?.images?.[0]?.url,
+          },
         };
       }
+      return maskOrderPii(mappedOrder);
     });
 
     const serializedOrders = JSON.parse(

@@ -1,3 +1,8 @@
+<!-- BEGIN:argon-bridge-rule -->
+# QUY TẮC BẮT BUỘC ĐIỀU PHỐI BỘ NÃO ARGON (GEMINI TAB BRIDGE)
+Từ giờ Gemini 3.8 Flash bị khóa tự suy luận, chỉ làm ống dẫn I/O thuần túy. Mọi yêu cầu phân tích, thảo luận logic và sửa code đều phải dùng Playwright MCP (browser_tabs, browser_type, browser_press_key) gửi sang tab gemini.google.com cho Gemini Argon xử lý, sau đó dùng browser_snapshot đọc nguyên văn kết quả đem về.
+<!-- END:argon-bridge-rule -->
+
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
 
@@ -58,19 +63,19 @@ Tóm lại: Hãy code với tư duy "Mọi user đều là hacker". Nếu bạn 
 > **LUẬT THÉP BỔ SUNG**: Mọi hành động thay đổi tiền, quyền, trạng thái đơn hàng, tồn kho, hoặc dữ liệu cá nhân phải được xác thực, phân quyền, validate server-side, ghi audit log, và nếu có nhiều bước thì chạy trong transaction/idempotent flow.
 <!-- END:cloop-security-rules -->
 
-7. PH?N 5: C�I B?Y "LOCALSTORAGE"
-- Tuy?t d?i kh�ng d�ng LocalStorage d? luu tr? d? li?u nh?y c?m ho?c tr?ng th�i dang nh?p ch�nh (Session).
-- Ph?i s? d?ng Backend v� Database d? luu tr? d?ng b?, an to�n.
+7. PH?N 5: C�I B?Y "LOCALSTORAGE"
+- Tuy?t d?i kh�ng d�ng LocalStorage d? luu tr? d? li?u nh?y c?m ho?c tr?ng th�i dang nh?p ch�nh (Session).
+- Ph?i s? d?ng Backend v� Database d? luu tr? d?ng b?, an to�n.
 
-8. PH?N 6: 7 C�U H?I TRU?C KHI "SHIP" APP (PRODUCTION-READY)
-- �ua to�n b? Secret/API Key v? Server, kh�ng d? l?t ra Frontend.
-- B?t bu?c d�ng RLS/Middleware d? check quy?n t?ng request, ch?ng l?i IDOR (xem tr?m d? li?u qua URL).
-- Validate to�n b? d? li?u (Zod) ? server, kh�ng tin client.
+8. PH?N 6: 7 C�U H?I TRU?C KHI "SHIP" APP (PRODUCTION-READY)
+- �ua to�n b? Secret/API Key v? Server, kh�ng d? l?t ra Frontend.
+- B?t bu?c d�ng RLS/Middleware d? check quy?n t?ng request, ch?ng l?i IDOR (xem tr?m d? li?u qua URL).
+- Validate to�n b? d? li?u (Zod) ? server, kh�ng tin client.
 - Thi?t l?p Rate Limiting b?o v? server kh?i spam/DDoS.
-- C?u h�nh Logging an to�n (Sentry): kh�ng n�m th?ng l?i chi ti?t ra UI l�m l? token.
-- Qu�t c�c package d? x�a code th?a, ch?ng Supply Chain Attack (Dependabot).
-- B?t Auto backup v� test qu� tr�nh restore database d?nh k?.
+- C?u h�nh Logging an to�n (Sentry): kh�ng n�m th?ng l?i chi ti?t ra UI l�m l? token.
+- Qu�t c�c package d? x�a code th?a, ch?ng Supply Chain Attack (Dependabot).
+- B?t Auto backup v� test qu� tr�nh restore database d?nh k?.
 
-9. QUY TR�NH T?I UU H�A (CH?NG S?P APP DO VIBE CODING)
-- Th�m Indexes cho Database, tr�nh query SELECT * b?a b�i.
-- Chuy?n sang Stateless Architecture (Kh�ng luu session tr?c ti?p tr�n RAM server).
+9. QUY TR�NH T?I UU H�A (CH?NG S?P APP DO VIBE CODING)
+- Th�m Indexes cho Database, tr�nh query SELECT * b?a b�i.
+- Chuy?n sang Stateless Architecture (Kh�ng luu session tr?c ti?p tr�n RAM server).
