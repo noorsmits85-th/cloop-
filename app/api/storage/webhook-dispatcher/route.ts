@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 
 export async function GET() {
   try {
-    // 🛡️ Auth guard
+    //  Auth guard
     let userAuth: any = null;
     try {
       userAuth = await requireUser();

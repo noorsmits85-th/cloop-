@@ -130,7 +130,7 @@ export function OrdersClient({
   const [hasMoreRented, setHasMoreRented] = useState(initialHasMoreRented);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   
-  // 🛡️ Idempotency / Double-click shields
+  // Idempotency / Double-click shields
   const [completingIds, setCompletingIds] = useState<Record<string, boolean>>({});
   const [requestingPickupIds, setRequestingPickupIds] = useState<Record<string, boolean>>({});
   const [receivingIds, setReceivingIds] = useState<Record<string, boolean>>({});
@@ -152,7 +152,7 @@ export function OrdersClient({
   const [isReviewSubmitting, setIsReviewSubmitting] = useState(false);
   const [isDisputeSubmitting, setIsDisputeSubmitting] = useState(false);
 
-  // ⚖️ Burden of Proof (Nghĩa Vụ Chứng Minh) Counter-Dispute State
+  // Burden of Proof (Nghĩa Vụ Chứng Minh) Counter-Dispute State
   const [showCounterModal, setShowCounterModal] = useState(false);
   const [counterDisputeData, setCounterDisputeData] = useState<{
     disputeId: string;
@@ -166,7 +166,7 @@ export function OrdersClient({
   const [counterUploadProgress, setCounterUploadProgress] = useState("");
   const [isSubmittingCounter, setIsSubmittingCounter] = useState(false);
 
-  // 📦 Packaging Video & Sealed Proof State (Kiểm tra niêm phong & Video trước khi gửi)
+  // Packaging Video & Sealed Proof State (Kiểm tra niêm phong & Video trước khi gửi)
   const [packagingOrder, setPackagingOrder] = useState<any | null>(null);
   const [packagingProofs, setPackagingProofs] = useState<string[]>([]);
   const [packagingChecklist, setPackagingChecklist] = useState({
@@ -175,13 +175,13 @@ export function OrdersClient({
     sealedProperly: true
   });
 
-  // ☁️ Google Drive 10TB Storage State & Upload Handlers
+  // Google Drive 10TB Storage State & Upload Handlers
   const [isUploadingDisputeMedia, setIsUploadingDisputeMedia] = useState(false);
   const [disputeUploadProgress, setDisputeUploadProgress] = useState("");
   const [isUploadingPackagingMedia, setIsUploadingPackagingMedia] = useState(false);
   const [packagingUploadProgress, setPackagingUploadProgress] = useState("");
 
-  // 🚀 TẢI TRỰC TIẾP LÊN GOOGLE DRIVE 5TB (RESUMABLE UPLOAD - BYPASS 4.5MB VERCEL LIMIT)
+  // TẢI TRỰC TIẾP LÊN GOOGLE DRIVE 5TB (RESUMABLE UPLOAD - BYPASS 4.5MB VERCEL LIMIT)
   const fileToBase64 = (f: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -224,7 +224,7 @@ export function OrdersClient({
             xhr.upload.onprogress = (e) => {
               if (e.lengthComputable && onProgress) {
                 const pct = Math.round((e.loaded / e.total) * 100);
-                onProgress(`Google Drive 5TB: ${pct}%`);
+                onProgress(`Đang mã hóa bảo mật: %`);
               }
             };
 
@@ -255,12 +255,12 @@ export function OrdersClient({
     // 1B. Thử bắn thẳng sang Dual-Webhook Google Apps Script 10TB (Bypass 4.5MB Vercel & CORS qua text/plain)
     if (file.size <= 35 * 1024 * 1024) {
       try {
-        if (onProgress) onProgress("Đang kết nối kho 10TB...");
+        if (onProgress) onProgress("Đang kết nối trung tâm lưu trữ...");
         const configRes = await fetch("/api/storage/webhook-dispatcher");
         if (configRes.ok) {
           const { webhookUrl, folderId } = await configRes.json();
           if (webhookUrl) {
-            if (onProgress) onProgress("Đang xử lý dữ liệu...");
+            if (onProgress) onProgress("Đang tối ưu tư liệu đối soát...");
             const base64Data = await fileToBase64(file);
             const payload = JSON.stringify({
               fileName: file.name,
@@ -271,7 +271,7 @@ export function OrdersClient({
               folderId: folderId || undefined,
             });
 
-            if (onProgress) onProgress("Đang tải trực tiếp lên Drive 10TB...");
+            if (onProgress) onProgress("Đang bảo mật và lưu trữ tư liệu...");
             const uploadRes = await fetch(webhookUrl, {
               method: "POST",
               redirect: "follow",
@@ -303,7 +303,7 @@ export function OrdersClient({
     formData.append("file", file);
     formData.append("targetKho", "auto");
 
-    if (onProgress) onProgress("Đang lưu lên kho dự phòng...");
+    if (onProgress) onProgress("Đang lưu trữ tư liệu...");
     const res = await fetch("/api/upload-drive", {
       method: "POST",
       body: formData,
@@ -328,7 +328,7 @@ export function OrdersClient({
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         if (file.size > 200 * 1024 * 1024) {
-          toast.error(`Tệp ${file.name} vượt quá giới hạn 200MB.`);
+          toast.error(`Tệp có dung lượng vượt mức tối ưu. Quý khách vui lòng chọn đoạn video ngắn gọn hơn để hệ thống đối soát tức thì.`);
           continue;
         }
         setDisputeUploadProgress(`Đang chuẩn bị tệp ${i + 1}/${files.length}...`);
@@ -341,7 +341,7 @@ export function OrdersClient({
           setDisputeImages((prev) => [...prev, finalUrl]);
         }
       }
-      toast.success("Đã tải bằng chứng an toàn lên Kho 5TB!");
+      toast.success("Tư liệu đối soát đã được ghi nhận an toàn.");
     } catch (err: any) {
       console.error("Dispute upload error:", err);
       toast.error(err.message || "Lỗi tải ảnh/video lên Kho Google.");
@@ -361,7 +361,7 @@ export function OrdersClient({
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         if (file.size > 200 * 1024 * 1024) {
-          toast.error(`Tệp ${file.name} vượt quá giới hạn 200MB.`);
+          toast.error(`Tệp có dung lượng vượt mức tối ưu. Quý khách vui lòng chọn đoạn video ngắn gọn hơn để hệ thống đối soát tức thì.`);
           continue;
         }
         setCounterUploadProgress(`Đang chuẩn bị video ${i + 1}/${files.length}...`);
@@ -374,7 +374,7 @@ export function OrdersClient({
           setCounterVideos((prev) => [...prev, finalUrl]);
         }
       }
-      toast.success("Đã tải video bảo chứng an toàn lên Kho 5TB!");
+      toast.success("Video đối soát đã được ghi nhận an toàn.");
     } catch (err: any) {
       console.error("Counter upload error:", err);
       toast.error(err.message || "Lỗi tải video lên Kho Google.");
@@ -394,7 +394,7 @@ export function OrdersClient({
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         if (file.size > 200 * 1024 * 1024) {
-          toast.error(`Tệp ${file.name} vượt quá giới hạn 200MB.`);
+          toast.error(`Tệp có dung lượng vượt mức tối ưu. Quý khách vui lòng chọn đoạn video ngắn gọn hơn để hệ thống đối soát tức thì.`);
           continue;
         }
         setPackagingUploadProgress(`Đang chuẩn bị tệp ${i + 1}/${files.length}...`);
@@ -407,7 +407,7 @@ export function OrdersClient({
           setPackagingProofs((prev) => [...prev, finalUrl]);
         }
       }
-      toast.success("Đã lưu video/ảnh niêm phong an toàn lên Kho 5TB!");
+      toast.success("Tư liệu niêm phong đã được ghi nhận an toàn.");
     } catch (err: any) {
       console.error("Packaging upload error:", err);
       toast.error(err.message || "Lỗi tải video/ảnh đóng gói.");
@@ -418,7 +418,7 @@ export function OrdersClient({
     }
   };
 
-  // ⚡ Supabase Realtime Channels (Live State & Toast Synchronization)
+  // Supabase Realtime Channels (Live State & Toast Synchronization)
   useEffect(() => {
     const channel = supabase
       .channel("orders_realtime_sync")
@@ -444,17 +444,17 @@ export function OrdersClient({
                 const itemTitle = prev[index].product?.title || prev[index].products?.title || "Trang phục";
                 
                 if (newStatus === "LENDER_SHIPPED") {
-                  toast.info("🚚 Đơn hàng đang được giao!", {
+                  toast.info("Đơn hàng đang được vận chuyển", {
                     description: `Chủ đồ đã gửi món "${itemTitle}". Hãy chuẩn bị đón đồ nhé!`,
                     duration: 5000,
                   });
                 } else if (newStatus === "LENDER_COMPLETED") {
-                  toast.success("🎉 Hoàn cọc thành công!", {
+                  toast.success("Hoàn tất hoàn trả tiền cọc", {
                     description: `Chủ đồ đã xác nhận nhận lại "${itemTitle}". Tiền cọc đã được mở khóa an toàn về ví!`,
                     duration: 6000,
                   });
                 } else if (newStatus === "DISPUTE") {
-                  toast.error("⚠️ Có sự cố phát sinh", {
+                  toast.error("Thông báo từ đơn hàng", {
                     description: `Đơn hàng "${itemTitle}" đang được đưa vào diện khiếu nại để BQT giải quyết.`,
                     duration: 7000,
                   });
@@ -479,7 +479,7 @@ export function OrdersClient({
                 const itemTitle = prev[index].product?.title || prev[index].products?.title || "Món đồ";
 
                 if (newStatus === "BORROWER_RETURNED") {
-                  toast.info("📦 Khách đã gửi trả đồ!", {
+                  toast.info("Khách thuê đã gửi hoàn trả trang phục", {
                     description: `Khách thuê đã hoàn tất gửi trả "${itemTitle}". Vui lòng kiểm tra và bấm "Đã nhận lại đồ" để kết thúc giao dịch.`,
                     duration: 6000,
                   });
@@ -489,7 +489,7 @@ export function OrdersClient({
                     duration: 4000,
                   });
                 } else if (newStatus === "DISPUTE") {
-                  toast.error("⚠️ Khiếu nại đã ghi nhận", {
+                  toast.error("Hồ sơ khiếu nại đã được ghi nhận", {
                     description: `Đơn hàng "${itemTitle}" đang ở trạng thái tranh chấp.`,
                     duration: 6000,
                   });
@@ -559,7 +559,7 @@ export function OrdersClient({
 
       if (!res.success) throw new Error("error" in res ? String(res.error) : "Lỗi không xác định");
 
-      toast.success("🎉 Đã gửi đánh giá thành công!", { description: "Điểm tín nhiệm (+10 Pts) đã được ghi nhận." });
+      toast.success("Đã gửi đánh giá thành công", { description: "Điểm tín nhiệm (+10 Pts) đã được ghi nhận." });
       setShowReviewModal(false);
       router.refresh(); 
     } catch (err: any) {
@@ -570,7 +570,7 @@ export function OrdersClient({
   };
 
   const handleCompleteOrder = async (orderId: string) => {
-    if (completingIds[orderId]) return; // 🔒 Guard against double-click
+    if (completingIds[orderId]) return; // Guard against double-click
     
     setCompletingIds(prev => ({ ...prev, [orderId]: true }));
     setEscrowOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "LENDER_COMPLETED" } : o));
@@ -578,7 +578,7 @@ export function OrdersClient({
     try {
       const res = await completeOrderAction(orderId);
       if (res.success) {
-        toast.success("🎉 Đã hoàn tất đơn hàng!", { description: "Hệ thống đã hoàn trả 100% tiền cọc an toàn và mở đồ cho thuê tiếp." });
+        toast.success("Đã hoàn tất đơn hàng", { description: "Hệ thống đã hoàn trả 100% tiền cọc an toàn và mở đồ cho thuê tiếp." });
         router.refresh();
       } else {
         toast.error("Lỗi hoàn tất", { description: res.error });
@@ -602,17 +602,17 @@ export function OrdersClient({
       const res = await requestPickupAction(orderId, packagingProofUrls);
       if (res.success) {
         if (res.isSelfPickup) {
-          toast.success("👗 Đã chuẩn bị đồ xong!", {
+          toast.success("Đã chuẩn bị trang phục hoàn tất", {
             description: "Trang phục đã sẵn sàng tại trạm. Đang chờ khách thuê đến nhận đồ.",
             duration: 6000,
           });
         } else if (res.trackingCode) {
-          toast.success("📦 Đã lên đơn GHN thành công!", {
+          toast.success("Đã khởi tạo đơn vận chuyển thành công", {
             description: `Mã vận đơn: ${res.trackingCode}. Bưu tá GHN sẽ sớm liên hệ đến lấy hàng.`,
             duration: 7000,
           });
         } else {
-          toast.info("📦 Đã ghi nhận đóng gói!", {
+          toast.info("Đã lưu trữ tư liệu niêm phong", {
             description: "Hệ thống đang điều phối bưu tá cho địa chỉ của bạn, mã vận đơn sẽ cập nhật sau ít phút.",
             duration: 6000,
           });
@@ -639,7 +639,7 @@ export function OrdersClient({
     try {
       const res = await confirmHandoverAction(orderId);
       if (res.success) {
-        toast.success("🚚 Đã bàn giao bưu tá!", {
+        toast.success("Đã bàn giao đơn vị vận chuyển", {
           description: "Đơn hàng đã chính thức chuyển sang trạng thái Đang Vận Chuyển.",
           duration: 5000,
         });
@@ -664,12 +664,12 @@ export function OrdersClient({
       const res = await renterReceivedAction(orderId);
       if (res.success) {
         if (res.forcedByRenter) {
-          toast.warning("⚡ Đã ghi nhận nhận đồ sớm!", {
+          toast.warning("Đã ghi nhận nhận đồ sớm", {
             description: res.message || "Đơn hàng đã được kích hoạt. Chủ tủ có thời hạn 24h đối soát bảo vệ quyền lợi.",
             duration: 8000,
           });
         } else {
-          toast.success("👗 Đã xác nhận nhận đồ!", {
+          toast.success("Đã xác nhận nhận trang phục", {
             description: res.message || "Thời gian gói thuê chính thức bắt đầu đếm ngược.",
           });
         }
@@ -693,7 +693,7 @@ export function OrdersClient({
     try {
       const res = await renterReturnAction(orderId);
       if (res.success) {
-        toast.success("🔄 Đã báo hệ thống hoàn trả!", { description: "Hãy giao đồ cho Shipper để gửi về nhé." });
+        toast.success("Đã thông báo hoàn trả trang phục", { description: "Hãy giao đồ cho Shipper để gửi về nhé." });
         router.refresh();
       } else {
         toast.error("Lỗi xác nhận", { description: res.error });
@@ -716,7 +716,7 @@ export function OrdersClient({
       return; 
     }
 
-    // 🛡️ NGUYÊN TẮC NGHĨA VỤ CHỨNG MINH CHO CHỦ TỦ:
+    // NGUYÊN TẮC NGHĨA VỤ CHỨNG MINH CHO CHỦ TỦ:
     // Chủ tủ yêu cầu trừ cọc bắt buộc phải có video mở hộp niêm phong đối soát từ shipper!
     if (isOwnerMode && suggestedDeduction > 0) {
       const hasUnboxingVideo = disputeImages.some(isEvidenceVideo);
@@ -1126,7 +1126,7 @@ export function OrdersClient({
                                             <span>Cước thu trực tiếp: <strong className="text-amber-800 font-semibold">{estimatedFee.toLocaleString('vi-VN')}đ</strong></span>
                                           </div>
                                           <p className="text-[10px] text-amber-800/90 leading-relaxed font-light">
-                                            ⚠️ <strong>Lưu ý nhận hàng:</strong> Cước GHN được tính linh động theo cự ly địa chỉ 2 bên ({zoneLabel}). Chủ tủ tự thanh toán cước chuyển hoàn cho bưu tá khi nhận lại đồ. Sau khi kiểm tra kiện hàng hoàn tất, bấm nút bên dưới để giải ngân hoàn 100% tiền cọc & tiền thuê cho khách.
+                                            <strong>Lưu ý nhận hàng:</strong> Cước GHN được tính linh động theo cự ly địa chỉ 2 bên ({zoneLabel}). Chủ tủ tự thanh toán cước chuyển hoàn cho bưu tá khi nhận lại đồ. Sau khi kiểm tra kiện hàng hoàn tất, bấm nút bên dưới để giải ngân hoàn 100% tiền cọc & tiền thuê cho khách.
                                           </p>
                                         </div>
                                       );
@@ -1172,7 +1172,7 @@ export function OrdersClient({
                                      }} 
                                      className="border border-stone-200 bg-transparent hover:border-[#183A2D] hover:bg-[#183A2D] text-stone-600 hover:text-white text-xs font-medium px-5 py-2.5 rounded-md transition-all duration-500 flex items-center gap-1.5"
                                    >
-                                     ⭐ Đánh giá khách thuê
+                                      Đánh giá khách thuê
                                    </button>
                                  )}
                                 {order.status === "DISPUTE" && (
@@ -1239,7 +1239,7 @@ export function OrdersClient({
                                           </div>
                                         ) : (
                                           <p className="text-[11px] text-red-700 font-medium bg-red-50 p-2 rounded border border-red-200">
-                                            ⚠️ Vụ việc đã được chuyển lên Ban Quản Trị CLOOP để làm trọng tài giải quyết.
+                                            Vụ việc đã được chuyển lên Ban Quản Trị CLOOP để làm trọng tài giải quyết.
                                           </p>
                                         )}
                                       </div>
@@ -1393,7 +1393,7 @@ export function OrdersClient({
                                               )}
                                             </div>
                                             <p className="text-[9.5px] text-stone-500 italic pt-0.5">
-                                              💡 Hãy liên hệ với chủ tủ trước khi đến và bấm &quot;Đã nhận được đồ&quot; sau khi nhận trang phục.
+                                              Hãy liên hệ với chủ tủ trước khi đến và bấm &quot;Đã nhận được đồ&quot; sau khi nhận trang phục.
                                             </p>
                                           </div>
                                         </div>
@@ -1411,7 +1411,7 @@ export function OrdersClient({
                                 {order.status === "LENDER_SHIPPED" && (
                                   <>
                                     <p className="text-[9.5px] text-emerald-700 italic pt-0.5">
-                                      💡 Gói thuê chỉ bắt đầu tính giờ khi bạn bấm nút &quot;Đã nhận được đồ&quot; bên dưới.
+                                      Gói thuê chỉ bắt đầu tính giờ khi bạn bấm nút &quot;Đã nhận được đồ&quot; bên dưới.
                                     </p>
                                     <div className="mt-2 p-3 rounded-lg bg-amber-50/80 border border-amber-200/80 text-[11px] text-amber-950 flex items-start gap-2.5">
                                       <div className="p-1.5 bg-amber-100/80 rounded-md text-amber-800 shrink-0 mt-0.5">
@@ -1555,7 +1555,7 @@ export function OrdersClient({
                                           </div>
                                         ) : (
                                           <p className="text-[11px] text-red-700 font-medium bg-red-50 p-2 rounded border border-red-200">
-                                            ⚠️ Vụ việc đã được chuyển lên Ban Quản Trị CLOOP để làm trọng tài giải quyết.
+                                            Vụ việc đã được chuyển lên Ban Quản Trị CLOOP để làm trọng tài giải quyết.
                                           </p>
                                         )}
                                       </div>
@@ -1757,7 +1757,7 @@ export function OrdersClient({
                 </label>
                 {isUploadingDisputeMedia && (
                   <span className="text-[10px] text-amber-700 font-semibold flex items-center gap-1 animate-pulse">
-                    <Loader2 size={11} className="animate-spin" /> {disputeUploadProgress || "Đang lưu lên Kho Google..."}
+                    <Loader2 size={11} className="animate-spin" /> {disputeUploadProgress || "Đang lưu trữ tư liệu..."}
                   </span>
                 )}
               </div>
@@ -1812,8 +1812,8 @@ export function OrdersClient({
                   )}
                 </label>
               </div>
-              <p className="text-[10px] text-stone-400">
-                Tệp được lưu trữ an toàn và bảo mật trên hệ thống CLOOP.
+              <p className="text-[10px] text-stone-500 leading-relaxed">
+                Để quy trình đối soát khiếu nại được xử lý tự động trong vòng 30 giây, quý khách vui lòng chọn video mở hộp ngắn gọn từ 30 đến 60 giây (dung lượng tối ưu dưới 35MB).
               </p>
             </div>
 
@@ -1828,7 +1828,7 @@ export function OrdersClient({
           </motion.div>
         </div>
       )}
-      {/* ⚖️ MODAL NGHĨA VỤ CHỨNG MINH CHO KHÁCH THUÊ (BURDEN OF PROOF COUNTER-DISPUTE MODAL) */}
+      {/* MODAL NGHĨA VỤ CHỨNG MINH CHO KHÁCH THUÊ (BURDEN OF PROOF COUNTER-DISPUTE MODAL) */}
       {showCounterModal && counterDisputeData && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 backdrop-blur-md p-4">
           <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="bg-white border border-stone-100 rounded-xl max-w-[500px] w-full shadow-2xl p-6 md:p-8 text-left space-y-5">
@@ -1874,7 +1874,7 @@ export function OrdersClient({
                 </span>
                 {isUploadingCounterMedia && (
                   <span className="text-[10px] text-amber-700 font-semibold flex items-center gap-1 animate-pulse">
-                    <Loader2 size={11} className="animate-spin" /> {counterUploadProgress || "Đang lưu video..."}
+                    <Loader2 size={11} className="animate-spin" /> {counterUploadProgress || "Đang lưu trữ video..."}
                   </span>
                 )}
               </div>
@@ -1913,6 +1913,9 @@ export function OrdersClient({
                   <span>+ Tải Video bảo chứng</span>
                 </label>
               </div>
+              <p className="text-[10px] text-stone-500 leading-relaxed">
+                Video đối soát liền mạch (không cắt ghép, dưới 35MB) là căn cứ quan trọng nhất để bảo vệ quyền lợi trọn vẹn cho quý khách.
+              </p>
 
               <button
                 type="button"
@@ -2061,6 +2064,9 @@ export function OrdersClient({
                   )}
                 </label>
               </div>
+              <p className="text-[10px] text-stone-500 leading-relaxed pt-1">
+                Để tối ưu tốc độ lưu trữ và đối soát tự động, quý khách vui lòng chọn video niêm phong ngắn gọn từ 30 đến 60 giây (dung lượng tối ưu dưới 35MB).
+              </p>
             </div>
 
             <div className="pt-2 flex items-center gap-3">

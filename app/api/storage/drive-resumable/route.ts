@@ -4,7 +4,7 @@ import { requireUser } from "@/src/lib/auth";
 export const runtime = "nodejs";
 
 /**
- * 🚀 DIRECT BROWSER-TO-DRIVE RESUMABLE UPLOAD SESSION ENDPOINT
+ *  DIRECT BROWSER-TO-DRIVE RESUMABLE UPLOAD SESSION ENDPOINT
  * 1. Xác thực người dùng (Auth Guard chống spam bộ nhớ 5TB).
  * 2. Dùng OAuth2 Refresh Token của tài khoản Google 5TB xin Access Token vĩnh viễn (không dùng Service Account).
  * 3. Khởi tạo Resumable Upload Session URI với Google Drive API có đính kèm header Origin để mở khóa CORS cho trình duyệt.
@@ -12,7 +12,7 @@ export const runtime = "nodejs";
  */
 export async function POST(request: Request) {
   try {
-    // 🛡️ 1. Auth Guard: Bắt buộc đăng nhập
+    //  1. Auth Guard: Bắt buộc đăng nhập
     let userAuth: any = null;
     try {
       userAuth = await requireUser();
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
       }, { status: 503 });
     }
 
-    // 🔑 2. Lấy Access Token từ Refresh Token của tài khoản 5TB
+    //  2. Lấy Access Token từ Refresh Token của tài khoản 5TB
     const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
 
     if (!tokenResponse.ok) {
       const tokenErr = await tokenResponse.text();
-      console.error("❌ [GoogleDrive OAuth] Lỗi lấy Access Token:", tokenErr);
+      console.error(" [GoogleDrive OAuth] Lỗi lấy Access Token:", tokenErr);
       return NextResponse.json({
         error: "Không thể làm mới Access Token từ Google. Hãy kiểm tra lại REFRESH_TOKEN.",
         details: tokenErr,
@@ -74,14 +74,14 @@ export async function POST(request: Request) {
     const tokenData = await tokenResponse.json();
     const accessToken = tokenData.access_token;
 
-    // 🌐 3. Nhận diện Origin của trình duyệt để cấp phép CORS
+    //  3. Nhận diện Origin của trình duyệt để cấp phép CORS
     const origin = request.headers.get("origin") || request.headers.get("referer") || "https://cloop-sable.vercel.app";
     const cleanOrigin = origin.replace(/\/$/, "");
 
     const isVideo = (mimeType || "").startsWith("video/");
     const safeFileName = `CLOOP_Evidence_${Date.now()}_${filename.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
 
-    // 📤 4. Khởi tạo Resumable Session URI với Google Drive API (có gắn Origin CORS)
+    //  4. Khởi tạo Resumable Session URI với Google Drive API (có gắn Origin CORS)
     const driveInitResponse = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable", {
       method: "POST",
       headers: {
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
         "Content-Type": "application/json; charset=UTF-8",
         "X-Upload-Content-Type": mimeType || (isVideo ? "video/mp4" : "image/jpeg"),
         "X-Upload-Content-Length": fileSize.toString(),
-        Origin: cleanOrigin, // ⚡ CHỐT CHẶN CORS CỐT LÕI
+        Origin: cleanOrigin, //  CHỐT CHẶN CORS CỐT LÕI
       },
       body: JSON.stringify({
         name: safeFileName,
@@ -99,7 +99,7 @@ export async function POST(request: Request) {
 
     if (!driveInitResponse.ok) {
       const initErr = await driveInitResponse.text();
-      console.error("❌ [GoogleDrive Resumable] Lỗi tạo session upload:", initErr);
+      console.error(" [GoogleDrive Resumable] Lỗi tạo session upload:", initErr);
       return NextResponse.json({
         error: "Google Drive từ chối tạo phiên tải lên trực tiếp.",
         details: initErr,
@@ -118,7 +118,7 @@ export async function POST(request: Request) {
       isVideo,
     });
   } catch (error: any) {
-    console.error("❌ [drive-resumable route error]:", error);
+    console.error(" [drive-resumable route error]:", error);
     return NextResponse.json({ error: error.message || "Lỗi máy chủ nội bộ." }, { status: 500 });
   }
 }
