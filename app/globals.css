@@ -218,4 +218,33 @@ nextjs-portal, [data-nextjs-toast], [data-nextjs-dialog-overlay] {
   border-right: 0;
 }
 
+@keyframes silkFloat {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-6px) scale(1.02);
+  }
+}
+
+@keyframes progressSweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(30%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
+
+.animate-silk-float {
+  animation: silkFloat 3s ease-in-out infinite;
+}
+
+.animate-progress-sweep {
+  animation: progressSweep 1.6s ease-in-out infinite;
+}
+
 

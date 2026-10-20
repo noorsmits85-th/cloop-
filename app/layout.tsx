@@ -78,11 +78,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     >
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#0A2517" />
+        <meta name="theme-color" content="#183A2D" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="CLOOP" />
-        <link rel="apple-touch-icon" href="/app-icon.jpg" />
+        <link rel="apple-touch-icon" href="/loogo.png" />
         <script
           dangerouslySetInnerHTML={{
             __html: `

@@ -9,6 +9,13 @@ export const metadata = {
   description: "Trải nghiệm ứng dụng thời trang CLOOP",
 };
 
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallbackValue: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallbackValue), timeoutMs)),
+  ]);
+}
+
 export default async function MobileAppPage() {
   let initialProducts: any[] = [];
   let initialTotalCount = 0;
@@ -16,20 +23,28 @@ export default async function MobileAppPage() {
 
   try {
     const [prodRes, userRes] = await Promise.all([
-      getShopProductsAction({
-        type: "all",
-        page: 1,
-        limit: 30,
-      }),
-      getMyClosetMobileDataAction()
+      withTimeout(
+        getShopProductsAction({
+          type: "all",
+          page: 1,
+          limit: 30,
+        }),
+        1500,
+        { success: false, products: [], totalCount: 0 }
+      ),
+      withTimeout<any>(
+        getMyClosetMobileDataAction(),
+        1200,
+        { success: false, error: "Timeout fallback" }
+      ),
     ]);
 
-    if (prodRes.success && prodRes.products) {
+    if (prodRes && prodRes.success && prodRes.products) {
       initialProducts = prodRes.products;
       initialTotalCount = prodRes.totalCount || initialProducts.length;
     }
 
-    if (userRes.success) {
+    if (userRes && userRes.success) {
       initialUserData = userRes;
     }
   } catch (error) {
