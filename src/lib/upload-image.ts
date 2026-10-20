@@ -127,15 +127,6 @@ export const uploadImage = async (
     console.warn("Supabase Storage fallback failed:", sbErr);
   }
 
-  // 🚨 Tầng 4: Final emergency fallback: Base64 data URL
-  const base64 = `data:image/jpeg;base64,${fileBuffer.toString("base64")}`;
-  return {
-    url: base64,
-    storageProvider: "cloudinary",
-    publicId: `local_${Date.now()}`,
-    width: 800,
-    height: 1066,
-    bytes: fileBuffer.length,
-    format: "jpg",
-  };
+  // Chốt chặn an toàn: Tuyệt đối không lưu Base64 vào database gây phình dung lượng
+  throw new Error("Dịch vụ lưu trữ hình ảnh đang bận. Quý khách vui lòng thử lại sau giây lát.");
 };

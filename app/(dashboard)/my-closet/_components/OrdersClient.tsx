@@ -164,6 +164,7 @@ export function OrdersClient({
   const [counterVideos, setCounterVideos] = useState<string[]>([]);
   const [isUploadingCounterMedia, setIsUploadingCounterMedia] = useState(false);
   const [counterUploadProgress, setCounterUploadProgress] = useState("");
+  const [counterUploadPercent, setCounterUploadPercent] = useState<number>(0);
   const [isSubmittingCounter, setIsSubmittingCounter] = useState(false);
 
   // Packaging Video & Sealed Proof State (Kiểm tra niêm phong & Video trước khi gửi)
@@ -178,8 +179,10 @@ export function OrdersClient({
   // Google Drive 10TB Storage State & Upload Handlers
   const [isUploadingDisputeMedia, setIsUploadingDisputeMedia] = useState(false);
   const [disputeUploadProgress, setDisputeUploadProgress] = useState("");
+  const [disputeUploadPercent, setDisputeUploadPercent] = useState<number>(0);
   const [isUploadingPackagingMedia, setIsUploadingPackagingMedia] = useState(false);
   const [packagingUploadProgress, setPackagingUploadProgress] = useState("");
+  const [packagingUploadPercent, setPackagingUploadPercent] = useState<number>(0);
 
   // TẢI TRỰC TIẾP LÊN GOOGLE DRIVE 5TB (RESUMABLE UPLOAD - BYPASS 4.5MB VERCEL LIMIT)
   const fileToBase64 = (f: File): Promise<string> => {
@@ -197,7 +200,7 @@ export function OrdersClient({
 
   const uploadMediaFileDirect = async (
     file: File,
-    onProgress?: (text: string) => void
+    onProgress?: (text: string, percent?: number) => void
   ): Promise<string> => {
     const isVideo = file.type.startsWith("video/") || file.name.match(/\.(mp4|mov|webm|avi|m4v)$/i) !== null;
 
@@ -333,8 +336,9 @@ export function OrdersClient({
         }
         setDisputeUploadProgress(`Đang chuẩn bị tệp ${i + 1}/${files.length}...`);
 
-        const finalUrl = await uploadMediaFileDirect(file, (msg) => {
+        const finalUrl = await uploadMediaFileDirect(file, (msg, pct) => {
           setDisputeUploadProgress(`Tệp ${i + 1}/${files.length}: ${msg}`);
+          if (typeof pct === "number") setDisputeUploadPercent(pct);
         });
 
         if (finalUrl) {
@@ -366,8 +370,9 @@ export function OrdersClient({
         }
         setCounterUploadProgress(`Đang chuẩn bị video ${i + 1}/${files.length}...`);
 
-        const finalUrl = await uploadMediaFileDirect(file, (msg) => {
+        const finalUrl = await uploadMediaFileDirect(file, (msg, pct) => {
           setCounterUploadProgress(`Tệp ${i + 1}/${files.length}: ${msg}`);
+          if (typeof pct === "number") setCounterUploadPercent(pct);
         });
 
         if (finalUrl) {
@@ -399,8 +404,9 @@ export function OrdersClient({
         }
         setPackagingUploadProgress(`Đang chuẩn bị tệp ${i + 1}/${files.length}...`);
 
-        const finalUrl = await uploadMediaFileDirect(file, (msg) => {
+        const finalUrl = await uploadMediaFileDirect(file, (msg, pct) => {
           setPackagingUploadProgress(`Tệp ${i + 1}/${files.length}: ${msg}`);
+          if (typeof pct === "number") setPackagingUploadPercent(pct);
         });
 
         if (finalUrl) {
@@ -1679,14 +1685,16 @@ export function OrdersClient({
 
                 const quickOptions = isOwnerMode
                   ? [
-                      { label: "Mức 1 (30%)", sub: "Giặt hấp / sứt chỉ", amount: Math.min(depositAmount, Math.round(depositAmount * 0.3)) },
-                      { label: "Mức 2 (50%)", sub: "Khóa kéo / phục hồi", amount: Math.min(depositAmount, Math.round(depositAmount * 0.5)) },
-                      { label: "Mức 3 (100%)", sub: "Hỏng hoàn toàn / rách toạc", amount: depositAmount },
+                      { label: "Sửa cúc / chỉ", sub: "30.000đ", amount: Math.min(depositAmount, 30000) },
+                      { label: "Giặt hấp chuyên sâu", sub: "50.000đ", amount: Math.min(depositAmount, 50000) },
+                      { label: "Thay khóa / phụ kiện", sub: "80.000đ", amount: Math.min(depositAmount, 80000) },
+                      { label: "Trễ hạn 1 ngày", sub: "100.000đ", amount: Math.min(depositAmount, 100000) },
+                      { label: "Hỏng nặng", sub: "100% cọc", amount: depositAmount },
                     ]
                   : [
-                      { label: "30%", sub: "Lỗi nhỏ", amount: Math.min(rentalFee, Math.round(rentalFee * 0.3)) },
-                      { label: "50%", sub: "Sai mô tả", amount: Math.min(rentalFee, Math.round(rentalFee * 0.5)) },
-                      { label: "100%", sub: "Toàn bộ thuê", amount: rentalFee },
+                      { label: "Lỗi nhẹ", sub: "30% thuê", amount: Math.min(rentalFee, Math.round(rentalFee * 0.3)) },
+                      { label: "Sai mô tả", sub: "50% thuê", amount: Math.min(rentalFee, Math.round(rentalFee * 0.5)) },
+                      { label: "Không mặc được", sub: "100% thuê", amount: rentalFee },
                     ];
 
                 return (
@@ -1812,9 +1820,31 @@ export function OrdersClient({
                   )}
                 </label>
               </div>
-              <p className="text-[10px] text-stone-500 leading-relaxed">
-                Để quy trình đối soát khiếu nại được xử lý tự động trong vòng 30 giây, quý khách vui lòng chọn video mở hộp ngắn gọn từ 30 đến 60 giây (dung lượng tối ưu dưới 35MB).
-              </p>
+              {isUploadingDisputeMedia && disputeUploadPercent > 0 && (
+                <div className="w-full space-y-1 py-1">
+                  <div className="flex justify-between text-[10px] text-stone-600 font-medium">
+                    <span>Tiến trình tải lên:</span>
+                    <span className="font-semibold text-stone-900">{disputeUploadPercent}%</span>
+                  </div>
+                  <div className="w-full bg-stone-200 h-1.5 rounded-full overflow-hidden">
+                    <div 
+                      className="bg-stone-900 h-full transition-all duration-150 rounded-full"
+                      style={{ width: `${disputeUploadPercent}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+              <div className="rounded-md border border-neutral-200 bg-neutral-50 p-3 text-xs text-neutral-800 space-y-1">
+                <div className="flex items-center justify-between font-medium text-neutral-900 text-[11px]">
+                  <span>Tiêu chuẩn tư liệu đối soát</span>
+                  <span className="text-[10px] text-neutral-500 font-normal">Định dạng MP4, MOV</span>
+                </div>
+                <ul className="text-[10px] text-neutral-600 leading-relaxed list-disc list-inside space-y-0.5">
+                  <li>Video mở hộp cần quay liền mạch không cắt ghép trong vòng 4 giờ kể từ khi bưu tá giao hàng, ghi rõ tem niêm phong trước khi mở.</li>
+                  <li>Để tư liệu được xác thực tức thì, vui lòng chọn video thời lượng 30–60 giây (tối ưu dưới 35MB).</li>
+                  <li>Hai bên có 24 giờ để tự hòa giải. Quá 24 giờ, hệ thống sẽ tự động chuyển vụ việc lên Ban Quản Trị làm trọng tài.</li>
+                </ul>
+              </div>
             </div>
 
             <button 
@@ -1913,8 +1943,22 @@ export function OrdersClient({
                   <span>+ Tải Video bảo chứng</span>
                 </label>
               </div>
+              {isUploadingCounterMedia && counterUploadPercent > 0 && (
+                <div className="w-full space-y-1 py-1">
+                  <div className="flex justify-between text-[10px] text-stone-600 font-medium">
+                    <span>Tiến trình tải lên:</span>
+                    <span className="font-semibold text-stone-900">{counterUploadPercent}%</span>
+                  </div>
+                  <div className="w-full bg-stone-200 h-1.5 rounded-full overflow-hidden">
+                    <div 
+                      className="bg-stone-900 h-full transition-all duration-150 rounded-full"
+                      style={{ width: `${counterUploadPercent}%` }}
+                    />
+                  </div>
+                </div>
+              )}
               <p className="text-[10px] text-stone-500 leading-relaxed">
-                Video đối soát liền mạch (không cắt ghép, dưới 35MB) là căn cứ quan trọng nhất để bảo vệ quyền lợi trọn vẹn cho quý khách.
+                Video đối soát liền mạch (không cắt ghép, dưới 35MB) quay rõ tình trạng trang phục là căn cứ quan trọng nhất để bảo vệ quyền lợi trọn vẹn cho quý khách.
               </p>
 
               <button
@@ -2064,8 +2108,22 @@ export function OrdersClient({
                   )}
                 </label>
               </div>
+              {isUploadingPackagingMedia && packagingUploadPercent > 0 && (
+                <div className="w-full space-y-1 py-1">
+                  <div className="flex justify-between text-[10px] text-stone-600 font-medium">
+                    <span>Tiến trình tải lên:</span>
+                    <span className="font-semibold text-stone-900">{packagingUploadPercent}%</span>
+                  </div>
+                  <div className="w-full bg-stone-200 h-1.5 rounded-full overflow-hidden">
+                    <div 
+                      className="bg-stone-900 h-full transition-all duration-150 rounded-full"
+                      style={{ width: `${packagingUploadPercent}%` }}
+                    />
+                  </div>
+                </div>
+              )}
               <p className="text-[10px] text-stone-500 leading-relaxed pt-1">
-                Để tối ưu tốc độ lưu trữ và đối soát tự động, quý khách vui lòng chọn video niêm phong ngắn gọn từ 30 đến 60 giây (dung lượng tối ưu dưới 35MB).
+                Để tối ưu tốc độ lưu trữ và đối soát tức thì, quý khách vui lòng chọn video niêm phong ngắn gọn từ 30 đến 60 giây (định dạng MP4, MOV, dưới 35MB).
               </p>
             </div>
 
