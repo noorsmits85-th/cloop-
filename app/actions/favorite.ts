@@ -144,7 +144,7 @@ export async function getProductInteractionStatusAction(productId: string) {
 }
 
 /**
- * Get User Wishlist / Saved Items with detailed Availability State (Airbnb/Shopee standards)
+ * Get User Wishlist / Saved Items with detailed Availability State (Airbnb/Tiêu chuẩn sàns)
  */
 export async function getUserWishlistAction(filter: "ALL" | "SAVE" | "LIKE" = "SAVE") {
   try {

@@ -5,14 +5,14 @@ import Image from "next/image";
 import AiStylistChat from "@/app/components/AiStylistChat";
 import { 
   Search, ShoppingBag, Compass, User, 
-  MoreHorizontal, X, Star, Heart,
+  MoreHorizontal, X, Heart,
   Plus, CheckCircle2, UploadCloud, Camera, RefreshCw,
   Leaf, ArrowRight, Shirt, Calendar, ShieldCheck, Check,
   ChevronRight, ArrowLeft, Wallet, Droplet, Award, Clock,
   MapPin, Edit3, Menu, HelpCircle, LogOut, Package, Crop, Truck,
   CreditCard, QrCode, Loader2, ExternalLink, Copy,
   Trash2, Eye, EyeOff, Edit, PackageX, Share2, MessageCircle,
-  Mic, Layers, TrendingUp
+  Mic, Layers, TrendingUp, Phone, MessageSquare, AlertCircle, Info
 } from "lucide-react";
 import Link from "next/link";
 import Cropper from "react-easy-crop";
@@ -33,7 +33,7 @@ import { maskPublicAddress } from "@/src/utils/shipping";
 
 const FALLBACK_CLOUDINARY_IMG = "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530424/cloop_mobile_closet/pt4xccwmvrjsrnhrgnib.png";
 
-// 🏷️ BỘ LỌC DANH MỤC & DỊP MẶC TRANG PHỤC TUẦN HOÀN
+// �️ BỘ LỌC DANH MỤC & DỊP MẶC TRANG PHỤC TUẦN HOÀN
 const OCCASIONS_TABS = [
   { id: "all", name: "Tất cả" },
   { id: "ao", name: "Áo" },
@@ -58,7 +58,7 @@ const OCCASIONS_TABS = [
   { id: "cong_so", name: "Công sở" },
 ];
 
-// 🏦 DANH SÁCH NGÂN HÀNG VIỆT NAM THÔNG DỤNG
+// � DANH SÁCH NGÂN HÀNG VIỆT NAM THÔNG DỤNG
 const VIETNAM_BANKS = [
   "MB Bank (Ngân hàng Quân Đội)",
   "Vietcombank (VCB)",
@@ -273,7 +273,7 @@ export default function MobileAppClient({
   const [isVisualSearchOpen, setIsVisualSearchOpen] = useState(false);
   const [isVoiceSearchOpen, setIsVoiceSearchOpen] = useState(false);
 
-  // 🌐 THIẾT LẬP NGÔN NGỮ (VIE / ENG)
+  // � THIẾT LẬP NGÔN NGỮ (VIE / ENG)
   const [lang, setLang] = useState<"vi" | "en">("vi");
   const [langToast, setLangToast] = useState<string | null>(null);
 
@@ -288,7 +288,7 @@ export default function MobileAppClient({
   const lastScrollY = useRef(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // 🌐 DỮ LIỆU FEED SẢN PHẨM (PRELOAD SERVER)
+  // � DỮ LIỆU FEED SẢN PHẨM (PRELOAD SERVER)
   const [products, setProducts] = useState<any[]>(initialProducts || []);
   const [totalProductsCount, setTotalProductsCount] = useState(initialTotalCount || (initialProducts?.length || 0));
 
@@ -349,7 +349,7 @@ export default function MobileAppClient({
     }
   };
 
-  // 🛍️ MODAL / VIEW TỦ ĐỒ CHỦ TỦ IN-APP (TIKTOK / SHOPEE CREATOR SHOP)
+  // 🛍️ MODAL / VIEW TỦ ĐỒ CHỦ TỦ IN-APP (video / nền tảng CREATOR SHOP)
   const [viewingClosetOwner, setViewingClosetOwner] = useState<{
     id: string;
     name: string;
@@ -372,7 +372,7 @@ export default function MobileAppClient({
   const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
   const [togglingProductId, setTogglingProductId] = useState<string | null>(null);
 
-  // ⭐ ĐÁNH GIÁ THỰC TẾ & SAO TRUNG BÌNH DATABASE (REVIEWS THẬT)
+  //  ĐÁNH GIÁ THỰC TẾ & SAO TRUNG BÌNH DATABASE (REVIEWS THẬT)
   const [productReviews, setProductReviews] = useState<any[]>([]);
   const [isLoadingProductReviews, setIsLoadingProductReviews] = useState(false);
   const [ownerReviews, setOwnerReviews] = useState<any[]>([]);
@@ -490,7 +490,7 @@ export default function MobileAppClient({
   const [isLoadingGhnDistricts, setIsLoadingGhnDistricts] = useState<boolean>(false);
   const [isLoadingGhnWards, setIsLoadingGhnWards] = useState<boolean>(false);
 
-  // 🏦 LIÊN KẾT NGÂN HÀNG & RÚT TIỀN ĐỒNG BỘ BẢN WEB
+  // � LIÊN KẾT NGÂN HÀNG & RÚT TIỀN ĐỒNG BỘ BẢN WEB
   const [isBankModalOpen, setIsBankModalOpen] = useState(false);
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
 
@@ -957,7 +957,7 @@ export default function MobileAppClient({
         quote: closetData.user.quote || "",
       });
 
-      // 🏦 Đồng bộ tài khoản ngân hàng từ Database
+      // � Đồng bộ tài khoản ngân hàng từ Database
       if (closetData.user.bankAccount || closetData.user.bankName) {
         setBankForm({
           bankName: closetData.user.bankName || "",
@@ -1071,7 +1071,7 @@ export default function MobileAppClient({
     };
   }, []);
 
-  // 🛍️ TỰ ĐỘNG NẠP DANH MỤC TRANG PHỤC & THÔNG TIN CHỦ TỦ KHI MỞ TỦ ĐỒ (TIKTOK/SHOPEE STYLE)
+  // 🛍️ TỰ ĐỘNG NẠP DANH MỤC TRANG PHỤC & THÔNG TIN CHỦ TỦ KHI MỞ TỦ ĐỒ (video/nền tảng STYLE)
   useEffect(() => {
     if (!viewingClosetOwner?.id && !viewingClosetOwner?.name) {
       setClosetOwnerProducts([]);
@@ -1135,7 +1135,7 @@ export default function MobileAppClient({
     }
   }, [viewingClosetOwner?.id, viewingClosetOwner?.name]);
 
-  // ⭐ FETCH ĐÁNH GIÁ THỰC TẾ CHO SẢN PHẨM ĐANG XEM
+  //  FETCH ĐÁNH GIÁ THỰC TẾ CHO SẢN PHẨM ĐANG XEM
   useEffect(() => {
     if (!selectedProduct?.userId || selectedProduct.userId === "official" || selectedProduct.userId === "anonymous") {
       setProductReviews([]);
@@ -1158,7 +1158,7 @@ export default function MobileAppClient({
     };
   }, [selectedProduct?.userId]);
 
-  // ⭐ FETCH ĐÁNH GIÁ THỰC TẾ CHO TỦ ĐỒ ĐANG XEM
+  //  FETCH ĐÁNH GIÁ THỰC TẾ CHO TỦ ĐỒ ĐANG XEM
   useEffect(() => {
     if (!viewingClosetOwner?.id || viewingClosetOwner.id === "official") {
       setOwnerReviews([]);
@@ -1233,7 +1233,7 @@ export default function MobileAppClient({
           )
         };
       });
-      showClosetToast(newHidden ? "📦 Đã ẩn món đồ khỏi Sàn!" : "🟢 Đã hiển thị món đồ lên Sàn!");
+      showClosetToast(newHidden ? "Đã ẩn món đồ khỏi Sàn." : "Đã hiển thị món đồ lên Sàn.");
     } catch (err: any) {
       showClosetToast("Lỗi: " + (err.message || err));
     } finally {
@@ -1348,7 +1348,7 @@ export default function MobileAppClient({
     }
   };
 
-  // 🏷️ HÀM TÍNH PHÍ GÓI THUÊ ĐỒNG BỘ 100% VỚI WEB VÀ PRISMA DATABASE
+  // �️ HÀM TÍNH PHÍ GÓI THUÊ ĐỒNG BỘ 100% VỚI WEB VÀ PRISMA DATABASE
   const calculatePackageRentalFee = (product: any, days: number) => {
     if (!product) return 0;
     if (product.listingTypeRaw === "SELL") {
@@ -1675,7 +1675,7 @@ export default function MobileAppClient({
     return () => clearInterval(interval);
   }, [bookingSuccessData?.orderCode, isPaidSuccess]);
 
-  // 🏦 NÚT KIỂM TRA TRẠNG THÁI THANH TOÁN PAYOS THỦ CÔNG KHI KHÁCH BẤM "TÔI ĐÃ CHUYỂN KHOẢN"
+  // � NÚT KIỂM TRA TRẠNG THÁI THANH TOÁN PAYOS THỦ CÔNG KHI KHÁCH BẤM "TÔI ĐÃ CHUYỂN KHOẢN"
   const handleCheckPayment = async () => {
     if (!bookingSuccessData?.orderCode || isCheckingPayment) return;
     setIsCheckingPayment(true);
@@ -2228,7 +2228,7 @@ export default function MobileAppClient({
     }
   };
 
-  // 🏦 LƯU LIÊN KẾT TÀI KHOẢN NGÂN HÀNG (ĐỒNG BỘ WEB & DB)
+  // � LƯU LIÊN KẾT TÀI KHOẢN NGÂN HÀNG (ĐỒNG BỘ WEB & DB)
   const handleSaveBankInfo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser || !closetData?.user?.id) {
@@ -2372,7 +2372,7 @@ export default function MobileAppClient({
   const displayName = closetData?.user?.name || currentUser?.name || "Thành viên CLOOP";
 
   return (
-    // 🏛️ KHUNG NGOÀI THOÁNG ĐÃNG
+    // �️ KHUNG NGOÀI THOÁNG ĐÃNG
     <div className="min-h-screen bg-[#FAF8F5] sm:bg-[#EAE7E1] py-0 sm:py-8 flex justify-center selection:bg-[#1E5638] selection:text-white">
       
       {/* 📱 KHUNG MÁY APP: TRẢI NGHIỆM 100% NATIVE MOBILE APP */}
@@ -2382,7 +2382,7 @@ export default function MobileAppClient({
       >
         
         {/* ========================================================
-            🌿 1. HEADER NATIVE APP TINH TẾ & THOÁNG ĐÃNG
+            � 1. HEADER NATIVE APP TINH TẾ & THOÁNG ĐÃNG
             ======================================================== */}
         <div className="sticky top-0 z-40 bg-[#FBF9F5]/95 backdrop-blur-md pt-3.5 pb-2.5 px-4 border-b border-stone-200/60 transition-colors">
           
@@ -2403,7 +2403,7 @@ export default function MobileAppClient({
               </span>
             </div>
 
-            {/* 🇻🇳 🇬🇧 NÚT CHUYỂN ĐỔI NGÔN NGỮ ĐƠN GỌN GÀNG (LÁ CỜ QUỐC KỲ CHUẨN SVG + VIE / ENG) */}
+            {/* �� �� NÚT CHUYỂN ĐỔI NGÔN NGỮ ĐƠN GỌN GÀNG (LÁ CỜ QUỐC KỲ CHUẨN SVG + VIE / ENG) */}
             <button
               type="button"
               onClick={() => toggleLang(lang === "vi" ? "en" : "vi")}
@@ -2485,11 +2485,11 @@ export default function MobileAppClient({
         </div>
 
         {/* ========================================================
-            🌟 NỘI DUNG CHÍNH THEO TỪNG TAB TRONG APP
+             NỘI DUNG CHÍNH THEO TỪNG TAB TRONG APP
             ======================================================== */}
 
         {/* ========================================================
-            🌟 TAB 1: KHÁM PHÁ (HOME) - BANNER & BST NỔI BẬT
+             TAB 1: KHÁM PHÁ (HOME) - BANNER & BST NỔI BẬT
             ======================================================== */}
         {activeTab === "home" && (
           <>
@@ -2744,7 +2744,7 @@ export default function MobileAppClient({
         )}
 
         {/* ========================================================
-            🌟 TAB 2: SÀN ĐỒ (SHOP) - ĐỒNG BỘ 100% VỚI /shop BẢN WEB
+             TAB 2: SÀN ĐỒ (SHOP) - ĐỒNG BỘ 100% VỚI /shop BẢN WEB
             ======================================================== */}
         {activeTab === "shop" && (
           <div className="px-3 pt-3 pb-6 flex-1 space-y-3">
@@ -2973,7 +2973,7 @@ export default function MobileAppClient({
         )}
 
         {/* ========================================================
-            🌟 TAB 4: ĐƠN HÀNG & LỊCH THUÊ (ĐỒNG BỘ /my-closet/orders & GIỎ THUÊ)
+             TAB 4: ĐƠN HÀNG & LỊCH THUÊ (ĐỒNG BỘ /my-closet/orders & GIỎ THUÊ)
             ======================================================== */}
         {activeTab === "orders" && (
           <div className="p-3.5 space-y-3.5 flex-1">
@@ -3235,7 +3235,7 @@ export default function MobileAppClient({
         )}
 
         {/* ========================================================
-            🌟 TAB 5: TỦ ĐỒ CÁ NHÂN (CHIA THEO CÁC THANH QUẢN LÝ THOÁNG ĐÃNG NHƯ BẢN WEB)
+             TAB 5: TỦ ĐỒ CÁ NHÂN (CHIA THEO CÁC THANH QUẢN LÝ THOÁNG ĐÃNG NHƯ BẢN WEB)
             ======================================================== */}
         {activeTab === "closet" && (
           <div className="p-3.5 space-y-3.5 flex-1">
@@ -3356,7 +3356,7 @@ export default function MobileAppClient({
                     {showWelcomeTip && (
                       <div className="bg-[#FAF9F5] border border-stone-200/90 rounded-2xl p-3.5 flex items-center justify-between gap-3 text-xs text-stone-800 shadow-2xs">
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <span className="text-base select-none shrink-0">😊</span>
+                          <Info size={15} className="text-stone-600 shrink-0" />
                           <p className="text-[11.5px] leading-relaxed text-stone-700">
                             Chào bạn ghé CLOOP! Bấm vào <strong>Tủ đồ</strong> để chia sẻ trang phục hoặc vào <strong>Ví Lá</strong> nhận quà làm quen nhé.
                           </p>
@@ -4270,7 +4270,7 @@ export default function MobileAppClient({
         )}
 
         {/* ========================================================
-            🏛️ 7. THANH ĐIỀU HƯỚNG ĐÁY CHUẨN ĐỒNG BỘ WEB (5 TABS)
+            �️ 7. THANH ĐIỀU HƯỚNG ĐÁY CHUẨN ĐỒNG BỘ WEB (5 TABS)
             TỰ ĐỘNG TRƯỢT XUỐNG ẨN KHI LƯỚT BÀI ĐỂ XEM ĐỒ RỘNG RÃI
             ======================================================== */}
         <nav className={`fixed bottom-0 left-0 right-0 w-full sm:max-w-[430px] mx-auto z-50 bg-white/95 backdrop-blur-md border-t border-stone-200/80 px-2 py-2 flex items-center justify-around shadow-lg pb-[calc(0.6rem+env(safe-area-inset-bottom,0px))] sm:rounded-b-[40px] transition-transform duration-300 ease-in-out ${
@@ -4290,7 +4290,7 @@ export default function MobileAppClient({
             </span>
           </button>
 
-          {/* TAB 2: SÀN ĐỒ (ICON TÚI GIỎ CHUẨN TIKTOK SHOP) */}
+          {/* TAB 2: SÀN ĐỒ (ICON TÚI GIỎ CHUẨN video SHOP) */}
           <button
             onClick={() => { setActiveTab("shop"); }}
             className={`flex flex-col items-center justify-center flex-1 py-0.5 select-none transition-colors cursor-pointer ${
@@ -4303,7 +4303,7 @@ export default function MobileAppClient({
             </span>
           </button>
 
-          {/* TAB 3: 🌟 NÚT "+ ĐĂNG ĐỒ" NỔI BẬT Ở GIỮA */}
+          {/* TAB 3:  NÚT "+ ĐĂNG ĐỒ" NỔI BẬT Ở GIỮA */}
           <button
             onClick={() => {
               if (!currentUser) {
@@ -4361,7 +4361,7 @@ export default function MobileAppClient({
         </nav>
 
         {/* ========================================================
-            💬 7.5. TRỢ LÝ AI STYLIST NỔI GỌN NHẸ (CHUẨN TIKTOK ASSISTANT)
+            💬 7.5. TRỢ LÝ AI STYLIST NỔI GỌN NHẸ (CHUẨN video ASSISTANT)
             TỰ ĐỘNG HẠ XUỐNG DƯỚI KHI THANH ĐIỀU HƯỚNG ẨN
             ======================================================== */}
         <div className={`fixed left-0 right-0 w-full sm:max-w-[430px] mx-auto pointer-events-none z-40 flex justify-end px-3.5 transition-all duration-300 ease-in-out ${
@@ -4522,7 +4522,7 @@ export default function MobileAppClient({
         )}
 
         {/* ========================================================
-            🛍️ 8.5. MODAL TỦ ĐỒ CHỦ TỦ IN-APP (TIKTOK / SHOPEE CREATOR SHOP) - TRÀN VIỀN 100% NATIVE
+            🛍️ 8.5. MODAL TỦ ĐỒ CHỦ TỦ IN-APP (video / nền tảng CREATOR SHOP) - TRÀN VIỀN 100% NATIVE
             ======================================================== */}
         {viewingClosetOwner && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-stretch sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200 mobile-app-root font-sans">
@@ -4576,7 +4576,7 @@ export default function MobileAppClient({
                 </div>
               </div>
 
-              {/* BANNER & PROFILE CARD (SHOPEE / TIKTOK STYLE) */}
+              {/* BANNER & PROFILE CARD (nền tảng / video STYLE) */}
               <div className="relative bg-gradient-to-b from-[#1E5638] via-[#236341] to-[#FBF9F5] pt-3 pb-4 px-4 text-white shrink-0">
                 
                 <div className="flex items-start gap-3.5 mb-3">
@@ -4612,7 +4612,7 @@ export default function MobileAppClient({
                   </div>
                 </div>
 
-                {/* THANH THỐNG KÊ CHỈ SỐ UY TÍN (TIKTOK SHOP STYLE: SAO VÀ ĐÁNH GIÁ THỰC TẾ) */}
+                {/* THANH THỐNG KÊ CHỈ SỐ UY TÍN (video SHOP STYLE: SAO VÀ ĐÁNH GIÁ THỰC TẾ) */}
                 <div className="bg-white/10 backdrop-blur-md rounded-2xl p-2.5 grid grid-cols-4 gap-1 text-center border border-white/15">
                   <div>
                     <div className="font-bold text-sm text-white">{closetOwnerProducts.length}</div>
@@ -4620,8 +4620,8 @@ export default function MobileAppClient({
                   </div>
                   <div>
                     <div className="font-bold text-sm text-amber-300 flex items-center justify-center gap-0.5">
-                      <Star size={12} className="fill-amber-300 text-amber-300" />
-                      <span>{Number(viewingClosetOwner.rating || 5.0).toFixed(1)}</span>
+
+                      <span>{Number(viewingClosetOwner.rating || 5.0).toFixed(1)} / 5</span>
                     </div>
                     <div className="text-[10px] text-stone-300">
                       {viewingClosetOwner.reviewCount ? `${viewingClosetOwner.reviewCount} đánh giá` : "Đánh giá"}
@@ -4704,7 +4704,7 @@ export default function MobileAppClient({
                 <div className="p-3 pb-16 space-y-3 flex-1">
                   <div className="bg-white rounded-2xl p-4 border border-stone-200/80 shadow-2xs flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Star size={18} className="fill-amber-400 text-amber-400" />
+                      <ShieldCheck size={18} className="text-emerald-700" />
                       <div>
                         <div className="font-heading font-black text-sm text-[#16442C]">
                           Đánh giá cộng đồng
@@ -4751,11 +4751,7 @@ export default function MobileAppClient({
                                 <h5 className="font-bold text-xs text-stone-900 leading-tight">
                                   {rev.reviewer?.name || "Khách thuê CLOOP"}
                                 </h5>
-                                <div className="flex items-center gap-0.5 text-amber-400 mt-0.5">
-                                  {[1, 2, 3, 4, 5].map((s) => (
-                                    <Star key={s} size={10} className={s <= (rev.rating || 5) ? "fill-amber-400 text-amber-400" : "text-stone-200"} />
-                                  ))}
-                                </div>
+                                <div className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200/80 px-1.5 py-0.5 rounded mt-0.5 inline-block">Đánh giá {rev.rating || 5} / 5</div>
                               </div>
                             </div>
                             {rev.createdAt && (
@@ -4780,7 +4776,7 @@ export default function MobileAppClient({
                   )}
                 </div>
               ) : (
-                /* DANH SÁCH SẢN PHẨM TRONG TỦ (2 CỘT TIKTOK SHOP STYLE - ISOLATE VÀ Z-[2] CHỐNG NHẢY CHỮ/BADGE) */
+                /* DANH SÁCH SẢN PHẨM TRONG TỦ (2 CỘT video SHOP STYLE - ISOLATE VÀ Z-[2] CHỐNG NHẢY CHỮ/BADGE) */
                 <div className="p-3 pb-16 flex-1">
                   {isLoadingClosetOwner && closetOwnerProducts.length === 0 ? (
                     <div className="py-16 text-center text-stone-400 space-y-2">
@@ -4924,7 +4920,7 @@ export default function MobileAppClient({
           <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-xs flex items-stretch sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200 mobile-app-root font-sans">
             <div className="w-full max-w-[430px] bg-[#FBF9F5] rounded-none sm:rounded-[32px] h-[100dvh] h-screen sm:h-auto sm:max-h-[90vh] overflow-y-auto p-0 text-[#16442C] shadow-2xl relative animate-in slide-in-from-bottom duration-300 no-scrollbar flex flex-col mobile-app-root font-sans">
               
-              {/* 📸 HERO ẢNH TRÀN VIỀN 100% (TIKTOK SHOP / FACEBOOK MARKETPLACE STYLE) */}
+              {/* 📸 HERO ẢNH TRÀN VIỀN 100% (video SHOP / FACEBOOK MARKETPLACE STYLE) */}
               <div className="relative w-full aspect-[4/5] bg-stone-900 select-none overflow-hidden shrink-0">
                 <Image
                   src={
@@ -5200,17 +5196,9 @@ export default function MobileAppClient({
                         <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
                       </div>
                       
-                      {/* ⭐ SAO ĐÁNH GIÁ THỰC TẾ CHẠY DỮ LIỆU THẬT DATABASE */}
+                      {/*  SAO ĐÁNH GIÁ THỰC TẾ CHẠY DỮ LIỆU THẬT DATABASE */}
                       <div className="flex items-center gap-1 text-[11px] text-stone-500 mt-0.5">
-                        <div className="flex items-center gap-0.5 text-amber-400">
-                          {[1, 2, 3, 4, 5].map((starIdx) => (
-                            <Star
-                              key={starIdx}
-                              size={10}
-                              className={starIdx <= Math.round(Number(selectedProduct.rating || 5.0)) ? "fill-amber-400 text-amber-400" : "text-stone-300"}
-                            />
-                          ))}
-                        </div>
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200">Uy tín</span>
                         <span className="font-bold text-stone-800 ml-1">
                           {Number(selectedProduct.rating || 5.0).toFixed(1)}
                         </span>
@@ -5297,13 +5285,13 @@ export default function MobileAppClient({
                 <div className="bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
-                      <Star size={14} className="fill-amber-400 text-amber-400" />
+                      <ShieldCheck size={14} className="text-[#16442C]" />
                       <h4 className="font-heading font-black text-xs uppercase tracking-wider text-[#16442C]">
                         Đánh giá cộng đồng ({productReviews.length})
                       </h4>
                     </div>
                     <span className="text-[11px] font-bold text-amber-600">
-                      ★ {Number(selectedProduct.rating || 5.0).toFixed(1)} / 5.0
+                      {Number(selectedProduct.rating || 5.0).toFixed(1)} / 5.0
                     </span>
                   </div>
 
@@ -5340,15 +5328,7 @@ export default function MobileAppClient({
                                 {rev.reviewer?.name || "Khách thuê"}
                               </span>
                             </div>
-                            <div className="flex items-center gap-0.5 text-amber-400">
-                              {[1, 2, 3, 4, 5].map((s) => (
-                                <Star
-                                  key={s}
-                                  size={9}
-                                  className={s <= (rev.rating || 5) ? "fill-amber-400 text-amber-400" : "text-stone-200"}
-                                />
-                              ))}
-                            </div>
+                            <div className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200/80 px-1.5 py-0.5 rounded inline-block">Đánh giá {rev.rating || 5} / 5</div>
                           </div>
                           {rev.comment && rev.comment !== "HIDDEN_BY_SERVER" && (
                             <p className="text-[11px] text-stone-600 mt-1 leading-relaxed">
@@ -5479,7 +5459,7 @@ export default function MobileAppClient({
                       >
                         <div className="text-center space-y-1">
                           <span className="text-xs font-bold text-stone-800 block">
-                            📸 Chạm để chọn nhiều ảnh cùng lúc từ thư viện
+                            Chạm để chọn nhiều ảnh cùng lúc từ thư viện
                           </span>
                           <span className="text-[10px] text-stone-500 block">
                             Hỗ trợ chọn cùng lúc tới 6 ảnh • Nạp nhanh tức thì
@@ -6926,7 +6906,7 @@ export default function MobileAppClient({
                     {/* Thông báo lỗi tạo đơn (Hiển thị ngay sát trên nút bấm để không bị khuất màn hình) */}
                     {bookingError && (
                       <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-start gap-2 shadow-xs">
-                        <span className="text-sm">⚠️</span>
+                        <AlertCircle size={15} className="text-rose-600 shrink-0 mt-0.5" />
                         <div className="flex-1 leading-relaxed">{bookingError}</div>
                       </div>
                     )}
@@ -7010,7 +6990,7 @@ export default function MobileAppClient({
                     Chính sách vệ sinh
                   </span>
                   <h3 className="font-heading font-black text-sm text-[#16442C]">
-                    Quy trình giặt hấp &amp; bảo quản chuẩn 5 sao
+                    Quy trình giặt hấp &amp; bảo quản cao cấp
                   </h3>
                   <p className="text-xs text-stone-600 leading-relaxed">
                     Tất cả trang phục giao dịch qua CLOOP đều được hấp tiệt trùng và kiểm định nguyên vẹn tag mác trước khi bàn giao tới tay người thuê tiếp theo.
@@ -7397,7 +7377,7 @@ export default function MobileAppClient({
           </div>
         )}
 
-        {/* MODAL TÌM KIẾM HÌNH ẢNH LOOKBOOK BẰNG AI (SHOPEE / TIKTOK STYLE CROP) */}
+        {/* MODAL TÌM KIẾM HÌNH ẢNH LOOKBOOK BẰNG AI (nền tảng / video STYLE CROP) */}
         <VisualSearchModal
           isOpen={isVisualSearchOpen}
           onClose={() => setIsVisualSearchOpen(false)}

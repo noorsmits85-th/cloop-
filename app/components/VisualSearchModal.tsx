@@ -124,7 +124,7 @@ async function compressImageForVisualSearch(fileOrDataUrl: File | string): Promi
   });
 }
 
-// Helper cắt ảnh theo bounding box (Crop Box Shopee/TikTok)
+// Helper cắt ảnh theo bounding box (Crop Box Nền tảng/CLOOP Video)
 async function getCroppedImg(
   imageSrc: string,
   pixelCrop: { x: number; y: number; width: number; height: number }
@@ -468,7 +468,7 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
                     Bấm để tải ảnh lên từ điện thoại hoặc máy tính
                   </h4>
                   <p className="text-xs text-stone-400 max-w-sm mb-4">
-                    Hỗ trợ ảnh OOTD, ảnh Pinterest, Instagram hoặc ảnh chụp trực tiếp góc đồ
+                    Hỗ trợ ảnh OOTD, ảnh Pinterest, Hình ảnh hoặc ảnh chụp trực tiếp góc đồ
                   </p>
                   <button className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-ui text-xs font-bold uppercase tracking-wider shadow-lg shadow-emerald-500/25 transition-all flex items-center gap-2">
                     <Camera size={16} /> Chọn ảnh trang phục
@@ -511,7 +511,7 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
             )}
 
             {/* ------------------------------------------------------------- */}
-            {/* GIAI ĐOẠN 2: CHẾ ĐỘ KHOANH VÙNG (SHOPEE / TIKTOK STYLE CROP)  */}
+            {/* GIAI ĐOẠN 2: CHẾ ĐỘ KHOANH VÙNG (nền tảng / video STYLE CROP)  */}
             {/* ------------------------------------------------------------- */}
             {viewMode === "crop" && rawImage && (
               <div className="grid grid-cols-1 md:grid-cols-12 gap-5 h-full">
@@ -688,7 +688,7 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
                         />
                       )}
 
-                      {/* Hiệu ứng Laser Neon Scanner siêu mượt chuẩn Shopee/TikTok */}
+                      {/* Hiệu ứng Laser Neon Scanner siêu mượt chuẩn Nền tảng/CLOOP Video */}
                       {isAnalyzing && (
                         <div className="absolute inset-0 pointer-events-none overflow-hidden z-20">
                           {/* Tia quét Laser Neon sáng rực di chuyển dọc */}
@@ -756,7 +756,7 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
 
                   {/* Cột 2 & 3 (md:col-span-8): Phân tích đặc tính AI & Danh sách đồ tương đồng */}
                   <div className="md:col-span-8 space-y-4">
-                    {/* Shopee-style Compact Search Bar for Mobile */}
+                    {/* Nền tảng-style Compact Search Bar for Mobile */}
                     {!isAnalyzing && (
                       <div className="md:hidden flex items-center gap-3 p-3 rounded-2xl bg-white/5 border border-white/10 mb-2">
                         <div className="relative w-14 h-18 rounded-xl overflow-hidden border-2 border-emerald-400 shrink-0 bg-stone-900 shadow-md">
@@ -888,7 +888,7 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
                         </div>
                       )}
 
-                      {/* Lưới sản phẩm khớp 2 cột chuẩn Shopee Fashion Grid */}
+                      {/* Lưới sản phẩm khớp 2 cột chuẩn Nền tảng Fashion Grid */}
                       <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5 max-h-[440px] overflow-y-auto pr-1">
                         {matchedProducts.map((product) => {
                           const isHighMatch = product.matchScore >= 85;

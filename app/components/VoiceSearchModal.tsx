@@ -18,7 +18,7 @@ const SAMPLE_PHRASES = [
   "Váy hoa nhí dạo phố",
 ];
 
-// Wave heights pattern similar to Shopee
+// Wave heights pattern similar to Nền tảng
 const WAVE_PATTERN = [
   4, 6, 8, 12, 18, 26, 32, 28, 20, 14, 18, 28, 36, 30, 22, 16, 24, 34, 38, 30, 20, 14, 18, 26, 20, 12, 8, 6, 4
 ];
@@ -49,7 +49,7 @@ export default function VoiceSearchModal({ isOpen, onClose, onTranscript }: Voic
   const audioCtxRef = useRef<AudioContext | null>(null);
   const timersRef = useRef<number[]>([]);
   const closedRef = useRef(true);
-  // Khi Web Speech API không dùng được (WebView Facebook/Zalo, lỗi dịch vụ) -> nhớ để lần sau ghi âm luôn
+  // Khi Web Speech API không dùng được (WebView Cộng đồng/Zalo, lỗi dịch vụ) -> nhớ để lần sau ghi âm luôn
   const useRecorderRef = useRef(false);
 
   // Giữ props mới nhất để callback trong recognition không bị "stale closure"
@@ -169,7 +169,7 @@ export default function VoiceSearchModal({ isOpen, onClose, onTranscript }: Voic
       }
     };
 
-    // Tự dừng khi người dùng ngừng nói (~1.2s im lặng) giống Shopee
+    // Tự dừng khi người dùng ngừng nói (~1.2s im lặng) giống Nền tảng
     try {
       const Ctx = window.AudioContext || (window as any).webkitAudioContext;
       const ctx: AudioContext = new Ctx();
@@ -271,7 +271,7 @@ export default function VoiceSearchModal({ isOpen, onClose, onTranscript }: Voic
           return;
         }
         // not-allowed / service-not-allowed / network / audio-capture...:
-        // WebView trong app (Facebook, Zalo...) hay chặn dịch vụ nhận diện dù đã cấp quyền micro.
+        // WebView trong app (Cộng đồng, Zalo...) hay chặn dịch vụ nhận diện dù đã cấp quyền micro.
         // -> Chuyển sang ghi âm trực tiếp + chép lời trên server. Nếu micro thật sự bị chặn, startRecorder sẽ báo rõ.
         finished = true;
         useRecorderRef.current = true;
@@ -340,7 +340,7 @@ export default function VoiceSearchModal({ isOpen, onClose, onTranscript }: Voic
         {/* Backdrop click to dismiss */}
         <div className="fixed inset-0" onClick={onClose} />
 
-        {/* Shopee-style Bottom Sheet */}
+        {/* Nền tảng-style Bottom Sheet */}
         <motion.div
           initial={{ y: "100%", opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -397,7 +397,7 @@ export default function VoiceSearchModal({ isOpen, onClose, onTranscript }: Voic
             </div>
           )}
 
-          {/* Shopee-style Animated Waveform Equalizer (tap to restart / finish early) */}
+          {/* Nền tảng-style Animated Waveform Equalizer (tap to restart / finish early) */}
           <div
             onClick={handleWaveTap}
             className="flex items-center justify-center gap-[3px] h-10 px-2 transition-all cursor-pointer hover:opacity-80"

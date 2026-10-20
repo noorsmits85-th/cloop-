@@ -19,7 +19,7 @@ export function EcoClient({
   const cardRef = useRef<HTMLDivElement>(null);
 
   const handleShare = () => {
-    alert("Tính năng Share to Instagram/TikTok đang tải... (Mô phỏng: Render HTML to Canvas & Web Share API)");
+    alert("Tính năng chia sẻ mạng xã hội đang tải... (Mô phỏng: Render HTML to Canvas & Web Share API)");
   };
 
   const actualProductsCount = productsCount ?? itemsRecycled;

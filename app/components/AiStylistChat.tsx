@@ -1113,7 +1113,7 @@ export default function AiStylistChat({
         )}
       </AnimatePresence>
 
-      {/* 🚀 NÚT CHATBOT CLOOP GỌN NHỎ CHUẨN TIKTOK ASSISTANT */}
+      {/* 🚀 NÚT CHATBOT CLOOP GỌN NHỎ CHUẨN video ASSISTANT */}
       <motion.button
         type="button"
         onClick={() => setShowChat(!showChat)}

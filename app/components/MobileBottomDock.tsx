@@ -45,7 +45,7 @@ export default function MobileBottomDock() {
 
   return (
     <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 pointer-events-auto">
-      {/* Background Blur Shell chuẩn TikTok / iOS Native App */}
+      {/* Background Blur Shell chuẩn CLOOP Video / iOS Native App */}
       <nav className="bg-white/95 backdrop-blur-lg border-t border-[#E9E2D8] px-2 py-1.5 flex items-center justify-around shadow-[0_-4px_20px_rgba(0,0,0,0.06)] pb-[calc(0.4rem+env(safe-area-inset-bottom,0px))]">
         
         {/* TAB 1: KHÁM PHÁ / TRANG CHỦ */}
@@ -82,7 +82,7 @@ export default function MobileBottomDock() {
           <span className="text-[9.5px] tracking-tight mt-0.5 font-ui">Sàn thuê</span>
         </Link>
 
-        {/* TAB 3: NÚT ĐĂNG ĐỒ NỔI BẬT CHÍNH GIỮA (TIKTOK CENTER CREATE BUTTON) */}
+        {/* TAB 3: NÚT ĐĂNG ĐỒ NỔI BẬT CHÍNH GIỮA (video CENTER CREATE BUTTON) */}
         <div className="flex-1 flex justify-center -mt-6">
           <Link
             href="/my-closet/create"
@@ -91,7 +91,7 @@ export default function MobileBottomDock() {
             className="group relative flex flex-col items-center active:scale-95 transition-transform"
             aria-label="Đăng trang phục mới"
           >
-            {/* TikTok Style Gradient / Glow Ring */}
+            {/* CLOOP Video Style Gradient / Glow Ring */}
             <div className="w-[50px] h-[50px] rounded-full bg-gradient-to-tr from-[#183A2D] via-[#21523F] to-[#2E6F55] p-[2.5px] shadow-lg shadow-emerald-950/25 flex items-center justify-center border-2 border-white">
               <div className="w-full h-full rounded-full bg-[#183A2D] flex items-center justify-center text-white transition-colors group-hover:bg-[#112a20]">
                 <Plus size={24} strokeWidth={2.8} className="transition-transform group-hover:rotate-90 duration-300" />

@@ -174,7 +174,7 @@ export default function WishlistClient({ initialItems, counts }: WishlistClientP
                   <Trash2 size={11} />
                 </button>
 
-                {/* Trạng Thái Tồn Kho / Sẵn Sàng (Airbnb/Shopee UX) */}
+                {/* Trạng Thái Tồn Kho / Sẵn Sàng (Airbnb/Nền tảng UX) */}
                 <div className="absolute bottom-2 left-2 right-2 z-10">
                   {product.isAvailable ? (
                     <span className="inline-flex items-center gap-1 bg-emerald-700/90 backdrop-blur-md text-white text-[9px] sm:text-[10px] font-medium px-2 py-0.5 rounded shadow-xs w-fit">

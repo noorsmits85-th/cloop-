@@ -294,7 +294,7 @@ export default function ClosetProfileClient({
                 onClick={() => {
                   if (typeof window !== "undefined") {
                     navigator.clipboard.writeText(window.location.href);
-                    toast.success("🎉 Đã sao chép link tủ đồ! Bạn có thể dán vào Bio Instagram, TikTok hoặc gửi cho bạn bè.");
+                    toast.success("Đã sao chép link tủ đồ để chia sẻ cho bạn bè..");
                   }
                 }}
                 className="w-11 h-11 rounded-full border border-stone-200 flex items-center justify-center text-stone-500 hover:text-[#183A2D] hover:bg-stone-50 transition-colors bg-white shadow-3xs cursor-pointer"

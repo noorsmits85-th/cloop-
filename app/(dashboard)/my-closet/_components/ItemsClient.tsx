@@ -575,7 +575,7 @@ export function ItemsClient({
         </div>
       )}
 
-      {/* MODAL NẠP LÁ ĐẨY BÀI LÊN TOP (VIETQR TỰ ĐỘNG NHƯ SHOPEE / DÙNG LÁ) */}
+      {/* MODAL NẠP LÁ ĐẨY BÀI LÊN TOP (VIETQR TỰ ĐỘNG NHƯ nền tảng / DÙNG LÁ) */}
       <BoostListingModal
         isOpen={Boolean(selectedBoostItem)}
         onClose={() => setSelectedBoostItem(null)}

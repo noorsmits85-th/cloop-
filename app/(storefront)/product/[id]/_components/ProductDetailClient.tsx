@@ -219,7 +219,7 @@ export default function ProductDetailClient({
                 {product.title || product.name}
               </h1>
 
-              {/* ⭐ SHOPEE-STYLE RATING & REPUTATION SUMMARY (NO SPARKLES ICON) */}
+              {/* ⭐ nền tảng-STYLE RATING & REPUTATION SUMMARY (NO SPARKLES ICON) */}
               <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 text-xs pt-0.5">
                 {product.reviewCount > 0 ? (
                   <>
@@ -444,7 +444,7 @@ export default function ProductDetailClient({
           </div>
         </div>
 
-        {/* 🌟 SHOPEE-STYLE PRODUCT REVIEWS SECTION (100% REAL REVIEWS, NO SPARKLES) */}
+        {/* 🌟 nền tảng-STYLE PRODUCT REVIEWS SECTION (100% REAL REVIEWS, NO SPARKLES) */}
         <div id="reviews-section" className="pt-2">
           <ProductReviewsSection
             productId={product.id}

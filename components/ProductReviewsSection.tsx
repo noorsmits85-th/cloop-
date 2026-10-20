@@ -73,8 +73,8 @@ interface ProductReviewsSectionProps {
   userRentalStatus?: UserRentalEligibility;
 }
 
-// 🏷️ BỘ TAGS KHEN NGỢI CHUẨN SHOPEE
-const SHOPEE_SENTIMENT_TAGS = [
+// �️ BỘ TAGS KHEN NGỢI CHUẨN nền tảng
+const COMMUNITY_SENTIMENT_TAGS = [
   "Chất vải đẹp",
   "Đúng với mô tả",
   "Giao hàng nhanh",
@@ -106,7 +106,7 @@ export default function ProductReviewsSection({
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [helpfulLiked, setHelpfulLiked] = useState<Record<string, boolean>>({});
   
-  // Phân trang Shopee
+  // Phân trang Chất lượng
   const [currentPage, setCurrentPage] = useState<number>(1);
   const ITEMS_PER_PAGE = 4;
 
@@ -134,7 +134,7 @@ export default function ProductReviewsSection({
     message: "",
   });
 
-  // State Lightbox Modal xem ảnh / video unboxing chuẩn Shopee
+  // State Lightbox Modal xem ảnh / video unboxing chuẩn Chất lượng
   const [lightbox, setLightbox] = useState<{
     isOpen: boolean;
     mediaList: ReviewMediaItem[];
@@ -146,7 +146,7 @@ export default function ProductReviewsSection({
     currentIndex: 0,
   });
 
-  // 🌿 100% ĐÁNH GIÁ THẬT TỪ DATABASE VÀ PHIÊN NGƯỜI DÙNG (KHÔNG DÙNG DỮ LIỆU GIẢ/MOCK)
+  // � 100% ĐÁNH GIÁ THẬT TỪ DATABASE VÀ PHIÊN NGƯỜI DÙNG (KHÔNG DÙNG DỮ LIỆU GIẢ/MOCK)
   const allReviews: ReviewItem[] = useMemo(() => {
     let list: ReviewItem[] = [];
 
@@ -448,7 +448,7 @@ export default function ProductReviewsSection({
       setUploadedFiles([]);
       setWriteTags([]);
       
-      toast.success(res.message || "🎉 Đánh giá thành công! Bạn nhận được +50 Leaf Coins vào ví!");
+      toast.success(res.message || "� Đánh giá thành công! Bạn nhận được +50 Leaf Coins vào ví!");
     } catch (err: any) {
       toast.error(err.message || "Lỗi khi gửi đánh giá.");
     } finally {
@@ -461,7 +461,7 @@ export default function ProductReviewsSection({
   return (
     <section className="rounded-3xl border border-stone-200/90 bg-white p-5 sm:p-8 shadow-xs text-left font-sans mt-8 space-y-6">
       
-      {/* 🏷️ TIÊU ĐỀ KHU VỰC ĐÁNH GIÁ CHUẨN SHOPEE */}
+      {/* �️ TIÊU ĐỀ KHU VỰC ĐÁNH GIÁ CHUẨN nền tảng */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-stone-100">
         <div className="flex items-center gap-2.5">
           <div className="w-2.5 h-6 bg-[#183A2D] rounded-full" />
@@ -501,7 +501,7 @@ export default function ProductReviewsSection({
         )}
       </div>
 
-      {/* ⭐ BẢNG THỐNG KÊ RATING CHUẨN SHOPEE */}
+      {/*  BẢNG THỐNG KÊ RATING CHUẨN nền tảng */}
       {stats.total > 0 ? (
         <div className="rounded-2xl bg-[#FAF8F3] border border-[#EFE8DC] p-5 sm:p-7 flex flex-col md:flex-row items-center gap-6 sm:gap-10">
           
@@ -516,7 +516,7 @@ export default function ProductReviewsSection({
               </span>
             </div>
 
-            {/* 5 Ngôi sao vàng Shopee */}
+            {/* 5 Ngôi sao vàng Chất lượng */}
             <div className="flex items-center gap-1 my-2.5 text-amber-400">
               {[1, 2, 3, 4, 5].map((star) => (
                 <Star 
@@ -536,7 +536,7 @@ export default function ProductReviewsSection({
             </div>
           </div>
 
-          {/* Cột phải: Bộ Filter Chips chuẩn Shopee */}
+          {/* Cột phải: Bộ Filter Chips chuẩn Chất lượng */}
           <div className="flex-1 w-full space-y-3">
             <div className="flex flex-wrap gap-2 items-center font-ui text-xs">
               {[
@@ -569,12 +569,12 @@ export default function ProductReviewsSection({
               })}
             </div>
 
-            {/* Dải Tags khen ngợi nhanh chuẩn Shopee */}
+            {/* Dải Tags khen ngợi nhanh chuẩn Chất lượng */}
             <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-stone-200/60 text-[11px]">
               <span className="text-stone-400 font-medium mr-1 flex items-center gap-1">
                 <Flame size={12} className="text-amber-600" /> Hay khen:
               </span>
-              {SHOPEE_SENTIMENT_TAGS.map((tag) => {
+              {COMMUNITY_SENTIMENT_TAGS.map((tag) => {
                 const isTagActive = selectedTag === tag;
                 return (
                   <button
@@ -603,7 +603,7 @@ export default function ProductReviewsSection({
           </div>
         </div>
       ) : (
-        /* 🌿 GIAO DIỆN CHƯA CÓ ĐÁNH GIÁ */
+        /* � GIAO DIỆN CHƯA CÓ ĐÁNH GIÁ */
         <div className="rounded-2xl bg-[#FAF8F3] border border-[#EFE8DC] p-7 sm:p-9 text-center space-y-3">
           <div className="flex items-center justify-center gap-1 text-stone-300 my-1">
             {[1, 2, 3, 4, 5].map((star) => (
@@ -661,7 +661,7 @@ export default function ProductReviewsSection({
               return (
                 <article key={review.id} className="py-6 space-y-3 first:pt-2">
                   
-                  {/* 1. Header: Avatar + Tên che Shopee + Badge Xác thực + Ngày giờ */}
+                  {/* 1. Header: Avatar + Tên che Chất lượng + Badge Xác thực + Ngày giờ */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-[#E5EFE2] text-[#183A2D] flex items-center justify-center font-bold text-sm border border-emerald-200 overflow-hidden shrink-0">
@@ -787,7 +787,7 @@ export default function ProductReviewsSection({
                     </div>
                   )}
 
-                  {/* 6. Hộp Phản Hồi Của Người Bán (Shopee Seller Reply) */}
+                  {/* 6. Hộp Phản Hồi Của Người Bán (Chất lượng Seller Reply) */}
                   {review.shopResponse && (
                     <div className="ml-13 mt-2.5 bg-[#FAF8F3] border-l-3 border-[#183A2D] p-3.5 rounded-r-xl space-y-1 text-xs">
                       <p className="font-bold text-[#183A2D] flex items-center gap-1.5 text-[11.5px]">
@@ -820,7 +820,7 @@ export default function ProductReviewsSection({
         </div>
       )}
 
-      {/* 📄 THANH PHÂN TRANG CHUẨN SHOPEE */}
+      {/* 📄 THANH PHÂN TRANG CHUẨN nền tảng */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2 pt-6 border-t border-stone-100 font-ui text-xs">
           <button
@@ -1012,7 +1012,7 @@ export default function ProductReviewsSection({
         </div>
       )}
 
-      {/* 🌟 MODAL VIẾT ĐÁNH GIÁ (DÀNH CHO KHÁCH THUÊ ĐÃ HOÀN TẤT) */}
+      {/*  MODAL VIẾT ĐÁNH GIÁ (DÀNH CHO KHÁCH THUÊ ĐÃ HOÀN TẤT) */}
       {isWriteModalOpen && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-stone-200 space-y-5 max-h-[90vh] overflow-y-auto">
@@ -1081,7 +1081,7 @@ export default function ProductReviewsSection({
             <div className="space-y-1.5 text-left">
               <label className="text-xs font-bold text-stone-700">Điểm bạn ưng ý nhất:</label>
               <div className="flex flex-wrap gap-1.5">
-                {SHOPEE_SENTIMENT_TAGS.map((tag) => {
+                {COMMUNITY_SENTIMENT_TAGS.map((tag) => {
                   const isChecked = writeTags.includes(tag);
                   return (
                     <button

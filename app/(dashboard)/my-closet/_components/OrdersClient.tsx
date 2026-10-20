@@ -1014,7 +1014,7 @@ export function OrdersClient({
                                 </div>
                               </div>
 
-                              {/* Lộ trình & Lịch trình dự kiến (Shopee Standard) */}
+                              {/* Lộ trình & Lịch trình dự kiến (Tiêu chuẩn sàn) */}
                               <div className="mt-2 p-2 rounded-lg bg-stone-50 border border-stone-200/60 text-[10.5px] text-stone-600 space-y-1">
                                 <div className="flex items-center gap-1.5">
                                   <Truck size={12} className="text-emerald-700 shrink-0" />
@@ -1335,7 +1335,7 @@ export function OrdersClient({
                                 </div>
                               </div>
 
-                              {/* Lộ trình & Lịch trình dự kiến (Shopee Standard) */}
+                              {/* Lộ trình & Lịch trình dự kiến (Tiêu chuẩn sàn) */}
                               <div className="mt-2 p-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200/60 text-[10.5px] text-emerald-950 space-y-1">
                                 {(() => {
                                   const deliveryShipment = order.shipments?.find((s: any) => s.direction === "DELIVERY");

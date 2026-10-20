@@ -1030,7 +1030,7 @@ export default function CheckoutClient({
               </span>
             </div>
 
-            {/* Hộp Thông Báo Tiến Trình Vận Chuyển & Thời Gian Giao Dự Kiến (Shopee Standard) */}
+            {/* Hộp Thông Báo Tiến Trình Vận Chuyển & Thời Gian Giao Dự Kiến (Tiêu chuẩn sàn) */}
             <div className="p-3.5 rounded-xl bg-[#FAF9F5] border border-[#E9E2D8] space-y-2.5">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center text-xs gap-1.5">
                 <div className="flex items-center gap-1.5 text-stone-700">

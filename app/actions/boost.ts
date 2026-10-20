@@ -135,7 +135,7 @@ export async function getMyClosetItemsForBoostAction(clientUserId?: string) {
 }
 
 // ==========================================
-// 3. TẠO THANH TOÁN VIETQR PAYOS TỰ ĐỘNG (SHOPEE STYLE)
+// 3. TẠO THANH TOÁN VIETQR PAYOS TỰ ĐỘNG (Tiêu chuẩn)
 // ==========================================
 export async function createBoostPayOSPaymentAction({
   productId,
