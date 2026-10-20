@@ -322,7 +322,7 @@ export function calculateUserTrustScoreFromData(data: TrustScoreInput): TrustSco
       reasons.push(`Số đánh giá từ chủ đồ (${reviews}) chưa đạt tối thiểu (${rule.minOwnerReviews} đánh giá)`);
     }
     if (avgRating < rule.minAverageRating) {
-      reasons.push(`Điểm đánh giá trung bình (${avgRating.toFixed(1)}⭐) chưa đạt tối thiểu (${rule.minAverageRating}⭐)`);
+      reasons.push(`Điểm đánh giá trung bình (${avgRating.toFixed(1)}/5) chưa đạt tối thiểu (${rule.minAverageRating}/5)`);
     }
     if (distinctLenders < rule.minDistinctLenders) {
       reasons.push(`Số chủ đồ khác nhau đã giao dịch (${distinctLenders}) chưa đạt tối thiểu (${rule.minDistinctLenders} chủ đồ)`);

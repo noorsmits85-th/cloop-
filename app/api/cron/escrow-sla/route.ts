@@ -27,6 +27,8 @@ export async function GET(req: Request) {
     autoCompletedCount: 0,
     autoCancelledCount: 0,
     releasedLocksCount: 0,
+    logisticAlertOrders: [] as string[],
+    flaggedOverdueOrders: [] as string[],
     errors: [] as string[]
   };
 
@@ -37,10 +39,16 @@ export async function GET(req: Request) {
 
   try {
     // =========================================================================
-    // NHÁNH 1: TỰ ĐỘNG GIẢI NGÂN (AUTO-PAYOUT & REFUND ESCROW) SAU 24H TRẢ ĐỒ (SLA 2 TẦNG)
+    // NHÁNH 1: TỰ ĐỘNG GIẢI NGÂN (AUTO-PAYOUT & REFUND ESCROW) SAU 24H TRẢ ĐỒ (4 CHỐT CHẶN)
     // =========================================================================
     const slaResult = await evaluateEscrowSlaForOrders({ limit: 20 });
     results.autoCompletedCount += slaResult.settledOrders.length;
+    if (slaResult.logisticAlertOrders.length > 0) {
+      results.logisticAlertOrders.push(...slaResult.logisticAlertOrders);
+    }
+    if (slaResult.flaggedOverdueOrders.length > 0) {
+      results.flaggedOverdueOrders.push(...slaResult.flaggedOverdueOrders);
+    }
     if (slaResult.errors.length > 0) {
       results.errors.push(...slaResult.errors);
     }

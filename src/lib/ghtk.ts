@@ -183,3 +183,68 @@ export async function createGhtkShippingOrder(params: CreateGhtkOrderParams): Pr
     };
   }
 }
+
+/**
+ * Tra cứu trạng thái vận đơn thời gian thực từ GHTK Gateway API
+ * GET /services/shipment/v2/{trackingCode}
+ */
+export async function getGhtkOrderDetail(trackingCode: string): Promise<{
+  success: boolean;
+  statusId?: number;
+  statusText?: string;
+  isDelivered?: boolean;
+  isProblem?: boolean;
+  raw?: any;
+  error?: string;
+}> {
+  if (!trackingCode) {
+    return { success: false, error: "Thiếu mã vận đơn GHTK." };
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+  try {
+    const headers = getGhtkHeaders();
+    const res = await fetch(`${GHTK_API_BASE}/services/shipment/v2/${encodeURIComponent(trackingCode)}`, {
+      method: "GET",
+      headers,
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      return { success: false, error: `GHTK HTTP ${res.status}` };
+    }
+
+    const data = await res.json();
+    if (!data.success || !data.order) {
+      return { success: false, error: data.message || "Không tìm thấy vận đơn GHTK." };
+    }
+
+    const statusId = Number(data.order.status);
+    // GHTK status 5: Đã giao hàng / Chưa đối soát; 6: Đã đối soát
+    const isDelivered = statusId === 5 || statusId === 6;
+    // GHTK status 7, 9, 11, 21: Không lấy/giao được, bồi hoàn, hủy
+    const isProblem = [7, 9, 11, 21].includes(statusId);
+
+    return {
+      success: true,
+      statusId,
+      statusText: data.order.status_text,
+      isDelivered,
+      isProblem,
+      raw: data.order,
+    };
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    if (error?.name === "AbortError") {
+      return { success: false, error: "GHTK Gateway timeout tra cứu vận đơn." };
+    }
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Lỗi kết nối GHTK Gateway.",
+    };
+  }
+}

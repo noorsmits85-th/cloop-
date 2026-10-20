@@ -93,7 +93,7 @@ export async function createBooking({
     const baseDeposit = listing.deposit || 0;
     const serviceFee = 0; // FREE LAUNCH
     
-    // 🌟 CLOOP TRUST & RISK ENGINE SERVER-SIDE ENFORCEMENT
+    // [SECURITY] CLOOP TRUST & RISK ENGINE SERVER-SIDE ENFORCEMENT
     const approxItemValue = getItemValuation(listing);
     const trustBreakdown = await calculateUserTrustScore(user.id);
 
@@ -173,7 +173,7 @@ export async function createBooking({
       };
     }
 
-    // 🌟 1.1 IDEMPOTENCY & SOFT-LOCK AUTO-RELEASE (CHỐNG TỰ KHÓA CHÍNH MÌNH & ZOMBIE LOCK)
+    // [SECURITY] 1.1 IDEMPOTENCY & SOFT-LOCK AUTO-RELEASE (CHỐNG TỰ KHÓA CHÍNH MÌNH & ZOMBIE LOCK)
     const existingPendingRental = await prisma.rentalHistory.findFirst({
       where: {
         product_id: productId,

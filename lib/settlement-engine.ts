@@ -58,7 +58,7 @@ export function verifyConservationInvariant(params: {
 }
 
 /**
- * 🌟 UNIFIED SETTLEMENT ENGINE: QUYẾT TOÁN ĐƠN THUÊ CHUẨN (STANDARD COMPLETION)
+ * [CORE] UNIFIED SETTLEMENT ENGINE: QUYẾT TOÁN ĐƠN THUÊ CHUẨN (STANDARD COMPLETION)
  * Được gọi khi:
  * 1. Chủ tủ bấm "Xác nhận nhận đồ & Nghiệm thu hoàn tất" (`completeOrderAction`).
  * 2. Cronjob Escrow SLA tự động giải ngân sau 24h trả đồ không có khiếu nại (`app/api/cron/escrow-sla/route.ts`).

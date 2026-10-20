@@ -364,3 +364,59 @@ export async function createGhnShippingOrder(params: CreateGhnOrderParams): Prom
     };
   }
 }
+
+/**
+ * Tra cứu thông tin vận đơn thời gian thực từ GHN Gateway API
+ * POST /v2/shipping-order/detail
+ */
+export async function getGhnOrderDetail(orderCode: string): Promise<{
+  success: boolean;
+  status?: string;
+  deliveredDate?: string;
+  raw?: any;
+  error?: string;
+}> {
+  if (!orderCode) {
+    return { success: false, error: "Thiếu mã vận đơn GHN." };
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+  try {
+    const headers = getGhnHeaders();
+    const res = await fetch(`${GHN_API_BASE}/v2/shipping-order/detail`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ order_code: orderCode }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      return { success: false, error: `GHN HTTP ${res.status}` };
+    }
+
+    const data = await res.json();
+    if (data.code !== 200 || !data.data) {
+      return { success: false, error: data.message_display || data.message || "Không tìm thấy vận đơn GHN." };
+    }
+
+    return {
+      success: true,
+      status: data.data.status,
+      deliveredDate: data.data.finish_date || data.data.updated_date,
+      raw: data.data,
+    };
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    if (error?.name === "AbortError") {
+      return { success: false, error: "GHN Gateway timeout tra cứu vận đơn." };
+    }
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Lỗi kết nối GHN Gateway.",
+    };
+  }
+}

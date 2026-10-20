@@ -109,10 +109,10 @@ export const QUEST_DEFINITIONS: Record<string, QuestDefinition> = {
   },
   FIVE_STAR_ORDER: {
     code: "FIVE_STAR_ORDER",
-    title: "Chủ đồ 5 Sao Uy Tín",
-    description: "Hoàn tất đơn cho thuê và nhận được đánh giá 5 sao từ người thuê.",
+    title: "Chủ đồ Uy Tín Xuất Sắc",
+    description: "Hoàn tất đơn cho thuê và nhận được đánh giá trọn vẹn từ người thuê.",
     rewardCoins: 100,
-    icon: "⭐",
+    icon: "💎",
     type: "MILESTONE",
     actionText: "Xem đơn hàng",
     actionUrl: "/my-closet/orders",
