@@ -182,13 +182,26 @@ export function OrdersClient({
   const [packagingUploadProgress, setPackagingUploadProgress] = useState("");
 
   // 🚀 TẢI TRỰC TIẾP LÊN GOOGLE DRIVE 5TB (RESUMABLE UPLOAD - BYPASS 4.5MB VERCEL LIMIT)
+  const fileToBase64 = (f: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(f);
+      reader.onload = () => {
+        const res = reader.result as string;
+        const clean = res.split(",")[1];
+        resolve(clean || "");
+      };
+      reader.onerror = (err) => reject(err);
+    });
+  };
+
   const uploadMediaFileDirect = async (
     file: File,
     onProgress?: (text: string) => void
   ): Promise<string> => {
     const isVideo = file.type.startsWith("video/") || file.name.match(/\.(mp4|mov|webm|avi|m4v)$/i) !== null;
 
-    // 1. Thử xin Resumable Upload Session URI để Client PUT thẳng lên Google Drive 5TB
+    // 1A. Thử xin Resumable Upload Session URI để Client PUT thẳng lên Google Drive 5TB
     try {
       const sessionRes = await fetch("/api/storage/drive-resumable", {
         method: "POST",
@@ -237,6 +250,52 @@ export function OrdersClient({
       }
     } catch (directErr) {
       console.warn("Direct Drive upload fallback to server:", directErr);
+    }
+
+    // 1B. Thử bắn thẳng sang Dual-Webhook Google Apps Script 10TB (Bypass 4.5MB Vercel & CORS qua text/plain)
+    if (file.size <= 35 * 1024 * 1024) {
+      try {
+        if (onProgress) onProgress("Đang kết nối kho 10TB...");
+        const configRes = await fetch("/api/storage/webhook-dispatcher");
+        if (configRes.ok) {
+          const { webhookUrl, folderId } = await configRes.json();
+          if (webhookUrl) {
+            if (onProgress) onProgress("Đang xử lý dữ liệu...");
+            const base64Data = await fileToBase64(file);
+            const payload = JSON.stringify({
+              fileName: file.name,
+              filename: file.name,
+              mimeType: file.type || (isVideo ? "video/mp4" : "image/jpeg"),
+              base64: base64Data,
+              data: base64Data,
+              folderId: folderId || undefined,
+            });
+
+            if (onProgress) onProgress("Đang tải trực tiếp lên Drive 10TB...");
+            const uploadRes = await fetch(webhookUrl, {
+              method: "POST",
+              redirect: "follow",
+              headers: {
+                "Content-Type": "text/plain;charset=utf-8",
+              },
+              body: payload,
+            });
+
+            if (uploadRes.ok) {
+              const result = await uploadRes.json();
+              if (result && (result.fileId || result.url || result.viewUrl)) {
+                const finalUrl =
+                  result.url ||
+                  result.viewUrl ||
+                  `https://drive.google.com/file/d/${result.fileId}/preview${isVideo ? "#video" : ""}`;
+                return isVideo && !finalUrl.toLowerCase().includes("video") ? `${finalUrl}#video` : finalUrl;
+              }
+            }
+          }
+        }
+      } catch (webhookErr) {
+        console.warn("Direct Apps Script 10TB upload fallback:", webhookErr);
+      }
     }
 
     // 2. Dự phòng: Gửi qua tuyến /api/upload-drive (nếu file nhẹ hoặc OAuth chưa sẵn sàng)
