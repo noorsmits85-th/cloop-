@@ -181,6 +181,85 @@ export function OrdersClient({
   const [isUploadingPackagingMedia, setIsUploadingPackagingMedia] = useState(false);
   const [packagingUploadProgress, setPackagingUploadProgress] = useState("");
 
+  // 🚀 TẢI TRỰC TIẾP LÊN GOOGLE DRIVE 5TB (RESUMABLE UPLOAD - BYPASS 4.5MB VERCEL LIMIT)
+  const uploadMediaFileDirect = async (
+    file: File,
+    onProgress?: (text: string) => void
+  ): Promise<string> => {
+    const isVideo = file.type.startsWith("video/") || file.name.match(/\.(mp4|mov|webm|avi|m4v)$/i) !== null;
+
+    // 1. Thử xin Resumable Upload Session URI để Client PUT thẳng lên Google Drive 5TB
+    try {
+      const sessionRes = await fetch("/api/storage/drive-resumable", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: file.name,
+          mimeType: file.type || (isVideo ? "video/mp4" : "image/jpeg"),
+          fileSize: file.size,
+        }),
+      });
+
+      if (sessionRes.ok) {
+        const sessionData = await sessionRes.json();
+        if (sessionData.sessionUri) {
+          return await new Promise<string>((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open("PUT", sessionData.sessionUri, true);
+            xhr.setRequestHeader("Content-Type", file.type || (isVideo ? "video/mp4" : "image/jpeg"));
+
+            xhr.upload.onprogress = (e) => {
+              if (e.lengthComputable && onProgress) {
+                const pct = Math.round((e.loaded / e.total) * 100);
+                onProgress(`Google Drive 5TB: ${pct}%`);
+              }
+            };
+
+            xhr.onload = () => {
+              if (xhr.status === 200 || xhr.status === 201) {
+                try {
+                  const driveFile = JSON.parse(xhr.responseText);
+                  const fileId = driveFile.id;
+                  const finalUrl = `https://drive.google.com/file/d/${fileId}/preview${isVideo ? "#video" : ""}`;
+                  resolve(finalUrl);
+                } catch {
+                  resolve(`https://drive.google.com/uc?id=${sessionData.fileName}&export=view${isVideo ? "#video" : ""}`);
+                }
+              } else {
+                reject(new Error(`Google Drive HTTP ${xhr.status}`));
+              }
+            };
+
+            xhr.onerror = () => reject(new Error("Lỗi kết nối khi tải trực tiếp lên Google Drive."));
+            xhr.send(file);
+          });
+        }
+      }
+    } catch (directErr) {
+      console.warn("Direct Drive upload fallback to server:", directErr);
+    }
+
+    // 2. Dự phòng: Gửi qua tuyến /api/upload-drive (nếu file nhẹ hoặc OAuth chưa sẵn sàng)
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("targetKho", "auto");
+
+    if (onProgress) onProgress("Đang lưu lên kho dự phòng...");
+    const res = await fetch("/api/upload-drive", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => null);
+      throw new Error(errJson?.error || "Lỗi tải tệp lên Kho lưu trữ.");
+    }
+
+    const json = await res.json();
+    const rawUrl = json.url || json.viewUrl || "";
+    return isVideo && !rawUrl.toLowerCase().includes("video") ? `${rawUrl}#video` : rawUrl;
+  };
+
   const handleUploadDisputeMedia = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -189,34 +268,21 @@ export function OrdersClient({
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        if (file.size > 100 * 1024 * 1024) {
-          toast.error(`Tệp ${file.name} vượt quá giới hạn 100MB.`);
+        if (file.size > 200 * 1024 * 1024) {
+          toast.error(`Tệp ${file.name} vượt quá giới hạn 200MB.`);
           continue;
         }
-        setDisputeUploadProgress(`Đang lưu tệp ${i + 1}/${files.length} lên hệ thống...`);
+        setDisputeUploadProgress(`Đang chuẩn bị tệp ${i + 1}/${files.length}...`);
 
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("targetKho", "auto");
-
-        const res = await fetch("/api/upload-drive", {
-          method: "POST",
-          body: formData,
+        const finalUrl = await uploadMediaFileDirect(file, (msg) => {
+          setDisputeUploadProgress(`Tệp ${i + 1}/${files.length}: ${msg}`);
         });
 
-        if (!res.ok) {
-          const errJson = await res.json().catch(() => null);
-          throw new Error(errJson?.error || "Lỗi tải tệp lên Kho lưu trữ Google.");
-        }
-
-        const json = await res.json();
-        if (json.url) {
-          const isVideo = file.type.startsWith("video/") || json.isVideo;
-          const finalUrl = isVideo && !json.url.toLowerCase().includes("video") ? `${json.url}#video` : json.url;
+        if (finalUrl) {
           setDisputeImages((prev) => [...prev, finalUrl]);
         }
       }
-      toast.success("Đã tải bằng chứng an toàn!");
+      toast.success("Đã tải bằng chứng an toàn lên Kho 5TB!");
     } catch (err: any) {
       console.error("Dispute upload error:", err);
       toast.error(err.message || "Lỗi tải ảnh/video lên Kho Google.");
@@ -235,34 +301,21 @@ export function OrdersClient({
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        if (file.size > 100 * 1024 * 1024) {
-          toast.error(`Tệp ${file.name} vượt quá giới hạn 100MB.`);
+        if (file.size > 200 * 1024 * 1024) {
+          toast.error(`Tệp ${file.name} vượt quá giới hạn 200MB.`);
           continue;
         }
-        setCounterUploadProgress(`Đang tải video ${i + 1}/${files.length} lên hệ thống...`);
+        setCounterUploadProgress(`Đang chuẩn bị video ${i + 1}/${files.length}...`);
 
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("targetKho", "auto");
-
-        const res = await fetch("/api/upload-drive", {
-          method: "POST",
-          body: formData,
+        const finalUrl = await uploadMediaFileDirect(file, (msg) => {
+          setCounterUploadProgress(`Tệp ${i + 1}/${files.length}: ${msg}`);
         });
 
-        if (!res.ok) {
-          const errJson = await res.json().catch(() => null);
-          throw new Error(errJson?.error || "Lỗi tải video lên Kho lưu trữ Google.");
-        }
-
-        const json = await res.json();
-        if (json.url) {
-          const isVideo = file.type.startsWith("video/") || json.isVideo;
-          const finalUrl = isVideo && !json.url.toLowerCase().includes("video") ? `${json.url}#video` : json.url;
+        if (finalUrl) {
           setCounterVideos((prev) => [...prev, finalUrl]);
         }
       }
-      toast.success("Đã tải video bảo chứng an toàn!");
+      toast.success("Đã tải video bảo chứng an toàn lên Kho 5TB!");
     } catch (err: any) {
       console.error("Counter upload error:", err);
       toast.error(err.message || "Lỗi tải video lên Kho Google.");
@@ -281,32 +334,21 @@ export function OrdersClient({
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        if (file.size > 100 * 1024 * 1024) {
-          toast.error(`Tệp ${file.name} vượt quá giới hạn 100MB.`);
+        if (file.size > 200 * 1024 * 1024) {
+          toast.error(`Tệp ${file.name} vượt quá giới hạn 200MB.`);
           continue;
         }
-        setPackagingUploadProgress(`Đang lưu tệp ${i + 1}/${files.length} lên hệ thống...`);
+        setPackagingUploadProgress(`Đang chuẩn bị tệp ${i + 1}/${files.length}...`);
 
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("targetKho", "auto");
-
-        const res = await fetch("/api/upload-drive", {
-          method: "POST",
-          body: formData,
+        const finalUrl = await uploadMediaFileDirect(file, (msg) => {
+          setPackagingUploadProgress(`Tệp ${i + 1}/${files.length}: ${msg}`);
         });
 
-        if (!res.ok) {
-          const errJson = await res.json().catch(() => null);
-          throw new Error(errJson?.error || "Lỗi tải tệp lên Kho lưu trữ Google.");
-        }
-
-        const json = await res.json();
-        if (json.url) {
-          setPackagingProofs((prev) => [...prev, json.url]);
+        if (finalUrl) {
+          setPackagingProofs((prev) => [...prev, finalUrl]);
         }
       }
-      toast.success("Đã lưu video/ảnh niêm phong an toàn!");
+      toast.success("Đã lưu video/ảnh niêm phong an toàn lên Kho 5TB!");
     } catch (err: any) {
       console.error("Packaging upload error:", err);
       toast.error(err.message || "Lỗi tải video/ảnh đóng gói.");

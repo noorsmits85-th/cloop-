@@ -257,7 +257,7 @@ export function WalletClient({
     
     const numericAmount = parseInt(withdrawAmount.replace(/\D/g, ''));
     if (numericAmount > balance) return showToast(`Số dư khả dụng (${balance.toLocaleString()}₫) không đủ để rút ${numericAmount.toLocaleString()}₫.`, "error");
-    if (numericAmount < 50000) return showToast("Số tiền rút tối thiểu là 50,000đ.", "error");
+    if (numericAmount < 10000) return showToast("Số tiền rút tối thiểu là 10,000đ.", "error");
     
     setIsSubmittingWithdraw(true);
     try {
@@ -1034,7 +1034,7 @@ export function WalletClient({
                           setWithdrawAmount(num.toLocaleString('vi-VN'));
                         }
                       }}
-                      placeholder="Tối thiểu 50.000"
+                      placeholder="Tối thiểu 10.000"
                       className={`w-full pl-4 pr-10 py-3 font-mono font-bold text-lg rounded-2xl border ${
                         numericWithdrawAmount > balance ? "border-rose-400 focus:border-rose-500 bg-rose-50/20" : "border-stone-200 focus:border-emerald-600 bg-white"
                       } focus:outline-none transition-colors`}
@@ -1060,16 +1060,16 @@ export function WalletClient({
                       <span className="text-rose-600 font-semibold flex items-center gap-1">
                         ⚠️ Vượt quá số dư ({balance.toLocaleString('vi-VN')}₫)
                       </span>
-                    ) : numericWithdrawAmount > 0 && numericWithdrawAmount < 50000 ? (
+                    ) : numericWithdrawAmount > 0 && numericWithdrawAmount < 10000 ? (
                       <span className="text-amber-600 font-medium">
-                        ⚠️ Tối thiểu 50.000₫
+                        ⚠️ Tối thiểu 10.000₫
                       </span>
                     ) : null}
                   </div>
 
                   {/* Quick-chips chọn nhanh */}
                   <div className="flex flex-wrap gap-1.5 pt-1">
-                    {[50000, 100000, 200000].filter(amt => amt <= balance).map((amt) => (
+                    {[20000, 50000, 100000, 200000].filter(amt => amt <= balance).map((amt) => (
                       <button
                         key={amt}
                         type="button"
@@ -1079,7 +1079,7 @@ export function WalletClient({
                         {amt.toLocaleString('vi-VN')}₫
                       </button>
                     ))}
-                    {balance >= 50000 && (
+                    {balance >= 10000 && (
                       <button
                         type="button"
                         onClick={() => setWithdrawAmount(balance.toLocaleString('vi-VN'))}
@@ -1107,7 +1107,7 @@ export function WalletClient({
 
                 <button
                   type="submit"
-                  disabled={isSubmittingWithdraw || numericWithdrawAmount <= 0 || numericWithdrawAmount > balance || numericWithdrawAmount < 50000}
+                  disabled={isSubmittingWithdraw || numericWithdrawAmount <= 0 || numericWithdrawAmount > balance || numericWithdrawAmount < 10000}
                   className="w-full mt-2 py-3.5 bg-[#183A2D] text-white text-xs font-bold uppercase tracking-widest rounded-2xl shadow hover:bg-[#23452F] transition-all flex items-center justify-center gap-2 active:scale-98 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {isSubmittingWithdraw ? <Loader2 size={16} className="animate-spin" /> : "Xác nhận lệnh rút"}

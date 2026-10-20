@@ -3,6 +3,7 @@ import { prisma } from "@/src/lib/prisma";
 import { revalidatePath } from "next/cache";
 import * as Sentry from "@sentry/nextjs";
 import { settleCompletedRentalOrder } from "@/lib/settlement-engine";
+import { evaluateEscrowSlaForOrders } from "@/lib/escrow-sla-checker";
 
 export const dynamic = "force-dynamic";
 
@@ -36,40 +37,12 @@ export async function GET(req: Request) {
 
   try {
     // =========================================================================
-    // NHÁNH 1: TỰ ĐỘNG GIẢI NGÂN (AUTO-PAYOUT & REFUND ESCROW) SAU 24H TRẢ ĐỒ
+    // NHÁNH 1: TỰ ĐỘNG GIẢI NGÂN (AUTO-PAYOUT & REFUND ESCROW) SAU 24H TRẢ ĐỒ (SLA 2 TẦNG)
     // =========================================================================
-    const returnedOrders = await prisma.rentalHistory.findMany({
-      where: {
-        status: "BORROWER_RETURNED",
-        updatedAt: { lte: twentyFourHoursAgo },
-        disputes: {
-          none: {
-            status: { in: ["PENDING_REVIEW", "DISPUTED"] }
-          }
-        },
-        invoice: {
-          status: "PAID"
-        }
-      },
-      include: {
-        invoice: true,
-        product: true
-      },
-      take: 20
-    });
-
-    for (const rental of returnedOrders) {
-      try {
-        await settleCompletedRentalOrder(rental.id, {
-          actorId: "SYSTEM_CRON",
-          actorRole: "SYSTEM_CRON",
-        });
-
-        results.autoCompletedCount++;
-      } catch (err: any) {
-        Sentry.captureException(err, { extra: { orderId: rental.id, context: "CRON_AUTO_SETTLEMENT" } });
-        results.errors.push(`Auto-settle ${rental.id}: ${err.message}`);
-      }
+    const slaResult = await evaluateEscrowSlaForOrders({ limit: 20 });
+    results.autoCompletedCount += slaResult.settledOrders.length;
+    if (slaResult.errors.length > 0) {
+      results.errors.push(...slaResult.errors);
     }
 
     // =========================================================================

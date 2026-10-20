@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 const WithdrawalSchema = z.object({
-  amount: z.number().int().min(50000).max(50000000),
+  amount: z.number().int().min(10000).max(50000000),
   bankName: z.string().trim().min(2).max(80),
   bankAccountNumber: z.string().trim().regex(/^[0-9]{6,32}$/),
   bankAccountHolder: z.string().trim().min(2).max(80),
@@ -184,13 +184,13 @@ export async function requestWithdrawalAction(data: {
 
     const parsed = WithdrawalSchema.safeParse(data);
     if (!parsed.success) {
-      return { success: false, message: "Thông tin rút tiền không hợp lệ. Vui lòng kiểm tra số tiền (tối thiểu 50.000đ) và thông tin ngân hàng." };
+      return { success: false, message: "Thông tin rút tiền không hợp lệ. Vui lòng kiểm tra số tiền (tối thiểu 10.000đ) và thông tin ngân hàng." };
     }
 
     const { amount, bankName, bankAccountNumber, bankAccountHolder } = parsed.data;
 
-    if (!amount || amount < 50000) {
-      return { success: false, message: "Số tiền rút tối thiểu là 50,000 VNĐ." };
+    if (!amount || amount < 10000) {
+      return { success: false, message: "Số tiền rút tối thiểu là 10,000 VNĐ." };
     }
 
     if (!bankName || !bankAccountNumber || !bankAccountHolder) {

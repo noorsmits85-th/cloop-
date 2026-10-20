@@ -97,7 +97,10 @@ export async function renterReturnAction(orderId: string) {
 
     const updateResult = await prisma.rentalHistory.updateMany({
       where: { id: orderId, renterId: userAuth.id, status: "BORROWER_RECEIVED" },
-      data: { status: "BORROWER_RETURNED" }
+      data: {
+        status: "BORROWER_RETURNED",
+        actual_return_date: rental.shippingCode === "SELF_PICKUP" ? new Date() : null,
+      }
     });
 
     if (updateResult.count === 0) {
@@ -166,6 +169,74 @@ export async function renterReturnAction(orderId: string) {
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message || "Lỗi khi báo trả hàng." };
+  }
+}
+
+/**
+ * 📦 CHỦ TỦ XÁC NHẬN ĐÃ NHẬN LẠI KIỆN HÀNG TRẢ (TỪ BƯU TÁ HOẶC TẠI TRẠM)
+ * Chuyển Shipment chiều RETURN sang DELIVERED và neo mốc actual_return_date = now.
+ * Kích hoạt đếm ngược SLA 24h kiểm tra đồ trước khi tự động giải ngân.
+ */
+export async function confirmReturnDeliveredAction(orderId: string) {
+  try {
+    const userAuth = await requireUser();
+
+    const rental = await prisma.rentalHistory.findUnique({
+      where: { id: orderId },
+      include: { product: true }
+    });
+
+    if (!rental) {
+      return { success: false, error: "Không tìm thấy đơn hàng." };
+    }
+
+    const ownerId = rental.ownerId || rental.product?.userId;
+    if (ownerId !== userAuth.id) {
+      return { success: false, error: "Forbidden: Bạn không có quyền thao tác trên đơn hàng này." };
+    }
+
+    if (rental.status !== "BORROWER_RETURNED") {
+      return { success: false, error: "Đơn hàng chưa ở trạng thái trả hàng." };
+    }
+
+    const now = new Date();
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Cập nhật shipment chiều về sang DELIVERED
+      await tx.shipment.updateMany({
+        where: {
+          rentalId: orderId,
+          direction: "RETURN"
+        },
+        data: {
+          status: "DELIVERED",
+          updatedAt: now
+        }
+      });
+
+      // 2. Neo mốc actual_return_date để bắt đầu đếm ngược 24h kiểm tra đồ
+      await tx.rentalHistory.update({
+        where: { id: orderId },
+        data: {
+          actual_return_date: now
+        }
+      });
+
+      await tx.auditLog.create({
+        data: {
+          adminId: userAuth.id,
+          action: "OWNER_CONFIRMED_RETURN_DELIVERY",
+          targetType: "RENTAL",
+          targetId: orderId,
+          metadata: JSON.stringify({ deliveredAt: now.toISOString() })
+        }
+      });
+    });
+
+    revalidatePath("/my-closet/orders");
+    return { success: true, message: "Đã xác nhận nhận lại kiện hàng. Bạn có 24h để kiểm tra trang phục." };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Lỗi xác nhận nhận lại kiện hàng." };
   }
 }
 
@@ -600,7 +671,10 @@ export async function acceptDisputeProposalAction(disputeId: string) {
         // Đổi trạng thái đơn hàng sang BORROWER_RETURNED để chủ tủ và khách theo dõi chiều trả hàng
         const lockCount = await tx.rentalHistory.updateMany({
           where: { id: rental.id, status: "DISPUTE" },
-          data: { status: "BORROWER_RETURNED" }
+          data: {
+        status: "BORROWER_RETURNED",
+        actual_return_date: rental.shippingCode === "SELF_PICKUP" ? new Date() : null,
+      }
         });
 
         if (lockCount.count === 0) {
