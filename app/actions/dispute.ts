@@ -52,7 +52,8 @@ export async function createDispute(data: {
       (data.severity === "LOW" ? "WEAR_AND_TEAR" : data.severity === "MEDIUM" ? "REPAIRABLE_DAMAGE" : "TOTAL_LOSS");
 
     const depositAmount = rental.invoice?.depositAmount || 0;
-    const maxRepairableDeduction = Math.min(depositAmount, 500000);
+    // Khung đền bù linh hoạt: Tối đa 50% tiền cọc (hoặc trần sàn 500.000đ với đồ phổ thông) và không vượt quá cọc thực tế
+    const maxRepairableDeduction = Math.min(depositAmount, Math.max(500000, Math.round(depositAmount * 0.5)));
 
     if (category === "WEAR_AND_TEAR") {
       if (data.suggestedDeduction > 0) {
@@ -62,11 +63,11 @@ export async function createDispute(data: {
         };
       }
     } else if (category === "REPAIRABLE_DAMAGE") {
-      // Hư hỏng có thể khắc phục: Bị chặn trần 500k và không vượt quá cọc thực tế
+      // Hư hỏng có thể khắc phục: Giới hạn theo khung đền bù tối đa 50% cọc (hoặc trần sàn 500k) và không vượt quá cọc thực tế
       if (data.suggestedDeduction > maxRepairableDeduction) {
         return {
           success: false,
-          error: `Đối với Hư hỏng có thể khắc phục (Repairable Damage), mức khấu trừ tối đa là ${maxRepairableDeduction.toLocaleString("vi-VN")}đ (giới hạn bởi trần sửa chữa 500.000đ và số tiền cọc thực tế ${depositAmount.toLocaleString("vi-VN")}đ), không được yêu cầu tịch thu toàn bộ tiền cọc!`,
+          error: `Đối với Hư hỏng có thể khắc phục (Repairable Damage), mức khấu trừ tối đa là ${maxRepairableDeduction.toLocaleString("vi-VN")}đ (theo khung đền bù tối đa 50% tiền cọc hoặc hạn mức sửa chữa), không được yêu cầu tịch thu toàn bộ tiền cọc!`,
         };
       }
     } else if (category === "TOTAL_LOSS") {

@@ -1683,52 +1683,114 @@ export function OrdersClient({
                 const depositAmount = selectedOrderForDispute.invoice?.depositAmount || 0;
                 const rentalFee = selectedOrderForDispute.invoice?.rentalFee || 0;
 
+                const mediationTiers = [
+                  {
+                    id: "MINOR_FIX",
+                    label: "Khắc phục lỗi nhẹ (bung cúc, sứt chỉ)",
+                    rateText: "10% tiền cọc",
+                    rate: 0.10,
+                    minFee: 30000,
+                  },
+                  {
+                    id: "DEEP_CLEAN",
+                    label: "Giặt hấp và xử lý vết bẩn chuyên sâu",
+                    rateText: "20% tiền cọc",
+                    rate: 0.20,
+                    minFee: 50000,
+                  },
+                  {
+                    id: "HARDWARE_REPAIR",
+                    label: "Thay thế khóa kéo, phụ kiện hoặc chỉnh sửa phom",
+                    rateText: "35% tiền cọc",
+                    rate: 0.35,
+                    minFee: 80000,
+                  },
+                  {
+                    id: "LATE_RETURN",
+                    label: "Phí lưu giữ trang phục quá hạn (tính trên 01 ngày)",
+                    rateText: "15% tiền cọc",
+                    rate: 0.15,
+                    minFee: 50000,
+                  },
+                  {
+                    id: "TOTAL_LOSS",
+                    label: "Hư hỏng nặng không thể phục hồi nguyên trạng",
+                    rateText: "100% tiền cọc",
+                    rate: 1.00,
+                    minFee: 0,
+                  },
+                ];
+
                 const quickOptions = isOwnerMode
-                  ? [
-                      { label: "Sửa cúc / chỉ", sub: "30.000đ", amount: Math.min(depositAmount, 30000) },
-                      { label: "Giặt hấp chuyên sâu", sub: "50.000đ", amount: Math.min(depositAmount, 50000) },
-                      { label: "Thay khóa / phụ kiện", sub: "80.000đ", amount: Math.min(depositAmount, 80000) },
-                      { label: "Trễ hạn 1 ngày", sub: "100.000đ", amount: Math.min(depositAmount, 100000) },
-                      { label: "Hỏng nặng", sub: "100% cọc", amount: depositAmount },
-                    ]
+                  ? mediationTiers.map((tier) => {
+                      const amount = tier.rate === 1.00
+                        ? depositAmount
+                        : Math.min(depositAmount, Math.max(Math.round(depositAmount * tier.rate), tier.minFee));
+                      return {
+                        id: tier.id,
+                        label: tier.label,
+                        rateText: tier.rateText,
+                        amount,
+                      };
+                    })
                   : [
-                      { label: "Lỗi nhẹ", sub: "30% thuê", amount: Math.min(rentalFee, Math.round(rentalFee * 0.3)) },
-                      { label: "Sai mô tả", sub: "50% thuê", amount: Math.min(rentalFee, Math.round(rentalFee * 0.5)) },
-                      { label: "Không mặc được", sub: "100% thuê", amount: rentalFee },
+                      { id: "MINOR", label: "Lỗi nhẹ trang phục", rateText: "30% tiền thuê", amount: Math.min(rentalFee, Math.round(rentalFee * 0.3)) },
+                      { id: "MISMATCH", label: "Sai mô tả hoặc kích cỡ", rateText: "50% tiền thuê", amount: Math.min(rentalFee, Math.round(rentalFee * 0.5)) },
+                      { id: "UNWEARABLE", label: "Không thể mặc (đồ lỗi)", rateText: "100% tiền thuê", amount: rentalFee },
                     ];
 
                 return (
-                  <div className="space-y-2 pt-1">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-[10px] text-stone-500 font-medium">Chọn nhanh:</span>
-                      {quickOptions.map((opt) => (
-                        <button
-                          key={opt.label}
-                          type="button"
-                          onClick={() => setSuggestedDeduction(opt.amount)}
-                          className={`px-2.5 py-1 rounded text-[11px] font-medium border transition-all cursor-pointer ${
-                            suggestedDeduction === opt.amount
-                              ? "bg-amber-800 text-white border-amber-800 shadow-xs"
-                              : "bg-white text-stone-700 border-stone-200 hover:border-amber-700 hover:text-amber-900"
-                          }`}
-                        >
-                          <span className="font-semibold">{opt.label}</span>{" "}
-                          <span className="text-[10px] opacity-75">({opt.amount.toLocaleString("vi-VN")}đ)</span>
-                        </button>
-                      ))}
+                  <div className="space-y-2.5 pt-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-stone-600 font-semibold uppercase tracking-wider">
+                        {isOwnerMode ? "Khung đền bù tiêu chuẩn (Tự động co giãn theo % cọc):" : "Mức hoàn phí đề xuất:"}
+                      </span>
+                      {isOwnerMode && (
+                        <span className="text-[10px] text-stone-400">
+                          Sàn tối thiểu bảo vệ công thợ
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="space-y-1.5">
+                      {quickOptions.map((opt) => {
+                        const isSelected = suggestedDeduction === opt.amount;
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => setSuggestedDeduction(opt.amount)}
+                            className={`w-full text-left px-3 py-2 rounded-md text-xs border transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                              isSelected
+                                ? "bg-stone-900 text-white border-stone-900 shadow-xs"
+                                : "bg-white text-stone-800 border-stone-200 hover:border-stone-400 hover:bg-stone-50/60"
+                            }`}
+                          >
+                            <span className="font-medium line-clamp-1">
+                              {opt.label}{" "}
+                              <span className={isSelected ? "text-stone-300 text-[11px]" : "text-stone-500 text-[11px]"}>
+                                — {opt.rateText}
+                              </span>
+                            </span>
+                            <span className={`shrink-0 font-semibold text-[11px] ${isSelected ? "text-amber-300" : "text-amber-900"}`}>
+                              ({opt.amount.toLocaleString("vi-VN")}đ)
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
 
                     {isOwnerMode && (
-                      <div className="p-2.5 rounded-md bg-stone-100/80 border border-stone-200/80 text-[11px] space-y-1">
-                        <div className="flex justify-between text-stone-700">
+                      <div className="p-3 rounded-md bg-stone-100/90 border border-stone-200/80 text-xs space-y-1.5">
+                        <div className="flex justify-between items-center text-stone-700">
                           <span>Chủ tủ nhận bồi thường:</span>
-                          <span className="font-semibold text-amber-900">
+                          <span className="font-semibold text-amber-900 text-sm">
                             {(suggestedDeduction || 0).toLocaleString("vi-VN")}đ
                           </span>
                         </div>
-                        <div className="flex justify-between text-stone-700">
-                          <span>Khách nhận lại tiền cọc thừa:</span>
-                          <span className="font-semibold text-emerald-800">
+                        <div className="flex justify-between items-center text-stone-700">
+                          <span>Khách thuê nhận lại tiền cọc thừa:</span>
+                          <span className="font-semibold text-emerald-800 text-sm">
                             {Math.max(0, depositAmount - (suggestedDeduction || 0)).toLocaleString("vi-VN")}đ
                           </span>
                         </div>
