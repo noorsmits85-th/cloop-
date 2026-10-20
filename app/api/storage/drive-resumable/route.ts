@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
     const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
-    const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+    const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID_5TB || process.env.GOOGLE_DRIVE_FOLDER_ID;
 
     // Kiểm tra cấu hình OAuth 5TB
     if (!clientId || !clientSecret || !refreshToken) {
