@@ -24,6 +24,14 @@ export async function getUserDisputeStats(passedUserId?: string) {
       return { success: true, count: cached.count };
     }
 
+    // Tự động kiểm tra SLA và giải phóng cọc quá hạn 24h ngầm khi người dùng hoạt động trên Dashboard
+    try {
+      const { evaluateEscrowSlaForOrders } = await import("@/lib/escrow-sla-checker");
+      await evaluateEscrowSlaForOrders({ userId, limit: 5 });
+    } catch (slaErr) {
+      console.warn("Global dashboard Escrow SLA trigger notice:", slaErr);
+    }
+
     // Đếm số khiếu nại đang mở mà user tham gia (với tư cách người thuê hoặc chủ đồ)
     const activeCount = await prisma.dispute.count({
       where: {

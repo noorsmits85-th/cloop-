@@ -40,10 +40,25 @@ export default async function WalletPage({
 
   const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
+  // Tự động kiểm tra SLA và hoàn cọc tức thì cho user ngay khi mở xem Ví
+  try {
+    const { evaluateEscrowSlaForOrders } = await import("@/lib/escrow-sla-checker");
+    await evaluateEscrowSlaForOrders({ userId, limit: 10 });
+  } catch (slaErr) {
+    console.warn("Wallet Escrow SLA trigger notice:", slaErr);
+  }
+
+
   try {
     // ⚡ TỐI ƯU SIÊU TỐC: Dùng userAuth sẵn có, gộp product count và tinh gọn invoice query
+    // Lấy số dư ví cập nhật mới nhất từ DB sau khi vừa xử lý SLA tự động
+    const freshUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { walletBalance: true, cloopCoins: true, name: true }
+    });
+
     userProfile = {
-      walletBalance: userAuth.walletBalance ?? 0,
+      walletBalance: freshUser?.walletBalance ?? userAuth.walletBalance ?? 0,
       cloopCoins: userAuth.cloopCoins ?? 100,
       name: userAuth.name || ""
     };
