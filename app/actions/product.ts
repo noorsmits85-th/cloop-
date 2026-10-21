@@ -622,6 +622,7 @@ export async function getShopProductsAction({
 
     const response = {
       success: true,
+      status: "SUCCESS" as const,
       products: res.products,
       totalCount: res.totalCount,
       hasMore: res.hasMore
@@ -644,12 +645,19 @@ export async function getShopProductsAction({
       );
       return {
         success: true,
+        status: "SUCCESS" as const,
         products: fallbackRes.products,
         totalCount: fallbackRes.totalCount,
         hasMore: fallbackRes.hasMore
       };
     } catch (directErr: any) {
-      return { success: false, error: directErr.message || error.message, products: [] };
+      return { 
+        success: false, 
+        status: "ERROR" as const, 
+        error: directErr.message || error.message, 
+        products: [], 
+        totalCount: 0 
+      };
     }
   }
 }

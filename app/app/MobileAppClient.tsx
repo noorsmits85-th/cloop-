@@ -251,15 +251,63 @@ async function compressImageFile(file: File, maxDimension = 1600, quality = 0.85
   });
 }
 
+const SNAPSHOT_STORAGE_KEY = "cloop_products_snapshot";
+const SNAPSHOT_MAX_ITEMS = 30;
+const MAX_RETRY_ATTEMPTS = 3;
+
+interface ProductSnapshotPayload {
+  products: any[];
+  totalCount: number;
+  savedAt: number;
+}
+
+function saveProductsSnapshot(products: any[], totalCount: number): void {
+  if (typeof window === "undefined" || !Array.isArray(products) || products.length === 0) {
+    return;
+  }
+  try {
+    const payload: ProductSnapshotPayload = {
+      products: products.slice(0, SNAPSHOT_MAX_ITEMS),
+      totalCount,
+      savedAt: Date.now(),
+    };
+    const serialized = JSON.stringify(payload);
+    window.localStorage.setItem(SNAPSHOT_STORAGE_KEY, serialized);
+    window.sessionStorage.setItem(SNAPSHOT_STORAGE_KEY, serialized);
+  } catch (err) {}
+}
+
+function loadProductsSnapshot(): ProductSnapshotPayload | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  try {
+    const raw =
+      window.sessionStorage.getItem(SNAPSHOT_STORAGE_KEY) ||
+      window.localStorage.getItem(SNAPSHOT_STORAGE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as ProductSnapshotPayload;
+    if (parsed && Array.isArray(parsed.products) && parsed.products.length > 0) {
+      return parsed;
+    }
+    return null;
+  } catch (err) {
+    return null;
+  }
+}
+
 interface MobileAppClientProps {
   initialProducts: any[];
   initialTotalCount: number;
+  initialStatus?: "SUCCESS" | "ERROR";
   initialUserData?: any;
 }
 
 export default function MobileAppClient({ 
-  initialProducts, 
-  initialTotalCount,
+  initialProducts = [], 
+  initialTotalCount = 0,
+  initialStatus = "SUCCESS",
   initialUserData 
 }: MobileAppClientProps) {
   const { currentUser, setShowAuthModal, openAuthModal } = useAuthModal();
@@ -289,52 +337,96 @@ export default function MobileAppClient({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // � DỮ LIỆU FEED SẢN PHẨM (PRELOAD SERVER)
+  // 🛍️ DỮ LIỆU FEED SẢN PHẨM (KIẾN TRÚC 4 TẦNG: SSR + CACHE + SNAPSHOT + ERROR MACHINE)
   const [products, setProducts] = useState<any[]>(initialProducts || []);
   const [totalProductsCount, setTotalProductsCount] = useState(initialTotalCount || (initialProducts?.length || 0));
-  const [isFallbackLoading, setIsFallbackLoading] = useState<boolean>(!initialProducts || initialProducts.length === 0);
-  const fallbackRetryRef = useRef<number>(0);
+  const [fetchStatus, setFetchStatus] = useState<"SUCCESS" | "ERROR">(initialStatus || "SUCCESS");
+  const [isSyncing, setIsSyncing] = useState<boolean>(initialStatus === "ERROR");
+  const [usingSnapshot, setUsingSnapshot] = useState<boolean>(false);
+  const retryCountRef = useRef<number>(0);
+  const isMountedRef = useRef<boolean>(true);
 
-  // Đồng bộ props nếu server trả về hoặc revalidate
   useEffect(() => {
-    if (initialProducts && initialProducts.length > 0) {
-      setProducts(initialProducts);
-      setTotalProductsCount(initialTotalCount || initialProducts.length);
-      setIsFallbackLoading(false);
-    }
-  }, [initialProducts, initialTotalCount]);
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
-  // Client-side Auto-Fetch Fallback & Retry (Nếu SSR bị trễ mạng hoặc rỗng)
-  const fetchFallbackProducts = useCallback(async () => {
-    setIsFallbackLoading(true);
-    const maxRetries = 3;
-    while (fallbackRetryRef.current < maxRetries) {
+  // Tầng 3: Xử lý Snapshot ngay khi khởi tạo hoặc khi nhận dữ liệu từ SSR
+  useEffect(() => {
+    if (initialStatus === "SUCCESS") {
+      setProducts(initialProducts);
+      setTotalProductsCount(initialTotalCount);
+      setFetchStatus("SUCCESS");
+      setIsSyncing(false);
+      setUsingSnapshot(false);
+
+      if (initialProducts.length > 0) {
+        saveProductsSnapshot(initialProducts, initialTotalCount);
+      }
+      return;
+    }
+
+    // Nếu ban đầu server bị ERROR -> Khôi phục tức thì từ Snapshot (0ms) để không bị màn hình trắng/trống
+    if (initialStatus === "ERROR") {
+      const snapshot = loadProductsSnapshot();
+      if (snapshot && snapshot.products.length > 0) {
+        setProducts(snapshot.products);
+        setTotalProductsCount(snapshot.totalCount);
+        setUsingSnapshot(true);
+      }
+    }
+  }, [initialProducts, initialTotalCount, initialStatus]);
+
+  // Tầng 4: Cơ chế Retry có kiểm soát. CHỈ kích hoạt khi fetchStatus === 'ERROR'. Không bao giờ chạy nếu status === 'SUCCESS'.
+  const recoverFromError = useCallback(async () => {
+    if (!isMountedRef.current) return;
+    setIsSyncing(true);
+
+    while (retryCountRef.current < MAX_RETRY_ATTEMPTS && isMountedRef.current) {
       try {
         const res = await getShopProductsAction({ type: "all", page: 1, limit: 30 });
-        if (res?.success && Array.isArray(res.products) && res.products.length > 0) {
-          setProducts(res.products);
-          if (typeof res.totalCount === "number") {
-            setTotalProductsCount(res.totalCount);
+        if (!isMountedRef.current) return;
+
+        if (res.status === "SUCCESS" || res.success) {
+          const prods = Array.isArray(res.products) ? res.products : [];
+          setProducts(prods);
+          setTotalProductsCount(typeof res.totalCount === "number" ? res.totalCount : prods.length);
+          setFetchStatus("SUCCESS");
+          setIsSyncing(false);
+          setUsingSnapshot(false);
+
+          if (prods.length > 0) {
+            saveProductsSnapshot(prods, res.totalCount || prods.length);
           }
-          setIsFallbackLoading(false);
+          // Dù prods.length === 0 (Rỗng thật sự) cũng dừng vòng lặp, KHÔNG retry tiếp! Chống bão Retry Storm!
           return;
         }
       } catch (err) {
-        console.error(`[CLOOP Fallback] Lần thử ${fallbackRetryRef.current + 1} lỗi:`, err);
+        console.error(`[CLOOP Client Recovery] Attempt ${retryCountRef.current + 1} error:`, err);
       }
-      fallbackRetryRef.current += 1;
-      if (fallbackRetryRef.current < maxRetries) {
-        await new Promise((r) => setTimeout(r, 600));
+
+      retryCountRef.current += 1;
+      if (retryCountRef.current < MAX_RETRY_ATTEMPTS && isMountedRef.current) {
+        const delay = 1000 * Math.pow(2, retryCountRef.current - 1);
+        await new Promise((r) => setTimeout(r, delay));
       }
     }
-    setIsFallbackLoading(false);
+
+    if (isMountedRef.current) {
+      setFetchStatus("ERROR");
+      setIsSyncing(false);
+    }
   }, []);
 
+  // Chỉ kích hoạt tự động đồng bộ khi initialStatus === 'ERROR'
   useEffect(() => {
-    if (products.length === 0) {
-      fallbackRetryRef.current = 0;
-      fetchFallbackProducts();
+    if (initialStatus === "ERROR") {
+      retryCountRef.current = 0;
+      recoverFromError();
     }
-  }, [products.length, fetchFallbackProducts]);
+  }, [initialStatus, recoverFromError]);
 
   // 👤 DỮ LIỆU TỦ ĐỒ CÁ NHÂN & THEO DÕI HỒ SƠ
   const [closetData, setClosetData] = useState<any>(initialUserData || null);
@@ -2622,16 +2714,34 @@ export default function MobileAppClient({
 
             {/* LƯỚI CARD SẢN PHẨM GỢI Ý - ẢNH TO NỔI BẬT CHUẨN E-COMMERCE */}
             <div className="px-3 pb-28 flex-1">
-              {isFallbackLoading && products.length === 0 ? (
+              {/* Chỉ báo trạng thái Snapshot hoặc Đang đồng bộ */}
+              {usingSnapshot && (
+                <div className="mb-3 px-3 py-1.5 bg-stone-100/90 rounded-xl border border-stone-200/80 text-center text-[11px] font-medium text-stone-600">
+                  {isSyncing ? "Đang cập nhật danh mục mới nhất..." : "Đang hiển thị bản sao lưu đệm"}
+                </div>
+              )}
+
+              {isSyncing && products.length === 0 ? (
                 <div className="py-12 text-center text-stone-500 bg-white rounded-2xl border border-stone-200/80 p-6 space-y-3">
                   <div className="w-6 h-6 border-2 border-[#1E5638]/20 border-t-[#1E5638] rounded-full animate-spin mx-auto" />
                   <p className="text-xs font-medium text-stone-600">Đang đồng bộ danh mục trang phục...</p>
+                </div>
+              ) : fetchStatus === "ERROR" && products.length === 0 ? (
+                <div className="py-12 text-center text-stone-500 bg-white rounded-2xl border border-stone-200/80 p-6 space-y-2">
+                  <p className="text-xs font-bold text-stone-700">Kết nối mạng tạm thời bị gián đoạn</p>
+                  <p className="text-[11px] text-stone-500">Dữ liệu trên sàn vẫn an toàn. Vui lòng thử kết nối lại.</p>
+                  <button
+                    onClick={() => { retryCountRef.current = 0; recoverFromError(); }}
+                    className="mt-2 px-4 py-1.5 bg-[#1E5638] text-white text-xs font-bold rounded-full cursor-pointer"
+                  >
+                    Thử kết nối lại
+                  </button>
                 </div>
               ) : filteredProducts.length === 0 ? (
                 <div className="py-12 text-center text-stone-500 bg-white rounded-2xl border border-stone-200/80 p-6 space-y-2">
                   <p className="text-xs font-bold text-stone-700">Chưa có trang phục trong dịp &ldquo;{selectedOccasion}&rdquo;</p>
                   <button
-                    onClick={() => { setSelectedOccasion("Tất cả"); setSearchQuery(""); fallbackRetryRef.current = 0; fetchFallbackProducts(); }}
+                    onClick={() => { setSelectedOccasion("Tất cả"); setSearchQuery(""); }}
                     className="mt-1 px-3.5 py-1.5 bg-[#1E5638] text-white text-xs font-bold rounded-full cursor-pointer"
                   >
                     Xem tất cả trang phục

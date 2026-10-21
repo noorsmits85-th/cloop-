@@ -12,6 +12,7 @@ export const metadata = {
 export default async function MobileAppPage() {
   let initialProducts: any[] = [];
   let initialTotalCount = 0;
+  let initialStatus: "SUCCESS" | "ERROR" = "ERROR";
   let initialUserData: any = null;
 
   try {
@@ -24,9 +25,16 @@ export default async function MobileAppPage() {
       getMyClosetMobileDataAction(),
     ]);
 
-    if (shopResult.status === "fulfilled" && shopResult.value?.success && Array.isArray(shopResult.value.products)) {
-      initialProducts = shopResult.value.products;
-      initialTotalCount = shopResult.value.totalCount || initialProducts.length;
+    if (shopResult.status === "fulfilled" && shopResult.value) {
+      if (shopResult.value.status === "SUCCESS" || shopResult.value.success) {
+        initialProducts = shopResult.value.products || [];
+        initialTotalCount = shopResult.value.totalCount || initialProducts.length;
+        initialStatus = "SUCCESS";
+      } else {
+        initialStatus = "ERROR";
+      }
+    } else {
+      initialStatus = "ERROR";
     }
 
     if (closetResult.status === "fulfilled" && closetResult.value?.success) {
@@ -34,12 +42,14 @@ export default async function MobileAppPage() {
     }
   } catch (error) {
     console.error("Lỗi preload dữ liệu app:", error);
+    initialStatus = "ERROR";
   }
 
   return (
     <MobileAppClient 
       initialProducts={initialProducts} 
       initialTotalCount={initialTotalCount}
+      initialStatus={initialStatus}
       initialUserData={initialUserData}
     />
   );
