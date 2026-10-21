@@ -9,43 +9,28 @@ export const metadata = {
   description: "Trải nghiệm ứng dụng thời trang CLOOP",
 };
 
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallbackValue: T): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((resolve) => setTimeout(() => resolve(fallbackValue), timeoutMs)),
-  ]);
-}
-
 export default async function MobileAppPage() {
   let initialProducts: any[] = [];
   let initialTotalCount = 0;
   let initialUserData: any = null;
 
   try {
-    const [prodRes, userRes] = await Promise.all([
-      withTimeout(
-        getShopProductsAction({
-          type: "all",
-          page: 1,
-          limit: 30,
-        }),
-        1500,
-        { success: false, products: [], totalCount: 0 }
-      ),
-      withTimeout<any>(
-        getMyClosetMobileDataAction(),
-        1200,
-        { success: false, error: "Timeout fallback" }
-      ),
+    const [shopResult, closetResult] = await Promise.allSettled([
+      getShopProductsAction({
+        type: "all",
+        page: 1,
+        limit: 30,
+      }),
+      getMyClosetMobileDataAction(),
     ]);
 
-    if (prodRes && prodRes.success && prodRes.products) {
-      initialProducts = prodRes.products;
-      initialTotalCount = prodRes.totalCount || initialProducts.length;
+    if (shopResult.status === "fulfilled" && shopResult.value?.success && Array.isArray(shopResult.value.products)) {
+      initialProducts = shopResult.value.products;
+      initialTotalCount = shopResult.value.totalCount || initialProducts.length;
     }
 
-    if (userRes && userRes.success) {
-      initialUserData = userRes;
+    if (closetResult.status === "fulfilled" && closetResult.value?.success) {
+      initialUserData = closetResult.value;
     }
   } catch (error) {
     console.error("Lỗi preload dữ liệu app:", error);

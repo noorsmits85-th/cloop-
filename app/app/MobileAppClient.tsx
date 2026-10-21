@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Image from "next/image";
 import AiStylistChat from "@/app/components/AiStylistChat";
 import { 
@@ -291,6 +291,50 @@ export default function MobileAppClient({
   // � DỮ LIỆU FEED SẢN PHẨM (PRELOAD SERVER)
   const [products, setProducts] = useState<any[]>(initialProducts || []);
   const [totalProductsCount, setTotalProductsCount] = useState(initialTotalCount || (initialProducts?.length || 0));
+  const [isFallbackLoading, setIsFallbackLoading] = useState<boolean>(!initialProducts || initialProducts.length === 0);
+  const fallbackRetryRef = useRef<number>(0);
+
+  // Đồng bộ props nếu server trả về hoặc revalidate
+  useEffect(() => {
+    if (initialProducts && initialProducts.length > 0) {
+      setProducts(initialProducts);
+      setTotalProductsCount(initialTotalCount || initialProducts.length);
+      setIsFallbackLoading(false);
+    }
+  }, [initialProducts, initialTotalCount]);
+
+  // Client-side Auto-Fetch Fallback & Retry (Nếu SSR bị trễ mạng hoặc rỗng)
+  const fetchFallbackProducts = useCallback(async () => {
+    setIsFallbackLoading(true);
+    const maxRetries = 3;
+    while (fallbackRetryRef.current < maxRetries) {
+      try {
+        const res = await getShopProductsAction({ type: "all", page: 1, limit: 30 });
+        if (res?.success && Array.isArray(res.products) && res.products.length > 0) {
+          setProducts(res.products);
+          if (typeof res.totalCount === "number") {
+            setTotalProductsCount(res.totalCount);
+          }
+          setIsFallbackLoading(false);
+          return;
+        }
+      } catch (err) {
+        console.error(`[CLOOP Fallback] Lần thử ${fallbackRetryRef.current + 1} lỗi:`, err);
+      }
+      fallbackRetryRef.current += 1;
+      if (fallbackRetryRef.current < maxRetries) {
+        await new Promise((r) => setTimeout(r, 600));
+      }
+    }
+    setIsFallbackLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (products.length === 0) {
+      fallbackRetryRef.current = 0;
+      fetchFallbackProducts();
+    }
+  }, [products.length, fetchFallbackProducts]);
 
   // 👤 DỮ LIỆU TỦ ĐỒ CÁ NHÂN & THEO DÕI HỒ SƠ
   const [closetData, setClosetData] = useState<any>(initialUserData || null);
@@ -2578,11 +2622,16 @@ export default function MobileAppClient({
 
             {/* LƯỚI CARD SẢN PHẨM GỢI Ý - ẢNH TO NỔI BẬT CHUẨN E-COMMERCE */}
             <div className="px-3 pb-28 flex-1">
-              {filteredProducts.length === 0 ? (
+              {isFallbackLoading && products.length === 0 ? (
+                <div className="py-12 text-center text-stone-500 bg-white rounded-2xl border border-stone-200/80 p-6 space-y-3">
+                  <div className="w-6 h-6 border-2 border-[#1E5638]/20 border-t-[#1E5638] rounded-full animate-spin mx-auto" />
+                  <p className="text-xs font-medium text-stone-600">Đang đồng bộ danh mục trang phục...</p>
+                </div>
+              ) : filteredProducts.length === 0 ? (
                 <div className="py-12 text-center text-stone-500 bg-white rounded-2xl border border-stone-200/80 p-6 space-y-2">
                   <p className="text-xs font-bold text-stone-700">Chưa có trang phục trong dịp &ldquo;{selectedOccasion}&rdquo;</p>
                   <button
-                    onClick={() => { setSelectedOccasion("Tất cả"); setSearchQuery(""); }}
+                    onClick={() => { setSelectedOccasion("Tất cả"); setSearchQuery(""); fallbackRetryRef.current = 0; fetchFallbackProducts(); }}
                     className="mt-1 px-3.5 py-1.5 bg-[#1E5638] text-white text-xs font-bold rounded-full cursor-pointer"
                   >
                     Xem tất cả trang phục
