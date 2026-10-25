@@ -8,7 +8,7 @@ import ProductDetailClient from "./_components/ProductDetailClient";
 
 interface PageProps {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ type?: string }>;
+  searchParams?: Promise<{ type?: string }>;
 }
 
 export interface UserRentalEligibility {
@@ -21,35 +21,66 @@ export interface UserRentalEligibility {
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { id } = await params;
-  const product = await getProductDetail(id);
+  try {
+    const resolvedParams = await params;
+    const id = resolvedParams?.id;
+    if (!id) {
+      return { title: "CLOOP | Tủ Đồ Tuần Hoàn" };
+    }
+    const product = await getProductDetail(id);
 
-  if (!product) {
+    if (!product) {
+      return {
+        title: "Không tìm thấy trang phục | CLOOP",
+        description: "Trang phục này có thể đã được gỡ hoặc chuyển nhượng.",
+      };
+    }
+
+    const title = `${product.title || product.name} | Tủ Đồ CLOOP`;
+    const description = product.description || `Thuê hoặc sở hữu ${product.title} cao cấp, tiện lợi và tiết kiệm tại CLOOP.`;
+
     return {
-      title: "Không tìm thấy trang phục | CLOOP",
-      description: "Trang phục này có thể đã được gỡ hoặc chuyển nhượng.",
-    };
-  }
-
-  const title = `${product.title || product.name} | Tủ Đồ CLOOP`;
-  const description = product.description || `Thuê hoặc sở hữu ${product.title} cao cấp, tiện lợi và tiết kiệm tại CLOOP.`;
-
-  return {
-    title,
-    description,
-    openGraph: {
       title,
       description,
-      images: product.images && product.images.length > 0 ? [product.images[0]] : [product.image],
-    },
-  };
+      openGraph: {
+        title,
+        description,
+        images: product.images && product.images.length > 0 ? [product.images[0]] : [product.image],
+      },
+    };
+  } catch (err) {
+    console.error("Lỗi generateMetadata:", err);
+    return { title: "Chi tiết trang phục | CLOOP" };
+  }
 }
 
 export default async function ProductDetailPage({ params, searchParams }: PageProps) {
-  const { id } = await params;
-  const { type } = await searchParams;
+  let id = "";
+  try {
+    const resolvedParams = await params;
+    id = resolvedParams?.id || "";
+  } catch (err) {
+    console.error("Lỗi resolve params:", err);
+  }
 
-  const product = await getProductDetail(id);
+  let type: string | undefined = undefined;
+  try {
+    const resolvedSearch = searchParams ? await searchParams : undefined;
+    type = resolvedSearch?.type;
+  } catch (err) {
+    console.error("Lỗi resolve searchParams:", err);
+  }
+
+  if (!id) {
+    return notFound();
+  }
+
+  let product = null;
+  try {
+    product = await getProductDetail(id);
+  } catch (err) {
+    console.error(`Lỗi tải chi tiết sản phẩm ${id}:`, err);
+  }
 
   if (!product) {
     return (
@@ -118,7 +149,7 @@ export default async function ProductDetailPage({ params, searchParams }: PagePr
         userRentalStatus.isCompleted = false;
         userRentalStatus.canReview = false;
         userRentalStatus.reason = "Đơn thuê đang được xử lý. Bạn sẽ có thể đánh giá sau khi hoàn tất trả đồ.";
-      } else if (rental.reviews.length > 0) {
+      } else if (rental.reviews && rental.reviews.length > 0) {
         userRentalStatus.hasRented = true;
         userRentalStatus.isCompleted = true;
         userRentalStatus.hasReviewed = true;

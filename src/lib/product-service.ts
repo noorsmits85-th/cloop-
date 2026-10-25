@@ -20,11 +20,12 @@ export function clearProductDetailCache(productId?: string) {
 export const getProductDetail = cache(async (id: string) => {
   if (!id) return null;
 
-  // 1. Check in-memory fast cache
-  const cached = productDetailCache.get(id);
-  if (cached && Date.now() < cached.expiry) {
-    return cached.data;
-  }
+  try {
+    // 1. Check in-memory fast cache
+    const cached = productDetailCache.get(id);
+    if (cached && Date.now() < cached.expiry) {
+      return cached.data;
+    }
 
   // 2. Fetch from database
   const product = await prisma.product.findUnique({
@@ -224,6 +225,10 @@ export const getProductDetail = cache(async (id: string) => {
     averageRating,
   };
 
-  productDetailCache.set(id, { data, expiry: Date.now() + CACHE_TTL_MS });
-  return data;
+    productDetailCache.set(id, { data, expiry: Date.now() + CACHE_TTL_MS });
+    return data;
+  } catch (error) {
+    console.error(`[Product Service Error] Failed to fetch product ID ${id}:`, error);
+    return null;
+  }
 });
