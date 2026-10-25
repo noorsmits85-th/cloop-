@@ -119,6 +119,18 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async rewrites() {
+    return [
+      {
+        source: "/on-thi-tdv",
+        destination: "/index.html",
+      },
+      {
+        source: "/tdv",
+        destination: "/index.html",
+      },
+    ];
+  },
   typescript: {
     ignoreBuildErrors: true,
   },
