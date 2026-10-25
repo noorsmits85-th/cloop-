@@ -2507,6 +2507,130 @@ export default function MobileAppClient({
 
   const displayName = closetData?.user?.name || currentUser?.name || "Thành viên CLOOP";
 
+  // 🛍️ HÀM RENDER THẺ SẢN PHẨM MẬT ĐỘ CAO (HIGH-DENSITY LUXURY FASHION CARD)
+  // Tối ưu hóa diện tích màn hình di động: Ảnh tỉ lệ chuẩn 3:4, gom nhóm thông số gọn gàng, triệt tiêu khoảng trống thừa
+  const renderLuxuryCompactProductCard = (p: any, idx: number) => {
+    const isLiked = !!likedItems[p.id];
+    const isRent = p.listingTypeRaw !== "SELL";
+    const rentPrice = p.rentalPrice || p.price || 0;
+    const salePrice = p.salePrice || p.price || 0;
+    const currentPrice = isRent ? rentPrice : salePrice;
+    const itemImg = p.image || p.primaryImage || p.images?.[0] || FALLBACK_CLOUDINARY_IMG;
+    const ownerName = p.ownerName || "Chủ tủ CLOOP";
+
+    const dbOrigPrice = Number(p.originalPrice || p.storeRetailPrice || 0);
+    const retailPrice = dbOrigPrice > currentPrice 
+      ? dbOrigPrice 
+      : (isRent && currentPrice > 0 ? currentPrice * 9 : (currentPrice > 0 ? Math.round(currentPrice * 1.6) : 0));
+    const savedPercent = retailPrice > currentPrice 
+      ? Math.min(95, Math.max(10, Math.round(((retailPrice - currentPrice) / retailPrice) * 100))) 
+      : 0;
+
+    return (
+      <div
+        key={p.id || idx}
+        onClick={() => setSelectedProduct(p)}
+        className="group bg-white rounded-xl overflow-hidden border border-stone-200/80 shadow-2xs hover:shadow-md flex flex-col text-[#16442C] cursor-pointer active:scale-[0.985] transition-all duration-200"
+      >
+        {/* 1. Khung Ảnh Chuẩn Thời Trang (Aspect 3:4) - Ôm sát form dáng, thanh thoát */}
+        <div className="relative w-full aspect-[3/4] bg-stone-100 overflow-hidden">
+          <Image
+            src={itemImg}
+            alt={p.title}
+            fill
+            className="object-cover group-hover:scale-105 transition-transform duration-300"
+            unoptimized
+            loading="lazy"
+          />
+
+          {/* Badges Tối giản: Thuê / Sở hữu + % Tiết kiệm */}
+          <div className="absolute top-1.5 left-1.5 flex items-center gap-1 z-10">
+            {Boolean(p.boostExpiresAt && new Date(p.boostExpiresAt) > new Date()) && (
+              <span className="bg-[#183A2D] text-white text-[8.5px] font-bold px-1.5 py-0.5 rounded shadow-2xs uppercase tracking-wider">
+                TOP
+              </span>
+            )}
+            <span className={`text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-2xs ${
+              isRent ? "bg-[#1E5638]/95" : "bg-[#C92A2A]/95"
+            }`}>
+              {isRent ? "Thuê" : "Mua"}
+            </span>
+            {savedPercent > 0 && (
+              <span className="bg-[#C92A2A] text-white text-[8.5px] font-black px-1 py-0.5 rounded shadow-2xs font-mono">
+                -{savedPercent}%
+              </span>
+            )}
+          </div>
+
+          {/* Nút yêu thích (Tim) nhỏ gọn góc trên phải */}
+          <button
+            type="button"
+            onClick={(e) => handleToggleLike(p.id, e)}
+            className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-white/90 backdrop-blur-xs flex items-center justify-center text-stone-500 hover:text-red-500 transition shadow-2xs z-10 cursor-pointer"
+          >
+            <Heart size={12} className={isLiked ? "fill-[#C92A2A] text-[#C92A2A]" : "text-stone-400"} />
+          </button>
+
+          {/* Tag dịp mặc nếu có */}
+          {p.occasion && (
+            <div className="absolute bottom-1.5 left-1.5 bg-black/60 backdrop-blur-xs text-white text-[8.5px] font-medium px-1.5 py-0.5 rounded z-10">
+              {p.occasion}
+            </div>
+          )}
+        </div>
+
+        {/* 2. Thân Card Cô Đọng & Thông Minh: Loại bỏ hoàn toàn khoảng trống thừa */}
+        <div className="p-2 flex flex-col justify-between flex-1">
+          <div>
+            {/* Tên trang phục: 2 dòng sắc nét, đều đặn */}
+            <h3 className="font-heading font-semibold text-[11px] sm:text-xs text-[#16442C] line-clamp-2 leading-tight min-h-[28px] group-hover:text-black">
+              {p.title}
+            </h3>
+
+            {/* Dòng giá gom gọn trên 1 hàng ngang: Giá chính nổi bật + Giá gốc gạch ngang */}
+            <div className="flex items-baseline gap-1 mt-1">
+              <span className="font-heading font-black text-xs sm:text-[13px] text-[#1E5638]">
+                {currentPrice.toLocaleString("vi-VN")}đ
+              </span>
+              {isRent && (
+                <span className="text-[9px] text-stone-500 font-normal">/ngày</span>
+              )}
+              {retailPrice > 0 && (
+                <span className="text-[9px] text-stone-400 line-through font-mono ml-auto">
+                  {retailPrice.toLocaleString("vi-VN")}đ
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Dòng thông số tinh tế: Size • Tình trạng • @chủ_tủ gộp chung 1 dòng duy nhất */}
+          <div className="flex items-center justify-between text-[10px] text-stone-500 mt-1.5 pt-1.5 border-t border-stone-100">
+            <span className="truncate">
+              Size {p.size || "M"}{p.condition ? ` • ${p.condition}` : ""}
+            </span>
+            <span 
+              onClick={(e) => {
+                e.stopPropagation();
+                setViewingClosetOwner({
+                  id: p.userId || 'official',
+                  name: ownerName,
+                  avatar: p.ownerAvatar || null,
+                  rating: p.rating || 5.0,
+                  reviewCount: p.reviewCount || 0,
+                  completedOrders: p.completedOrders || 0,
+                  location: p.location || p.province || "Toàn quốc",
+                });
+              }}
+              className="text-stone-400 truncate max-w-[65px] hover:text-emerald-800 hover:underline cursor-pointer ml-1"
+            >
+              @{ownerName.toLowerCase().replace(/\s+/g, ".")}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     // �️ KHUNG NGOÀI THOÁNG ĐÃNG
     <div className="min-h-screen bg-[#FAF8F5] sm:bg-[#EAE7E1] py-0 sm:py-8 flex justify-center selection:bg-[#1E5638] selection:text-white">
@@ -2713,10 +2837,10 @@ export default function MobileAppClient({
             </div>
 
             {/* LƯỚI CARD SẢN PHẨM GỢI Ý - ẢNH TO NỔI BẬT CHUẨN E-COMMERCE */}
-            <div className="px-3 pb-28 flex-1">
+            <div className="px-2.5 pb-28 flex-1">
               {/* Chỉ báo trạng thái Snapshot hoặc Đang đồng bộ */}
               {usingSnapshot && (
-                <div className="mb-3 px-3 py-1.5 bg-stone-100/90 rounded-xl border border-stone-200/80 text-center text-[11px] font-medium text-stone-600">
+                <div className="mb-2.5 px-3 py-1.5 bg-stone-100/90 rounded-xl border border-stone-200/80 text-center text-[11px] font-medium text-stone-600">
                   {isSyncing ? "Đang cập nhật danh mục mới nhất..." : "Đang hiển thị bản sao lưu đệm"}
                 </div>
               )}
@@ -2748,154 +2872,8 @@ export default function MobileAppClient({
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-3">
-                  {filteredProducts.map((p: any, idx: number) => {
-                    const isLiked = !!likedItems[p.id];
-                    const isRent = p.listingTypeRaw !== "SELL";
-                    const rentPrice = p.rentalPrice || p.price || 0;
-                    const salePrice = p.salePrice || p.price || 0;
-                    const currentPrice = isRent ? rentPrice : salePrice;
-                    const itemImg = p.image || p.primaryImage || p.images?.[0] || FALLBACK_CLOUDINARY_IMG;
-                    const ownerName = p.ownerName || "Chủ tủ CLOOP";
-
-                    const dbOrigPrice = Number(p.originalPrice || p.storeRetailPrice || 0);
-                    const retailPrice = dbOrigPrice > currentPrice 
-                      ? dbOrigPrice 
-                      : (isRent && currentPrice > 0 ? currentPrice * 9 : (currentPrice > 0 ? Math.round(currentPrice * 1.6) : 0));
-                    const savedPercent = retailPrice > currentPrice 
-                      ? Math.min(95, Math.max(10, Math.round(((retailPrice - currentPrice) / retailPrice) * 100))) 
-                      : 0;
-
-                    return (
-                      <div
-                        key={p.id || idx}
-                        onClick={() => setSelectedProduct(p)}
-                        className="bg-white rounded-2xl overflow-hidden shadow-xs hover:shadow-md border border-stone-200/80 flex flex-col justify-between relative group text-[#16442C] cursor-pointer active:scale-[0.98] transition-all"
-                      >
-                        {/* Khung ảnh trang phục to nổi bật tràn viền trên */}
-                        <div className="relative w-full aspect-[4/5] bg-stone-100 overflow-hidden">
-                          <Image
-                            src={itemImg}
-                            alt={p.title}
-                            fill
-                            className="object-cover group-hover:scale-105 transition-transform duration-500"
-                            unoptimized
-                            loading="lazy"
-                          />
-
-                          {/* Tag phân loại: TOP / Thuê đồ / Mua sở hữu thật */}
-                          <div className="absolute top-2 left-2 flex items-center gap-1 z-10">
-                            {Boolean(p.boostExpiresAt && new Date(p.boostExpiresAt) > new Date()) && (
-                              <span className="bg-[#183A2D] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md shadow-xs uppercase tracking-wider">
-                                TOP
-                              </span>
-                            )}
-                            <span className={`text-white text-[9.5px] font-bold px-2 py-0.5 rounded-md shadow-xs ${
-                              isRent ? "bg-[#1E5638]/95 backdrop-blur-xs" : "bg-[#C92A2A]/95 backdrop-blur-xs"
-                            }`}>
-                              {isRent ? "Thuê đồ" : "Mua sở hữu"}
-                            </span>
-                            {savedPercent > 0 && (
-                              <span className="bg-[#C92A2A] text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs font-mono tracking-tight">
-                                -{savedPercent}%
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Nút tim lưu DB thật */}
-                          <button
-                            type="button"
-                            onClick={(e) => handleToggleLike(p.id, e)}
-                            className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 backdrop-blur-xs flex items-center justify-center text-stone-500 hover:text-red-500 transition shadow-2xs z-10 cursor-pointer"
-                          >
-                            <Heart size={14} className={isLiked ? "fill-[#C92A2A] text-[#C92A2A]" : "text-stone-400"} />
-                          </button>
-
-                          {/* Tag dịp tiệc thật từ database */}
-                          {p.occasion && (
-                            <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-xs text-white text-[9px] font-medium px-2 py-0.5 rounded-full z-10">
-                              {p.occasion}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Thông tin sản phẩm gọn gàng, dữ liệu thật */}
-                        <div className="p-2.5 space-y-1.5 flex-1 flex flex-col justify-between">
-                          {/* Chủ tủ (kèm avatar thật nếu có) */}
-                          <div 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setViewingClosetOwner({
-                                id: p.userId || 'official',
-                                name: ownerName,
-                                avatar: p.ownerAvatar || null,
-                                rating: p.rating || 5.0,
-                                reviewCount: p.reviewCount || 0,
-                                completedOrders: p.completedOrders || 0,
-                                location: p.location || p.province || "Toàn quốc",
-                              });
-                            }}
-                            className="flex items-center gap-1.5 text-[10.5px] text-stone-500 truncate cursor-pointer hover:text-emerald-800 transition"
-                            title="Ghé tủ đồ"
-                          >
-                            {p.ownerAvatar ? (
-                              <div className="relative w-4 h-4 rounded-full overflow-hidden shrink-0">
-                                <Image src={p.ownerAvatar} alt={ownerName} fill className="object-cover" unoptimized />
-                              </div>
-                            ) : (
-                              <div className="w-4 h-4 rounded-full bg-stone-200 text-stone-700 flex items-center justify-center text-[9px] font-bold shrink-0">
-                                {ownerName.charAt(0).toUpperCase()}
-                              </div>
-                            )}
-                            <span className="truncate font-medium text-stone-600 hover:underline">
-                              @{ownerName.toLowerCase().replace(/\s+/g, ".")}
-                            </span>
-                          </div>
-
-                          {/* Tên trang phục */}
-                          <h3 className="font-heading font-black text-xs text-[#16442C] line-clamp-1 leading-snug">
-                            {p.title}
-                          </h3>
-
-                          {/* Giá thuê / sở hữu & Giá gốc gạch ngang & Tiết kiệm % như bản web */}
-                          <div className="space-y-0.5">
-                            <div className="flex items-baseline gap-1.5 flex-wrap">
-                              <span className="font-heading font-black text-sm text-[#1E5638]">
-                                {currentPrice.toLocaleString("vi-VN")}đ
-                              </span>
-                              {isRent && (
-                                <span className="text-[10px] text-stone-500 font-normal">/ ngày</span>
-                              )}
-                              {retailPrice > 0 && (
-                                <span className="text-[10px] text-stone-400 line-through font-mono">
-                                  {retailPrice.toLocaleString("vi-VN")}đ
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Thông số Size, Tình trạng thật & Nút giỏ hàng */}
-                          <div className="flex items-center justify-between pt-1.5 border-t border-stone-100 text-[10px] text-stone-500">
-                            <span className="text-stone-500 font-medium truncate">
-                              Size {p.size || "M"}{p.condition ? ` • ${p.condition}` : ""}
-                            </span>
-
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleAddToCart(p);
-                              }}
-                              className="w-7 h-7 rounded-lg bg-stone-100 hover:bg-[#1E5638] text-stone-700 hover:text-white flex items-center justify-center transition cursor-pointer shrink-0"
-                              title="Thêm vào giỏ hàng"
-                            >
-                              <ShoppingBag size={13} />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="grid grid-cols-2 gap-2">
+                  {filteredProducts.map(renderLuxuryCompactProductCard)}
                 </div>
               )}
             </div>
@@ -2906,7 +2884,7 @@ export default function MobileAppClient({
              TAB 2: SÀN ĐỒ (SHOP) - ĐỒNG BỘ 100% VỚI /shop BẢN WEB
             ======================================================== */}
         {activeTab === "shop" && (
-          <div className="px-3 pt-3 pb-6 flex-1 space-y-3">
+          <div className="px-2.5 pt-3 pb-6 flex-1 space-y-3">
             {/* THANH CHỌN CHẾ ĐỘ: TẤT CẢ | THUÊ ĐỒ | SỞ HỮU (TỐI GIẢN, KHÔNG EMOJI MÀU MÈ) */}
             <div className="flex bg-stone-200/80 p-1 rounded-2xl gap-1">
               <button
@@ -2978,154 +2956,8 @@ export default function MobileAppClient({
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-3">
-                {filteredProducts.map((p: any, idx: number) => {
-                  const isLiked = !!likedItems[p.id];
-                  const isRent = p.listingTypeRaw !== "SELL";
-                  const rentPrice = p.rentalPrice || p.price || 0;
-                    const salePrice = p.salePrice || p.price || 0;
-                    const currentPrice = isRent ? rentPrice : salePrice;
-                    const itemImg = p.image || p.primaryImage || p.images?.[0] || FALLBACK_CLOUDINARY_IMG;
-                    const ownerName = p.ownerName || "Chủ tủ CLOOP";
-
-                    const dbOrigPrice = Number(p.originalPrice || p.storeRetailPrice || 0);
-                    const retailPrice = dbOrigPrice > currentPrice 
-                      ? dbOrigPrice 
-                      : (isRent && currentPrice > 0 ? currentPrice * 9 : (currentPrice > 0 ? Math.round(currentPrice * 1.6) : 0));
-                    const savedPercent = retailPrice > currentPrice 
-                      ? Math.min(95, Math.max(10, Math.round(((retailPrice - currentPrice) / retailPrice) * 100))) 
-                      : 0;
-
-                  return (
-                    <div
-                      key={p.id || idx}
-                      onClick={() => setSelectedProduct(p)}
-                      className="bg-white rounded-2xl overflow-hidden shadow-xs hover:shadow-md border border-stone-200/80 flex flex-col justify-between relative group text-[#16442C] cursor-pointer active:scale-[0.98] transition-all"
-                    >
-                      {/* Khung ảnh trang phục to nổi bật tràn viền trên */}
-                      <div className="relative w-full aspect-[4/5] bg-stone-100 overflow-hidden">
-                        <Image
-                          src={itemImg}
-                          alt={p.title}
-                          fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-500"
-                          unoptimized
-                          loading="lazy"
-                        />
-
-                        {/* Tag phân loại: TOP / Thuê đồ / Mua sở hữu thật */}
-                        <div className="absolute top-2 left-2 flex items-center gap-1 z-10">
-                          {Boolean(p.boostExpiresAt && new Date(p.boostExpiresAt) > new Date()) && (
-                            <span className="bg-[#183A2D] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md shadow-xs uppercase tracking-wider">
-                              TOP
-                            </span>
-                          )}
-                          <span className={`text-white text-[9.5px] font-bold px-2 py-0.5 rounded-md shadow-xs ${
-                            isRent ? "bg-[#1E5638]/95 backdrop-blur-xs" : "bg-[#C92A2A]/95 backdrop-blur-xs"
-                          }`}>
-                            {isRent ? "Thuê đồ" : "Mua sở hữu"}
-                          </span>
-                          {savedPercent > 0 && (
-                            <span className="bg-[#C92A2A] text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs font-mono tracking-tight">
-                              -{savedPercent}%
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Nút tim lưu DB thật */}
-                        <button
-                          type="button"
-                          onClick={(e) => handleToggleLike(p.id, e)}
-                          className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 backdrop-blur-xs flex items-center justify-center text-stone-500 hover:text-red-500 transition shadow-2xs z-10 cursor-pointer"
-                        >
-                          <Heart size={14} className={isLiked ? "fill-[#C92A2A] text-[#C92A2A]" : "text-stone-400"} />
-                        </button>
-
-                        {/* Tag dịp tiệc thật từ database */}
-                        {p.occasion && (
-                          <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-xs text-white text-[9px] font-medium px-2 py-0.5 rounded-full z-10">
-                            {p.occasion}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Thông tin sản phẩm gọn gàng, dữ liệu thật */}
-                      <div className="p-2.5 space-y-1.5 flex-1 flex flex-col justify-between">
-                        {/* Chủ tủ (kèm avatar thật nếu có) */}
-                        <div 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setViewingClosetOwner({
-                              id: p.userId || 'official',
-                              name: ownerName,
-                              avatar: p.ownerAvatar || null,
-                              rating: p.rating || 5.0,
-                              reviewCount: p.reviewCount || 0,
-                              completedOrders: p.completedOrders || 0,
-                              location: p.location || p.province || "Toàn quốc",
-                            });
-                          }}
-                          className="flex items-center gap-1.5 text-[10.5px] text-stone-500 truncate cursor-pointer hover:text-emerald-800 transition"
-                          title="Ghé tủ đồ"
-                        >
-                          {p.ownerAvatar ? (
-                            <div className="relative w-4 h-4 rounded-full overflow-hidden shrink-0">
-                              <Image src={p.ownerAvatar} alt={ownerName} fill className="object-cover" unoptimized />
-                            </div>
-                          ) : (
-                            <div className="w-4 h-4 rounded-full bg-stone-200 text-stone-700 flex items-center justify-center text-[9px] font-bold shrink-0">
-                              {ownerName.charAt(0).toUpperCase()}
-                            </div>
-                          )}
-                          <span className="truncate font-medium text-stone-600 hover:underline">
-                            @{ownerName.toLowerCase().replace(/\s+/g, ".")}
-                          </span>
-                        </div>
-
-                        {/* Tên trang phục */}
-                        <h3 className="font-heading font-black text-xs text-[#16442C] line-clamp-1 leading-snug">
-                          {p.title}
-                        </h3>
-
-                        {/* Giá thuê / sở hữu & Giá gốc gạch ngang & Tiết kiệm % như bản web */}
-                          <div className="space-y-0.5">
-                            <div className="flex items-baseline gap-1.5 flex-wrap">
-                              <span className="font-heading font-black text-sm text-[#1E5638]">
-                                {currentPrice.toLocaleString("vi-VN")}đ
-                              </span>
-                              {isRent && (
-                                <span className="text-[10px] text-stone-500 font-normal">/ ngày</span>
-                              )}
-                              {retailPrice > 0 && (
-                                <span className="text-[10px] text-stone-400 line-through font-mono">
-                                  {retailPrice.toLocaleString("vi-VN")}đ
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Thông số Size, Tình trạng thật & Nút giỏ hàng */}
-                        <div className="flex items-center justify-between pt-1.5 border-t border-stone-100 text-[10px] text-stone-500">
-                          <span className="text-stone-500 font-medium truncate">
-                            Size {p.size || "M"}{p.condition ? ` • ${p.condition}` : ""}
-                          </span>
-
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleAddToCart(p);
-                            }}
-                            className="w-7 h-7 rounded-lg bg-stone-100 hover:bg-[#1E5638] text-stone-700 hover:text-white flex items-center justify-center transition cursor-pointer shrink-0"
-                            title="Thêm vào giỏ hàng"
-                          >
-                            <ShoppingBag size={13} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="grid grid-cols-2 gap-2">
+                {filteredProducts.map(renderLuxuryCompactProductCard)}
               </div>
             )}
           </div>

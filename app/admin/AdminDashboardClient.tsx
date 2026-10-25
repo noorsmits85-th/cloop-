@@ -242,7 +242,7 @@ export default function AdminDashboardClient({
         <div className="bg-white p-5 rounded-2xl border border-stone-200 space-y-1">
           <span className="text-xs font-semibold text-stone-500 uppercase tracking-wide">Tổng Giá Trị Giao Dịch</span>
           <div className="text-2xl font-bold font-mono text-stone-900">
-            {metrics.totalGMV.toLocaleString('vi-VN')}₫
+            {(metrics?.totalGMV || 0).toLocaleString('vi-VN')}₫
           </div>
           <p className="text-[11px] text-stone-400">Tổng tiền khách đã trả qua sàn</p>
         </div>
@@ -251,7 +251,7 @@ export default function AdminDashboardClient({
         <div className="bg-white p-5 rounded-2xl border border-stone-200 space-y-1">
           <span className="text-xs font-semibold text-stone-500 uppercase tracking-wide">Tiền cọc đang giữ</span>
           <div className="text-2xl font-bold font-mono text-teal-800">
-            {metrics.totalDepositEscrow.toLocaleString('vi-VN')}₫
+            {(metrics?.totalDepositEscrow || 0).toLocaleString('vi-VN')}₫
           </div>
           <p className="text-[11px] text-stone-400">Đơn đang trong thời hạn thuê</p>
         </div>
@@ -260,7 +260,7 @@ export default function AdminDashboardClient({
         <div className="bg-white p-5 rounded-2xl border border-stone-200 space-y-1">
           <span className="text-xs font-semibold text-stone-500 uppercase tracking-wide">Doanh thu phí sàn (12%)</span>
           <div className="text-2xl font-bold font-mono text-blue-900">
-            {Math.round(metrics.totalPlatformFee).toLocaleString('vi-VN')}₫
+            {Math.round(metrics?.totalPlatformFee || 0).toLocaleString('vi-VN')}₫
           </div>
           <p className="text-[11px] text-stone-400">Trích từ tiền thuê hoàn tất</p>
         </div>
@@ -269,9 +269,9 @@ export default function AdminDashboardClient({
         <div className="bg-white p-5 rounded-2xl border border-stone-200 space-y-1">
           <span className="text-xs font-semibold text-stone-500 uppercase tracking-wide">Doanh thu bán Xu Lá</span>
           <div className="text-2xl font-bold font-mono text-amber-800">
-            {metrics.totalCoinRevenue.toLocaleString('vi-VN')}₫
+            {(metrics?.totalCoinRevenue || 0).toLocaleString('vi-VN')}₫
           </div>
-          <p className="text-[11px] text-stone-400">Đã phát hành {metrics.totalCoinsIssued.toLocaleString('vi-VN')} Lá</p>
+          <p className="text-[11px] text-stone-400">Đã phát hành {(metrics?.totalCoinsIssued || 0).toLocaleString('vi-VN')} Lá</p>
         </div>
       </div>
 
@@ -320,15 +320,15 @@ export default function AdminDashboardClient({
         </h3>
         <div className="grid grid-cols-3 gap-4 text-center divide-x divide-stone-100">
           <div>
-            <div className="text-xl sm:text-2xl font-bold font-mono text-[#183A2D]">{metrics.totalUsers}</div>
+            <div className="text-xl sm:text-2xl font-bold font-mono text-[#183A2D]">{metrics?.totalUsers ?? 0}</div>
             <div className="text-xs text-stone-500 mt-0.5">Thành viên</div>
           </div>
           <div>
-            <div className="text-xl sm:text-2xl font-bold font-mono text-[#183A2D]">{metrics.totalProducts}</div>
+            <div className="text-xl sm:text-2xl font-bold font-mono text-[#183A2D]">{metrics?.totalProducts ?? 0}</div>
             <div className="text-xs text-stone-500 mt-0.5">Món đồ</div>
           </div>
           <div>
-            <div className="text-xl sm:text-2xl font-bold font-mono text-[#183A2D]">{metrics.totalRentals}</div>
+            <div className="text-xl sm:text-2xl font-bold font-mono text-[#183A2D]">{metrics?.totalRentals ?? 0}</div>
             <div className="text-xs text-stone-500 mt-0.5">Lượt thuê</div>
           </div>
         </div>

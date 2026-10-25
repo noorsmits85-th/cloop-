@@ -147,7 +147,8 @@ export default function HowItWorksTabs() {
                 fill
                 sizes="(max-width: 1024px) 100vw, 1024px"
                 className="object-contain pointer-events-none"
-                priority
+                unoptimized={true}
+                priority={true}
               />
             </div>
           </div>
@@ -168,7 +169,8 @@ export default function HowItWorksTabs() {
                   fill
                   sizes="120px"
                   className="mix-blend-multiply object-contain transition-transform duration-500 group-hover:scale-108"
-                  priority
+                  unoptimized={true}
+                  priority={true}
                 />
               </div>
             </div>
@@ -186,7 +188,7 @@ export default function HowItWorksTabs() {
                 onClick={() => setActiveStep(node.id)}
               >
                 <motion.div
-                  initial={{ scale: 0, opacity: 0 }}
+                  initial={{ scale: 0.01, opacity: 0 }}
                   whileInView={{ scale: 1, opacity: 1 }}
                   viewport={{ once: true }}
                   transition={{
@@ -195,7 +197,7 @@ export default function HowItWorksTabs() {
                     stiffness: 120,
                     delay: 0.08 * index,
                   }}
-                  className="relative flex flex-col items-center"
+                  className="relative flex flex-col items-center transform-gpu"
                 >
                   {/* NHÃN BƯỚC NẰM PHÍA TRÊN */}
                   {node.labelPosition === "top" && (
@@ -265,6 +267,9 @@ export default function HowItWorksTabs() {
                         alt={node.title}
                         fill
                         sizes="100px"
+                        unoptimized={true}
+                        loading="eager"
+                        decoding="sync"
                         className={`object-cover transition-transform duration-700 ${
                           isActive ? "scale-110" : "scale-100 opacity-95"
                         }`}

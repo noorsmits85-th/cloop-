@@ -1,25 +1,47 @@
 import React from "react";
-import Link from "next/link";
 import Image from "next/image";
-import { Plus, Leaf, Droplet, Sprout } from "lucide-react";
+import { Leaf, Droplet, Sprout } from "lucide-react";
 import { requireUser } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { SmartSellerOnboardingCard } from "./_components/SmartSellerOnboardingCard";
 import { DashboardChartsClient } from "./_components/DashboardChartsClient";
 import { redirect } from "next/navigation";
-import { unstable_cache } from "next/cache";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-// Cache EcoMetrics
-const getCachedEcoMetrics = unstable_cache(
-  async () => {
-    return await prisma.ecoMetric.findMany();
-  },
-  ['eco-metrics'],
-  { revalidate: 86400 }
-);
+/**
+ * Helper: Bọc truy vấn Prisma với Timeout và Fallback an toàn.
+ * Đảm bảo KHÔNG BAO GIỜ ném Unhandled Rejection làm sập Server Component.
+ */
+async function safeQuery<T>(
+  queryLabel: string,
+  queryFn: () => Promise<T>,
+  fallbackValue: T,
+  timeoutMs = 5000
+): Promise<T> {
+  try {
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Timeout after ${timeoutMs}ms`)), timeoutMs)
+    );
+    return await Promise.race([queryFn(), timeoutPromise]);
+  } catch (error) {
+    console.error(`[MyCloset SafeQuery Error - ${queryLabel}]:`, error);
+    return fallbackValue;
+  }
+}
+
+/**
+ * Giải nén kết quả an toàn từ Promise.allSettled
+ */
+function unwrapSettled<T>(
+  result: PromiseSettledResult<T>,
+  fallbackValue: T
+): T {
+  return result.status === "fulfilled" && result.value !== undefined && result.value !== null
+    ? result.value
+    : fallbackValue;
+}
 
 // ⚡ SWR IN-MEMORY CACHE (30s TTL): Giúp chuyển tab quay lại Dashboard trong 0ms
 const overviewCache = new Map<string, { data: { ecoStats: any; totalProducts: number; categoryData: any[]; revenueData: any[] }; expiry: number }>();
@@ -64,12 +86,12 @@ export default async function MyClosetOverviewPage() {
 
   const cloopCoins = userAuth.cloopCoins || 0;
 
-  // ⚡ SWR CACHE CHECK: Nếu user vừa xem trang trong 30s qua -> Phản hồi 0ms!
+  // ⚡ SWR CACHE CHECK: Nếu user vừa xem trang trong 30s qua -> Phản hồi 0ms
   const cachedOverview = overviewCache.get(userId);
-  let ecoStats: any;
+  let ecoStats: any = { co2Saved: 0, waterSaved: 0, greenPoints: 0 };
   let totalProducts = 0;
-  let categoryData: any[] = [];
-  let revenueData: any[] = [];
+  let categoryData: any[] = [{ name: 'Chưa có dữ liệu', value: 1 }];
+  let revenueData: any[] = past7Days.map(d => ({ name: d.name, rent: 0, sell: 0 }));
 
   if (cachedOverview && Date.now() < cachedOverview.expiry) {
     ecoStats = cachedOverview.data.ecoStats;
@@ -77,145 +99,182 @@ export default async function MyClosetOverviewPage() {
     categoryData = cachedOverview.data.categoryData;
     revenueData = cachedOverview.data.revenueData;
   } else {
-    // ⚡ TỐI ƯU SIÊU TỐC: Gom toàn bộ truy vấn song song (Parallel Fetching)
-    const [
-      products,
-      dbMetrics,
-      completedRentals,
-      soldItems
-    ] = await Promise.all([
-      prisma.product.findMany({
-        where: { userId, isDeleted: false },
-        select: { category: true, material: true }
-      }),
-      getCachedEcoMetrics(),
-      prisma.rentalHistory.findMany({
-        where: {
-          product: { userId },
-          status: "LENDER_COMPLETED",
-          updatedAt: { gte: sevenDaysAgo }
-        },
-        select: {
-          updatedAt: true,
-          start_date: true,
-          end_date: true,
-          invoice: {
+    try {
+      // 🛡️ TRUY VẤN DỮ LIỆU PHÒNG THỦ: Cách ly từng truy vấn bằng safeQuery + Promise.allSettled
+      const [
+        productsSettled,
+        dbMetricsSettled,
+        completedRentalsSettled,
+        soldItemsSettled
+      ] = await Promise.allSettled([
+        safeQuery(
+          "products",
+          () => prisma.product.findMany({
+            where: { userId, isDeleted: false },
+            select: { category: true, material: true }
+          }),
+          []
+        ),
+        safeQuery(
+          "ecoMetrics",
+          () => prisma.ecoMetric.findMany(),
+          []
+        ),
+        safeQuery(
+          "completedRentals",
+          () => prisma.rentalHistory.findMany({
+            where: {
+              product: { userId },
+              status: "LENDER_COMPLETED",
+              updatedAt: { gte: sevenDaysAgo }
+            },
             select: {
-              rentalFee: true,
-              platformFee: true,
-              amount: true
-            }
-          },
-          product: {
-            select: {
-              listings: {
-                where: { listingType: "RENT" },
-                select: { basePrice: true },
-                take: 1
+              updatedAt: true,
+              start_date: true,
+              end_date: true,
+              invoice: {
+                select: {
+                  rentalFee: true,
+                  platformFee: true,
+                  amount: true
+                }
+              },
+              product: {
+                select: {
+                  listings: {
+                    where: { listingType: "RENT" },
+                    select: { basePrice: true },
+                    take: 1
+                  }
+                }
               }
             }
+          }),
+          []
+        ),
+        safeQuery(
+          "soldItems",
+          () => prisma.listing.findMany({
+            where: {
+              product: { userId },
+              status: "SOLD",
+              listingType: { in: ["SELL", "RECYCLE"] },
+              updatedAt: { gte: sevenDaysAgo }
+            },
+            select: {
+              basePrice: true,
+              salePrice: true,
+              updatedAt: true
+            }
+          }),
+          []
+        )
+      ]);
+
+      const products = unwrapSettled(productsSettled, []);
+      const dbMetrics = unwrapSettled(dbMetricsSettled, []);
+      const completedRentals = unwrapSettled(completedRentalsSettled, []);
+      const soldItems = unwrapSettled(soldItemsSettled, []);
+
+      // 1. Chuyển đổi ma trận chỉ số sinh thái Eco
+      const ECO_MATRIX: Record<string, { water: number; co2: number; pts: number }> = {};
+      (dbMetrics || []).forEach((m: any) => {
+        if (m?.keyword) {
+          ECO_MATRIX[m.keyword.toLowerCase().trim()] = {
+            water: Number(m.waterFactor || 0),
+            co2: Number(m.co2Factor || 0),
+            pts: Number(m.greenPts || 0)
+          };
+        }
+      });
+
+      let co2Saved = 0;
+      let waterSaved = 0;
+      let greenPoints = 0;
+
+      const categoryCountMap = new Map<string, number>();
+
+      (products || []).forEach((product: any) => {
+        const cat = (product?.category || "").toLowerCase().trim();
+        const mat = (product?.material || "").toLowerCase().trim();
+
+        const rawCat = product?.category || "Khác";
+        categoryCountMap.set(rawCat, (categoryCountMap.get(rawCat) || 0) + 1);
+        
+        let match = null;
+        for (const key of Object.keys(ECO_MATRIX)) {
+          if (cat.includes(key) || mat.includes(key)) {
+            match = ECO_MATRIX[key];
+            break;
           }
         }
-      }),
-      prisma.listing.findMany({
-        where: {
-          product: { userId },
-          status: "SOLD",
-          listingType: { in: ["SELL", "RECYCLE"] },
-          updatedAt: { gte: sevenDaysAgo }
-        },
-        select: {
-          basePrice: true,
-          salePrice: true,
-          updatedAt: true
-        }
-      })
-    ]);
 
-    // Convert array to Dictionary for fast lookup
-    const ECO_MATRIX: Record<string, { water: number; co2: number; pts: number }> = {};
-    dbMetrics.forEach((m: any) => {
-      ECO_MATRIX[m.keyword.toLowerCase().trim()] = { water: m.waterFactor, co2: m.co2Factor, pts: m.greenPts };
-    });
+        const metrics = match || { water: 2000, co2: 15, pts: 100 };
+        co2Saved += Number(metrics.co2 || 0);
+        waterSaved += Number(metrics.water || 0);
+        greenPoints += Number(metrics.pts || 0);
+      });
 
-    let co2Saved = 0;
-    let waterSaved = 0;
-    let greenPoints = 0;
+      ecoStats = { co2Saved, waterSaved, greenPoints };
+      totalProducts = (products || []).length;
 
-    const categoryCountMap = new Map<string, number>();
+      categoryData = categoryCountMap.size > 0 
+        ? Array.from(categoryCountMap.entries()).map(([name, value]) => ({ name, value }))
+        : [{ name: 'Chưa có dữ liệu', value: 1 }];
 
-    products.forEach((product: any) => {
-      const cat = (product.category || "").toLowerCase().trim();
-      const mat = (product.material || "").toLowerCase().trim();
-
-      const rawCat = product.category || "Khác";
-      categoryCountMap.set(rawCat, (categoryCountMap.get(rawCat) || 0) + 1);
-      
-      let match = null;
-      for (const key of Object.keys(ECO_MATRIX)) {
-        if (cat.includes(key) || mat.includes(key)) {
-          match = ECO_MATRIX[key];
-          break;
-        }
-      }
-
-      const metrics = match || { water: 2000, co2: 15, pts: 100 };
-      co2Saved += metrics.co2;
-      waterSaved += metrics.water;
-      greenPoints += metrics.pts;
-    });
-
-    ecoStats = { co2Saved, waterSaved, greenPoints };
-    totalProducts = products.length;
-
-    categoryData = categoryCountMap.size > 0 
-      ? Array.from(categoryCountMap.entries()).map(([name, value]) => ({ name, value }))
-      : [{ name: 'Chưa có dữ liệu', value: 1 }];
-
-    // Gom nhóm dữ liệu doanh thu
-    completedRentals.forEach((rental: any) => {
-      const rentalDate = new Date(rental.updatedAt);
-      rentalDate.setHours(0, 0, 0, 0);
-      
-      const dayData = past7Days.find(d => d.dateObj.getTime() === rentalDate.getTime());
-      if (dayData) {
-        const invoiceEarnings = rental.invoice?.rentalFee 
-          ? Math.max(0, rental.invoice.rentalFee - (rental.invoice.platformFee || 0)) 
-          : 0;
+      // 2. Gom nhóm doanh thu cho thuê (Chống lỗi Null Product do soft-delete)
+      (completedRentals || []).forEach((rental: any) => {
+        if (!rental?.updatedAt) return;
+        const rentalDate = new Date(rental.updatedAt);
+        if (isNaN(rentalDate.getTime())) return;
+        rentalDate.setHours(0, 0, 0, 0);
         
-        if (invoiceEarnings > 0) {
-          dayData.rent += invoiceEarnings;
-        } else {
-          const basePrice = rental.product.listings?.[0]?.basePrice || 0;
-          const diffDays = rental.start_date && rental.end_date
-            ? Math.ceil((new Date(rental.end_date).getTime() - new Date(rental.start_date).getTime()) / (1000 * 60 * 60 * 24))
-            : 1;
-          const rentalDays = Math.max(1, isNaN(diffDays) ? 1 : diffDays);
-          dayData.rent += basePrice * rentalDays;
+        const dayData = past7Days.find(d => d.dateObj.getTime() === rentalDate.getTime());
+        if (dayData) {
+          const invoiceEarnings = rental?.invoice?.rentalFee 
+            ? Math.max(0, rental.invoice.rentalFee - (rental.invoice.platformFee || 0)) 
+            : 0;
+          
+          if (invoiceEarnings > 0) {
+            dayData.rent += invoiceEarnings;
+          } else {
+            // 🛡️ BẢO VỆ CHỐNG NULL PRODUCT DO SOFT-DELETE
+            const basePrice = Number(rental?.product?.listings?.[0]?.basePrice || 0);
+            const diffDays = rental?.start_date && rental?.end_date
+              ? Math.ceil((new Date(rental.end_date).getTime() - new Date(rental.start_date).getTime()) / (1000 * 60 * 60 * 24))
+              : 1;
+            const rentalDays = Math.max(1, isNaN(diffDays) ? 1 : diffDays);
+            dayData.rent += basePrice * rentalDays;
+          }
         }
-      }
-    });
+      });
 
-    soldItems.forEach((item: any) => {
-      const soldDate = new Date(item.updatedAt);
-      soldDate.setHours(0, 0, 0, 0);
-      
-      const dayData = past7Days.find(d => d.dateObj.getTime() === soldDate.getTime());
-      if (dayData) {
-        dayData.sell += item.salePrice || item.basePrice || 0;
-      }
-    });
+      // 3. Gom nhóm doanh thu bán/thanh lý
+      (soldItems || []).forEach((item: any) => {
+        if (!item?.updatedAt) return;
+        const soldDate = new Date(item.updatedAt);
+        if (isNaN(soldDate.getTime())) return;
+        soldDate.setHours(0, 0, 0, 0);
+        
+        const dayData = past7Days.find(d => d.dateObj.getTime() === soldDate.getTime());
+        if (dayData) {
+          dayData.sell += Number(item.salePrice || item.basePrice || 0);
+        }
+      });
 
-    revenueData = past7Days.map(d => ({
-      name: d.name,
-      rent: d.rent,
-      sell: d.sell
-    }));
+      revenueData = past7Days.map(d => ({
+        name: d.name,
+        rent: d.rent,
+        sell: d.sell
+      }));
 
-    overviewCache.set(userId, {
-      data: { ecoStats, totalProducts, categoryData, revenueData },
-      expiry: Date.now() + 30000
-    });
+      overviewCache.set(userId, {
+        data: { ecoStats, totalProducts, categoryData, revenueData },
+        expiry: Date.now() + 30000
+      });
+    } catch (calcError) {
+      console.error("[MyCloset Overview Calculation Error]:", calcError);
+    }
   }
 
   return (
@@ -247,7 +306,7 @@ export default async function MyClosetOverviewPage() {
             </div>
             <div className="space-y-0.5">
               <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Giảm CO₂ tích lũy</div>
-              <div className="text-2xl font-mono font-black text-stone-900">{ecoStats.co2Saved.toLocaleString()} kg</div>
+              <div className="text-2xl font-mono font-black text-stone-900">{Number(ecoStats?.co2Saved || 0).toLocaleString('vi-VN')} kg</div>
               <p className="text-[11px] text-gray-500 font-medium">Bảo vệ bầu không khí sạch</p>
             </div>
           </div>
@@ -259,7 +318,7 @@ export default async function MyClosetOverviewPage() {
             </div>
             <div className="space-y-0.5">
               <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Tiết kiệm nước</div>
-              <div className="text-2xl font-mono font-black text-stone-900">{ecoStats.waterSaved.toLocaleString()} Lít</div>
+              <div className="text-2xl font-mono font-black text-stone-900">{Number(ecoStats?.waterSaved || 0).toLocaleString('vi-VN')} Lít</div>
               <p className="text-[11px] text-gray-500 font-medium">Tối ưu tài nguyên bản địa</p>
             </div>
           </div>
@@ -272,7 +331,7 @@ export default async function MyClosetOverviewPage() {
             </div>
             <div className="space-y-0.5 relative z-20">
               <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Điểm Tích Lũy Xanh</div>
-              <div className="text-2xl font-mono font-black text-[#183A2D]">{ecoStats.greenPoints.toLocaleString()} Điểm</div>
+              <div className="text-2xl font-mono font-black text-[#183A2D]">{Number(ecoStats?.greenPoints || 0).toLocaleString('vi-VN')} Điểm</div>
               <p className="text-[11px] text-gray-500 font-medium">Định danh người dùng xanh</p>
             </div>
           </div>
@@ -287,7 +346,7 @@ export default async function MyClosetOverviewPage() {
             </div>
             <div className="space-y-0.5 relative z-10">
               <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Tài khoản Lá CLOOP</div>
-              <div className="text-2xl font-mono font-black text-[#183A2D]">{cloopCoins.toLocaleString()} <span className="text-xs font-bold">Lá</span></div>
+              <div className="text-2xl font-mono font-black text-[#183A2D]">{Number(cloopCoins || 0).toLocaleString('vi-VN')} <span className="text-xs font-bold">Lá</span></div>
               <p className="text-[11px] text-gray-500 font-medium">Sẵn sàng quảng cáo tủ đồ</p>
             </div>
           </div>
