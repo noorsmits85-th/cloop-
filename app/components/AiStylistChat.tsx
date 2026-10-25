@@ -318,6 +318,21 @@ export default function AiStylistChat({
   const [isTyping, setIsTyping] = useState(false);
   const [productsById, setProductsById] = useState<Record<string, ProductMini>>({});
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
+  const [stylistSessionId, setStylistSessionId] = useState<string>("");
+
+  // Khởi tạo hoặc lấy sessionId cho AI Stylist
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      let storedId = localStorage.getItem("cloop_stylist_session_id");
+      if (!storedId) {
+        storedId = typeof crypto !== "undefined" && crypto.randomUUID
+          ? `sess_${crypto.randomUUID()}`
+          : `sess_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        localStorage.setItem("cloop_stylist_session_id", storedId);
+      }
+      setStylistSessionId(storedId);
+    }
+  }, []);
   
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -627,10 +642,18 @@ export default function AiStylistChat({
     setIsTyping(true);
 
     try {
+      const activeSessionId =
+        stylistSessionId ||
+        (typeof window !== "undefined"
+          ? localStorage.getItem("cloop_stylist_session_id") || ""
+          : "") ||
+        `sess_${Date.now()}`;
+
       const response = await fetch("/api/stylist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          sessionId: activeSessionId,
           message: userText,
           image: currentImg || null,
           history: messages

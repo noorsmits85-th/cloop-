@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { prisma } from "@/src/lib/prisma";
 import { executeWithGeminiPool, getAllGeminiKeys } from "@/src/utils/gemini-pool";
+import { createClient } from "@/src/utils/supabase/server";
 
 export const runtime = "nodejs";
 
@@ -73,7 +74,23 @@ export async function POST(request: Request) {
       );
     }
 
-    const { message, image, history = [] } = await request.json();
+    const { message, image, history = [], sessionId, userId, userName } = await request.json();
+
+    // Thu thập danh tính người dùng nếu đã đăng nhập
+    let resolvedUserId = userId || null;
+    let resolvedUserName = userName || null;
+    if (!resolvedUserId) {
+      try {
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          resolvedUserId = user.id;
+          resolvedUserName = user.user_metadata?.name || user.email || "Thành viên CLOOP";
+        }
+      } catch {
+        // Khách vãng lai
+      }
+    }
 
     if ((!message && !image) || (message && typeof message !== "string")) {
       return new Response("Thiếu nội dung chat hoặc ảnh.", { status: 400 });
@@ -238,16 +255,37 @@ export async function POST(request: Request) {
       async start(controller) {
         controller.enqueue(encoder.encode(`[[CATALOG:${encodeCatalog(catalog)}]]\n`));
 
+        let fullAiResponse = "";
         try {
           for await (const chunk of result.stream) {
             const text = chunk.text();
-            if (text) controller.enqueue(encoder.encode(text));
+            if (text) {
+              fullAiResponse += text;
+              controller.enqueue(encoder.encode(text));
+            }
           }
         } catch (error) {
           console.error("Lỗi streaming AI Stylist:", error);
           controller.enqueue(encoder.encode("\nMình đang cập nhật kho đồ một chút, bạn gửi lại câu hỏi giúp mình nhé!"));
         } finally {
           controller.close();
+          // 🛡️ Lưu log bất đồng bộ (Fire-and-Forget): KHÔNG chặn stream của khách hàng
+          if (message && fullAiResponse.trim()) {
+            const finalSessionId = sessionId || `sess_${Date.now()}`;
+            prisma.aiStylistLog
+              .create({
+                data: {
+                  sessionId: String(finalSessionId),
+                  userId: resolvedUserId ? String(resolvedUserId) : null,
+                  userName: resolvedUserName ? String(resolvedUserName) : "Khách vãng lai",
+                  prompt: String(message).trim(),
+                  response: fullAiResponse.trim(),
+                },
+              })
+              .catch((dbErr) => {
+                console.error("[AI_STYLIST_LOG_DB_ERROR]:", dbErr);
+              });
+          }
         }
       },
     });

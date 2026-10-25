@@ -14,6 +14,7 @@ export default function AdminNavbar() {
     { label: "Vận Chuyển GHN", href: "/admin/shipments" },
     { label: "Khiếu Nại", href: "/admin/disputes" },
     { label: "CSKH Trực Tuyến", href: "/admin/support" },
+    { label: "Lịch Sử AI Stylist", href: "/admin/stylist-logs" },
     { label: "Sổ Cái Kép TT 99", href: "/admin/ledger" },
     { label: "Chi Trả Doanh Thu", href: "/admin/payments" },
     { label: "Kỳ Kế Toán", href: "/admin/accounting" },
