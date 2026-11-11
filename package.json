@@ -18,7 +18,7 @@
     "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^5.8.0",
     "@payos/node": "^2.0.5",
-    "@prisma/client": "^6.19.3",
+    "@prisma/client": "^7.10.1",
     "@sentry/nextjs": "^10.70.0",
     "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.110.0",
