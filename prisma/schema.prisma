@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["relationJoins"]
 }
 
 datasource db {
@@ -95,6 +96,12 @@ model Product {
   @@index([material])
   @@index([occasion])
   @@index([size])
+  @@index([status, createdAt(sort: Desc)])
+  @@index([status, category])
+  @@index([status, occasion])
+  @@index([status, size])
+  @@index([status, gender])
+  @@index([status, province])
   @@map("products")
 }
 
@@ -157,6 +164,9 @@ model Listing {
   @@index([listingType])
   @@index([basePrice])
   @@index([salePrice])
+  @@index([status, listingType, createdAt(sort: Desc)])
+  @@index([status, basePrice(sort: Asc)])
+  @@index([status, salePrice(sort: Asc)])
   @@index([createdAt(sort: Desc)])
 }
 
@@ -190,6 +200,9 @@ model RentalHistory {
   @@index([product_id])
   @@index([status])
   @@index([createdAt(sort: Desc)])
+  @@index([renterId, status, createdAt(sort: Desc)])
+  @@index([ownerId, status, createdAt(sort: Desc)])
+  @@index([product_id, status, start_date, end_date])
   @@map("rental_history")
 }
 
@@ -212,6 +225,7 @@ model Invoice {
   rental        RentalHistory       @relation(fields: [rentalId], references: [id])
   ledgerEntries LedgerTransaction[]
   transactions  TransactionHistory[]
+  @@index([status, createdAt(sort: Desc)])
 
   @@index([rentalId])
   @@index([status])
@@ -313,6 +327,8 @@ model Review {
   productId String?
 
   @@unique([rentalId, reviewerId, type])
+  @@index([productId, createdAt(sort: Desc)])
+  @@index([revieweeId, createdAt(sort: Desc)])
   @@index([rentalId])
   @@index([reviewerId])
   @@index([revieweeId])

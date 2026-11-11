@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
-import Link from "next/link";
+import * as Sentry from "@sentry/nextjs";
 import { AlertTriangle, RefreshCw, Home } from "lucide-react";
 
 export default function GlobalError({
@@ -12,7 +12,7 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("⚠️ [CLOOP Global Error Boundary]:", error);
+    Sentry.captureException(error);
   }, [error]);
 
   return (
@@ -31,14 +31,6 @@ export default function GlobalError({
           </p>
         </div>
 
-        {error?.message && (
-          <div className="p-3 bg-red-50/80 border border-red-200/80 rounded-2xl text-left max-h-24 overflow-y-auto">
-            <p className="text-[11px] font-mono text-red-600 break-all leading-tight">
-              {error.message}
-            </p>
-          </div>
-        )}
-
         {error?.digest && (
           <div className="text-[10px] text-stone-400 font-mono bg-stone-50 px-3 py-1.5 rounded-lg border border-stone-200 inline-block">
             Mã định danh: {error.digest}
@@ -56,7 +48,10 @@ export default function GlobalError({
                     await Promise.all(keys.map((k) => window.caches.delete(k)));
                   }
                 } catch (_) {}
-                const isMobile = /Android|iPhone|iPad|iPod|Zalo|MiniApp|Mobile/i.test(navigator.userAgent);
+                const isMobile =
+                  /Android|iPhone|iPad|iPod|Zalo|MiniApp|Mobile/i.test(
+                    navigator.userAgent
+                  );
                 const target = isMobile ? "/app" : "/";
                 window.location.href = `${target}?reload=${Date.now()}`;
               } else {
@@ -72,7 +67,10 @@ export default function GlobalError({
             type="button"
             onClick={() => {
               if (typeof window !== "undefined") {
-                const isMobile = /Android|iPhone|iPad|iPod|Zalo|MiniApp|Mobile/i.test(navigator.userAgent);
+                const isMobile =
+                  /Android|iPhone|iPad|iPod|Zalo|MiniApp|Mobile/i.test(
+                    navigator.userAgent
+                  );
                 window.location.href = isMobile ? "/app" : "/";
               }
             }}

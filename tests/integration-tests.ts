@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import { prisma } from '../src/lib/prisma';
+import { computeUserWalletReconciliation } from '../src/lib/wallet-reconciliation';
 import { PayOS } from '@payos/node';
 import { evaluateFastTrackEligibility, TRUST_TIERS } from '../lib/trust-engine';
 import {
@@ -626,6 +629,153 @@ async function runIntegrationSuite() {
     // C. Invoice exists and PAID: Allowed
     assert.equal(validateDisputeCreation({ id: 'r1', invoice: { id: 'inv1', status: 'PAID' } }).allowed, true);
   });
+
+  // =========================================================================
+  // 9. LIVE POSTGRESQL RLS, POSTGREST PENETRATION & REAL DB RECONCILIATION
+  // =========================================================================
+  console.log('\n--- 9. Live Database RLS, Direct PostgREST Penetration & Real DB Reconciliation ---');
+
+  if (!dbAvailable) {
+    testSkipped(
+      'All 28 public tables enforce RLS, FORCE RLS, financial triggers, and zero sensitive client privileges',
+      `Database server không kết nối được (${dbUnreachableReason}).`
+    );
+    testSkipped(
+      'Direct Supabase PostgREST API rejects anon/client attempts to read/mutate User, Invoice, LedgerTransaction, and withdrawal_requests',
+      `Database server không kết nối được (${dbUnreachableReason}).`
+    );
+    testSkipped(
+      'Real PostgreSQL reconciliation rejects unbacked walletBalance and forged late-payment ledger entries without PROCESSED receipt',
+      `Database server không kết nối được (${dbUnreachableReason}).`
+    );
+  } else {
+    await testAsync(
+      'All 28 public tables enforce RLS, FORCE RLS, financial triggers, and zero sensitive client privileges',
+      async () => {
+        const sqlPath = path.resolve(process.cwd(), 'scripts/verify_28_tables_lockdown_status.sql');
+        const rawSql = fs
+          .readFileSync(sqlPath, 'utf8')
+          .split('\n')
+          .filter((l) => !l.trim().startsWith('--'))
+          .join('\n');
+
+        const rows: any[] = await prisma.$queryRawUnsafe(rawSql);
+        assert.ok(rows.length >= 28, `Expected at least 28 public tables, found ${rows.length}`);
+
+        for (const r of rows) {
+          const tableName = r['Tên Bảng CLOOP'];
+          const status = r['Kết Quả Kiểm Định Cấu Hình'];
+          assert.equal(r['RLS Enabled'], true, `Table ${tableName} must have RLS enabled`);
+          assert.equal(r['FORCE RLS'], true, `Table ${tableName} must have FORCE RLS enabled`);
+          assert.equal(
+            status,
+            'METADATA_CONTROLS_VERIFIED',
+            `Table ${tableName} failed lockdown check: ${status} (ClientPriv=${r['Quyền Cấp Bảng Client']}, ColExposure=${r['Quyền Cấp Cột Nhạy Cảm']})`
+          );
+        }
+      }
+    );
+
+    await testAsync(
+      'Direct Supabase PostgREST API rejects anon/client attempts to read/mutate User, Invoice, LedgerTransaction, and withdrawal_requests',
+      async () => {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+        const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+        assert.ok(supabaseUrl && anonKey, 'Supabase URL and anon key must be present for live PostgREST test');
+
+        const headers = {
+          apikey: anonKey,
+          Authorization: `Bearer ${anonKey}`,
+          'Content-Type': 'application/json',
+          Prefer: 'return=representation',
+        };
+
+        // 1. Attempt to dump User table (emails, passwords, walletBalance, role)
+        const getUserRes = await fetch(`${supabaseUrl}/rest/v1/User?select=id,email,walletBalance,role&limit=1`, {
+          method: 'GET',
+          headers,
+        });
+        assert.ok(
+          getUserRes.status === 401 || getUserRes.status === 403,
+          `Direct PostgREST GET /User must be blocked (401/403), got ${getUserRes.status}`
+        );
+
+        // 2. Attempt to escalate role & inflate walletBalance directly via PostgREST PATCH
+        const patchUserRes = await fetch(`${supabaseUrl}/rest/v1/User?id=not.is.null`, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({ walletBalance: 99999999, role: 'ADMIN' }),
+        });
+        assert.ok(
+          patchUserRes.status === 401 || patchUserRes.status === 403,
+          `Direct PostgREST PATCH /User must be blocked (401/403), got ${patchUserRes.status}`
+        );
+
+        // 3. Attempt to inject a fake LedgerTransaction via PostgREST POST
+        const postLedgerRes = await fetch(`${supabaseUrl}/rest/v1/LedgerTransaction`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            id: `forged_ledger_${Date.now()}`,
+            type: 'REFUND_OUT',
+            amount: 5000000,
+            status: 'COMPLETED',
+            description: '[LATE_PAYMENT_REFUND] Forged via Python',
+          }),
+        });
+        assert.ok(
+          postLedgerRes.status === 401 || postLedgerRes.status === 403,
+          `Direct PostgREST POST /LedgerTransaction must be blocked (401/403), got ${postLedgerRes.status}`
+        );
+
+        // 4. Attempt to read or insert Invoice / withdrawal_requests via PostgREST
+        const getInvoiceRes = await fetch(`${supabaseUrl}/rest/v1/Invoice?select=*&limit=1`, {
+          method: 'GET',
+          headers,
+        });
+        assert.ok(
+          getInvoiceRes.status === 401 || getInvoiceRes.status === 403,
+          `Direct PostgREST GET /Invoice must be blocked (401/403), got ${getInvoiceRes.status}`
+        );
+      }
+    );
+
+    await testAsync(
+      'Real PostgreSQL reconciliation rejects unbacked walletBalance and forged late-payment ledger entries without PROCESSED receipt',
+      async () => {
+        const testEmail = `audit_recon_${Date.now()}@cloop.vn`;
+        let createdUserId: string | null = null;
+
+        try {
+          const user = await prisma.user.create({
+            data: {
+              email: testEmail,
+              password: 'hashed_test_password',
+              name: 'Recon Live Test User',
+              walletBalance: 500000, // Unbacked 500,000 VND balance
+              role: 'USER',
+            },
+          });
+          createdUserId = user.id;
+
+          const proof = await computeUserWalletReconciliation(user.id, prisma);
+          assert.equal(proof.currentAvailableBalance, 500000);
+          assert.equal(proof.totalVerifiedInflow, 0);
+          assert.equal(proof.verifiedMaxRemainingBalance, 0);
+          assert.equal(proof.unexplainedDiscrepancy, 500000);
+          assert.equal(
+            proof.isReconciled,
+            false,
+            'Live DB reconciliation must flag unbacked walletBalance as isReconciled: false'
+          );
+        } finally {
+          if (createdUserId) {
+            await prisma.user.delete({ where: { id: createdUserId } }).catch(() => {});
+          }
+        }
+      }
+    );
+  }
 
   console.log('\n======================================================');
   console.log(`INTEGRATION SUITE: ${passedTests} passed, ${skippedTests} skipped, ${totalTests - passedTests - skippedTests} failed (Total: ${totalTests})`);

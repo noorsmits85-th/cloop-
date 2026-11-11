@@ -6,8 +6,9 @@ import { prisma } from "@/src/lib/prisma";
 import { uploadProductSchema } from "@/lib/validations/product";
 import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { maskPublicAddress } from "@/src/utils/shipping";
+import { requireUser } from "@/src/lib/auth";
 
-// ⚡ HIGH-SPEED SWR IN-MEMORY CACHE (1ms Response Time, 100% Crash-Proof)
+// HIGH-SPEED SWR IN-MEMORY CACHE (1ms Response Time, 100% Crash-Proof)
 const memoryCache = new Map<string, { data: any; expiry: number }>();
 const CACHE_TTL_MS = 10 * 1000; // 10 seconds
 
@@ -23,7 +24,7 @@ function setCachedData(key: string, data: any) {
   memoryCache.set(key, { data, expiry: Date.now() + CACHE_TTL_MS });
 }
 
-export async function clearShopMemoryCache() {
+async function clearShopMemoryCacheInternal() {
   memoryCache.clear();
   try {
     (revalidateTag as any)("shop-products");
@@ -37,6 +38,16 @@ export async function clearShopMemoryCache() {
     revalidatePath("/app", "layout");
     revalidatePath("/my-closet", "layout");
   } catch (e) {}
+}
+
+export async function clearShopMemoryCache() {
+  try {
+    await requireUser();
+  } catch {
+    return { success: false, error: "Unauthorized" };
+  }
+  await clearShopMemoryCacheInternal();
+  return { success: true };
 }
 
 export async function createProductAction({
@@ -53,68 +64,10 @@ export async function createProductAction({
   storyText: string;
 }) {
   try {
-    const supabase = await createClient();
-    let authUser: any = null;
-
-    // 1. Thử lấy user từ getUser()
+    let authUser;
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) authUser = user;
-    } catch (_) {}
-
-    // 2. Thử lấy user từ getSession()
-    if (!authUser) {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) authUser = session.user;
-      } catch (_) {}
-    }
-
-    // 3. Phân tích token từ Cookies cục bộ
-    if (!authUser) {
-      try {
-        const { cookies } = await import('next/headers');
-        const cookieStore = await cookies();
-        const allCookies = cookieStore.getAll();
-        const authCookies = allCookies
-          .filter(c => c.name.includes('-auth-token'))
-          .sort((a, b) => a.name.localeCompare(b.name));
-        if (authCookies.length > 0) {
-          let rawVal = authCookies.map(c => c.value).join('');
-          if (rawVal.startsWith('base64-')) {
-            rawVal = Buffer.from(rawVal.slice(7), 'base64').toString('utf-8');
-          }
-          const parsed = JSON.parse(rawVal);
-          const token = parsed?.access_token || (Array.isArray(parsed) ? parsed[0] : null);
-          let extractedId = parsed?.user?.id;
-          if (!extractedId && typeof token === 'string' && token.includes('.')) {
-            const parts = token.split('.');
-            if (parts.length >= 2) {
-              const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));
-              extractedId = payload?.sub;
-            }
-          }
-          if (extractedId) {
-            authUser = { id: extractedId, email: parsed?.user?.email };
-          }
-        }
-      } catch (_) {}
-    }
-
-    // 4. Nếu client gửi kèm userId (từ currentUser đã lưu trên điện thoại)
-    if (!authUser && product.userId) {
-      try {
-        const existing = await prisma.user.findUnique({
-          where: { id: product.userId },
-          select: { id: true, email: true, name: true }
-        });
-        if (existing) {
-          authUser = existing;
-        }
-      } catch (_) {}
-    }
-
-    if (!authUser?.id) {
+      authUser = await requireUser();
+    } catch {
       return { success: false, error: "Cậu nhớ đăng nhập trước khi gửi đồ vào tủ nhé!" };
     }
 
@@ -127,7 +80,7 @@ export async function createProductAction({
           id: authUser.id,
           email: authUser.email || `${authUser.id}@cloop.vn`,
           password: 'supabase_auth_managed',
-          name: authUser.user_metadata?.name || authUser.user_metadata?.full_name || authUser.name || "Thành viên CLOOP",
+          name: authUser.name || authUser.metadata?.name || authUser.metadata?.full_name || "Thành viên CLOOP",
           walletBalance: 0,
           cloopCoins: 100,
           role: 'USER',
@@ -291,7 +244,7 @@ export async function createProductAction({
       }
     }
 
-    await clearShopMemoryCache();
+    await clearShopMemoryCacheInternal();
     try {
       revalidatePath("/shop");
       revalidatePath("/");
@@ -347,7 +300,7 @@ export async function bumpProductAction(productId: string) {
       data: { lastBumpedAt: now }
     });
 
-    await clearShopMemoryCache();
+    await clearShopMemoryCacheInternal();
     try {
       revalidatePath('/');
       revalidatePath('/shop');
@@ -422,6 +375,7 @@ async function fetchShopProductsDirect(
 
   // SINGLE DB HIT: Đẩy các sản phẩm mới nhất hoặc vừa được đẩy lên đầu bảng tin
   const rawProducts = await prisma.product.findMany({
+    relationLoadStrategy: "join",
     where,
     skip,
     take: limit + 1,
@@ -432,7 +386,8 @@ async function fetchShopProductsDirect(
     ],
     include: {
       images: {
-        orderBy: { sortOrder: "asc" }
+        orderBy: { sortOrder: "asc" },
+        take: 2
       },
       listings: {
         where: { isDeleted: false, status: { in: ["AVAILABLE", "RESERVED"] } }
@@ -662,22 +617,13 @@ export async function getShopProductsAction({
   }
 }
 
-export async function updateProductFromAppAction(productId: string, data: any, clientUserId?: string) {
+export async function updateProductFromAppAction(productId: string, data: any, _clientUserId?: string) {
   try {
-    const supabase = await createClient();
-    let authUser: any = null;
+    let authUser;
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) authUser = user;
-    } catch (_) {}
-    if (!authUser) {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) authUser = session.user;
-      } catch (_) {}
-    }
-    if (!authUser && clientUserId) {
-      authUser = { id: clientUserId };
+      authUser = await requireUser();
+    } catch {
+      return { success: false, error: "Vui lòng đăng nhập để chỉnh sửa món đồ." };
     }
 
     const existingProduct = await prisma.product.findUnique({
@@ -687,6 +633,10 @@ export async function updateProductFromAppAction(productId: string, data: any, c
 
     if (!existingProduct) {
       return { success: false, error: "Không tìm thấy món đồ." };
+    }
+
+    if (existingProduct.userId !== authUser.id && authUser.role !== "ADMIN") {
+      return { success: false, error: "Bạn không có quyền chỉnh sửa món đồ này." };
     }
 
     const p1 = Number(data.price1Day || data.rentalPrice || 0);
@@ -779,10 +729,10 @@ export async function updateProductFromAppAction(productId: string, data: any, c
       }
     });
 
-    await clearShopMemoryCache();
+    await clearShopMemoryCacheInternal();
     return { success: true };
   } catch (err: any) {
     console.error("Lỗi updateProductFromAppAction:", err);
-    return { success: false, error: err?.message || "Lỗi cập nhật sản phẩm." };
+    return { success: false, error: "Lỗi cập nhật sản phẩm." };
   }
 }

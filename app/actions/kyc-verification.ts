@@ -5,6 +5,7 @@ import { payos } from "@/lib/payos";
 import { requireUser } from "@/src/lib/auth";
 import { isValidVietnamPhone, normalizeVietnamPhone, maskPhoneNumber } from "@/lib/validations/phone";
 import { generatePayOSOrderCode } from "@/src/utils/order-code";
+import { checkRateLimit } from "@/src/utils/rate-limit";
 import { revalidatePath } from "next/cache";
 import { createClient as createSupabaseServerClient } from "@/src/utils/supabase/server";
 
@@ -53,6 +54,31 @@ export async function createMicroKycPaymentAction(
     }
 
     const normalizedPhone = normalizeVietnamPhone(rawPhone);
+
+    // 🛡️ RATE LIMIT & CHỐNG FARMING GÓI KYC_2K (Hoàn 2.000đ + tặng 20 Lá)
+    const rateLimit = checkRateLimit(`kyc_micro_${authUser.id}`, 3, 60 * 1000);
+    if (!rateLimit.success) {
+      return {
+        success: false,
+        error: `Bạn thao tác quá nhanh. Vui lòng thử lại sau ${rateLimit.resetInSec} giây.`,
+      };
+    }
+
+    const alreadyPaidKyc = await prisma.coinTopUp.findFirst({
+      where: {
+        userId: authUser.id,
+        packageCode: { in: ["KYC_1K", "KYC_2K"] },
+        status: "PAID",
+      },
+      select: { id: true },
+    });
+
+    if (alreadyPaidKyc) {
+      return {
+        success: false,
+        error: "Tài khoản của bạn đã hoàn tất định danh VietQR eKYC trước đó.",
+      };
+    }
 
     // 🛡️ CHỐNG TẤN CÔNG SYBIL: Kiểm tra xem SĐT này đã được tài khoản nào khác xác thực chưa
     const existingVerifiedRental = await prisma.rentalHistory.findFirst({
@@ -129,7 +155,7 @@ export async function createMicroKycPaymentAction(
       accountNumber: paymentLink.accountNumber,
       accountName: paymentLink.accountName,
       bin: paymentLink.bin,
-      amount: 1000,
+      amount: 2000,
       phone: normalizedPhone,
     };
   } catch (error: any) {
@@ -167,6 +193,13 @@ export async function checkMicroKycStatusAction(orderCode: number, phone?: strin
       return { success: false, status: "FORBIDDEN", isPaid: false };
     }
 
+    // 🛡️ CHỐT CHẶN CRITICAL CROSS-FLOW EXPLOIT:
+    // Chỉ cho phép gói KYC_1K / KYC_2K đi qua hàm này. Tuyệt đối chặn việc lấy mã đơn nạp Lá (PACK_*) hoặc BOOST_*
+    // gọi vào đây để vừa nhận Lá vừa được hoàn 100% tiền mặt (amountVnd) vào walletBalance rút được!
+    if (topUp.packageCode !== "KYC_2K" && topUp.packageCode !== "KYC_1K") {
+      return { success: false, status: "INVALID_FLOW", isPaid: false };
+    }
+
     // Nếu đã PAID từ Webhook
     if (topUp.status === "PAID") {
       return { success: true, isPaid: true, status: "PAID" };
@@ -176,10 +209,18 @@ export async function checkMicroKycStatusAction(orderCode: number, phone?: strin
     if (topUp.status === "PENDING" && payos) {
       try {
         const payosInfo = await payos.paymentRequests.get(orderCode);
+        if (payosInfo && (payosInfo.status === "CANCELLED" || payosInfo.status === "EXPIRED")) {
+          await prisma.coinTopUp.updateMany({
+            where: { id: topUp.id, status: "PENDING" },
+            data: { status: "CANCELLED", payosStatus: payosInfo.status },
+          });
+          return { success: true, isPaid: false, status: "CANCELLED" };
+        }
+
         const isActuallyPaid = Boolean(
           payosInfo &&
-            (payosInfo.status === "PAID" ||
-              (typeof payosInfo.amountPaid === "number" && payosInfo.amountPaid >= topUp.amountVnd))
+            payosInfo.status === "PAID" &&
+            Number(payosInfo.amountPaid ?? topUp.amountVnd) >= topUp.amountVnd
         );
 
         if (isActuallyPaid) {
@@ -196,13 +237,22 @@ export async function checkMicroKycStatusAction(orderCode: number, phone?: strin
 
             if (updateResult.count === 0) return;
 
-            // Nâng hạng xác thực và cộng 2.000đ vào Số dư Ví (rút được)
+            const existingLedger = await tx.coinLedgerEntry.findFirst({
+              where: { topUpId: topUp.id, type: "TOP_UP_IN" },
+            });
+            if (existingLedger) return;
+
+            // Nâng hạng xác thực và cộng đúng tối đa 2.000đ vào Số dư Ví
+            const safeKycRefundVnd = Math.min(2000, Math.max(0, topUp.amountVnd));
+            const safeKycCoins = Math.min(20, Math.max(0, topUp.totalCoins));
+            const dbSavedPhone = (topUp.rawPayload as any)?.phone;
+
             const updatedUser = await tx.user.update({
               where: { id: topUp.userId },
               data: {
                 isVerified: true,
-                walletBalance: { increment: topUp.amountVnd },
-                cloopCoins: { increment: topUp.totalCoins },
+                walletBalance: { increment: safeKycRefundVnd },
+                cloopCoins: { increment: safeKycCoins },
               },
               select: { cloopCoins: true, walletBalance: true },
             });
@@ -213,27 +263,43 @@ export async function checkMicroKycStatusAction(orderCode: number, phone?: strin
                 userId: topUp.userId,
                 topUpId: topUp.id,
                 type: "TOP_UP_IN",
-                amount: topUp.totalCoins,
+                amount: safeKycCoins,
                 balanceAfter: updatedUser.cloopCoins,
-                description: `Hoàn 100% Phí Định danh VietQR eKYC vào Ví (+${topUp.amountVnd.toLocaleString("vi-VN")}₫)`,
+                description: `Hoàn 100% Phí Định danh VietQR eKYC vào Ví (+${safeKycRefundVnd.toLocaleString("vi-VN")}₫)`,
                 metadata: {
                   orderCode: orderCode,
-                  amountVnd: topUp.amountVnd,
+                  amountVnd: safeKycRefundVnd,
                   packageCode: topUp.packageCode,
-                  phone: phone || (topUp.rawPayload as any)?.phone,
+                  phone: dbSavedPhone,
                 },
               },
             });
           });
 
-          // Cập nhật SĐT vào Supabase Metadata
-          const savedPhone = phone || (topUp.rawPayload as any)?.phone;
-          if (savedPhone) {
+          // 🛡️ CHỐNG SPOOFING SĐT: Chỉ lấy SĐT đã qua kiểm tra Sybil lưu trong DB (topUp.rawPayload.phone), không tin tham số phone từ Client
+          const savedPhone = (topUp.rawPayload as any)?.phone;
+          if (savedPhone && isValidVietnamPhone(String(savedPhone))) {
+            const cleanPhone = normalizeVietnamPhone(savedPhone);
+            try {
+              await prisma.$executeRawUnsafe(
+                `UPDATE auth.users
+                 SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || jsonb_build_object(
+                   'phone', $1::text,
+                   'phone_verified', true,
+                   'kyc_method', 'VIETQR_EKYC_2K',
+                   'kyc_verified_at', $2::text
+                 )
+                 WHERE id = $3::uuid;`,
+                cleanPhone,
+                new Date().toISOString(),
+                topUp.userId
+              );
+            } catch (_) {}
             try {
               const supabase = await createSupabaseServerClient();
               await supabase.auth.updateUser({
                 data: {
-                  phone: normalizeVietnamPhone(savedPhone),
+                  phone: cleanPhone,
                   phone_verified: true,
                   kyc_method: "VIETQR_EKYC_2K",
                   kyc_verified_at: new Date().toISOString(),

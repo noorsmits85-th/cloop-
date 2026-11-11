@@ -8,10 +8,10 @@ export const dynamic = "force-dynamic";
 export default async function AdminLedgerPage() {
   await requireAdminOrRedirect();
 
-  // 1. Fetch dữ liệu thực tế từ Database
+  // 1. Fetch dữ liệu thực tế từ Database (Chỉ lấy hóa đơn đã thanh toán PAID để khớp với tổng thu DEPOSIT_IN)
   const [invoices, ledgerStats] = await Promise.all([
     prisma.invoice.findMany({
-      where: { isDeleted: false },
+      where: { isDeleted: false, status: "PAID" },
       take: 50,
       orderBy: { createdAt: 'desc' },
       select: {
@@ -25,6 +25,7 @@ export default async function AdminLedgerPage() {
         createdAt: true,
         rental: {
           select: {
+            status: true,
             renter_name: true,
             owner_name: true,
             product: {
@@ -53,7 +54,13 @@ export default async function AdminLedgerPage() {
 
   // 2. Chuyển đổi dữ liệu từ Prisma model sang format UI
   const mappedInvoices: InvoiceData[] = invoices.map(inv => {
-    const isCompleted = inv.ledgerEntries.some(entry => entry.type === "FEE_RETAINED" && entry.status === "COMPLETED");
+    const isCompleted =
+      inv.rental?.status === "LENDER_COMPLETED" ||
+      inv.ledgerEntries.some(
+        entry =>
+          (entry.type === "FEE_RETAINED" || entry.type === "PAYOUT_OUT" || entry.type === "REFUND_OUT") &&
+          entry.status === "COMPLETED"
+      );
     
     const rentalListing = inv.rental?.product?.listings?.find(l => l.listingType === "RENT") || inv.rental?.product?.listings?.[0];
     const depositRefund = inv.depositAmount > 0 ? inv.depositAmount : (rentalListing?.deposit || 0);

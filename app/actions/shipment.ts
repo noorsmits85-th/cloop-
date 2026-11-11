@@ -47,9 +47,17 @@ export async function requestPickupAction(rentalId: string, packagingProofUrls: 
       return { success: false, error: "Không tìm thấy đơn hàng." };
     }
 
-    // 🛡️ Kiểm tra quyền: Phải là chủ tủ đồ của món hàng này
-    if (rental.ownerId !== user.id && rental.product?.userId !== user.id) {
+    // Kiểm tra quyền: Phải là chủ tủ đồ của món hàng này
+    if (rental.ownerId !== user.id && rental.product?.userId !== user.id && user.role !== "ADMIN") {
       return { success: false, error: "Bạn không có quyền thao tác trên đơn hàng này." };
+    }
+
+    // Chặn tạo vận đơn/đóng gói khi hóa đơn chưa thanh toán thành công vào Két Escrow
+    if (rental.invoice?.status !== "PAID") {
+      return {
+        success: false,
+        error: "Đơn hàng chưa được thanh toán tiền cọc & phí thuê vào Két Escrow, chưa thể lên vận đơn giao hàng.",
+      };
     }
 
     // 1. Phân loại phương thức giao nhận theo Multi-Carrier: GHN | GHTK | GRAB | SELF_PICKUP

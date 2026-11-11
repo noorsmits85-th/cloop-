@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -9,7 +9,6 @@ import {
   Camera,
   X,
   UploadCloud,
-  Search,
   ArrowRight,
   RefreshCw,
   CheckCircle2,
@@ -19,15 +18,13 @@ import {
   ZoomIn,
   ZoomOut,
   Maximize2,
-  SlidersHorizontal,
   Shirt,
-  Sparkles as LucideSparkles, // Only imported if needed for icon, or use ScanSearch
   Layers,
   ShoppingBag,
-  Info,
+  Sparkles,
 } from "lucide-react";
 
-interface MatchedProduct {
+export interface MatchedProduct {
   id: string;
   title: string;
   category: string;
@@ -38,48 +35,71 @@ interface MatchedProduct {
   matchScore: number;
   matchReason: string;
   ownerName: string;
+  rawProduct?: any;
 }
 
 interface DetectedInfo {
   category: string;
   dominantColor: string;
+  dominantHex?: string;
   style: string;
   material?: string;
   itemDescription: string;
   searchKeywords: string[];
   aiModelUsed?: string;
+  scanTimeMs?: number;
 }
 
 interface VisualSearchModalProps {
   isOpen: boolean;
   onClose: () => void;
+  catalogProducts?: any[];
+  onSelectProduct?: (product: any) => void;
+  onApplyKeywordToShop?: (keyword: string) => void;
 }
 
-// Bộ ảnh Lookbook mẫu để khách bấm trải nghiệm ngay lập tức
-const PRESET_LOOKBOOKS = [
+const DEFAULT_LOOKBOOKS = [
   {
-    title: "Blazer Parisian Chic",
-    tag: "Blazer",
-    url: "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?q=80&w=700",
+    title: "Đầm Lụa Dự Tiệc",
+    tag: "Đầm & Váy",
+    garmentHint: "Đầm dự tiệc",
+    colorHint: "đỏ",
+    url: "/evening_dress.jpg",
   },
   {
-    title: "Đầm Lụa Dạ Tiệc",
-    tag: "Dạ hội",
-    url: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=700",
-  },
-  {
-    title: "Áo Dài Cách Tân",
+    title: "Áo Dài Gấm Lễ Hội",
     tag: "Áo dài",
+    garmentHint: "Áo dài",
+    colorHint: "đỏ",
     url: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?q=80&w=700",
   },
   {
-    title: "Set Tweed Vintage",
+    title: "Đầm Dạ Hội Thanh Lịch",
+    tag: "Đầm dạ hội",
+    garmentHint: "Đầm váy",
+    colorHint: "đen",
+    url: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=700",
+  },
+  {
+    title: "Set Tweed Tiểu Thư",
     tag: "Set đồ",
+    garmentHint: "Set đồ chân váy",
+    colorHint: "trắng",
     url: "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=700",
   },
 ];
 
-// Helper nén ảnh toàn phần
+function normalizeVi(text: string = ""): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 async function compressImageForVisualSearch(fileOrDataUrl: File | string): Promise<string> {
   return new Promise((resolve) => {
     const img = new window.Image();
@@ -105,7 +125,7 @@ async function compressImageForVisualSearch(fileOrDataUrl: File | string): Promi
         const ctx = canvas.getContext("2d");
         if (!ctx) return resolve(typeof fileOrDataUrl === "string" ? fileOrDataUrl : "");
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL("image/jpeg", 0.8));
+        resolve(canvas.toDataURL("image/jpeg", 0.82));
       } catch {
         resolve(typeof fileOrDataUrl === "string" ? fileOrDataUrl : "");
       }
@@ -124,7 +144,6 @@ async function compressImageForVisualSearch(fileOrDataUrl: File | string): Promi
   });
 }
 
-// Helper cắt ảnh theo bounding box (Crop Box Nền tảng/CLOOP Video)
 async function getCroppedImg(
   imageSrc: string,
   pixelCrop: { x: number; y: number; width: number; height: number }
@@ -170,11 +189,15 @@ async function getCroppedImg(
     canvas.height
   );
 
-  return canvas.toDataURL("image/jpeg", 0.82);
+  return canvas.toDataURL("image/jpeg", 0.84);
 }
 
-// Đo màu chủ đạo trực tiếp từ pixel (vùng trung tâm 60% - nơi món đồ thường nằm). Chạy trên máy, ~5ms, miễn phí.
-async function extractDominantColorName(imageSrc: string): Promise<string | null> {
+// Bộ trích xuất đặc trưng thị giác (Spatial Color Histogram + HEX Swatch + Silhouette) trên trình duyệt (~6ms)
+async function extractVisualSignature(imageSrc: string): Promise<{
+  colorName: string | null;
+  hexSwatch: string;
+  isLongSilhouette: boolean;
+}> {
   try {
     const img = new window.Image();
     img.crossOrigin = "anonymous";
@@ -183,20 +206,22 @@ async function extractDominantColorName(imageSrc: string): Promise<string | null
       img.onerror = () => reject(new Error("load"));
       img.src = imageSrc;
     });
-    const size = 40;
+    const size = 44;
     const canvas = document.createElement("canvas");
     canvas.width = size;
     canvas.height = size;
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    if (!ctx) return null;
-    const sx = img.width * 0.2;
-    const sy = img.height * 0.2;
-    ctx.drawImage(img, sx, sy, img.width * 0.6, img.height * 0.6, 0, 0, size, size);
+    if (!ctx) return { colorName: null, hexSwatch: "#C26475", isLongSilhouette: true };
+
+    const sx = img.width * 0.18;
+    const sy = img.height * 0.15;
+    ctx.drawImage(img, sx, sy, img.width * 0.64, img.height * 0.7, 0, 0, size, size);
     const { data } = ctx.getImageData(0, 0, size, size);
 
-    const votes: Record<string, number> = {};
+    const votes: Record<string, { count: number; rSum: number; gSum: number; bSum: number }> = {};
     for (let i = 0; i < data.length; i += 4) {
-      const r = data[i] / 255, g = data[i + 1] / 255, b = data[i + 2] / 255;
+      const r255 = data[i], g255 = data[i + 1], b255 = data[i + 2];
+      const r = r255 / 255, g = g255 / 255, b = b255 / 255;
       const max = Math.max(r, g, b), min = Math.min(r, g, b);
       const l = (max + min) / 2;
       const d = max - min;
@@ -210,183 +235,282 @@ async function extractDominantColorName(imageSrc: string): Promise<string | null
       if (h < 0) h += 360;
 
       let name: string;
-      if (l > 0.86 && s < 0.35) name = "trắng";
-      else if (l < 0.16) name = "đen";
+      if (l > 0.85 && s < 0.32) name = "trắng";
+      else if (l < 0.17) name = "đen";
       else if (s < 0.14) name = "xám";
       else if ((h < 50 && l < 0.45 && s < 0.6) || (h < 40 && s < 0.45)) name = h < 40 && l > 0.6 ? "be" : "nâu";
-      else if (h < 15 || h >= 345) name = "đỏ";
+      else if (h < 16 || h >= 345) name = "đỏ";
       else if (h < 40) name = "cam";
       else if (h < 68) name = l > 0.7 && s < 0.5 ? "be" : "vàng";
       else if (h < 170) name = "xanh lá";
       else if (h < 255) name = "xanh dương";
       else if (h < 295) name = "tím";
       else name = "hồng";
-      votes[name] = (votes[name] || 0) + 1;
+
+      if (!votes[name]) votes[name] = { count: 0, rSum: 0, gSum: 0, bSum: 0 };
+      votes[name].count += 1;
+      votes[name].rSum += r255;
+      votes[name].gSum += g255;
+      votes[name].bSum += b255;
     }
-    const best = Object.entries(votes).sort((a, b) => b[1] - a[1])[0];
-    return best ? best[0] : null;
+
+    const bestEntry = Object.entries(votes).sort((a, b) => b[1].count - a[1].count)[0];
+    if (!bestEntry) return { colorName: null, hexSwatch: "#C26475", isLongSilhouette: img.height >= img.width };
+
+    const [bestName, stats] = bestEntry;
+    const avgR = Math.round(stats.rSum / stats.count);
+    const avgG = Math.round(stats.gSum / stats.count);
+    const avgB = Math.round(stats.bSum / stats.count);
+    const hexSwatch = `#${[avgR, avgG, avgB].map((x) => x.toString(16).padStart(2, "0")).join("")}`;
+
+    return {
+      colorName: bestName,
+      hexSwatch,
+      isLongSilhouette: img.height >= img.width * 1.15,
+    };
   } catch {
-    return null; // ảnh ngoài domain chặn CORS -> bỏ qua, server vẫn chạy AI bình thường
+    return { colorName: null, hexSwatch: "#C26475", isLongSilhouette: true };
   }
 }
 
-const SCAN_STATUS_STEPS = [
-  "Đang quét phom dáng & tỷ lệ cắt may...",
-  "Bóc tách chất liệu vải & dải màu sắc...",
-  "Đối soát kho tủ đồ thực tế tại CLOOP...",
-];
+// Quét kho tức thì trên RAM (< 5ms) từ danh sách sản phẩm đã nạp sẵn
+function instantScanLocalCatalog(
+  catalogProducts: any[],
+  colorHint: string | null,
+  garmentHint: string | null,
+  isLongSilhouette: boolean
+): MatchedProduct[] {
+  if (!Array.isArray(catalogProducts) || catalogProducts.length === 0) return [];
 
-export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModalProps) {
+  const normColor = normalizeVi(colorHint || "");
+  const normGarment = normalizeVi(garmentHint || "");
+
+  return catalogProducts
+    .map((p: any) => {
+      const text = normalizeVi([p.title, p.category, p.occasion, p.color, p.description].join(" "));
+      let score = 62;
+      const reasons: string[] = [];
+
+      const isDressOrGown =
+        text.includes("dam") ||
+        text.includes("vay") ||
+        text.includes("ao dai") ||
+        text.includes("da hoi") ||
+        text.includes("tiec") ||
+        text.includes("chan vay");
+
+      if (normGarment) {
+        const gWords = normGarment.split(" ").filter((w) => w.length >= 2);
+        const matchedWords = gWords.filter((w) => text.includes(w));
+        if (matchedWords.length > 0) {
+          score += 24;
+          reasons.push("Cùng kiểu dáng");
+        }
+      } else if (isLongSilhouette && isDressOrGown) {
+        score += 18;
+        reasons.push("Phom đầm & váy");
+      }
+
+      if (normColor && text.includes(normColor)) {
+        score += 14;
+        reasons.push(`Tông màu ${colorHint}`);
+      }
+
+      if (isDressOrGown && score < 88) {
+        score += 6;
+      }
+
+      return {
+        id: p.id,
+        title: p.title,
+        category: p.category || p.occasion || "Trang phục",
+        color: p.color || null,
+        primaryImage: p.image || p.primaryImage || "/evening_dress.jpg",
+        rentalPrice: Number(p.rentalPrice || p.price) || 80000,
+        salePrice: Number(p.salePrice) || 0,
+        matchScore: Math.min(98, Math.max(65, score)),
+        matchReason: reasons.length > 0 ? reasons.join(" • ") : "Tương đồng phom dáng & sắc độ",
+        ownerName: p.ownerName || p.owner || "Chủ tủ CLOOP",
+        rawProduct: p,
+      };
+    })
+    .sort((a, b) => b.matchScore - a.matchScore)
+    .slice(0, 12);
+}
+
+export default function VisualSearchModal({
+  isOpen,
+  onClose,
+  catalogProducts = [],
+  onSelectProduct,
+  onApplyKeywordToShop,
+}: VisualSearchModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Mounted check for SSR safety with cropper
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  // Workflow states: 'upload' | 'crop' | 'results'
   const [viewMode, setViewMode] = useState<"upload" | "crop" | "results">("upload");
   const [rawImage, setRawImage] = useState<string | null>(null);
   const [activeSearchImage, setActiveSearchImage] = useState<string | null>(null);
 
-  // Cropper states
   const [crop, setCrop] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [aspectRatio, setAspectRatio] = useState<number | undefined>(3 / 4);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
 
-  // Scanning & API states
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [scanStepIndex, setScanStepIndex] = useState(0);
   const [detectedInfo, setDetectedInfo] = useState<DetectedInfo | null>(null);
   const [matchedProducts, setMatchedProducts] = useState<MatchedProduct[]>([]);
+  const [selectedQuickFilter, setSelectedQuickFilter] = useState<string>("ALL");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isFallbackResult, setIsFallbackResult] = useState(false);
   const searchRequestRef = useRef(0);
 
-  // Cycle status ticker during scanning
-  useEffect(() => {
-    if (!isAnalyzing) return;
-    const interval = setInterval(() => {
-      setScanStepIndex((prev) => (prev + 1) % SCAN_STATUS_STEPS.length);
-    }, 1600);
-    return () => clearInterval(interval);
-  }, [isAnalyzing]);
+  // Tự động lấy các mẫu Đầm / Váy / Áo dài đẹp nhất từ kho thực tế để làm Lookbook mẫu
+  const dynamicLookbooks = useMemo(() => {
+    const dressItems = (catalogProducts || []).filter((p: any) => {
+      const t = normalizeVi([p.title, p.category, p.occasion].join(" "));
+      return t.includes("dam") || t.includes("vay") || t.includes("ao dai") || t.includes("set");
+    });
+
+    if (dressItems.length >= 4) {
+      return dressItems.slice(0, 4).map((p: any) => ({
+        title: p.title,
+        tag: p.occasion || p.category || "Đầm & Váy",
+        garmentHint: p.category || p.title,
+        colorHint: p.color && p.color !== "Tự nhiên" ? p.color : null,
+        url: p.image || p.primaryImage || "/evening_dress.jpg",
+      }));
+    }
+    return DEFAULT_LOOKBOOKS;
+  }, [catalogProducts]);
 
   const onCropComplete = useCallback((_croppedArea: Area, croppedAreaPixels: Area) => {
     setCroppedAreaPixels(croppedAreaPixels);
   }, []);
 
-  // Xử lý gửi ảnh đã chọn/đã crop lên API Visual Search
-  const executeSearch = async (imageSrc: string) => {
+  // Quét 2 tầng: Tầng 1 Quét Kho Tức Thì (<15ms trên RAM) + Tầng 2 AI Vision tinh chỉnh ngầm
+  const executeSearch = async (imageSrc: string, presetGarmentHint?: string | null, presetColorHint?: string | null) => {
     const requestId = ++searchRequestRef.current;
-    setIsAnalyzing(true);
+    const t0 = performance.now();
     setErrorMessage(null);
-    setDetectedInfo(null);
-    setMatchedProducts([]);
-    setIsFallbackResult(false);
+    setSelectedQuickFilter("ALL");
     setViewMode("results");
     setActiveSearchImage(imageSrc);
 
+    // TẦNG 1: QUÉT KHO TỨC THÌ TRÊN TRÌNH DUYỆT (<15ms)
+    const sig = await extractVisualSignature(imageSrc);
+    const effectiveColor = presetColorHint || sig.colorName;
+    const effectiveGarment = presetGarmentHint || (sig.isLongSilhouette ? "Đầm & Váy" : null);
+
+    const instantMatches = instantScanLocalCatalog(
+      catalogProducts,
+      effectiveColor,
+      effectiveGarment,
+      sig.isLongSilhouette
+    );
+    const instantMs = Math.max(4, Math.round(performance.now() - t0));
+
+    if (instantMatches.length > 0) {
+      setMatchedProducts(instantMatches);
+      setDetectedInfo({
+        category: effectiveGarment || "Đầm & Trang phục thiết kế",
+        dominantColor: effectiveColor || "Tự nhiên",
+        dominantHex: sig.hexSwatch,
+        style: "Thanh lịch • Tiệc & Dạo phố",
+        itemDescription: "Các mẫu trang phục có phom dáng và tông màu tương đồng",
+        searchKeywords: [effectiveGarment || "Đầm váy", effectiveColor || "Thời trang"].filter(Boolean),
+        scanTimeMs: instantMs,
+      });
+    }
+
+    setIsAnalyzing(true);
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    const timeoutId = setTimeout(() => controller.abort(), 6500);
 
     try {
       let finalBase64 = imageSrc;
       if (!imageSrc.startsWith("data:image/")) {
         finalBase64 = await compressImageForVisualSearch(imageSrc);
       }
-      const colorHint = await extractDominantColorName(finalBase64);
 
       const res = await fetch("/api/visual-search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ base64Image: finalBase64, colorHint }),
+        body: JSON.stringify({
+          base64Image: finalBase64,
+          colorHint: effectiveColor,
+          garmentHint: effectiveGarment,
+        }),
         signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
       const data = await res.json();
-      if (requestId !== searchRequestRef.current) return; // đã có lượt tìm mới hơn
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || "Không thể tìm kiếm ảnh này");
-      }
-
-      setDetectedInfo(data.detectedInfo);
-      setMatchedProducts(data.products || []);
-      setIsFallbackResult(Boolean(data.isFallback));
-    } catch (err: any) {
-      clearTimeout(timeoutId);
       if (requestId !== searchRequestRef.current) return;
-      if (err.name === "AbortError") {
-        setErrorMessage("Mạng đang chậm, chưa nhận được kết quả. Bạn thử lại hoặc khoanh vùng sát món đồ hơn nhé.");
-      } else {
-        setErrorMessage(err.message || "Đã xảy ra lỗi khi tìm kiếm bằng AI");
+
+      if (res.ok && data.success) {
+        const serverProducts: MatchedProduct[] = (data.products || []).map((sp: any) => {
+          const foundRaw = catalogProducts.find((cp: any) => cp.id === sp.id);
+          return {
+            ...sp,
+            rawProduct: foundRaw || sp,
+          };
+        });
+
+        if (serverProducts.length > 0) {
+          setMatchedProducts(serverProducts);
+        }
+        setDetectedInfo({
+          ...data.detectedInfo,
+          dominantHex: sig.hexSwatch,
+          scanTimeMs: instantMs,
+        });
       }
+    } catch {
+      clearTimeout(timeoutId);
+      // Nếu mạng chậm hoặc offline, vẫn giữ nguyên kết quả quét kho tức thì ở Tầng 1!
     } finally {
       if (requestId === searchRequestRef.current) setIsAnalyzing(false);
     }
   };
 
-  // Người dùng chọn ảnh từ máy tính / điện thoại
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     try {
       const compressed = await compressImageForVisualSearch(file);
       setRawImage(compressed);
       setCrop({ x: 0, y: 0 });
       setZoom(1);
-      // Bắt đầu quét ngay lập tức không để khách chờ lâu
       executeSearch(compressed);
     } catch (err) {
-      console.error("Lỗi nén ảnh ban đầu:", err);
+      console.error("Lỗi nén ảnh:", err);
     }
   };
 
-  // Người dùng chọn một mẫu Lookbook có sẵn
-  const handleSelectPreset = async (url: string) => {
-    setRawImage(url);
-    // Bắt đầu quét ngay với lookbook mẫu, cho phép người dùng khoanh vùng lại bất cứ lúc nào
-    executeSearch(url);
+  const handleSelectPreset = async (item: { url: string; garmentHint?: string; colorHint?: string | null }) => {
+    setRawImage(item.url);
+    executeSearch(item.url, item.garmentHint, item.colorHint);
   };
 
-  // Áp dụng vùng crop và tìm kiếm
   const handleApplyCropAndSearch = async () => {
     if (!rawImage) return;
-
     try {
       if (croppedAreaPixels && croppedAreaPixels.width > 20 && croppedAreaPixels.height > 20) {
         const cropped = await getCroppedImg(rawImage, croppedAreaPixels);
         executeSearch(cropped);
       } else {
-        // Fallback dùng toàn ảnh
         const fullCompressed = await compressImageForVisualSearch(rawImage);
         executeSearch(fullCompressed);
       }
-    } catch (err: any) {
-      console.warn("Lỗi crop ảnh:", err);
-      // Fallback nếu crop lỗi
+    } catch {
       executeSearch(rawImage);
     }
   };
 
-  // Quét toàn bộ ảnh mà không cần crop
-  const handleScanFullImage = async () => {
-    if (!rawImage) return;
-    const fullCompressed = await compressImageForVisualSearch(rawImage);
-    executeSearch(fullCompressed);
-  };
-
-  // Quay lại giao diện khoanh vùng để chọn món đồ khác trên cùng bức ảnh
-  const handleBackToCrop = () => {
-    setViewMode("crop");
-  };
-
-  // Reset về ban đầu
   const handleReset = () => {
     setRawImage(null);
     setActiveSearchImage(null);
@@ -397,50 +521,60 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  // Lọc nhanh kết quả quét theo nhóm Váy/Đầm, Áo dài, Chân váy...
+  const displayedMatches = useMemo(() => {
+    if (selectedQuickFilter === "ALL") return matchedProducts;
+    return matchedProducts.filter((item) => {
+      const t = normalizeVi([item.title, item.category].join(" "));
+      if (selectedQuickFilter === "DRESS") return t.includes("dam") || t.includes("vay") || t.includes("maxi");
+      if (selectedQuickFilter === "AODAI") return t.includes("ao dai") || t.includes("co phuc");
+      if (selectedQuickFilter === "SKIRT") return t.includes("chan vay") || t.includes("set");
+      if (selectedQuickFilter === "TOP") return t.includes("ao") && !t.includes("ao dai");
+      return true;
+    });
+  }, [matchedProducts, selectedQuickFilter]);
+
   if (!isOpen) return null;
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-6 overflow-y-auto bg-black/85 backdrop-blur-md">
-        {/* Backdrop click to close */}
+      <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-stone-950/65 backdrop-blur-xs">
         <div className="fixed inset-0" onClick={onClose} />
 
-        {/* Modal Container */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.96, y: 15 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.96, y: 15 }}
-          className="relative w-full max-w-5xl bg-stone-950/95 border border-emerald-500/30 rounded-3xl p-5 sm:p-7 text-white shadow-2xl overflow-hidden z-10 max-h-[92vh] flex flex-col"
+          initial={{ opacity: 0, y: 24, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 24, scale: 0.98 }}
+          className="relative w-full max-w-[430px] bg-[#FAF5F2] border border-[#EBD5CE] rounded-t-[28px] sm:rounded-[28px] text-[#2B1E21] shadow-2xl overflow-hidden z-10 max-h-[90dvh] flex flex-col font-sans"
         >
-          {/* Header */}
-          <div className="flex items-center justify-between pb-4 border-b border-white/10 shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-                <Camera size={22} className="animate-pulse" />
+          {/* Header thanh lịch chuẩn Boutique */}
+          <div className="flex items-center justify-between px-4 py-3 bg-white/95 border-b border-[#EFE0DA] shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8.5 h-8.5 rounded-xl bg-gradient-to-tr from-[#C26475] to-[#E295A3] flex items-center justify-center text-white shadow-xs">
+                <Camera size={17} />
               </div>
               <div>
-                <h3 className="font-heading text-xl sm:text-2xl font-bold tracking-wide flex items-center gap-2">
-                  Tìm kiếm bằng hình ảnh
-                  <span className="text-[10px] uppercase font-extrabold tracking-widest px-2.5 py-0.5 rounded-full bg-emerald-400/20 text-emerald-300 border border-emerald-400/30 font-ui flex items-center gap-1 shadow-sm">
-                    AI Lens
-                  </span>
-                </h3>
-                <p className="text-xs text-stone-400">
+                <div className="flex items-center gap-1.5">
+                  <h3 className="text-[14px] font-black tracking-tight text-[#2B1E21]">
+                    Tìm Trang Phục Bằng Ảnh
+                  </h3>
+                </div>
+                <p className="text-[10.5px] text-[#7D656A]">
                   {viewMode === "crop"
-                    ? "Khoanh vùng chi tiết trang phục để AI quét chuẩn xác từng món đồ"
-                    : "Khám phá trang phục tương đồng ngay trong kho đồ tuần hoàn CLOOP"}
+                    ? "Khoanh vùng chiếc váy hoặc áo bạn muốn tìm"
+                    : "Tải ảnh mẫu lên để tìm đầm dự tiệc, áo dài tương tự"}
                 </p>
               </div>
             </div>
             <button
+              type="button"
               onClick={onClose}
-              className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-stone-300 hover:text-white transition-colors"
+              className="w-7.5 h-7.5 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-600 transition cursor-pointer"
             >
-              <X size={18} />
+              <X size={15} />
             </button>
           </div>
 
-          {/* Hidden File Input */}
           <input
             type="file"
             ref={fileInputRef}
@@ -449,512 +583,302 @@ export default function VisualSearchModal({ isOpen, onClose }: VisualSearchModal
             onChange={handleFileChange}
           />
 
-          {/* Body Content */}
-          <div className="flex-1 overflow-y-auto py-4 pr-1">
-            {/* ------------------------------------------------------------- */}
-            {/* GIAI ĐOẠN 1: CHƯA CÓ ẢNH -> TẢI ẢNH HOẶC CHỌN LOOKBOOK MẪU   */}
-            {/* ------------------------------------------------------------- */}
+          {/* Nội dung chính */}
+          <div className="flex-1 overflow-y-auto p-3.5 space-y-3.5 no-scrollbar">
+            {/* MÀN 1: CHỌN ẢNH HOẶC THỬ MẪU ĐẦM VÁY */}
             {viewMode === "upload" && (
-              <div className="space-y-6">
-                {/* Upload Drag & Drop Area */}
+              <div className="space-y-3.5">
+                {/* Khung bấm tải ảnh thời trang */}
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-emerald-500/40 hover:border-emerald-400 bg-emerald-950/20 hover:bg-emerald-900/20 rounded-2xl p-8 sm:p-12 text-center cursor-pointer transition-all duration-300 group flex flex-col items-center justify-center"
+                  className="relative overflow-hidden border-2 border-dashed border-[#DFB8C2] hover:border-[#C26475] bg-gradient-to-b from-white to-[#FDF3F0] rounded-2xl p-5 text-center cursor-pointer transition-all group"
                 >
-                  <div className="w-16 h-16 rounded-full bg-emerald-500/10 group-hover:bg-emerald-500/20 flex items-center justify-center text-emerald-400 mb-4 transition-transform group-hover:scale-110 shadow-[0_0_20px_rgba(16,185,129,0.2)]">
-                    <UploadCloud size={32} />
+                  <div className="w-12 h-12 rounded-2xl bg-[#FCEAEF] text-[#C26475] flex items-center justify-center mx-auto mb-2.5 group-hover:scale-105 transition-transform shadow-2xs">
+                    <UploadCloud size={24} />
                   </div>
-                  <h4 className="text-base sm:text-lg font-bold text-stone-100 mb-1">
-                    Bấm để tải ảnh lên từ điện thoại hoặc máy tính
+                  <h4 className="text-[13px] font-extrabold text-[#2B1E21]">
+                    Tải ảnh hoặc chụp chiếc váy bạn đang tìm
                   </h4>
-                  <p className="text-xs text-stone-400 max-w-sm mb-4">
-                    Hỗ trợ ảnh OOTD, ảnh Pinterest, Hình ảnh hoặc ảnh chụp trực tiếp góc đồ
+                  <p className="text-[11px] text-[#7D656A] mt-0.5 mb-3">
+                    Hỗ trợ ảnh chụp màn hình, ảnh mẫu hoặc chụp trực tiếp
                   </p>
-                  <button className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-ui text-xs font-bold uppercase tracking-wider shadow-lg shadow-emerald-500/25 transition-all flex items-center gap-2">
-                    <Camera size={16} /> Chọn ảnh trang phục
-                  </button>
+                  <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#C26475] text-white text-[11.5px] font-bold shadow-xs">
+                    <Camera size={14} /> Chọn ảnh từ máy / Chụp ảnh
+                  </span>
                 </div>
 
-                {/* Gợi ý Lookbook mẫu */}
+                {/* Bộ sưu tập mẫu Váy Đầm có sẵn để bấm thử 1 chạm */}
                 <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-xs uppercase tracking-widest text-stone-400 font-bold flex items-center gap-1.5">
-                      <Compass size={14} className="text-emerald-400" /> Thử nhanh với các Outfit phong cách:
-                    </p>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-extrabold text-[#2B1E21] flex items-center gap-1">
+                      <Sparkles size={13} className="text-[#C26475]" />
+                      Hoặc chọn thử một mẫu trang phục dưới đây:
+                    </span>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {PRESET_LOOKBOOKS.map((item, idx) => (
-                      <div
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {dynamicLookbooks.map((item, idx) => (
+                      <button
+                        type="button"
                         key={idx}
-                        onClick={() => handleSelectPreset(item.url)}
-                        className="group relative rounded-2xl overflow-hidden aspect-[3/4] border border-white/10 hover:border-emerald-400/60 cursor-pointer transition-all duration-300 shadow-md"
+                        onClick={() => handleSelectPreset(item)}
+                        className="group relative rounded-2xl overflow-hidden aspect-[3/4] border border-[#EBD5CE] bg-white text-left cursor-pointer shadow-2xs hover:border-[#C26475] transition-all"
                       >
                         <Image
                           src={item.url}
                           alt={item.title}
                           fill
+                          sizes="190px"
                           className="object-cover group-hover:scale-105 transition-transform duration-500"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-3">
-                          <span className="text-[10px] font-bold text-emerald-300 uppercase tracking-wider mb-0.5">
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent flex flex-col justify-end p-2.5">
+                          <span className="self-start text-[9px] font-extrabold bg-white/90 text-[#2B1E21] px-2 py-0.5 rounded-md mb-1">
                             {item.tag}
                           </span>
-                          <span className="text-xs font-semibold text-white leading-tight">
+                          <span className="text-[11.5px] font-bold text-white line-clamp-1 leading-tight">
                             {item.title}
                           </span>
+                          <span className="text-[9.5px] text-rose-200 font-semibold mt-0.5 flex items-center gap-1">
+                            <ScanSearch size={11} /> Xem mẫu tương tự
+                          </span>
                         </div>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>
               </div>
             )}
 
-            {/* ------------------------------------------------------------- */}
-            {/* GIAI ĐOẠN 2: CHẾ ĐỘ KHOANH VÙNG (nền tảng / video STYLE CROP)  */}
-            {/* ------------------------------------------------------------- */}
+            {/* MÀN 2: CẮT KHOANH VÙNG MÓN ĐỒ */}
             {viewMode === "crop" && rawImage && (
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-5 h-full">
-                {/* Khung Interactive Crop Studio */}
-                <div className="md:col-span-8 flex flex-col">
-                  <div className="relative w-full h-[360px] sm:h-[440px] rounded-2xl overflow-hidden bg-stone-900 border border-emerald-500/40 shadow-inner">
-                    {isMounted && (
-                      <Cropper
-                        image={rawImage}
-                        crop={crop}
-                        zoom={zoom}
-                        aspect={aspectRatio}
-                        onCropChange={setCrop}
-                        onCropComplete={onCropComplete}
-                        onZoomChange={setZoom}
-                        showGrid={true}
-                      />
-                    )}
-
-                    {/* Cyber HUD Corner Overlays */}
-                    <div className="absolute top-3 left-3 w-5 h-5 border-t-2 border-l-2 border-emerald-400 pointer-events-none z-10 opacity-80" />
-                    <div className="absolute top-3 right-3 w-5 h-5 border-t-2 border-r-2 border-emerald-400 pointer-events-none z-10 opacity-80" />
-                    <div className="absolute bottom-3 left-3 w-5 h-5 border-b-2 border-l-2 border-emerald-400 pointer-events-none z-10 opacity-80" />
-                    <div className="absolute bottom-3 right-3 w-5 h-5 border-b-2 border-r-2 border-emerald-400 pointer-events-none z-10 opacity-80" />
-
-                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black/75 border border-white/10 text-[11px] text-stone-300 pointer-events-none backdrop-blur-md z-10">
-                      Kéo hoặc phóng to để khoanh đúng món đồ bạn muốn tìm
-                    </div>
-                  </div>
-
-                  {/* Thanh điều khiển Zoom */}
-                  <div className="mt-3 flex items-center justify-between gap-4 px-2">
-                    <div className="flex items-center gap-2 text-stone-300 text-xs">
-                      <ZoomOut size={16} />
-                      <input
-                        type="range"
-                        value={zoom}
-                        min={1}
-                        max={3}
-                        step={0.05}
-                        aria-labelledby="Zoom"
-                        onChange={(e) => setZoom(Number(e.target.value))}
-                        className="w-32 sm:w-48 h-1.5 bg-stone-700 rounded-lg appearance-none cursor-pointer accent-emerald-400"
-                      />
-                      <ZoomIn size={16} />
-                      <span className="text-[11px] text-stone-400 ml-1">{Math.round(zoom * 100)}%</span>
-                    </div>
-
-                    <button
-                      onClick={() => {
-                        setCrop({ x: 0, y: 0 });
-                        setZoom(1);
-                      }}
-                      className="text-[11px] text-stone-400 hover:text-white underline cursor-pointer"
-                    >
-                      Đặt lại vị trí
-                    </button>
-                  </div>
+              <div className="space-y-3">
+                <div className="relative w-full h-[300px] rounded-2xl overflow-hidden bg-stone-900 border border-[#EBD5CE]">
+                  {isMounted && (
+                    <Cropper
+                      image={rawImage}
+                      crop={crop}
+                      zoom={zoom}
+                      aspect={aspectRatio}
+                      onCropChange={setCrop}
+                      onCropComplete={onCropComplete}
+                      onZoomChange={setZoom}
+                      showGrid={true}
+                    />
+                  )}
                 </div>
 
-                {/* Bảng công cụ điều khiển & Tỉ lệ khung */}
-                <div className="md:col-span-4 flex flex-col justify-between space-y-4 bg-white/5 border border-white/10 rounded-2xl p-4 sm:p-5">
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="text-xs uppercase tracking-widest text-emerald-300 font-bold mb-1 flex items-center gap-1.5">
-                        <Crop size={14} /> Chọn vùng trọng tâm
-                      </h4>
-                      <p className="text-[11px] text-stone-400">
-                        Chọn tỷ lệ để AI khoanh vùng chính xác chi tiết trang phục:
-                      </p>
-                    </div>
-
-                    {/* Nút chọn tỷ lệ */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setAspectRatio(3 / 4)}
-                        className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
-                          aspectRatio === 3 / 4
-                            ? "bg-emerald-500/20 border-emerald-400 text-emerald-300 shadow-sm shadow-emerald-500/20"
-                            : "bg-white/5 border-white/10 text-stone-300 hover:bg-white/10"
-                        }`}
-                      >
-                        <Shirt size={14} /> 3:4 Dáng áo/váy
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setAspectRatio(1)}
-                        className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
-                          aspectRatio === 1
-                            ? "bg-emerald-500/20 border-emerald-400 text-emerald-300 shadow-sm shadow-emerald-500/20"
-                            : "bg-white/5 border-white/10 text-stone-300 hover:bg-white/10"
-                        }`}
-                      >
-                        <ShoppingBag size={14} /> 1:1 Phụ kiện/túi
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setAspectRatio(4 / 5)}
-                        className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
-                          aspectRatio === 4 / 5
-                            ? "bg-emerald-500/20 border-emerald-400 text-emerald-300 shadow-sm shadow-emerald-500/20"
-                            : "bg-white/5 border-white/10 text-stone-300 hover:bg-white/10"
-                        }`}
-                      >
-                        <Layers size={14} /> 4:5 Chân dung
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setAspectRatio(undefined)}
-                        className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
-                          aspectRatio === undefined
-                            ? "bg-emerald-500/20 border-emerald-400 text-emerald-300 shadow-sm shadow-emerald-500/20"
-                            : "bg-white/5 border-white/10 text-stone-300 hover:bg-white/10"
-                        }`}
-                      >
-                        <Maximize2 size={14} /> Tự do
-                      </button>
-                    </div>
-
-                    <div className="p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/20 text-[11px] text-emerald-200/90 leading-relaxed flex items-start gap-2">
-                      <Info size={14} className="shrink-0 text-emerald-400 mt-0.5" />
-                      <span>
-                        Mẹo: Nếu ảnh có cả set đồ (áo + chân váy), hãy khoanh vùng riêng từng món để tìm được kết quả trùng khớp cao nhất!
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Nhóm nút hành động */}
-                  <div className="space-y-2 pt-2 border-t border-white/10">
+                {/* Chỉnh tỷ lệ khung cắt */}
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[
+                    { ratio: 3 / 4, label: "3:4 Đầm/Váy" },
+                    { ratio: 1, label: "1:1 Áo/Túi" },
+                    { ratio: 4 / 5, label: "4:5 Nguyên bộ" },
+                    { ratio: undefined, label: "Tự do" },
+                  ].map((opt, i) => (
                     <button
-                      onClick={handleApplyCropAndSearch}
-                      className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-ui text-xs font-bold uppercase tracking-wider shadow-lg shadow-emerald-500/30 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                      key={i}
+                      type="button"
+                      onClick={() => setAspectRatio(opt.ratio)}
+                      className={`py-1.5 px-2 rounded-xl text-[10.5px] font-bold border transition cursor-pointer ${
+                        aspectRatio === opt.ratio
+                          ? "bg-[#2B1E21] text-white border-[#2B1E21]"
+                          : "bg-white text-stone-700 border-stone-200"
+                      }`}
                     >
-                      <ScanSearch size={16} /> Quét vùng đã chọn
+                      {opt.label}
                     </button>
+                  ))}
+                </div>
 
-                    <button
-                      onClick={handleScanFullImage}
-                      className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-stone-200 font-ui text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      Quét toàn bộ ảnh
-                    </button>
+                <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-stone-200">
+                  <ZoomOut size={14} className="text-stone-500" />
+                  <input
+                    type="range"
+                    value={zoom}
+                    min={1}
+                    max={3}
+                    step={0.05}
+                    onChange={(e) => setZoom(Number(e.target.value))}
+                    className="flex-1 h-1.5 bg-stone-200 rounded-lg accent-[#C26475] cursor-pointer"
+                  />
+                  <ZoomIn size={14} className="text-stone-500" />
+                </div>
 
-                    <button
-                      onClick={handleReset}
-                      className="w-full py-2 text-stone-400 hover:text-white text-[11px] transition-colors flex items-center justify-center gap-1"
-                    >
-                      <RefreshCw size={12} /> Đổi ảnh khác
-                    </button>
-                  </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("results")}
+                    className="py-2.5 rounded-xl bg-white border border-stone-200 text-stone-700 text-xs font-bold cursor-pointer"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleApplyCropAndSearch}
+                    className="py-2.5 rounded-xl bg-[#C26475] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                  >
+                    <ScanSearch size={14} /> Quét vùng đã chọn
+                  </button>
                 </div>
               </div>
             )}
 
-            {/* ------------------------------------------------------------- */}
-            {/* GIAI ĐOẠN 3: HIỂN THỊ QUÉT SCANNER & KẾT QUẢ KHO HÀNG THỰC TẾ */}
-            {/* ------------------------------------------------------------- */}
+            {/* MÀN 3: KẾT QUẢ QUÉT KHO TỨC THÌ + BỘ LỌC NHANH VÁY ĐẦM */}
             {viewMode === "results" && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-                  {/* Cột 1 (md:col-span-4): Ảnh đang quét / đã quét & Laser Scanner */}
-                  <div className={`md:col-span-4 space-y-3 ${!isAnalyzing ? "hidden md:block" : "block"}`}>
-                    <div className="relative rounded-2xl overflow-hidden aspect-[3/4] border border-emerald-500/40 bg-stone-950 shadow-2xl">
-                      {activeSearchImage && (
-                        <Image
-                          src={activeSearchImage}
-                          alt="Vùng ảnh đang tìm kiếm"
-                          fill
-                          className="object-cover"
-                        />
-                      )}
-
-                      {/* Hiệu ứng Laser Neon Scanner siêu mượt chuẩn Nền tảng/CLOOP Video */}
-                      {isAnalyzing && (
-                        <div className="absolute inset-0 pointer-events-none overflow-hidden z-20">
-                          {/* Tia quét Laser Neon sáng rực di chuyển dọc */}
-                          <motion.div
-                            animate={{ top: ["4%", "94%", "4%"] }}
-                            transition={{ repeat: Infinity, duration: 2.2, ease: "easeInOut" }}
-                            className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_20px_#10b981]"
-                          >
-                            <div className="absolute left-1/2 -top-1 -translate-x-1/2 w-10 h-3 bg-emerald-300 rounded-full blur-xs opacity-90" />
-                          </motion.div>
-
-                          {/* Radar Ping và vệt phủ mờ cyber */}
-                          <div className="absolute inset-0 bg-emerald-950/20 backdrop-blur-[0.5px] flex flex-col items-center justify-center p-4 text-center">
-                            <div className="relative w-16 h-16 flex items-center justify-center mb-3">
-                              <span className="absolute w-full h-full rounded-full border border-emerald-400/50 animate-ping" />
-                              <span className="absolute w-12 h-12 rounded-full border border-emerald-400/70 animate-pulse" />
-                              <RefreshCw size={24} className="animate-spin text-emerald-400 relative z-10" />
-                            </div>
-
-                            {/* Ticker trạng thái theo nhịp quét */}
-                            <div className="bg-black/85 border border-emerald-400/40 px-3.5 py-2 rounded-xl text-center shadow-xl backdrop-blur-md">
-                              <p className="text-[11px] font-bold text-emerald-300 tracking-wide">
-                                {SCAN_STATUS_STEPS[scanStepIndex]}
-                              </p>
-                              <p className="text-[10px] text-stone-400 mt-0.5">
-                                Đang đối chiếu kho dữ liệu thực tế
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Cyber HUD Corner Reticles */}
-                      <div className="absolute top-3 left-3 w-4 h-4 border-t-2 border-l-2 border-emerald-400 pointer-events-none z-10" />
-                      <div className="absolute top-3 right-3 w-4 h-4 border-t-2 border-r-2 border-emerald-400 pointer-events-none z-10" />
-                      <div className="absolute bottom-3 left-3 w-4 h-4 border-b-2 border-l-2 border-emerald-400 pointer-events-none z-10" />
-                      <div className="absolute bottom-3 right-3 w-4 h-4 border-b-2 border-r-2 border-emerald-400 pointer-events-none z-10" />
-
-                      {/* Badge trạng thái */}
-                      <div className="absolute top-3 left-3 px-2 py-0.5 rounded-md bg-black/70 border border-white/20 text-[10px] font-medium text-stone-200 backdrop-blur-md z-10">
-                        Vùng ảnh tìm kiếm
-                      </div>
-                    </div>
-
-                    {/* Nút Khoanh vùng lại hoặc Đổi ảnh khi quét xong */}
-                    {!isAnalyzing && (
-                      <div className="grid grid-cols-2 gap-2">
-                        {rawImage && (
-                          <button
-                            onClick={handleBackToCrop}
-                            className="py-2.5 px-3 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-400/40 text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
-                          >
-                            <Crop size={14} /> Khoanh vùng lại
-                          </button>
-                        )}
-                        <button
-                          onClick={handleReset}
-                          className="py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-stone-200 border border-white/15 text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                        >
-                          <RefreshCw size={14} /> Đổi ảnh mới
-                        </button>
-                      </div>
+              <div className="space-y-3">
+                {/* Thẻ tóm tắt ảnh đang quét + Swatch màu + Nút khoanh vùng lại */}
+                <div className="bg-white p-2.5 rounded-2xl border border-[#EBD5CE] shadow-2xs flex items-center gap-3">
+                  <div className="relative w-16 h-20 rounded-xl overflow-hidden border border-[#EBD5CE] shrink-0 bg-stone-100">
+                    {activeSearchImage && (
+                      <Image
+                        src={activeSearchImage}
+                        alt="Ảnh tìm kiếm"
+                        fill
+                        sizes="64px"
+                        className="object-cover"
+                      />
+                    )}
+                    {isAnalyzing && (
+                      <motion.div
+                        animate={{ top: ["5%", "90%", "5%"] }}
+                        transition={{ repeat: Infinity, duration: 1.6, ease: "easeInOut" }}
+                        className="absolute left-0 right-0 h-0.5 bg-[#C26475] shadow-[0_0_8px_#C26475]"
+                      />
                     )}
                   </div>
 
-                  {/* Cột 2 & 3 (md:col-span-8): Phân tích đặc tính AI & Danh sách đồ tương đồng */}
-                  <div className="md:col-span-8 space-y-4">
-                    {/* Nền tảng-style Compact Search Bar for Mobile */}
-                    {!isAnalyzing && (
-                      <div className="md:hidden flex items-center gap-3 p-3 rounded-2xl bg-white/5 border border-white/10 mb-2">
-                        <div className="relative w-14 h-18 rounded-xl overflow-hidden border-2 border-emerald-400 shrink-0 bg-stone-900 shadow-md">
-                          {activeSearchImage && (
-                            <Image
-                              src={activeSearchImage}
-                              alt="Vùng tìm kiếm"
-                              fill
-                              className="object-cover"
-                            />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 mb-1">
-                            <span className="text-[10px] font-bold text-emerald-300 uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-400/30">
-                              {detectedInfo?.category || "CLOOP Lens"}
-                            </span>
-                            {detectedInfo?.dominantColor && (
-                              <span className="text-[10px] text-amber-300 px-1.5 py-0.5 rounded-md bg-amber-500/20 border border-amber-400/30 truncate">
-                                {detectedInfo.dominantColor}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[11px] text-stone-300 line-clamp-1 italic mb-2">
-                            {detectedInfo?.itemDescription || "Đã đối chiếu với tủ đồ thực tế"}
-                          </p>
-                          <div className="flex items-center gap-2">
-                            {rawImage && (
-                              <button
-                                onClick={handleBackToCrop}
-                                className="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-400/40 text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
-                              >
-                                <Crop size={12} /> Khoanh vùng lại
-                              </button>
-                            )}
-                            <button
-                              onClick={handleReset}
-                              className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-stone-300 text-[10px] font-medium flex items-center gap-1 cursor-pointer transition-colors"
-                            >
-                              <RefreshCw size={12} /> Đổi ảnh
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-[#FDF0ED] text-[#B04A5E] border border-[#F2C6CE]">
+                        {detectedInfo?.category || "Đầm & Trang phục"}
+                      </span>
+                      {detectedInfo?.dominantColor && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-stone-100 text-stone-700 border border-stone-200">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full border border-stone-300"
+                            style={{ backgroundColor: detectedInfo.dominantHex || "#C26475" }}
+                          />
+                          Màu: {detectedInfo.dominantColor}
+                        </span>
+                      )}
+                    </div>
 
-                    {/* Bóc tách AI Tags (Desktop) */}
-                    {detectedInfo && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="hidden md:block bg-emerald-950/40 border border-emerald-500/30 rounded-2xl p-4 shadow-lg"
+                    <p className="text-[11px] text-[#5C474B] line-clamp-2 leading-snug">
+                      {detectedInfo?.itemDescription || "Các mẫu trang phục có kiểu dáng và màu sắc tương đồng."}
+                    </p>
+
+                    <div className="flex items-center gap-1.5 pt-0.5">
+                      {rawImage && (
+                        <button
+                          type="button"
+                          onClick={() => setViewMode("crop")}
+                          className="px-2.5 py-1 rounded-lg bg-[#FCEAEF] text-[#B04A5E] text-[10px] font-extrabold flex items-center gap-1 cursor-pointer"
+                        >
+                          <Crop size={11} /> Cắt vùng khác
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleReset}
+                        className="px-2.5 py-1 rounded-lg bg-stone-100 text-stone-700 text-[10px] font-bold flex items-center gap-1 cursor-pointer"
                       >
-                        <div className="flex items-center gap-2 text-emerald-300 text-xs font-bold uppercase tracking-wider mb-2">
-                          <CheckCircle2 size={16} /> AI đã nhận diện phom dáng Lookbook:
-                        </div>
-                        <p className="text-xs text-stone-200 mb-3 italic">
-                          &quot;{detectedInfo.itemDescription}&quot;
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          <span className="px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-semibold">
-                            Phom: {detectedInfo.category}
-                          </span>
-                          <span className="px-3 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-400/30 text-xs font-semibold">
-                            Màu: {detectedInfo.dominantColor}
-                          </span>
-                          <span className="px-3 py-1 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-400/30 text-xs font-semibold">
-                            Phong cách: {detectedInfo.style}
-                          </span>
-                          {detectedInfo.material && (
-                            <span className="px-3 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-400/30 text-xs font-semibold">
-                              Chất liệu: {detectedInfo.material}
-                            </span>
-                          )}
-                        </div>
-                      </motion.div>
-                    )}
+                        <RefreshCw size={11} /> Đổi ảnh khác
+                      </button>
+                    </div>
+                  </div>
+                </div>
 
-                    {/* Lỗi nếu có */}
-                    {errorMessage && (
-                      <div className="p-4 rounded-2xl bg-red-950/40 border border-red-500/40 text-red-300 text-xs flex items-center justify-between">
-                        <span>{errorMessage}</span>
-                        {rawImage && (
-                          <button
-                            onClick={handleBackToCrop}
-                            className="px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-white font-bold text-xs underline cursor-pointer"
-                          >
-                            Khoanh vùng lại
-                          </button>
-                        )}
+                {/* Dãy chip lọc nhanh kết quả sau khi quét */}
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                  {[
+                    { id: "ALL", label: "Tất cả" },
+                    { id: "DRESS", label: "Đầm & Váy" },
+                    { id: "AODAI", label: "Áo dài" },
+                    { id: "SKIRT", label: "Chân váy & Set" },
+                    { id: "TOP", label: "Áo kiểu" },
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setSelectedQuickFilter(tab.id)}
+                      className={`h-7 px-2.5 rounded-lg text-[10.5px] font-bold whitespace-nowrap transition cursor-pointer ${
+                        selectedQuickFilter === tab.id
+                          ? "bg-[#2B1E21] text-white"
+                          : "bg-white text-stone-700 border border-stone-200/90"
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                {errorMessage && (
+                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs">
+                    {errorMessage}
+                  </div>
+                )}
+
+                {/* Lưới kết quả 2 cột đồng bộ chuẩn Fashion Boutique */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  {displayedMatches.map((product) => (
+                    <div
+                      key={product.id}
+                      onClick={() => {
+                        if (onSelectProduct && product.rawProduct) {
+                          onSelectProduct(product.rawProduct);
+                          onClose();
+                        }
+                      }}
+                      className="group bg-white rounded-2xl border border-[#EBD5CE] overflow-hidden shadow-2xs hover:border-[#C26475] transition-all flex flex-col cursor-pointer"
+                    >
+                      <div className="relative w-full aspect-[3/4] bg-stone-100 overflow-hidden">
+                        <Image
+                          src={product.primaryImage}
+                          alt={product.title}
+                          fill
+                          sizes="185px"
+                          className="object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                        <span className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-[#2B1E21]/85 backdrop-blur-xs text-white text-[9.5px] font-extrabold">
+                          Khớp {product.matchScore}%
+                        </span>
                       </div>
-                    )}
 
-                    {/* Danh sách trang phục tương đồng trong kho */}
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-xs uppercase tracking-widest text-stone-400 font-bold flex items-center gap-1.5">
-                          <ScanSearch size={14} className="text-emerald-400" />
-                          Trang phục tương đồng trong tủ đồ CLOOP ({matchedProducts.length}):
-                        </h4>
-                      </div>
-                      {isFallbackResult && !isAnalyzing && matchedProducts.length > 0 && (
-                        <div className="mb-3 p-2.5 rounded-xl bg-amber-500/10 border border-amber-400/30 text-[11px] text-amber-200 flex items-center justify-between gap-2">
-                          <span>AI đang quá tải, đây là gợi ý gần đúng theo màu sắc đo từ ảnh.</span>
-                          {activeSearchImage && (
-                            <button
-                              onClick={() => executeSearch(activeSearchImage)}
-                              className="shrink-0 underline font-bold text-amber-100 cursor-pointer"
-                            >
-                              Quét lại
-                            </button>
-                          )}
-                        </div>
-                      )}
-
-                      {matchedProducts.length === 0 && !isAnalyzing && !errorMessage && (
-                        <div className="p-8 text-center bg-white/5 border border-white/10 rounded-2xl">
-                          <p className="text-xs text-stone-400 mb-3">
-                            Chưa tìm thấy món đồ nào hoàn toàn khớp với góc chụp này.
+                      <div className="p-2.5 flex-1 flex flex-col justify-between">
+                        <div>
+                          <h5 className="text-[11.5px] font-bold text-[#2B1E21] line-clamp-1">
+                            {product.title}
+                          </h5>
+                          <p className="text-[9.5px] text-[#7D656A] truncate mt-0.5">
+                            {product.matchReason}
                           </p>
-                          {rawImage && (
-                            <button
-                              onClick={handleBackToCrop}
-                              className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5"
-                            >
-                              <Crop size={14} /> Khoanh vùng gần hơn vào món đồ
-                            </button>
-                          )}
                         </div>
-                      )}
 
-                      {/* Lưới sản phẩm khớp 2 cột chuẩn Nền tảng Fashion Grid */}
-                      <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5 max-h-[440px] overflow-y-auto pr-1">
-                        {matchedProducts.map((product) => {
-                          const isHighMatch = product.matchScore >= 85;
-                          const isMediumMatch = product.matchScore >= 70;
+                        <div className="mt-2 pt-1.5 border-t border-stone-100 flex items-center justify-between">
+                          <div>
+                            <span className="text-[12px] font-black text-[#B04A5E] font-mono">
+                              {product.rentalPrice.toLocaleString("vi-VN")}đ
+                            </span>
+                            <span className="text-[9px] text-stone-400">/ngày</span>
+                          </div>
 
-                          return (
+                          {onSelectProduct && product.rawProduct ? (
+                            <span className="px-2 py-1 rounded-lg bg-[#C26475] text-white text-[9.5px] font-bold">
+                              Chọn đồ
+                            </span>
+                          ) : (
                             <Link
-                              key={product.id}
                               href={`/product/${product.id}`}
                               onClick={onClose}
-                              className="group flex flex-col rounded-2xl bg-white/5 hover:bg-emerald-950/40 border border-white/10 hover:border-emerald-400/50 transition-all duration-300 shadow-sm hover:shadow-lg overflow-hidden"
+                              className="px-2 py-1 rounded-lg bg-[#C26475] text-white text-[9.5px] font-bold"
                             >
-                              {/* Product Image */}
-                              <div className="relative w-full aspect-[3/4] bg-stone-900 overflow-hidden">
-                                <Image
-                                  src={product.primaryImage}
-                                  alt={product.title}
-                                  fill
-                                  className="object-cover group-hover:scale-105 transition-transform duration-300"
-                                />
-                                <div
-                                  className={`absolute top-2 left-2 px-2 py-0.5 rounded-md text-[10px] font-black shadow-md ${
-                                    isHighMatch
-                                      ? "bg-emerald-400 text-stone-950"
-                                      : isMediumMatch
-                                      ? "bg-teal-400 text-stone-950"
-                                      : "bg-cyan-400 text-stone-950"
-                                  }`}
-                                >
-                                  {product.matchScore}%
-                                </div>
-                              </div>
-
-                              {/* Details */}
-                              <div className="p-2.5 sm:p-3 flex flex-col flex-1 justify-between">
-                                <div>
-                                  <span className="text-[10px] text-stone-400 block truncate font-medium mb-0.5">
-                                    Chủ tủ: {product.ownerName}
-                                  </span>
-                                  <h5 className="text-xs font-bold text-white group-hover:text-emerald-300 transition-colors line-clamp-2 leading-tight mb-1">
-                                    {product.title}
-                                  </h5>
-                                  <p className="text-[10px] text-stone-400 mb-2 truncate">
-                                    {product.matchReason}
-                                  </p>
-                                </div>
-
-                                <div>
-                                  <div className="flex items-baseline gap-1 mb-2">
-                                    <span className="text-xs sm:text-sm font-extrabold text-emerald-400">
-                                      {product.rentalPrice.toLocaleString("vi-VN")}đ
-                                    </span>
-                                    <span className="text-[9px] text-stone-400 font-normal">/ngày</span>
-                                  </div>
-
-                                  <div className="w-full py-1.5 rounded-lg bg-emerald-500/20 group-hover:bg-emerald-500 text-emerald-300 group-hover:text-stone-950 text-[11px] font-bold transition-colors flex items-center justify-center gap-1 border border-emerald-500/30">
-                                    Thuê ngay <ArrowRight size={11} />
-                                  </div>
-                                </div>
-                              </div>
+                              Xem đồ
                             </Link>
-                          );
-                        })}
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
               </div>
             )}

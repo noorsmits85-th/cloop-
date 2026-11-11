@@ -1,7 +1,9 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { requireUser } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
+import { getTrustedClientIp } from "@/src/lib/request-ip";
+import { parseSafeBase64Image } from "@/src/lib/server-image-guard";
 import { executeWithGeminiPool, getAllGeminiKeys } from "@/src/utils/gemini-pool";
-import { createClient } from "@/src/utils/supabase/server";
 
 export const runtime = "nodejs";
 
@@ -107,7 +109,20 @@ function checkRateLimit(ip: string, limit = 25, windowMs = 60000): boolean {
 
 export async function POST(request: Request) {
   try {
-    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "anonymous-client";
+    let user;
+    try {
+      user = await requireUser();
+    } catch {
+      return new Response(
+        JSON.stringify({
+          error: "Vui lòng đăng nhập để trò chuyện cùng Trợ lý Thời trang AI CLOOP.",
+          catalog: [],
+        }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    const ip = getTrustedClientIp(request);
 
     if (!checkRateLimit(ip, 25, 60000)) {
       return new Response(
@@ -119,23 +134,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const { message, image, history = [], sessionId, userId, userName } = await request.json();
+    const { message, image, history = [], sessionId } = await request.json();
 
-    // Thu thập danh tính người dùng nếu đã đăng nhập
-    let resolvedUserId = userId || null;
-    let resolvedUserName = userName || null;
-    if (!resolvedUserId) {
-      try {
-        const supabase = await createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          resolvedUserId = user.id;
-          resolvedUserName = user.user_metadata?.name || user.email || "Thành viên CLOOP";
-        }
-      } catch {
-        // Khách vãng lai
-      }
-    }
+    // Xác định danh tính người dùng nghiêm ngặt từ phiên đã xác thực (không tin tưởng userId từ client)
+    const resolvedUserId = user.id;
+    const resolvedUserName = user.name || user.email || "Thành viên CLOOP";
 
     if ((!message && !image) || (message && typeof message !== "string")) {
       return new Response("Thiếu nội dung chat hoặc ảnh.", { status: 400 });
@@ -263,20 +266,20 @@ export async function POST(request: Request) {
       `Nữ Stylist CLOOP phản hồi gần gũi, tếu táo có duyên, chuẩn gu & nắm bắt vị trí:`
     ].filter(Boolean).join("\n");
 
-    // Xử lý ảnh nếu khách gửi
+    // Xử lý ảnh nếu khách gửi (kiểm tra magic bytes an toàn)
     const contentParts: any[] = [];
-    if (image && typeof image === "string" && image.includes("base64")) {
+    if (image && typeof image === "string") {
       try {
-        const mimeType = image.match(/:(.*?);/)?.[1] || "image/jpeg";
-        const base64Data = image.split(",")[1] || image;
+        const safeImg = parseSafeBase64Image(image);
         contentParts.push({
           inlineData: {
-            data: base64Data,
-            mimeType,
+            data: safeImg.base64,
+            mimeType: safeImg.mimeType,
           },
         });
       } catch (imgErr) {
         console.warn("Lỗi trích xuất Base64 ảnh trong chat:", imgErr);
+        return new Response("Định dạng ảnh đính kèm không hợp lệ (chỉ hỗ trợ JPG, PNG, WEBP tối đa 5MB).", { status: 400 });
       }
     }
     contentParts.push(promptText);

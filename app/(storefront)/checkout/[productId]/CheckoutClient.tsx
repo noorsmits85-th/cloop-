@@ -32,6 +32,7 @@ export default function CheckoutClient({
   depositPrice,
   pricingTiers,
   turnaroundDays,
+  initialWalletBalance = 0,
 }: {
   product: any;
   productId: string;
@@ -40,6 +41,7 @@ export default function CheckoutClient({
   depositPrice: number;
   pricingTiers: any[];
   turnaroundDays: number;
+  initialWalletBalance?: number;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -89,6 +91,9 @@ export default function CheckoutClient({
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [isLocatingGPS, setIsLocatingGPS] = useState(false);
   const [error, setError] = useState("");
+  const [walletBalance, setWalletBalance] = useState<number>(Math.max(0, Number(initialWalletBalance || 0)));
+  const [useWalletBalance, setUseWalletBalance] = useState<boolean>(Number(initialWalletBalance || 0) > 0);
+  const [isCancellingModalOrder, setIsCancellingModalOrder] = useState<boolean>(false);
 
   // State Modal Thanh Toán VietQR Nội Bộ
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -100,6 +105,8 @@ export default function CheckoutClient({
     accountName?: string;
     bin?: string;
     amount: number;
+    walletUsedAmount?: number;
+    totalAmount?: number;
     description: string;
   } | null>(null);
   const [isPaidSuccess, setIsPaidSuccess] = useState(false);
@@ -108,6 +115,36 @@ export default function CheckoutClient({
   const [manualCheckMsg, setManualCheckMsg] = useState<{ type: "info" | "error"; text: string } | null>(null);
   const [fastTrackMode, setFastTrackMode] = useState(false);
   const [requiresFastTrackWarning, setRequiresFastTrackWarning] = useState<string | null>(null);
+
+  const handleClosePaymentModal = async () => {
+    if (isPaidSuccess) {
+      router.push("/my-closet/orders");
+      return;
+    }
+    if (!paymentData?.orderCode) {
+      setShowPaymentModal(false);
+      return;
+    }
+    setIsCancellingModalOrder(true);
+    try {
+      const { cancelPendingCheckoutOrderAction } = await import("@/app/actions/payment");
+      const res: any = await cancelPendingCheckoutOrderAction(paymentData.orderCode);
+      if (res?.isPaid) {
+        setIsPaidSuccess(true);
+        setTimeout(() => {
+          router.push("/my-closet/orders");
+        }, 1500);
+        return;
+      }
+      if (typeof res?.updatedWalletBalance === "number") {
+        setWalletBalance(res.updatedWalletBalance);
+      }
+    } catch (_) {
+    } finally {
+      setIsCancellingModalOrder(false);
+      setShowPaymentModal(false);
+    }
+  };
 
   const handleManualCheck = async () => {
     if (!paymentData?.orderCode || isManualChecking) return;
@@ -163,9 +200,20 @@ export default function CheckoutClient({
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  // Nạp thông tin người dùng đang đăng nhập để tự động điền sẵn & lấy điểm tín nhiệm sao
+  // Nạp thông tin người dùng đang đăng nhập để tự động điền sẵn & lấy điểm tín nhiệm sao + số dư Ví đối soát
   useEffect(() => {
     async function fetchUserExtra(userId: string) {
+      try {
+        const { getUserVerifiedCheckoutWalletAction } = await import("@/app/actions/payment");
+        const walletRes = await getUserVerifiedCheckoutWalletAction();
+        if (walletRes?.success && typeof walletRes.walletBalance === "number") {
+          setWalletBalance(walletRes.walletBalance);
+          if (walletRes.walletBalance > 0) {
+            setUseWalletBalance(true);
+          }
+        }
+      } catch (_) {}
+
       try {
         const { data: profile } = await (supabase
           .from("User" as any) as any)
@@ -254,32 +302,19 @@ export default function CheckoutClient({
       updatedAt: Date.now(),
     };
 
-    try {
-      localStorage.setItem("cloop_saved_shipping_address", JSON.stringify(newSavedItem));
-
-      const existingRaw = localStorage.getItem("cloop_shipping_address_history");
-      let history: SavedShippingAddress[] = existingRaw ? JSON.parse(existingRaw) : [];
-      if (!Array.isArray(history)) history = [];
-
-      // Lọc trùng lặp địa chỉ và số điện thoại
-      history = history.filter(item =>
-        !(
-          item.addressDetail.trim().toLowerCase() === newSavedItem.addressDetail.trim().toLowerCase() &&
-          String(item.ward?.id) === String(newSavedItem.ward?.id) &&
-          String(item.district?.id) === String(newSavedItem.district?.id) &&
-          item.phone.trim() === newSavedItem.phone.trim()
-        )
+    setSavedAddresses((prev) => {
+      const filtered = prev.filter(
+        (item) =>
+          !(
+            item.addressDetail.trim().toLowerCase() === newSavedItem.addressDetail.trim().toLowerCase() &&
+            String(item.ward?.id) === String(newSavedItem.ward?.id) &&
+            String(item.district?.id) === String(newSavedItem.district?.id) &&
+            item.phone.trim() === newSavedItem.phone.trim()
+          )
       );
-
-      history.unshift(newSavedItem);
-      if (history.length > 5) history = history.slice(0, 5);
-      localStorage.setItem("cloop_shipping_address_history", JSON.stringify(history));
-
-      setSavedAddresses(history);
-      setActiveSavedAddress(newSavedItem);
-    } catch (err) {
-      console.error("Lỗi lưu địa chỉ vào LocalStorage:", err);
-    }
+      return [newSavedItem, ...filtered].slice(0, 5);
+    });
+    setActiveSavedAddress(newSavedItem);
 
     return newSavedItem;
   };
@@ -303,9 +338,6 @@ export default function CheckoutClient({
 
   const handleSelectSavedAddress = (addr: SavedShippingAddress) => {
     applySavedAddress(addr);
-    try {
-      localStorage.setItem("cloop_saved_shipping_address", JSON.stringify(addr));
-    } catch (e) {}
     setShowAddressPickerModal(false);
   };
 
@@ -365,42 +397,15 @@ export default function CheckoutClient({
     }
   };
 
-  // Nạp thông tin địa chỉ đã lưu từ lần đặt trước (Zero-fetch)
+  // Xóa bỏ các khóa PII nhạy cảm lưu trên LocalStorage cũ (Tuân thủ Luật Thép: Không lưu địa chỉ/SĐT trong LocalStorage)
   useEffect(() => {
     try {
-      const rawHistory = localStorage.getItem("cloop_shipping_address_history");
-      if (rawHistory) {
-        const parsedHistory: SavedShippingAddress[] = JSON.parse(rawHistory);
-        if (Array.isArray(parsedHistory) && parsedHistory.length > 0) {
-          setSavedAddresses(parsedHistory);
-        }
-      }
-
-      const rawSaved = localStorage.getItem("cloop_saved_shipping_address");
-      if (rawSaved) {
-        const saved: SavedShippingAddress = JSON.parse(rawSaved);
-        if (
-          saved &&
-          saved.province?.id &&
-          saved.district?.id &&
-          saved.ward?.id &&
-          saved.addressDetail
-        ) {
-          applySavedAddress(saved);
-          return;
-        }
-      }
-
-      // Fallback nạp từ trạm gửi đã lưu trong hồ sơ cá nhân nếu chưa từng đặt hàng
-      const rawPickup = localStorage.getItem("cloop_saved_pickup_location");
-      if (rawPickup) {
-        const parsedPickup = JSON.parse(rawPickup);
-        if (parsedPickup.address && !addressDetail) setAddressDetail(parsedPickup.address);
-        if (parsedPickup.note && !addressNote) setAddressNote(parsedPickup.note);
-      }
-    } catch (e) {
-      console.error("Lỗi đọc địa chỉ đã lưu:", e);
-    }
+      localStorage.removeItem("cloop_saved_shipping_address");
+      localStorage.removeItem("cloop_shipping_address_history");
+      localStorage.removeItem("cloop_saved_pickup_location");
+      localStorage.removeItem("cloop_saved_renter_info");
+      localStorage.removeItem("cloop_unified_ghn_address");
+    } catch (_) {}
     setIsEditingAddress(true);
   }, []);
 
@@ -610,11 +615,19 @@ export default function CheckoutClient({
         productId,
         userId,
         shippingToken: selectedQuote.token,
+        buyerName: recipientName.trim(),
         buyerAddress: `${addressDetail}${addressNote.trim() ? ` (Ghi chú: ${addressNote.trim()})` : ""}, ${fullToProvinceStr}`,
+        buyerSpecificAddress: addressDetail.trim(),
+        buyerProvince: selectedProvince.name,
+        buyerDistrictName: selectedDistrict.name,
+        buyerDistrictId: Number(selectedDistrict.id) || undefined,
+        buyerWardName: selectedWard.name,
+        buyerWardCode: String(selectedWard.id || (selectedWard as any).code || ""),
         buyerPhone: phoneClean,
         startDate: startDate,
         packageDays: selectedTier?.days || 3,
         fastTrackMode: fastTrackMode,
+        useWalletBalance: Boolean(useWalletBalance && walletBalance > 0),
       };
 
       const res = await fetch("/api/checkout", {
@@ -632,7 +645,31 @@ export default function CheckoutClient({
         throw new Error(data.error || "Lỗi khởi tạo cổng thanh toán");
       }
 
+      if (typeof data.walletUsedAmount === "number" && data.walletUsedAmount > 0) {
+        setWalletBalance((prev) => Math.max(0, prev - data.walletUsedAmount));
+      }
+
+      // Nếu Số dư Ví thanh toán đủ 100% đơn hàng -> Kích hoạt thành công ngay lập tức không cần quét QR!
+      if (data.paidFullyByWallet) {
+        setPaymentData({
+          orderCode: data.orderCode,
+          checkoutUrl: "",
+          amount: 0,
+          walletUsedAmount: data.walletUsedAmount || totalAmount,
+          totalAmount: data.totalAmount || totalAmount,
+          description: data.description || `CLOOP VI ${data.orderCode}`,
+        });
+        setIsPaidSuccess(true);
+        setShowPaymentModal(true);
+        setIsProcessingPayment(false);
+        setTimeout(() => {
+          router.push("/my-closet/orders");
+        }, 1800);
+        return;
+      }
+
       // Vận hành nội bộ: Mở Modal VietQR ngay trong trang web CLOOP (Không văng ra ngoài)
+      setIsPaidSuccess(false);
       setPaymentData({
         orderCode: data.orderCode,
         checkoutUrl: data.checkoutUrl,
@@ -640,7 +677,9 @@ export default function CheckoutClient({
         accountNumber: data.accountNumber,
         accountName: data.accountName,
         bin: data.bin,
-        amount: data.amount || totalAmount,
+        amount: typeof data.amount === "number" ? data.amount : totalAmount,
+        walletUsedAmount: data.walletUsedAmount || 0,
+        totalAmount: data.totalAmount || totalAmount,
         description: data.description || `CLOOP GD ${data.orderCode}`
       });
       setShowPaymentModal(true);
@@ -714,6 +753,15 @@ export default function CheckoutClient({
   // 🛡️ Áp dụng chuẩn biên độ "Block 5K" (+10% rủi ro thể tích & làm tròn nhịp 5.000đ)
   const shippingFee = rawShippingFee > 0 ? Math.ceil(rawShippingFee / 5000) * 5000 : 0;
   const totalAmount = rentalFee + actualDeposit + shippingFee;
+
+  // Tính toán Luân chuyển Số dư Ví / Cọc khả dụng tại Checkout (giữ tối thiểu 2.000đ nếu còn phần phải quét QR PayOS)
+  const rawWalletOffset = useWalletBalance && walletBalance > 0 ? Math.min(walletBalance, totalAmount) : 0;
+  const walletOffsetAmount =
+    rawWalletOffset > 0 && totalAmount - rawWalletOffset > 0 && totalAmount - rawWalletOffset < 2000
+      ? Math.max(0, totalAmount - 2000)
+      : rawWalletOffset;
+  const remainingQrAmount = Math.max(0, totalAmount - walletOffsetAmount);
+  const isFullWalletPayment = Boolean(useWalletBalance && walletOffsetAmount === totalAmount && remainingQrAmount === 0);
 
   // Format ngày tháng chuẩn VN đồng bộ 2 chữ số (dd/MM/yyyy)
   const formatDateVN = (dateInput: Date | string) => {
@@ -884,14 +932,45 @@ export default function CheckoutClient({
           </div>
 
           {/* Tổng Hóa Đơn */}
-          <div className="pt-3.5 border-t border-stone-200 flex justify-between items-baseline">
-            <div>
-              <span className="text-xs uppercase font-bold text-stone-500 tracking-wider">Tổng thanh toán:</span>
-              <p className="text-[10px] text-stone-400">Bao gồm tiền cọc hoàn lại & phí vận chuyển</p>
+          <div className="pt-3.5 border-t border-stone-200 space-y-2">
+            <div className="flex justify-between items-baseline">
+              <div>
+                <span className="text-xs uppercase font-bold text-stone-500 tracking-wider">Tổng giá trị đơn thuê:</span>
+                <p className="text-[10px] text-stone-400">Bao gồm tiền cọc hoàn lại & phí vận chuyển</p>
+              </div>
+              <span className={`font-heading font-mono ${walletOffsetAmount > 0 ? "text-base font-bold text-stone-600" : "text-2xl font-black text-[#183A2D]"}`}>
+                {totalAmount.toLocaleString('vi-VN')}đ
+              </span>
             </div>
-            <span className="font-heading text-2xl font-black text-[#183A2D] font-mono">
-              {totalAmount.toLocaleString('vi-VN')}đ
-            </span>
+
+            {walletOffsetAmount > 0 && (
+              <>
+                <div className="flex justify-between items-center text-xs bg-emerald-50/90 border border-emerald-200/80 px-3 py-2 rounded-xl text-emerald-950">
+                  <span className="font-semibold flex items-center gap-1.5">
+                    <ShieldCheck size={13} className="text-emerald-700 shrink-0" />
+                    Khấu trừ Số dư Ví CLOOP:
+                  </span>
+                  <span className="font-mono font-bold text-emerald-800">
+                    -{walletOffsetAmount.toLocaleString('vi-VN')}đ
+                  </span>
+                </div>
+                <div className="flex justify-between items-baseline pt-1">
+                  <div>
+                    <span className="text-xs uppercase font-bold text-[#0A2517] tracking-wider">
+                      {isFullWalletPayment ? "Cần chuyển khoản thêm:" : "Cần quét QR thanh toán thêm:"}
+                    </span>
+                    <p className="text-[10px] text-emerald-700 font-medium">
+                      {isFullWalletPayment
+                        ? "Thanh toán 100% từ Ví nội bộ • Không cần quét QR"
+                        : "Chỉ thanh toán phần chênh lệch qua VietQR"}
+                    </p>
+                  </div>
+                  <span className="font-heading text-2xl font-black text-[#183A2D] font-mono">
+                    {remainingQrAmount.toLocaleString('vi-VN')}đ
+                  </span>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -1464,7 +1543,50 @@ export default function CheckoutClient({
           </div>
         )}
 
-        {/* NÚT BẤM THANH TOÁN CHUYỂN KHOẢN */}
+        {/* LUÂN CHUYỂN SỐ DƯ VÍ / CỌC BẢO CHỨNG CLOOP */}
+        {walletBalance > 0 && (
+          <div className={`p-4 rounded-xl border transition-all text-xs font-body ${useWalletBalance ? "bg-emerald-50/90 border-[#183A2D] ring-1 ring-[#183A2D]/30" : "bg-[#FAF9F5] border-stone-200"}`}>
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={useWalletBalance}
+                onChange={(e) => setUseWalletBalance(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-stone-300 text-emerald-800 focus:ring-emerald-700 cursor-pointer"
+              />
+              <div className="space-y-1.5 flex-1">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-bold text-[#0A2517] flex items-center gap-1.5 font-ui">
+                    <ShieldCheck size={14} className="text-emerald-700" />
+                    Luân chuyển Số dư Ví / Cọc khả dụng CLOOP
+                  </span>
+                  <span className="font-mono font-bold text-xs text-emerald-900 bg-white px-2.5 py-0.5 rounded-full border border-emerald-300 shadow-2xs">
+                    Số dư: {walletBalance.toLocaleString("vi-VN")}đ
+                  </span>
+                </div>
+
+                {useWalletBalance ? (
+                  <p className="text-emerald-900 text-[11px] leading-relaxed font-medium">
+                    {isFullWalletPayment ? (
+                      <>
+                        Số dư Ví đủ thanh toán <strong>100% đơn hàng ({totalAmount.toLocaleString("vi-VN")}đ)</strong>. Bấm nút bên dưới để chốt đơn tức thì, không cần mở app ngân hàng quét mã QR!
+                      </>
+                    ) : (
+                      <>
+                        Tự động khấu trừ <strong>-{walletOffsetAmount.toLocaleString("vi-VN")}đ</strong> từ tiền cọc/doanh thu có sẵn trong Ví. Bạn chỉ cần quét mã VietQR thanh toán phần chênh lệch còn lại (<strong>{remainingQrAmount.toLocaleString("vi-VN")}đ</strong>).
+                      </>
+                    )}
+                  </p>
+                ) : (
+                  <p className="text-stone-500 text-[11px] leading-relaxed">
+                    Đánh dấu chọn để sử dụng ngay <strong>{Math.min(walletBalance, totalAmount).toLocaleString("vi-VN")}đ</strong> tiền cọc/doanh thu có sẵn trong Ví cho đơn thuê này mà không cần rút về ngân hàng.
+                  </p>
+                )}
+              </div>
+            </label>
+          </div>
+        )}
+
+        {/* NÚT BẤM THANH TOÁN CHUYỂN KHOẢN / SỐ DƯ VÍ */}
         <div className="pt-2 mt-auto">
           <button
             type="button"
@@ -1474,7 +1596,18 @@ export default function CheckoutClient({
           >
             {isProcessingPayment ? (
               <>
-                <Loader2 size={16} className="animate-spin" /> Đang tạo mã chuyển khoản an toàn...
+                <Loader2 size={16} className="animate-spin" />
+                {isFullWalletPayment
+                  ? "Đang đối soát & khóa cọc từ Số dư Ví..."
+                  : "Đang tạo mã chuyển khoản an toàn..."}
+              </>
+            ) : isFullWalletPayment ? (
+              <>
+                Đặt Thuê Ngay Bằng Số Dư Ví (0đ Quét QR) ➔
+              </>
+            ) : walletOffsetAmount > 0 ? (
+              <>
+                Khấu Trừ Ví & Quét QR Phần Còn Lại ({remainingQrAmount.toLocaleString('vi-VN')}đ) ➔
               </>
             ) : (
               <>
@@ -1484,7 +1617,9 @@ export default function CheckoutClient({
           </button>
 
           <p className="text-center text-[10.5px] text-stone-400 mt-2.5 font-ui">
-            Chuyển khoản an toàn 24/7 qua mã QR Ngân hàng ACB • Bảo chứng hoàn tiền tự động
+            {isFullWalletPayment
+              ? "Đối soát 3 lớp HMAC-SHA256 • Kích hoạt đơn tức thì từ Két bảo chứng CLOOP"
+              : "Chuyển khoản an toàn 24/7 qua mã QR Ngân hàng ACB • Bảo chứng hoàn tiền tự động"}
           </p>
         </div>
 
@@ -1599,16 +1734,11 @@ export default function CheckoutClient({
             {/* Nút đóng */}
             <button
               type="button"
-              onClick={() => {
-                if (isPaidSuccess) {
-                  router.push("/my-closet/orders");
-                } else {
-                  setShowPaymentModal(false);
-                }
-              }}
-              className="absolute top-5 right-5 text-stone-400 hover:text-stone-700 p-1.5 rounded-full hover:bg-stone-100 transition-colors"
+              disabled={isCancellingModalOrder}
+              onClick={handleClosePaymentModal}
+              className="absolute top-5 right-5 text-stone-400 hover:text-stone-700 p-1.5 rounded-full hover:bg-stone-100 transition-colors cursor-pointer disabled:opacity-50"
             >
-              <X size={20} />
+              {isCancellingModalOrder ? <Loader2 size={18} className="animate-spin" /> : <X size={20} />}
             </button>
 
             {isPaidSuccess ? (
@@ -1620,7 +1750,10 @@ export default function CheckoutClient({
                   THANH TOÁN THÀNH CÔNG!
                 </h3>
                 <p className="text-xs text-stone-600 leading-relaxed max-w-xs mx-auto">
-                  Hệ thống CLOOP đã xác nhận giao dịch <strong>#{paymentData.orderCode}</strong>. Tiền cọc đã được lưu giữ an toàn tại Két bảo chứng CLOOP.
+                  Hệ thống CLOOP đã xác nhận giao dịch <strong>#{paymentData.orderCode}</strong>.
+                  {(paymentData.walletUsedAmount || 0) > 0 && paymentData.amount === 0
+                    ? ` Đã khấu trừ 100% (${Number(paymentData.walletUsedAmount).toLocaleString("vi-VN")}đ) từ Số dư Ví CLOOP của bạn.`
+                    : " Tiền cọc đã được lưu giữ an toàn tại Két bảo chứng CLOOP."}
                 </p>
                 <div className="pt-2 flex items-center justify-center gap-2 text-xs font-bold text-emerald-800 font-ui animate-pulse">
                   <Loader2 size={14} className="animate-spin" />
@@ -1639,6 +1772,11 @@ export default function CheckoutClient({
                   <p className="text-[11px] text-stone-500 font-ui">
                     Mở ứng dụng ngân hàng bất kỳ để quét mã QR thanh toán tức thì
                   </p>
+                  {(paymentData.walletUsedAmount || 0) > 0 && (
+                    <div className="mt-2 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-950 font-ui leading-snug">
+                      Đã khấu trừ tạm thời <strong>{Number(paymentData.walletUsedAmount).toLocaleString("vi-VN")}đ</strong> từ Số dư Ví CLOOP. Bạn chỉ cần quét QR thanh toán phần chênh lệch <strong>{paymentData.amount.toLocaleString("vi-VN")}đ</strong> (Nếu đóng cửa sổ này, số dư Ví sẽ được hoàn lại ngay lập tức).
+                    </div>
+                  )}
                 </div>
 
                 {/* Khung Mã QR Thanh Toán */}

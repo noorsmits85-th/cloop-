@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import * as Sentry from "@sentry/nextjs";
 import { settleCompletedRentalOrder } from "@/lib/settlement-engine";
 import { evaluateEscrowSlaForOrders } from "@/lib/escrow-sla-checker";
+import { verifyCronRequest } from "@/src/lib/cron-auth";
+import { releasePendingWalletHoldForInvoice } from "@/src/lib/wallet-reconciliation";
 
 export const dynamic = "force-dynamic";
 
@@ -15,11 +17,8 @@ export const dynamic = "force-dynamic";
  * 3. Tự động giải phóng khóa giữ đồ tạm thời (RESERVED > 15 phút).
  */
 export async function GET(req: Request) {
-  const authHeader = req.headers.get("authorization");
-  const expectedSecret = process.env.CRON_SECRET;
-
   // Fail-Closed: Thiếu CRON_SECRET trong env hoặc sai bearer token đều bị chặn 401 Unauthorized ngay lập tức
-  if (!expectedSecret || authHeader !== `Bearer ${expectedSecret}`) {
+  if (!verifyCronRequest(req)) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
@@ -83,10 +82,22 @@ export async function GET(req: Request) {
           const invoiceId = fresh.invoice.id;
           const totalPaid = fresh.invoice.amount; // Hoàn toàn bộ số tiền khách đã thanh toán
 
-          await tx.rentalHistory.update({
-            where: { id: rental.id },
+          // Chặn hoàn tiền lặp (Double-Refund Guard) nếu đơn đã có bút toán REFUND_OUT trước đó
+          const existingRefund = await tx.ledgerTransaction.findFirst({
+            where: { invoiceId, type: "REFUND_OUT", status: "COMPLETED" },
+            select: { id: true }
+          });
+          if (existingRefund) {
+            return;
+          }
+
+          const lockUpdate = await tx.rentalHistory.updateMany({
+            where: { id: rental.id, status: { in: ["PENDING_APPROVAL", "OWNER_PACKED"] } },
             data: { status: "CANCELLED" }
           });
+          if (lockUpdate.count === 0) {
+            return;
+          }
 
           // Hoàn 100% về ví khách thuê
           if (totalPaid > 0) {
@@ -100,6 +111,7 @@ export async function GET(req: Request) {
                 invoiceId,
                 type: "REFUND_OUT",
                 amount: totalPaid,
+                status: "COMPLETED",
                 description: `[Tự động SLA 48h] Hoàn 100% tiền đơn do Chủ tủ không giao đồ #${rental.id}`
               }
             });
@@ -131,12 +143,16 @@ export async function GET(req: Request) {
           status: "PENDING"
         }
       },
-      select: { id: true, product_id: true, invoice: { select: { id: true } } }
+      select: {
+        id: true,
+        product_id: true,
+        renterId: true,
+        invoice: { select: { id: true, orderCode: true } }
+      }
     });
 
     if (expiredPendingRentals.length > 0) {
       const rentalIds = expiredPendingRentals.map(r => r.id);
-      const invoiceIds = expiredPendingRentals.map(r => r.invoice?.id).filter(Boolean) as string[];
       const productIds = Array.from(new Set(expiredPendingRentals.map(r => r.product_id)));
 
       // 🛡️ CHỐT CHẶN BẢO VỆ: Loại trừ bất kỳ sản phẩm nào ĐÃ CÓ ĐƠN THANH TOÁN (PAID) HOẶC ĐANG GIAO NHẬN
@@ -153,23 +169,36 @@ export async function GET(req: Request) {
       const paidProductIds = new Set(paidRentals.map(p => p.product_id));
       const safeToReleaseProductIds = productIds.filter(id => !paidProductIds.has(id));
 
-      await prisma.$transaction([
-        prisma.rentalHistory.updateMany({
+      await prisma.$transaction(async (tx) => {
+        for (const r of expiredPendingRentals) {
+          if (!r.invoice?.id) continue;
+          const updatedInv = await tx.invoice.updateMany({
+            where: { id: r.invoice.id, status: "PENDING" },
+            data: { status: "CANCELLED", payosStatus: "EXPIRED_15M_CRON" },
+          });
+          if (updatedInv.count > 0 && r.renterId) {
+            await releasePendingWalletHoldForInvoice(tx, {
+              invoiceId: r.invoice.id,
+              renterId: r.renterId,
+              orderCode: r.invoice.orderCode,
+              reason: "Tự động giải phóng giữ chỗ quá 15 phút (Cron SLA)",
+            });
+          }
+        }
+
+        await tx.rentalHistory.updateMany({
           where: { id: { in: rentalIds } },
           data: { status: "CANCELLED" }
-        }),
-        prisma.invoice.updateMany({
-          where: { id: { in: invoiceIds } },
-          data: { status: "CANCELLED" }
-        }),
-        prisma.listing.updateMany({
+        });
+
+        await tx.listing.updateMany({
           where: {
             productId: { in: safeToReleaseProductIds },
             status: "RESERVED"
           },
           data: { status: "AVAILABLE" }
-        })
-      ]);
+        });
+      });
       results.releasedLocksCount = safeToReleaseProductIds.length;
     } else {
       results.releasedLocksCount = 0;
@@ -189,6 +218,6 @@ export async function GET(req: Request) {
   } catch (error: any) {
     Sentry.captureException(error);
     console.error("Cron SLA execution failed:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: "Internal Server Error" }, { status: 500 });
   }
 }

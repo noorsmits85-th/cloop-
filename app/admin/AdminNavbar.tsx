@@ -33,6 +33,7 @@ export default function AdminNavbar() {
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={true}
                 className={`px-3 py-1.5 rounded-lg transition-all whitespace-nowrap text-xs ${
                   isActive
                     ? "bg-[#183A2D] text-white font-bold"

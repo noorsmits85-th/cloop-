@@ -7,6 +7,7 @@ import { Logger } from "next-axiom";
 import { calculateUserTrustScore, checkExposureLimit, calculateDynamicDeposit, getItemValuation } from "@/lib/trust-engine";
 import { payos } from "@/src/utils/payos";
 import { generatePayOSOrderCode } from "@/src/utils/order-code";
+import { verifyShippingQuoteToken, calculateDynamicGhnFee } from "@/src/utils/shipping";
 
 export async function createBooking({
   productId,
@@ -19,6 +20,7 @@ export async function createBooking({
   isRental,
   shippingMode,
   shippingFee: clientShippingFee,
+  shippingToken,
   fastTrackMode = false,
   deliveryAddress
 }: {
@@ -32,6 +34,7 @@ export async function createBooking({
   isRental: boolean;
   shippingMode: "CLOOP_BOOK" | "SELF_BOOK" | "GHN" | "GHTK" | "GRAB" | "SELF_PICKUP";
   shippingFee?: number;
+  shippingToken?: string;
   fastTrackMode?: boolean;
   deliveryAddress?: any;
 }) {
@@ -41,14 +44,14 @@ export async function createBooking({
 
   try {
     const supabase = await createClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    let user = session?.user || null;
-    if (!user) {
-      const { data: { user: fetchedUser }, error: authError } = await supabase.auth.getUser();
-      user = fetchedUser;
-      if (authError || !user) {
-        return { success: false, error: "Bạn cần đăng nhập bằng ID Xanh để thực hiện giao dịch này." };
-      }
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return { success: false, error: "Bạn cần đăng nhập bằng ID Xanh để thực hiện giao dịch này." };
+    }
+
+    const rawShippingFee = clientShippingFee === undefined ? 0 : Number(clientShippingFee);
+    if (!Number.isFinite(rawShippingFee) || rawShippingFee < 0) {
+      return { success: false, error: "Phí vận chuyển không hợp lệ." };
     }
 
     // 1. Fetch real prices and owner info from the server/DB, NEVER trust client inputs!
@@ -74,8 +77,8 @@ export async function createBooking({
       }),
     ]);
 
-    if (!product || !product.listings || product.listings.length === 0) {
-      return { success: false, error: "Sản phẩm không tồn tại hoặc đã bị gỡ." };
+    if (!product || product.isDeleted || product.status !== "ON_MARKET" || !product.listings || product.listings.length === 0) {
+      return { success: false, error: "Sản phẩm không tồn tại hoặc đã tạm ẩn khỏi sàn." };
     }
 
     if (product.userId === user.id) {
@@ -87,8 +90,24 @@ export async function createBooking({
     const verifiedOwnerName = product.user?.name || ownerName || "Chủ đồ CLOOP";
     const verifiedOwnerPhone = ownerPhone || "";
 
-    // Lấy thông tin Listing đầu tiên
-    const listing = product.listings[0];
+    // Lấy đúng Listing theo đúng loại giao dịch yêu cầu (RENT hoặc SELL).
+    // Cho phép cả AVAILABLE hoặc RESERVED ở bước tiền kiểm để nhánh khôi phục đơn PENDING cùng user / giải phóng Zombie Lock (>15p) bên dưới có thể chạy!
+    const requestedListingType = isRental ? "RENT" : "SELL";
+    const listing =
+      product.listings.find(
+        (l: any) => !l.isDeleted && l.listingType === requestedListingType && l.status === "AVAILABLE"
+      ) ||
+      product.listings.find(
+        (l: any) => !l.isDeleted && l.listingType === requestedListingType && l.status === "RESERVED"
+      );
+    if (!listing) {
+      return {
+        success: false,
+        error: isRental
+          ? "Sản phẩm hiện không mở cho thuê hoặc đã ngừng nhận đơn."
+          : "Sản phẩm hiện không mở bán thanh lý hoặc đã được bán."
+      };
+    }
     const basePrice = listing.basePrice || 0;
     const baseDeposit = listing.deposit || 0;
     const serviceFee = 0; // FREE LAUNCH
@@ -125,17 +144,27 @@ export async function createBooking({
     const deposit = depositCalculation.finalDeposit;
     
     // Tính toán số ngày và tổng tiền trên Server đồng bộ 100% quy chuẩn Web
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const days = isRental && start && end ? Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000) + 1) : 0;
+    const nowDate = new Date();
+    const start = startDate ? new Date(startDate) : nowDate;
+    const end = endDate ? new Date(endDate) : start;
+    if (isRental) {
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end.getTime() < start.getTime()) {
+        return { success: false, error: "Ngày bắt đầu và kết thúc thuê không hợp lệ." };
+      }
+    }
+    const rawDays = isRental ? Math.round((end.getTime() - start.getTime()) / 86400000) + 1 : 0;
+    if (isRental && (rawDays < 1 || rawDays > 60)) {
+      return { success: false, error: "Số ngày thuê phải từ 1 đến 60 ngày." };
+    }
+    const days = isRental ? Math.max(1, rawDays) : 0;
     
     let itemPrice = basePrice;
     if (isRental) {
       const pricingTiers = listing.pricing_tiers as Array<{ days: number; price: number }> | null;
       if (pricingTiers && Array.isArray(pricingTiers)) {
-        const selectedTier = pricingTiers.find(t => t.days === days);
+        const selectedTier = pricingTiers.find(t => t.days === days && Number.isFinite(Number(t.price)) && Number(t.price) > 0);
         if (selectedTier) {
-          itemPrice = selectedTier.price;
+          itemPrice = Math.round(Number(selectedTier.price));
         } else {
           itemPrice = Math.round(basePrice * days * (days >= 7 ? 0.7 : days >= 3 ? 0.85 : 1) / 1000) * 1000;
         }
@@ -146,22 +175,58 @@ export async function createBooking({
       itemPrice = listing.salePrice || basePrice || 0;
     }
 
+    if (!Number.isFinite(itemPrice) || itemPrice <= 0) {
+      return { success: false, error: "Giá sản phẩm không hợp lệ để tạo đơn hàng." };
+    }
+
     const subTotal = itemPrice;
     const isSelfPickup = shippingMode === "SELF_BOOK" || shippingMode === "SELF_PICKUP";
-    const shippingFee = isSelfPickup ? 0 : (Number(clientShippingFee) || 0);
+    let shippingFee = 0;
+
+    if (!isSelfPickup) {
+      const toProvince =
+        deliveryAddress?.province ||
+        deliveryAddress?.provinceName ||
+        deliveryAddress?.fullAddress ||
+        "";
+      if (shippingToken) {
+        try {
+          const quote = verifyShippingQuoteToken(
+            shippingToken,
+            product.province,
+            toProvince,
+            500
+          );
+          if (!Number.isFinite(quote.fee) || quote.fee < 0) {
+            return { success: false, error: "Phí vận chuyển không hợp lệ." };
+          }
+          shippingFee = Math.max(15000, Math.floor(quote.fee));
+        } catch (err: any) {
+          return { success: false, error: err?.message || "Phí vận chuyển không hợp lệ." };
+        }
+      } else {
+        const serverFee = calculateDynamicGhnFee(
+          product.province || "Hà Nội",
+          toProvince || product.province || "Hà Nội",
+          500
+        ).fee;
+        shippingFee = Math.max(15000, serverFee, Math.floor(rawShippingFee));
+      }
+    }
+
     const totalAmount = isRental 
       ? (subTotal + deposit + serviceFee + shippingFee)
       : (subTotal + serviceFee + shippingFee);
 
-    // 🛡️ CHỐT CHẶN BẢO VỆ ĐƠN ĐÃ THANH TOÁN (Risk 1):
-    // Tuyệt đối không mở khóa hoặc ghi đè những đơn đã thanh toán thành công (PAID) hoặc đang giao nhận
+    // 🛡️ CHỐT CHẶN BẢO VỆ ĐƠN ĐANG HOẠT ĐỘNG ĐÃ THANH TOÁN (Risk 1):
+    // Loại trừ các trạng thái kết thúc (LENDER_COMPLETED, CANCELLED) để sản phẩm đã hoàn tất thuê trong quá khứ vẫn đặt thuê lại bình thường!
     const activePaidRental = await prisma.rentalHistory.findFirst({
       where: {
         product_id: productId,
         isDeleted: false,
         OR: [
-          { status: { in: ["OWNER_PACKED", "LENDER_SHIPPED", "BORROWER_RECEIVED"] } },
-          { invoice: { status: "PAID" } }
+          { status: { in: ["OWNER_PACKED", "LENDER_SHIPPED", "BORROWER_RECEIVED", "BORROWER_RETURNED", "DISPUTE"] } },
+          { invoice: { status: "PAID" }, status: { notIn: ["LENDER_COMPLETED", "CANCELLED"] } }
         ]
       }
     });
@@ -192,8 +257,7 @@ export async function createBooking({
     if (existingPendingRental) {
       const orderAgeMs = Date.now() - new Date(existingPendingRental.createdAt).getTime();
       const isExpired = orderAgeMs > 15 * 60 * 1000; // Quá 15 phút chưa thanh toán
-      const isSameUser = existingPendingRental.renterId === user.id || 
-        (Boolean(verifiedRenterPhone) && existingPendingRental.renter_phone === verifiedRenterPhone);
+      const isSameUser = existingPendingRental.renterId === user.id;
 
       if (!isExpired && isSameUser) {
         // TRƯỜNG HỢP 1: CÙNG MỘT KHÁCH HÀNG BẤM LẠI DO RỚT MẠNG 4G / F5
@@ -202,7 +266,7 @@ export async function createBooking({
           orderCode: existingPendingRental.invoice?.orderCode
         });
 
-        const host = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://cloop-sable.vercel.app");
+        const host = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || "https://cloop-sable.vercel.app";
         const inv = existingPendingRental.invoice;
         let qrCode = null;
         let checkoutUrl = inv?.paymentLinkId ? `https://pay.payos.vn/web/${inv.paymentLinkId}` : null;
@@ -282,23 +346,49 @@ export async function createBooking({
           }
         }
 
-        // 🛡️ Nếu sau tất cả vẫn không có link PayOS hợp lệ -> Hủy đơn dở dang để luồng chảy tiếp tạo đơn mới tinh
+        // 🛡️ Nếu sau tất cả vẫn không có link PayOS hợp lệ -> Hủy đơn PENDING dở dang dưới khóa Product và giải phóng RESERVED có điều kiện
         if (!checkoutUrl && !inv?.paymentLinkId) {
           log.warn("Resumed order had missing PayOS link, auto-cancelling to recreate cleanly", {
             rentalId: existingPendingRental.id
           });
-          try {
-            await prisma.$transaction([
-              prisma.rentalHistory.update({
-                where: { id: existingPendingRental.id },
-                data: { status: "CANCELLED" }
-              }),
-              prisma.invoice.update({
-                where: { id: existingPendingRental.invoice!.id },
-                data: { status: "CANCELLED" }
-              })
-            ]);
-          } catch (_) {}
+          const resumedCancelled = await prisma.$transaction(async (tx) => {
+            if (typeof tx.$queryRaw === "function") {
+              await tx.$queryRaw`SELECT id FROM "products" WHERE id = ${productId} FOR UPDATE`;
+            } else if (typeof tx.$executeRaw === "function") {
+              await tx.$executeRaw`SELECT id FROM "products" WHERE id = ${productId} FOR UPDATE`;
+            }
+            const invCancel = await tx.invoice.updateMany({
+              where: {
+                id: existingPendingRental.invoice!.id,
+                status: "PENDING"
+              },
+              data: { status: "CANCELLED" }
+            });
+            if (!invCancel || invCancel.count === 0) {
+              return false;
+            }
+            const rentCancel = await tx.rentalHistory.updateMany({
+              where: {
+                id: existingPendingRental.id,
+                status: "PENDING_APPROVAL"
+              },
+              data: { status: "CANCELLED" }
+            });
+            if (!rentCancel || rentCancel.count === 0) {
+              throw new Error("BOOKING_RESUME_CANCEL_MISMATCH");
+            }
+            await tx.listing.updateMany({
+              where: { productId, status: "RESERVED" },
+              data: { status: "AVAILABLE" }
+            });
+            return true;
+          });
+          if (!resumedCancelled) {
+            return {
+              success: false,
+              error: "Đơn đặt giữ chỗ của bạn vừa được ghi nhận thanh toán thành công."
+            };
+          }
           // Luồng sẽ tự động chạy tiếp xuống dưới để tạo đơn mới hoàn chỉnh
         } else {
           return {
@@ -328,23 +418,65 @@ export async function createBooking({
           ageMinutes: Math.round(orderAgeMs / 60000)
         });
 
-        try {
-          await prisma.$transaction([
-            prisma.rentalHistory.update({
-              where: { id: existingPendingRental.id },
-              data: { status: "CANCELLED" }
-            }),
-            prisma.invoice.update({
-              where: { id: existingPendingRental.invoice!.id },
-              data: { status: "CANCELLED" }
-            }),
-            prisma.listing.updateMany({
+        const expiredReleased = await prisma.$transaction(async (tx) => {
+          if (typeof tx.$queryRaw === "function") {
+            await tx.$queryRaw`SELECT id FROM "products" WHERE id = ${productId} FOR UPDATE`;
+          } else if (typeof tx.$executeRaw === "function") {
+            await tx.$executeRaw`SELECT id FROM "products" WHERE id = ${productId} FOR UPDATE`;
+          }
+
+          const invCancel = await tx.invoice.updateMany({
+            where: {
+              id: existingPendingRental.invoice!.id,
+              status: "PENDING"
+            },
+            data: { status: "CANCELLED" }
+          });
+
+          // Nếu Invoice vừa chuyển sang PAID trước khi hủy, tuyệt đối KHÔNG hủy Rental và KHÔNG mở lại Listing!
+          if (!invCancel || invCancel.count === 0) {
+            return false;
+          }
+
+          const rentCancel = await tx.rentalHistory.updateMany({
+            where: {
+              id: existingPendingRental.id,
+              status: "PENDING_APPROVAL"
+            },
+            data: { status: "CANCELLED" }
+          });
+
+          if (!rentCancel || rentCancel.count === 0) {
+            throw new Error("ZOMBIE_LOCK_RELEASE_STATE_MISMATCH");
+          }
+
+          const otherLiveOrder =
+            typeof tx.rentalHistory.findFirst === "function"
+              ? await tx.rentalHistory.findFirst({
+                  where: {
+                    product_id: productId,
+                    id: { not: existingPendingRental.id },
+                    isDeleted: false,
+                    status: { notIn: ["LENDER_COMPLETED", "CANCELLED"] }
+                  },
+                  select: { id: true }
+                })
+              : null;
+
+          if (!otherLiveOrder) {
+            await tx.listing.updateMany({
               where: { productId, status: "RESERVED" },
               data: { status: "AVAILABLE" }
-            })
-          ]);
-        } catch (releaseErr) {
-          console.warn("Auto-release zombie lock notice:", releaseErr);
+            });
+          }
+          return true;
+        });
+
+        if (!expiredReleased) {
+          return {
+            success: false,
+            error: "Sản phẩm vừa được khách hàng hoàn tất thanh toán. Vui lòng chọn sản phẩm khác!"
+          };
         }
       } else {
         // TRƯỜNG HỢP 3: KHÁCH HÀNG KHÁC ĐANG TRONG 15 PHÚT GIỮ CHỖ
@@ -354,11 +486,39 @@ export async function createBooking({
         };
       }
     } else if (listing.status === "RESERVED") {
-      // Listing bị kẹt RESERVED nhưng không có đơn PENDING nào -> Tự động đưa về AVAILABLE
-      await prisma.listing.updateMany({
-        where: { productId, status: "RESERVED" },
-        data: { status: "AVAILABLE" }
+      // Listing bị kẹt RESERVED nhưng không có đơn PENDING nào -> Khóa sản phẩm kiểm tra lại trước khi đưa về AVAILABLE
+      const canReleaseStranded = await prisma.$transaction(async (tx) => {
+        if (typeof tx.$queryRaw === "function") {
+          await tx.$queryRaw`SELECT id FROM "products" WHERE id = ${productId} FOR UPDATE`;
+        } else if (typeof tx.$executeRaw === "function") {
+          await tx.$executeRaw`SELECT id FROM "products" WHERE id = ${productId} FOR UPDATE`;
+        }
+        const liveOrder =
+          typeof tx.rentalHistory?.findFirst === "function"
+            ? await tx.rentalHistory.findFirst({
+                where: {
+                  product_id: productId,
+                  isDeleted: false,
+                  status: { notIn: ["LENDER_COMPLETED", "CANCELLED"] }
+                },
+                select: { id: true }
+              })
+            : null;
+        if (liveOrder) {
+          return false;
+        }
+        await tx.listing.updateMany({
+          where: { productId, status: "RESERVED" },
+          data: { status: "AVAILABLE" }
+        });
+        return true;
       });
+      if (!canReleaseStranded) {
+        return {
+          success: false,
+          error: "Sản phẩm hiện đang có đơn đặt giữ chỗ hoặc đã thanh toán."
+        };
+      }
     } else if (listing.status === "RENTED" || listing.status === "SOLD") {
       return {
         success: false,
@@ -382,11 +542,56 @@ export async function createBooking({
         throw err;
       }
 
+      // 2.1. Kiểm tra lại trạng thái Product & Listing BÊN TRONG khóa Pessimistic Lock (Chống TOCTOU)
+      const [lockedProduct, lockedListing, lockedActiveOrder] = await Promise.all([
+        tx.product.findUnique({
+          where: { id: productId },
+          select: { id: true, isDeleted: true, status: true }
+        }),
+        tx.listing.findUnique({
+          where: { id: listing.id },
+          select: { id: true, isDeleted: true, status: true, listingType: true }
+        }),
+        tx.rentalHistory.findFirst({
+          where: {
+            product_id: productId,
+            isDeleted: false,
+            OR: [
+              { status: { in: ["OWNER_PACKED", "LENDER_SHIPPED", "BORROWER_RECEIVED"] } },
+              { invoice: { status: "PAID" }, status: { notIn: ["LENDER_COMPLETED", "CANCELLED"] } },
+              {
+                status: "PENDING_APPROVAL",
+                createdAt: { gte: new Date(Date.now() - 15 * 60 * 1000) },
+                invoice: { status: "PENDING" }
+              }
+            ]
+          },
+          select: { id: true }
+        })
+      ]);
+
+      if (
+        !lockedProduct ||
+        lockedProduct.isDeleted ||
+        lockedProduct.status !== "ON_MARKET" ||
+        !lockedListing ||
+        lockedListing.isDeleted ||
+        lockedListing.status !== "AVAILABLE" ||
+        lockedListing.listingType !== requestedListingType
+      ) {
+        throw new Error("Sản phẩm vừa được cập nhật trạng thái hoặc đã có khách khác đặt trước.");
+      }
+
+      if (lockedActiveOrder) {
+        throw new Error("Sản phẩm hiện đang có đơn đặt giữ chỗ hoặc đang trong quá trình giao nhận.");
+      }
+
       if (isRental) {
         const overlapping = await tx.rentalHistory.findFirst({
           where: {
             product_id: productId,
-            status: { in: ["BORROWER_RECEIVED", "LENDER_SHIPPED", "OWNER_PACKED"] },
+            isDeleted: false,
+            status: { in: ["PENDING_APPROVAL", "BORROWER_RECEIVED", "LENDER_SHIPPED", "OWNER_PACKED"] },
             start_date: { lte: end },
             end_date: { gte: start },
           }
@@ -442,7 +647,6 @@ export async function createBooking({
           const fullAddr = deliveryAddress.fullAddress || (ghnParts.join(", ") + (nt ? ` (Ghi chú: ${nt})` : ""));
           const locStr = [distName, provName].filter(Boolean).join(", ") || provName || "";
 
-          const isSelfPickup = shippingMode === "SELF_BOOK" || shippingMode === "SELF_PICKUP";
           const isGrab = shippingMode === "GRAB";
           const isGhtk = shippingMode === "GHTK";
           const resolvedProvider = isSelfPickup ? "SELF_PICKUP" : isGrab ? "GRAB" : isGhtk ? "GHTK" : "GHN";
@@ -488,8 +692,8 @@ export async function createBooking({
               pickup_address: fullAddr,
               full_address: fullAddr,
               location: locStr,
-              phone: verifiedRenterPhone || undefined,
-              name: verifiedRenterName || undefined
+              contact_phone: verifiedRenterPhone || undefined,
+              recipient_name: verifiedRenterName || undefined
             }),
             user.id
           );
@@ -498,17 +702,23 @@ export async function createBooking({
         }
       }
 
-      // 5. Đổi trạng thái (State Machine) sang RESERVED
-      await tx.listing.updateMany({
+      // 5. Đổi trạng thái (State Machine) sang RESERVED có điều kiện nguyên tử và kiểm tra count
+      const reservedUpdate = await tx.listing.updateMany({
         where: {
+          id: listing.id,
           productId: productId,
-          listingType: isRental ? "RENT" : "SELL",
+          listingType: requestedListingType,
+          isDeleted: false,
           status: "AVAILABLE"
         },
         data: {
           status: "RESERVED"
         }
       });
+
+      if (reservedUpdate.count === 0) {
+        throw new Error("Rất tiếc, sản phẩm vừa được khách hàng khác đặt giữ chỗ trước đó một tích tắc!");
+      }
       
       // Ghi log Nghiệp vụ
       log.info("Booking Created Successfully", { rentalId: rental.id, amount: totalAmount, shippingMode, orderCode });
@@ -521,7 +731,7 @@ export async function createBooking({
     });
 
     // 6. Tạo Link PayOS ngoài Transaction Database (Bọc Timeout 6s & Rollback an toàn)
-    const host = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://cloop-sable.vercel.app");
+    const host = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || "https://cloop-sable.vercel.app";
     let paymentLinkRes: any = null;
 
     if (payos) {
@@ -597,9 +807,8 @@ export async function createBooking({
     };
 
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Lỗi hệ thống khi tạo đơn hàng.";
     console.error("SERVER ACTION ERROR:", err);
-    return { success: false, error: message };
+    return { success: false, error: "Lỗi hệ thống khi tạo đơn hàng." };
   }
 }
 

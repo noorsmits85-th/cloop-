@@ -1,0 +1,49 @@
+{
+  "date": "2026-11-11",
+  "mode": "isolated actual-code execution; all database/auth/network dependencies mocked",
+  "evidence": [
+    {
+      "check": "bank-name-two-token-collision",
+      "observed": "Different full names accepted",
+      "reproduced": true
+    },
+    {
+      "check": "proxy-header-trust",
+      "observed": "Unverified CF header takes precedence over x-forwarded-for when Vercel header absent",
+      "deploymentDependent": true
+    },
+    {
+      "check": "middleware-rate-limit-prefetch",
+      "normal": 429,
+      "forgedPrefetch": 200,
+      "rateLimiterInvokedForForgedPrefetch": false
+    },
+    {
+      "check": "public-closet-private-record-projection",
+      "authRequired": false,
+      "productStatusFilter": false,
+      "hiddenListingsExcluded": false,
+      "coordinatesReturned": true,
+      "snapshotReturned": true,
+      "unboundedTake": 1000000,
+      "note": "Synthetic DB returned a record consistent with the captured query; no real user data accessed."
+    },
+    {
+      "check": "admin-mfa-enforcement",
+      "validSessionWithDbAdminRoleAccepted": true,
+      "assuranceChecks": 0,
+      "note": "Application helper does not require MFA; external identity-provider enforcement was not tested."
+    },
+    {
+      "check": "guest-support-ticket-authorization",
+      "anonymousRead": true,
+      "anonymousWrite": true,
+      "anonymousTicketContactDisclosure": true,
+      "prerequisite": "Knowledge of another guest ticket ID; no ID discovery demonstrated"
+    },
+    {
+      "check": "unsigned-late-refund",
+      "rejected": true
+    }
+  ]
+}

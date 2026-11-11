@@ -11,6 +11,11 @@ import { checkRateLimit } from "@/src/utils/rate-limit";
 // 1. Tạo thanh toán mua gói Điểm Lá qua PayOS
 export async function createCoinTopUpPayment(packageCode: string) {
   try {
+    // 🛡️ CHỐT CHẶN BẢO MẬT: Không cho phép gọi trực tiếp gói nội bộ KYC_* hoặc BOOST_* qua cổng nạp Xu thường
+    if (!packageCode || packageCode.startsWith("KYC_") || packageCode.startsWith("BOOST_")) {
+      return { success: false, message: "Gói nạp không hợp lệ." };
+    }
+
     const pkg = COIN_PACKAGES[packageCode];
     if (!pkg) {
       return { success: false, message: "Gói nạp không hợp lệ." };
@@ -119,11 +124,34 @@ export async function checkCoinTopUpStatusAction(orderCode: number) {
       return { success: false, status: "FORBIDDEN" };
     }
 
+    // 🛡️ CHỐT CHẶN CROSS-FLOW EXPLOIT: Đơn Đẩy Top (BOOST_*) phải xử lý qua checkBoostPayOSStatusAction
+    const rawPayloadObj = (topUp.rawPayload as Record<string, any>) || {};
+    if (topUp.packageCode.startsWith("BOOST_") || rawPayloadObj.type === "PRODUCT_BOOST") {
+      return { success: false, status: "INVALID_FLOW" };
+    }
+
     // Nếu DB vẫn là PENDING -> Chủ động hỏi PayOS API trực tiếp để phòng ngừa webhook bị delay
     if (topUp.status === "PENDING" && payos) {
       try {
         const payosInfo = await payos.paymentRequests.get(orderCode);
-        if (payosInfo && (payosInfo.status === "PAID" || (payosInfo.amountPaid && payosInfo.amountPaid >= topUp.amountVnd))) {
+        if (payosInfo && (payosInfo.status === "CANCELLED" || payosInfo.status === "EXPIRED")) {
+          await prisma.coinTopUp.updateMany({
+            where: { id: topUp.id, status: "PENDING" },
+            data: { status: "CANCELLED", payosStatus: payosInfo.status }
+          });
+          return {
+            success: true,
+            status: "CANCELLED",
+            totalCoins: topUp.totalCoins,
+            newBalance: topUp.user?.cloopCoins || 0
+          };
+        }
+
+        if (
+          payosInfo &&
+          payosInfo.status === "PAID" &&
+          Number(payosInfo.amountPaid ?? topUp.amountVnd) >= topUp.amountVnd
+        ) {
           await prisma.$transaction(async (tx) => {
             // 🛡️ CHỐT CHẶN NGUYÊN TỬ: Chỉ cập nhật nếu CoinTopUp VẪN ĐANG LÀ PENDING
             const updateResult = await tx.coinTopUp.updateMany({
@@ -144,11 +172,41 @@ export async function checkCoinTopUpStatusAction(orderCode: number) {
               return;
             }
 
+            const isKycPackage = topUp.packageCode === "KYC_1K" || topUp.packageCode === "KYC_2K";
             const updatedUser = await tx.user.update({
               where: { id: topUp.userId },
-              data: { cloopCoins: { increment: topUp.totalCoins } },
-              select: { cloopCoins: true }
+              data: {
+                cloopCoins: { increment: topUp.totalCoins },
+                ...(isKycPackage
+                  ? {
+                      isVerified: true,
+                      walletBalance: { increment: topUp.amountVnd }
+                    }
+                  : {})
+              },
+              select: { cloopCoins: true, walletBalance: true }
             });
+
+            if (isKycPackage) {
+              const savedPhone = (topUp.rawPayload as any)?.phone;
+              if (savedPhone) {
+                try {
+                  await tx.$executeRawUnsafe(
+                    `UPDATE auth.users
+                     SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || jsonb_build_object(
+                       'phone', $1::text,
+                       'phone_verified', true,
+                       'kyc_method', 'VIETQR_EKYC_2K',
+                       'kyc_verified_at', $2::text
+                     )
+                     WHERE id = $3::uuid;`,
+                    String(savedPhone),
+                    new Date().toISOString(),
+                    topUp.userId
+                  );
+                } catch (_) {}
+              }
+            }
 
             await tx.coinLedgerEntry.create({
               data: {
@@ -221,20 +279,39 @@ export async function claimQuestRewardAction(questCode: string) {
     }
 
     // 2. Kiểm tra điều kiện hoàn thành nhiệm vụ thực tế trong DB
-    if (questCode === "FIRST_LISTING") {
+    if (questCode === "WELCOME_ACTIVATION") {
+      const userProfile = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { name: true, email: true }
+      });
+      if (!userProfile || !userProfile.name) {
+        return { success: false, message: "Vui lòng cập nhật tên hiển thị trong hồ sơ trước khi nhận thưởng." };
+      }
+    } else if (questCode === "FIRST_LISTING") {
       const productCount = await prisma.product.count({
-        where: { userId: userId, isDeleted: false }
+        where: {
+          userId: userId,
+          isDeleted: false,
+          status: "ON_MARKET",
+          listings: { some: { isDeleted: false, status: "AVAILABLE" } }
+        }
       });
       if (productCount < 1) {
-        return { success: false, message: "Bạn cần đăng tải ít nhất 1 món đồ lên tủ đồ trước khi nhận thưởng." };
+        return { success: false, message: "Bạn cần đăng tải ít nhất 1 món đồ đang mở bán/cho thuê trên sàn trước khi nhận thưởng." };
       }
     } else if (questCode === "WEEKLY_LISTING_1") {
       const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
       const recentProducts = await prisma.product.count({
-        where: { userId: userId, isDeleted: false, createdAt: { gte: oneWeekAgo } }
+        where: {
+          userId: userId,
+          isDeleted: false,
+          status: "ON_MARKET",
+          createdAt: { gte: oneWeekAgo },
+          listings: { some: { isDeleted: false, status: "AVAILABLE" } }
+        }
       });
       if (recentProducts < 1) {
-        return { success: false, message: "Bạn chưa đăng món đồ nào trong tuần này." };
+        return { success: false, message: "Bạn chưa đăng món đồ hợp lệ nào lên sàn trong tuần này." };
       }
     } else if (questCode === "FIVE_STAR_ORDER") {
       const fiveStarReviews = await prisma.review.count({
@@ -243,6 +320,30 @@ export async function claimQuestRewardAction(questCode: string) {
       if (fiveStarReviews < 1) {
         return { success: false, message: "Bạn cần có ít nhất 1 đánh giá 5 sao từ đơn cho thuê thành công." };
       }
+    } else if (questCode === "REFERRAL_FIRST_ORDER") {
+      // 🛡️ CHỐT CHẶN BẢO MẬT (FAIL-CLOSED):
+      // Không dùng số đơn của chính chủ tủ để tránh nhận thưởng sai đối tượng.
+      // Yêu cầu phải có bản ghi đối soát giới thiệu đã được xác thực trong Sổ cái nhiệm vụ / hệ thống đối soát.
+      const verifiedReferralEvidence = await prisma.coinLedgerEntry.findFirst({
+        where: {
+          userId: userId,
+          type: "ADMIN_ADJUSTMENT",
+          metadata: {
+            path: ["verifiedReferralForQuest"],
+            equals: "REFERRAL_FIRST_ORDER"
+          }
+        },
+        select: { id: true }
+      });
+
+      if (!verifiedReferralEvidence) {
+        return {
+          success: false,
+          message: "Chưa tìm thấy dữ liệu người được bạn giới thiệu hoàn tất đơn thuê đã thanh toán. Phần thưởng sẽ mở khóa sau khi hệ thống xác thực quan hệ giới thiệu và đơn hàng đầu tiên của người được mời."
+        };
+      }
+    } else {
+      return { success: false, message: "Nhiệm vụ không hợp lệ hoặc chưa mở." };
     }
 
     // 3. Thực thi Atomic Transaction: Tạo Claim + Cộng Điểm Lá + Ghi Sổ Cái CoinLedgerEntry

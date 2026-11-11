@@ -25,7 +25,6 @@ import {
   ExternalLink,
   Copy
 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { deleteProductAction, toggleProductHideAction } from "../items/actions";
@@ -357,7 +356,7 @@ export function ItemsClient({
       if (res.success) {
         showToast(
           currentlyHidden
-            ? "😊 Đã hiển thị lại câu chuyện Lookbook trên Blog."
+            ? "Đã hiển thị lại câu chuyện Lookbook trên Blog."
             : "Đã ẩn câu chuyện khỏi luồng bài viết công khai."
         );
         setItems(
@@ -367,27 +366,7 @@ export function ItemsClient({
         );
         router.refresh();
       } else {
-        // Fallback: Thử update qua Supabase vào BlogPost
-        const newStatus = currentlyHidden ? "PUBLIC" : "HIDDEN";
-        const { error } = await supabase
-          .from("BlogPost")
-          .update({ status: newStatus })
-          .eq("productId", productId);
-
-        if (error) throw error;
-        showToast(
-          currentlyHidden
-            ? "😊 Đã hiển thị lại câu chuyện Lookbook."
-            : "Đã ẩn câu chuyện Lookbook."
-        );
-
-        setItems(
-          items.map((item) =>
-            item.id === productId ? { ...item, isBlogHidden: !currentlyHidden } : item
-          )
-        );
-
-        router.refresh();
+        throw new Error(res.error || "Không thể cập nhật trạng thái hiển thị bài viết.");
       }
     } catch (err: any) {
       showToast(`Lỗi xử lý cổng Blog: ${err.message}`, "error");

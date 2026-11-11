@@ -1,9 +1,13 @@
-import crypto from "crypto";
+import * as crypto from "crypto";
 
-const SHIPPING_SECRET = process.env.SHIPPING_SECRET || process.env.PAYOS_CHECKSUM_KEY || "cloop_shipping_secret_2026_super_secure";
+const SECRET_KEY = process.env.SHIPPING_SECRET || process.env.PAYOS_CHECKSUM_KEY;
 
-function requireShippingSecret() {
-  return SHIPPING_SECRET;
+function requireShippingSecret(): string {
+  const secret = SECRET_KEY || process.env.SHIPPING_SECRET || process.env.PAYOS_CHECKSUM_KEY;
+  if (!secret) {
+    throw new Error("Missing SHIPPING_SECRET configuration on server");
+  }
+  return secret;
 }
 
 export interface ShippingQuote {
@@ -60,55 +64,95 @@ const ALL_PROVINCES = [
   "hồ chí minh", "sài gòn", "trà vinh", "tuyên quang", "vĩnh long", "vĩnh phúc", "yên bái"
 ];
 
+const ASCII_PROVINCE_MAP: Array<{ pattern: RegExp; display: string; canonical: string }> = [
+  { pattern: /\b(ha\s*noi|hanoi)\b/i, display: "Hà Nội", canonical: "hà nội" },
+  { pattern: /\b(ho\s*chi\s*minh|hcm|sai\s*gon|saigon)\b/i, display: "TP. Hồ Chí Minh", canonical: "hồ chí minh" },
+  { pattern: /\b(da\s*nang|danang)\b/i, display: "Đà Nẵng", canonical: "đà nẵng" },
+  { pattern: /\b(hai\s*phong|haiphong)\b/i, display: "Hải Phòng", canonical: "hải phòng" },
+  { pattern: /\b(can\s*tho|cantho)\b/i, display: "Cần Thơ", canonical: "cần thơ" },
+  { pattern: /\b(nghe\s*an|nghean|\bvinh\b)\b/i, display: "Nghệ An", canonical: "nghệ an" },
+  { pattern: /\b(binh\s*duong)\b/i, display: "Bình Dương", canonical: "bình dương" },
+  { pattern: /\b(dong\s*nai)\b/i, display: "Đồng Nai", canonical: "đồng nai" },
+  { pattern: /\b(khanh\s*hoa|nha\s*trang)\b/i, display: "Khánh Hòa", canonical: "khánh hòa" },
+  { pattern: /\b(lam\s*dong|da\s*lat)\b/i, display: "Lâm Đồng", canonical: "lâm đồng" },
+  { pattern: /\b(thua\s*thien\s*hue|\bhue\b)\b/i, display: "Thừa Thiên Huế", canonical: "huế" },
+  { pattern: /\b(quang\s*ninh)\b/i, display: "Quảng Ninh", canonical: "quảng ninh" },
+  { pattern: /\b(bac\s*ninh)\b/i, display: "Bắc Ninh", canonical: "bắc ninh" },
+  { pattern: /\b(thanh\s*hoa)\b/i, display: "Thanh Hóa", canonical: "thanh hóa" },
+];
+
 export function extractProvince(address: string): string {
   const norm = (address || "").toLowerCase();
   for (const prov of ALL_PROVINCES) {
     if (norm.includes(prov)) return prov;
   }
+  for (const item of ASCII_PROVINCE_MAP) {
+    if (item.pattern.test(norm)) return item.canonical;
+  }
   return "";
 }
+
+const STREET_OR_PRIVATE_DETAIL_REGEX =
+  /(\d+|số|ngõ|ngách|hẻm|đường|phố|phường|xã|thị\s*trấn|tổ|thôn|xóm|ấp|khu\s*phố|kp|tòa|căn|nhà|lô|kiệt|street|st\b|road|rd\b|avenue|ave\b|lane|ward|synthetic)/i;
 
 /**
  * 🛡️ BẢO MẬT ĐỊA CHỈ TRẠM GIAO NHẬN (Ẩn số nhà, ngõ ngách, tên đường VÀ Phường/Xã riêng tư khi hiển thị công khai)
  * Chỉ công khai Quận/Huyện/Thị xã/Thành phố & Tỉnh (Ví dụ: "TP. Vinh, Nghệ An", "Quận Ba Đình, Hà Nội").
- * Ẩn hoàn toàn số nhà, ngõ ngách và Phường/Xã để tránh lộ vị trí cư trú cá nhân của chủ tủ.
+ * Ẩn hoàn toàn số nhà, ngõ ngách và Phường/Xã để tránh lộ vị trí cư trú cá nhân hoặc giao dịch ngoài sàn.
  */
 export function maskPublicAddress(fullAddress?: string | null, fallback: string = "Chưa cập nhật"): string {
   if (!fullAddress || typeof fullAddress !== "string") return fallback;
 
-  // 1. Loại bỏ các phần chú thích riêng tư trong ngoặc đơn (VD: "(Ghi chú: gọi 0912...)")
-  let cleaned = fullAddress.replace(/\s*\([^)]*\)/g, "").trim();
+  // 1. Loại bỏ các phần chú thích riêng tư trong ngoặc đơn và ẩn SĐT/Email nếu có
+  let cleaned = fullAddress
+    .replace(/\s*\([^)]*\)/g, "")
+    .replace(/(?:\+?84|0)[\s._\-()\/]*[35789](?:[\s._\-()\/]*\d){8}\b/g, "")
+    .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, "")
+    .trim();
   if (!cleaned) return fallback;
 
   // 2. Tách các thành phần theo dấu phẩy
   const parts = cleaned.split(",").map(p => p.trim()).filter(Boolean);
 
   if (parts.length <= 1) {
-    return cleaned;
+    const single = parts[0] || cleaned;
+    const lowerSingle = single.toLowerCase();
+    // Nếu chỉ đúng tên một tỉnh/thành phố và không chứa số nhà/tên đường thì giữ nguyên
+    if (ALL_PROVINCES.includes(lowerSingle) && !STREET_OR_PRIVATE_DETAIL_REGEX.test(single)) {
+      return single;
+    }
+    for (const item of ASCII_PROVINCE_MAP) {
+      if (item.pattern.test(single)) {
+        return STREET_OR_PRIVATE_DETAIL_REGEX.test(single)
+          ? `Khu vực ${item.display}`
+          : item.display;
+      }
+    }
+    const matchedProv = extractProvince(single);
+    if (matchedProv) {
+      return `Khu vực ${matchedProv.replace(/\b\w/g, (c) => c.toUpperCase())}`;
+    }
+    return "Khu vực bảo mật qua CLOOP";
   }
 
-  // 3. Nếu có từ 4 phần trở lên (Ví dụ: "Số 12 ngõ 34", "Phường Đông Vĩnh", "Thành phố Vinh", "Nghệ An")
-  // -> Chỉ lấy 2 phần cuối: [Quận/Huyện/Thành phố], [Tỉnh/Thành] -> "Thành phố Vinh, Nghệ An"
-  if (parts.length >= 4) {
-    return parts.slice(-2).join(", ");
+  // 3. Nếu có từ 3 phần trở lên -> Chỉ lấy 2 phần cuối và lọc bỏ các đoạn có số nhà/phường xã
+  if (parts.length >= 3) {
+    const tail = parts.slice(-2).filter(seg => !STREET_OR_PRIVATE_DETAIL_REGEX.test(seg));
+    if (tail.length > 0) return tail.join(", ");
+    return maskPublicAddress(parts[parts.length - 1], fallback);
   }
 
-  // 4. Nếu có 3 phần (Ví dụ: "Phường Đông Vĩnh", "Thành phố Vinh", "Nghệ An" hoặc "123 Phố Huế", "Hoàn Kiếm", "Hà Nội")
-  // -> Bỏ phần 1 (phường/xã hoặc số nhà), chỉ lấy 2 phần cuối
-  if (parts.length === 3) {
-    return parts.slice(-2).join(", ");
-  }
-
-  // 5. Nếu có 2 phần (Ví dụ: "Phường Đông Vĩnh", "Nghệ An" hoặc "TP. Vinh", "Nghệ An")
+  // 4. Nếu có 2 phần
   if (parts.length === 2) {
-    // Nếu phần đầu là phường/xã/số nhà thì chỉ lấy phần tỉnh/thành phố
-    if (/^(phường|xã|thị trấn|số|ngõ|hẻm|đường|tổ|phố|nhà|căn|tòa|lô|kiệt|kp|khu phố)\b/i.test(parts[0])) {
-      return parts[1];
+    if (STREET_OR_PRIVATE_DETAIL_REGEX.test(parts[0])) {
+      return STREET_OR_PRIVATE_DETAIL_REGEX.test(parts[1])
+        ? maskPublicAddress(parts[1], fallback)
+        : parts[1];
     }
     return parts.join(", ");
   }
 
-  return cleaned;
+  return "Khu vực bảo mật qua CLOOP";
 }
 
 /**
@@ -118,23 +162,58 @@ export function maskPublicAddress(fullAddress?: string | null, fallback: string 
 export function maskPhone(phone?: string | null): string {
   if (!phone || typeof phone !== "string") return "";
   const cleaned = phone.trim();
-  if (cleaned.length < 7) return cleaned;
+  if (cleaned.length < 7) return "***";
   return cleaned.slice(0, 3) + "****" + cleaned.slice(-3);
 }
 
 export const ACTIVE_LIFECYCLE_STATUSES = new Set(["OWNER_PACKED", "LENDER_SHIPPED", "BORROWER_RECEIVED"]);
 
+function sanitizeShipmentAddressObject(addr: any): any {
+  if (!addr || typeof addr !== "object") return null;
+  const cloned = { ...addr };
+  const rawAddr = cloned.specificAddress || cloned.fullAddress || cloned.address || cloned.province || "";
+  const masked = rawAddr ? maskPublicAddress(String(rawAddr), "Khu vực bảo mật qua CLOOP") : "Khu vực bảo mật qua CLOOP";
+  if ("specificAddress" in cloned) cloned.specificAddress = masked;
+  if ("fullAddress" in cloned) cloned.fullAddress = masked;
+  if ("address" in cloned) cloned.address = masked;
+  if ("phone" in cloned && cloned.phone) cloned.phone = maskPhone(String(cloned.phone));
+  if ("email" in cloned && cloned.email) delete cloned.email;
+  return cloned;
+}
+
+function sanitizeProviderRawPayload(payload: any): any {
+  if (!payload || typeof payload !== "object") return null;
+  const safeKeys = new Set([
+    "paymentSide",
+    "estimatedFee",
+    "zoneLabel",
+    "estimatedDays",
+    "fromProvince",
+    "toProvince",
+    "status",
+    "serviceId",
+  ]);
+  const sanitized: Record<string, any> = {};
+  for (const [k, v] of Object.entries(payload)) {
+    if (safeKeys.has(k)) {
+      sanitized[k] = v;
+    } else if (/phone|tel|mobile/i.test(k) && typeof v === "string") {
+      sanitized[k] = maskPhone(v);
+    } else if (/address|street|location/i.test(k) && typeof v === "string") {
+      sanitized[k] = maskPublicAddress(v);
+    }
+  }
+  return sanitized;
+}
+
 /**
- * 🛡️ PII DATA MASKING POLICY (Chính sách bảo mật thông tin cá nhân)
- * Chỉ unmask địa chỉ chi tiết (số nhà, ngõ ngách) và số điện thoại khi đơn hàng đang trong vòng đời hiệu lực:
- * - OWNER_PACKED
- * - LENDER_SHIPPED
- * - BORROWER_RECEIVED
- * Tự động mask lại khi đơn hàng ở trạng thái PENDING_APPROVAL, BORROWER_RETURNED, LENDER_COMPLETED, DISPUTE, CANCELLED.
+ * 🛡️ PII DATA MASKING & ANTI-DISINTERMEDIATION POLICY (Chính sách khóa chặt liên hệ ngoài sàn)
+ * LUÔN LUÔN mask số điện thoại, email, địa chỉ chi tiết và providerRawPayload giữa Khách thuê và Chủ tủ
+ * ở TẤT CẢ các trạng thái đơn hàng (kể cả PAID, OWNER_PACKED, LENDER_SHIPPED, BORROWER_RECEIVED, LENDER_COMPLETED, DISPUTE).
+ * Mọi hoạt động giao nhận đều được điều phối trung gian qua CLOOP và đơn vị vận chuyển.
  */
 export function maskOrderPii<T extends Record<string, any>>(order: T): T {
-  const isActive = ACTIVE_LIFECYCLE_STATUSES.has(order.status);
-  if (isActive) return order;
+  if (!order || typeof order !== "object") return order;
 
   const cloned: any = { ...order };
 
@@ -148,33 +227,28 @@ export function maskOrderPii<T extends Record<string, any>>(order: T): T {
   if (cloned.renter_phone) {
     cloned.renter_phone = maskPhone(cloned.renter_phone);
   }
+  if (cloned.renterPhone) {
+    cloned.renterPhone = maskPhone(cloned.renterPhone);
+  }
 
   if (cloned.owner_phone) {
     cloned.owner_phone = maskPhone(cloned.owner_phone);
   }
+  if (cloned.ownerPhone) {
+    cloned.ownerPhone = maskPhone(cloned.ownerPhone);
+  }
 
   if (Array.isArray(cloned.shipments)) {
     cloned.shipments = cloned.shipments.map((s: any) => {
-      const p = s.pickupAddress ? { ...s.pickupAddress } : null;
-      const d = s.deliveryAddress ? { ...s.deliveryAddress } : null;
-      if (p) {
-        if (p.specificAddress || p.address) {
-          const masked = maskPublicAddress(p.specificAddress || p.address);
-          p.specificAddress = masked;
-          p.address = masked;
-        }
-        if (p.phone) p.phone = maskPhone(p.phone);
-      }
-      if (d) {
-        if (d.specificAddress || d.fullAddress || d.address) {
-          const masked = maskPublicAddress(d.specificAddress || d.fullAddress || d.address);
-          d.specificAddress = masked;
-          d.fullAddress = masked;
-          d.address = masked;
-        }
-        if (d.phone) d.phone = maskPhone(d.phone);
-      }
-      return { ...s, pickupAddress: p, deliveryAddress: d };
+      const p = sanitizeShipmentAddressObject(s.pickupAddress);
+      const d = sanitizeShipmentAddressObject(s.deliveryAddress);
+      const safePayload = sanitizeProviderRawPayload(s.providerRawPayload);
+      return {
+        ...s,
+        pickupAddress: p,
+        deliveryAddress: d,
+        providerRawPayload: safePayload,
+      };
     });
   }
 
@@ -385,7 +459,7 @@ export function signShippingQuote(quote: ShippingQuote, fromProvince: string, to
 /**
  * 3. Hàm xác thực "Signed Quote Token" lúc Checkout
  */
-export function verifyShippingQuoteToken(tokenBase64: string, expectedFromProvince: string, expectedToProvince: string, expectedWeight: number): ShippingQuote {
+export function verifyShippingQuoteToken(tokenBase64: string, expectedFromProvince?: string, expectedToProvince?: string, expectedWeight?: number): ShippingQuote {
   try {
     const shippingSecret = requireShippingSecret();
     const decodedStr = Buffer.from(tokenBase64, "base64").toString("utf-8");
@@ -395,13 +469,41 @@ export function verifyShippingQuoteToken(tokenBase64: string, expectedFromProvin
     hmac.update(payload);
     const expectedSig = hmac.digest("hex");
 
-    if (signature !== expectedSig) {
+    const sigBuf = Buffer.from(String(signature || ""), "hex");
+    const expectedBuf = Buffer.from(expectedSig, "hex");
+    if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) {
       throw new Error("Chữ ký báo giá vận chuyển không hợp lệ");
     }
 
     const data = JSON.parse(payload);
     if (Date.now() > data.expiresAt) {
       throw new Error("Báo giá vận chuyển đã hết hạn (15 phút), vui lòng tải lại!");
+    }
+
+    if (expectedFromProvince && data.fromProvince) {
+      const normExpectedFrom = extractProvince(expectedFromProvince) || expectedFromProvince.trim().toLowerCase();
+      const normTokenFrom = extractProvince(String(data.fromProvince)) || String(data.fromProvince).trim().toLowerCase();
+      if (normExpectedFrom && normTokenFrom && normExpectedFrom !== normTokenFrom) {
+        throw new Error("Tỉnh gửi hàng trong báo giá vận chuyển không khớp");
+      }
+    }
+
+    if (expectedToProvince && data.toProvince) {
+      const normExpectedTo = extractProvince(expectedToProvince) || expectedToProvince.trim().toLowerCase();
+      const normTokenTo = extractProvince(String(data.toProvince)) || String(data.toProvince).trim().toLowerCase();
+      if (normExpectedTo && normTokenTo && normExpectedTo !== normTokenTo) {
+        throw new Error("Tỉnh nhận hàng trong báo giá vận chuyển không khớp");
+      }
+    }
+
+    if (typeof expectedWeight === "number" && expectedWeight > 0 && typeof data.weight === "number" && data.weight > 0) {
+      if (data.weight !== expectedWeight) {
+        throw new Error("Khối lượng đơn hàng trong báo giá vận chuyển không khớp");
+      }
+    }
+
+    if (typeof data.fee !== "number" || !Number.isFinite(data.fee) || data.fee < 0) {
+      throw new Error("Phí vận chuyển trong báo giá không hợp lệ");
     }
 
     return {

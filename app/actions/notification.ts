@@ -75,13 +75,12 @@ export async function getUserNotificationsAction(passedUserId?: string): Promise
   error?: string;
 }> {
   try {
-    let userId = passedUserId;
-    let userCreatedAt: string | undefined;
-    if (!userId) {
-      const supabase = await createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      userId = session?.user?.id;
-      userCreatedAt = session?.user?.created_at;
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const userId = user?.id;
+    const userCreatedAt = user?.created_at;
+    if (passedUserId && userId && passedUserId !== userId) {
+      return { success: false, notifications: [], unreadCount: 0, error: "Forbidden" };
     }
 
     // ⚡ Cache hit check siêu tốc (0ms, không tốn network roundtrip)

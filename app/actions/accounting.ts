@@ -62,11 +62,12 @@ export async function executeMonthlyClosing(month: number, year: number, allowIn
       });
       const feeRevenue = platformFeeAgg._sum.amount || 0;
 
-      // 5.3. Tổng hợp Doanh thu bán Xu Lá thực tế (tiền VND khách thanh toán nạp ví qua VietQR / PayOS)
+      // 5.3. Tổng hợp Doanh thu bán Xu Lá thực tế (Loại trừ các gói KYC_1K / KYC_2K vì được hoàn 100% về ví rút được của khách)
       const coinTopUpAgg = await tx.coinTopUp.aggregate({
         _sum: { amountVnd: true },
         where: {
           status: "PAID",
+          packageCode: { notIn: ["KYC_1K", "KYC_2K"] },
           createdAt: {
             gte: periodStart,
             lt: nextPeriodStart

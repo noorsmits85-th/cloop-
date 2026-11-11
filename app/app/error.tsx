@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 import { RefreshCw, ShieldCheck, Home } from "lucide-react";
 
 export default function AppError({
@@ -11,7 +12,7 @@ export default function AppError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("⚠️ [CLOOP App Local Error]:", error);
+    Sentry.captureException(error);
   }, [error]);
 
   const handleReload = async () => {
@@ -44,11 +45,9 @@ export default function AppError({
           </p>
         </div>
 
-        {error?.message && (
-          <div className="p-3 bg-stone-50 border border-stone-200 rounded-xl text-left max-h-24 overflow-y-auto">
-            <p className="text-[10.5px] font-mono text-stone-600 break-all leading-tight">
-              {error.message}
-            </p>
+        {error?.digest && (
+          <div className="text-[10px] text-stone-400 font-mono bg-stone-50 px-3 py-1.5 rounded-lg border border-stone-200 inline-block">
+            Mã định danh: {error.digest}
           </div>
         )}
 

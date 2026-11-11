@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import crypto from "node:crypto";
+import { verifyCronRequest } from "@/src/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -14,11 +15,9 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(req: Request) {
   const traceId = `cron_coin_exp_${crypto.randomUUID()}`;
-  const authHeader = req.headers.get("authorization");
-  const expectedSecret = process.env.CRON_SECRET;
 
-  if (!expectedSecret || authHeader !== `Bearer ${expectedSecret}`) {
-    console.warn(`⛔ [UNAUTHORIZED_CRON_ACCESS][${traceId}] Lệnh gọi Cronjob Expire Coins bị từ chối.`);
+  if (!verifyCronRequest(req)) {
+    console.warn(`[UNAUTHORIZED_CRON_ACCESS][${traceId}] Lệnh gọi Cronjob Expire Coins bị từ chối.`);
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
@@ -44,7 +43,7 @@ export async function GET(req: Request) {
       message: "Quét kiểm toán Điểm Lá hoàn tất an toàn.",
     });
   } catch (error: any) {
-    console.error(`❌ [CRON_EXPIRE_COINS_ERROR][${traceId}]:`, error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error(`[CRON_EXPIRE_COINS_ERROR][${traceId}]:`, error);
+    return NextResponse.json({ success: false, error: "Internal Server Error" }, { status: 500 });
   }
 }

@@ -7,6 +7,88 @@ import { revalidatePath } from "next/cache";
 import { generatePayOSOrderCode } from "@/src/utils/order-code";
 import { clearShopMemoryCache } from "@/app/actions/product";
 
+// 🔒 KHÓA TUẦN TỰ THEO SẢN PHẨM (PER-PRODUCT MUTEX + DB ROW LOCK)
+// Đảm bảo mọi luồng Đẩy Top (Ví tiền, Điểm Lá, VietQR Polling, Webhook) cho cùng 1 sản phẩm
+// đều đọc boostExpiresAt mới nhất và cộng dồn chính xác 100% thời hạn mà không ghi đè lên nhau.
+const productBoostMutex = new Map<string, Promise<any>>();
+
+export async function withProductBoostLock<T>(productId: string, fn: () => Promise<T>): Promise<T> {
+  const previous = productBoostMutex.get(productId) || Promise.resolve();
+  let releaseLock!: () => void;
+  const current = new Promise<void>((resolve) => {
+    releaseLock = resolve;
+  });
+  const chained = previous.then(() => current, () => current);
+  productBoostMutex.set(productId, chained);
+
+  await previous.catch(() => {});
+  try {
+    return await fn();
+  } finally {
+    releaseLock();
+    if (productBoostMutex.get(productId) === chained) {
+      productBoostMutex.delete(productId);
+    }
+  }
+}
+
+export async function lockAndExtendProductBoostInTx(
+  tx: any,
+  params: {
+    productId: string;
+    expectedOwnerId: string;
+    hours: number;
+    coins: number;
+    highlight?: boolean;
+  }
+): Promise<{ title: string; computedExpiresAt: Date; newBoostScore: number }> {
+  const { productId, expectedOwnerId, hours, coins, highlight } = params;
+
+  if (typeof tx.$executeRaw === "function") {
+    await tx.$executeRaw`SELECT id FROM "products" WHERE id = ${productId} FOR UPDATE`;
+  }
+
+  const currentProduct = await tx.product.findUnique({
+    where: { id: productId },
+    select: { id: true, userId: true, isDeleted: true, title: true, boostExpiresAt: true, boostScore: true }
+  });
+
+  if (!currentProduct || currentProduct.isDeleted || currentProduct.userId !== expectedOwnerId) {
+    throw new Error("INVALID_BOOST_TARGET");
+  }
+
+  const now = new Date();
+  const currentExpiry =
+    currentProduct.boostExpiresAt && currentProduct.boostExpiresAt > now
+      ? currentProduct.boostExpiresAt
+      : now;
+
+  const computedExpiresAt = new Date(currentExpiry.getTime() + hours * 3600 * 1000);
+
+  const updatedProd = await tx.product.update({
+    where: { id: productId },
+    data: {
+      boostExpiresAt: computedExpiresAt,
+      lastBumpedAt: now,
+      status: "ON_MARKET",
+      ...(highlight ? { isHighlighted: true } : {}),
+      boostScore: { increment: coins }
+    },
+    select: { boostScore: true }
+  });
+
+  await tx.listing.updateMany({
+    where: { productId, isDeleted: false, status: "HIDDEN" },
+    data: { status: "AVAILABLE" }
+  });
+
+  return {
+    title: currentProduct.title,
+    computedExpiresAt,
+    newBoostScore: updatedProd.boostScore
+  };
+}
+
 // ==========================================
 // 1. TÍNH GIÁ ĐẨY BÀI (HOURS -> VND & LÁ)
 // Giai đoạn đầu: 24h = 10.000đ, 1h lẻ = 500đ
@@ -15,11 +97,21 @@ export async function calculateBoostPriceAction(hours: number) {
   return calculateBoostPrice(hours);
 }
 
-function calculateBoostPrice(hours: number): { amountVnd: number; coins: number; label: string; discountVnd: number } {
-  const safeHours = Math.max(1, Math.round(hours));
+function calculateBoostPrice(hours: number): {
+  safeHours: number;
+  amountVnd: number;
+  coins: number;
+  label: string;
+  discountVnd: number;
+} {
+  const numericHours = Number(hours);
+  const safeHours = Number.isFinite(numericHours)
+    ? Math.min(720, Math.max(1, Math.round(numericHours)))
+    : 24;
 
   if (safeHours === 24) {
     return {
+      safeHours: 24,
       amountVnd: 10000,
       coins: 20,
       label: "Gói 24h (1 Ngày)",
@@ -29,6 +121,7 @@ function calculateBoostPrice(hours: number): { amountVnd: number; coins: number;
 
   if (safeHours === 72) {
     return {
+      safeHours: 72,
       amountVnd: 25000,
       coins: 50,
       label: "Gói 3 Ngày (72h)",
@@ -38,6 +131,7 @@ function calculateBoostPrice(hours: number): { amountVnd: number; coins: number;
 
   if (safeHours === 168) {
     return {
+      safeHours: 168,
       amountVnd: 50000,
       coins: 100,
       label: "Gói 7 Ngày (168h)",
@@ -50,6 +144,7 @@ function calculateBoostPrice(hours: number): { amountVnd: number; coins: number;
   const coins = safeHours; // 1 giờ = 1 Lá
 
   return {
+    safeHours,
     amountVnd,
     coins,
     label: `${safeHours} Giờ`,
@@ -60,17 +155,16 @@ function calculateBoostPrice(hours: number): { amountVnd: number; coins: number;
 // ==========================================
 // 2. LẤY DANH SÁCH BÀI ĐĂNG CỦA TÔI ĐỂ CHỌN ĐẨY
 // ==========================================
-export async function getMyClosetItemsForBoostAction(clientUserId?: string) {
+export async function getMyClosetItemsForBoostAction(_clientUserId?: string) {
   try {
     let authUser: any = null;
     try {
       authUser = await requireUser();
-    } catch {}
-
-    const userId = authUser?.id || clientUserId;
-    if (!userId) {
+    } catch {
       return { success: false, error: "Vui lòng đăng nhập" };
     }
+
+    const userId = authUser.id;
 
     const [user, rawProducts] = await Promise.all([
       prisma.user.findUnique({
@@ -130,7 +224,7 @@ export async function getMyClosetItemsForBoostAction(clientUserId?: string) {
     };
   } catch (err: any) {
     console.error("Lỗi getMyClosetItemsForBoostAction:", err);
-    return { success: false, error: err.message || "Không thể tải danh sách sản phẩm." };
+    return { success: false, error: "Không thể tải danh sách sản phẩm." };
   }
 }
 
@@ -140,7 +234,7 @@ export async function getMyClosetItemsForBoostAction(clientUserId?: string) {
 export async function createBoostPayOSPaymentAction({
   productId,
   hours,
-  clientUserId
+  clientUserId: _clientUserId
 }: {
   productId: string;
   hours: number;
@@ -154,12 +248,11 @@ export async function createBoostPayOSPaymentAction({
     let authUser: any = null;
     try {
       authUser = await requireUser();
-    } catch {}
-
-    const userId = authUser?.id || clientUserId;
-    if (!userId) {
+    } catch {
       return { success: false, error: "Vui lòng đăng nhập để tiếp tục." };
     }
+
+    const userId = authUser.id;
 
     // Kiểm tra quyền sở hữu sản phẩm
     const product = await prisma.product.findUnique({
@@ -171,14 +264,14 @@ export async function createBoostPayOSPaymentAction({
       return { success: false, error: "Bạn chỉ có thể đẩy sản phẩm trong tủ đồ của bạn." };
     }
 
-    const { amountVnd, coins, label } = calculateBoostPrice(hours);
+    const { safeHours, amountVnd, coins, label } = calculateBoostPrice(hours);
     const orderCode = generatePayOSOrderCode();
 
     // Tạo bản ghi CoinTopUp PENDING trong DB
     const topUp = await prisma.coinTopUp.create({
       data: {
         userId,
-        packageCode: `BOOST_${hours}H`,
+        packageCode: `BOOST_${safeHours}H`,
         orderCode: BigInt(orderCode),
         amountVnd,
         baseCoins: coins,
@@ -188,7 +281,7 @@ export async function createBoostPayOSPaymentAction({
         rawPayload: {
           type: "PRODUCT_BOOST",
           productId: product.id,
-          hours,
+          hours: safeHours,
           coins,
           productTitle: product.title
         }
@@ -247,7 +340,7 @@ export async function createBoostPayOSPaymentAction({
     };
   } catch (err: any) {
     console.error("Lỗi createBoostPayOSPaymentAction:", err);
-    return { success: false, error: err.message || "Không thể khởi tạo mã thanh toán." };
+    return { success: false, error: "Không thể khởi tạo mã thanh toán." };
   }
 }
 
@@ -257,7 +350,7 @@ export async function createBoostPayOSPaymentAction({
 export async function boostWithWalletBalanceAction({
   productId,
   hours,
-  clientUserId
+  clientUserId: _clientUserId
 }: {
   productId: string;
   hours: number;
@@ -271,12 +364,11 @@ export async function boostWithWalletBalanceAction({
     let authUser: any = null;
     try {
       authUser = await requireUser();
-    } catch {}
-
-    const userId = authUser?.id || clientUserId;
-    if (!userId) {
+    } catch {
       return { success: false, error: "Vui lòng đăng nhập để tiếp tục." };
     }
+
+    const userId = authUser.id;
 
     const product = await prisma.product.findUnique({
       where: { id: productId },
@@ -287,56 +379,56 @@ export async function boostWithWalletBalanceAction({
       return { success: false, error: "Bạn chỉ có thể đẩy sản phẩm trong tủ đồ của mình." };
     }
 
-    const { amountVnd, coins } = calculateBoostPrice(hours);
+    const { safeHours, amountVnd, coins } = calculateBoostPrice(hours);
 
-    const result = await prisma.$transaction(async (tx) => {
-      const user = await tx.user.findUnique({
-        where: { id: userId },
-        select: { walletBalance: true }
-      });
+    const result = await withProductBoostLock(productId, () =>
+      prisma.$transaction(async (tx) => {
+        const user = await tx.user.findUnique({
+          where: { id: userId },
+          select: { walletBalance: true }
+        });
 
-      if (!user || user.walletBalance < amountVnd) {
-        throw new Error(
-          `Số dư ví (${(user?.walletBalance || 0).toLocaleString("vi-VN")}đ) không đủ ${amountVnd.toLocaleString("vi-VN")}đ.`
-        );
-      }
+        if (!user || user.walletBalance < amountVnd) {
+          throw new Error(
+            `Số dư ví (${(user?.walletBalance || 0).toLocaleString("vi-VN")}đ) không đủ ${amountVnd.toLocaleString("vi-VN")}đ.`
+          );
+        }
 
-      const updatedUser = await tx.user.update({
-        where: { id: userId },
-        data: {
-          walletBalance: { decrement: amountVnd }
-        },
-        select: { walletBalance: true }
-      });
+        // Trừ tiền ví nguyên tử (Atomic Update chống Race Condition)
+        const chargeResult = await tx.user.updateMany({
+          where: {
+            id: userId,
+            walletBalance: { gte: amountVnd }
+          },
+          data: {
+            walletBalance: { decrement: amountVnd }
+          }
+        });
 
-      const now = new Date();
-      const currentExpiry =
-        product.boostExpiresAt && product.boostExpiresAt > now ? product.boostExpiresAt : now;
-      const newExpiresAt = new Date(currentExpiry.getTime() + hours * 3600 * 1000);
+        if (chargeResult.count === 0) {
+          throw new Error("Số dư không đủ hoặc giao dịch bị trùng lặp.");
+        }
 
-      const updatedProduct = await tx.product.update({
-        where: { id: productId },
-        data: {
-          boostExpiresAt: newExpiresAt,
-          lastBumpedAt: now,
-          status: "ON_MARKET",
-          boostScore: { increment: coins }
-        },
-        select: { boostScore: true }
-      });
+        const updatedUser = await tx.user.findUniqueOrThrow({
+          where: { id: userId },
+          select: { walletBalance: true }
+        });
 
-      await tx.listing.updateMany({
-        where: { productId, isDeleted: false, status: "HIDDEN" },
-        data: { status: "AVAILABLE" }
-      });
+        const boostOut = await lockAndExtendProductBoostInTx(tx, {
+          productId,
+          expectedOwnerId: userId,
+          hours: safeHours,
+          coins
+        });
 
-      return {
-        newWalletBalance: updatedUser.walletBalance,
-        boostExpiresAt: newExpiresAt,
-        boostScore: updatedProduct.boostScore,
-        addedCoins: coins
-      };
-    });
+        return {
+          newWalletBalance: updatedUser.walletBalance,
+          boostExpiresAt: boostOut.computedExpiresAt,
+          boostScore: boostOut.newBoostScore,
+          addedCoins: coins
+        };
+      })
+    );
 
     try {
       await clearShopMemoryCache();
@@ -367,6 +459,13 @@ export async function boostWithWalletBalanceAction({
 // ==========================================
 export async function checkBoostPaymentStatusAction(orderCode: number) {
   try {
+    let authUser: any = null;
+    try {
+      authUser = await requireUser();
+    } catch {
+      return { success: false, status: "UNAUTHORIZED" };
+    }
+
     const topUp = await prisma.coinTopUp.findUnique({
       where: { orderCode: BigInt(orderCode) },
       include: { user: { select: { id: true, cloopCoins: true } } }
@@ -376,19 +475,34 @@ export async function checkBoostPaymentStatusAction(orderCode: number) {
       return { success: false, status: "NOT_FOUND" };
     }
 
+    if (topUp.userId !== authUser.id && authUser.role !== "ADMIN") {
+      return { success: false, status: "FORBIDDEN" };
+    }
+
     const payload = (topUp.rawPayload as any) || {};
-    const productId = payload.productId;
-    const hours = Number(payload.hours || 24);
-    const coins = Number(payload.coins || (hours === 24 ? 20 : hours === 72 ? 50 : hours === 168 ? 100 : hours));
+    const isBoostFlow =
+      (typeof topUp.packageCode === "string" && topUp.packageCode.startsWith("BOOST_")) ||
+      payload.type === "PRODUCT_BOOST";
+    const productId = typeof payload.productId === "string" ? payload.productId.trim() : "";
+
+    // 🛡️ CHỐT CHẶN REVERSE CROSS-FLOW EXPLOIT:
+    // Bắt buộc bản ghi phải là gói Đẩy Top (BOOST_* / PRODUCT_BOOST) và có productId hợp lệ.
+    // Tuyệt đối không tiêu thụ (đánh dấu PAID) bản ghi nạp Lá thường (PACK_*) hoặc KYC_* tại đây!
+    if (!isBoostFlow || !productId) {
+      return { success: false, status: "INVALID_FLOW" };
+    }
+
+    const { safeHours: hours, coins: calculatedCoins } = calculateBoostPrice(Number(payload.hours || 24));
+    const coins = Number.isFinite(Number(payload.coins)) && Number(payload.coins) > 0
+      ? Math.round(Number(payload.coins))
+      : calculatedCoins;
 
     // Nếu đã PAID từ trước (do Webhook xử lý)
     if (topUp.status === "PAID") {
-      const product = productId
-        ? await prisma.product.findUnique({
-            where: { id: productId },
-            select: { boostExpiresAt: true, title: true, boostScore: true }
-          })
-        : null;
+      const product = await prisma.product.findUnique({
+        where: { id: productId },
+        select: { boostExpiresAt: true, title: true, boostScore: true }
+      });
 
       return {
         success: true,
@@ -404,79 +518,72 @@ export async function checkBoostPaymentStatusAction(orderCode: number) {
     if (topUp.status === "PENDING" && payos) {
       try {
         const payosInfo = await payos.paymentRequests.get(orderCode);
+        const expectedAmount = topUp.amountVnd;
         if (
           payosInfo &&
-          (payosInfo.status === "PAID" ||
-            (payosInfo.amountPaid && payosInfo.amountPaid >= topUp.amountVnd))
+          payosInfo.status === "PAID" &&
+          Number(payosInfo.amountPaid ?? expectedAmount) >= expectedAmount
         ) {
-          // Thực hiện kích hoạt nguyên tử qua Transaction
-          const txResult = await prisma.$transaction(async (tx) => {
-            // Chốt chặn nguyên tử tránh race condition
-            const updateCount = await tx.coinTopUp.updateMany({
-              where: { id: topUp.id, status: "PENDING" },
-              data: { status: "PAID", paidAt: new Date() }
-            });
-
-            if (updateCount.count === 0) {
-              return null; // Luồng khác đã xử lý
-            }
-
-            let computedExpiresAt = new Date();
-            let newBoostScore = 0;
-            if (productId) {
-              const currentProduct = await tx.product.findUnique({
-                where: { id: productId },
-                select: { id: true, title: true, boostExpiresAt: true, boostScore: true }
+          // Thực hiện kích hoạt nguyên tử qua Khóa Sản Phẩm + Transaction
+          const txResult = await withProductBoostLock(productId, () =>
+            prisma.$transaction(async (tx) => {
+              // Khóa sản phẩm, kiểm tra chủ sở hữu & cộng dồn boostExpiresAt mới nhất
+              const boostOut = await lockAndExtendProductBoostInTx(tx, {
+                productId,
+                expectedOwnerId: topUp.userId,
+                hours,
+                coins
               });
 
-              if (currentProduct) {
-                const now = new Date();
-                const currentExpiry =
-                  currentProduct.boostExpiresAt && currentProduct.boostExpiresAt > now
-                    ? currentProduct.boostExpiresAt
-                    : now;
+              // Chốt chặn nguyên tử tránh race condition cùng 1 mã đơn
+              const updateCount = await tx.coinTopUp.updateMany({
+                where: { id: topUp.id, status: "PENDING" },
+                data: { status: "PAID", paidAt: new Date() }
+              });
 
-                computedExpiresAt = new Date(currentExpiry.getTime() + hours * 3600 * 1000);
-
-                const updatedProd = await tx.product.update({
-                  where: { id: productId },
-                  data: {
-                    boostExpiresAt: computedExpiresAt,
-                    lastBumpedAt: now,
-                    status: "ON_MARKET",
-                    boostScore: { increment: coins }
-                  },
-                  select: { boostScore: true }
-                });
-                newBoostScore = updatedProd.boostScore;
-
-                await tx.listing.updateMany({
-                  where: { productId, isDeleted: false, status: "HIDDEN" },
-                  data: { status: "AVAILABLE" }
-                });
-
-                await tx.coinLedgerEntry.create({
-                  data: {
-                    userId: topUp.userId,
-                    topUpId: topUp.id,
-                    type: "BOOST_SPEND",
-                    amount: 0,
-                    balanceAfter: topUp.user?.cloopCoins || 0,
-                    description: `Đẩy Top bài viết "${currentProduct.title}" (+${hours}h, +${coins} Lá đua Top qua VietQR)`,
-                    metadata: {
-                      productId,
-                      hours,
-                      coins,
-                      orderCode,
-                      amountVnd: topUp.amountVnd
-                    }
-                  }
-                });
+              if (updateCount.count === 0) {
+                throw new Error("ALREADY_CONSUMED_CONCURRENTLY");
               }
-            }
 
-            return { computedExpiresAt, newBoostScore };
-          });
+              await tx.coinLedgerEntry.create({
+                data: {
+                  userId: topUp.userId,
+                  topUpId: topUp.id,
+                  type: "TOP_UP_IN",
+                  amount: coins,
+                  balanceAfter: (topUp.user?.cloopCoins || 0) + coins,
+                  description: `Nạp trực tiếp VietQR cho gói Đẩy Top (${topUp.packageCode})`,
+                  metadata: {
+                    productId,
+                    hours,
+                    coins,
+                    orderCode,
+                    amountVnd: topUp.amountVnd
+                  }
+                }
+              });
+
+              await tx.coinLedgerEntry.create({
+                data: {
+                  userId: topUp.userId,
+                  topUpId: topUp.id,
+                  type: "BOOST_SPEND",
+                  amount: -coins,
+                  balanceAfter: topUp.user?.cloopCoins || 0,
+                  description: `Đẩy Top bài viết "${boostOut.title}" (+${hours}h, +${coins} Lá đua Top qua VietQR)`,
+                  metadata: {
+                    productId,
+                    hours,
+                    coins,
+                    orderCode,
+                    amountVnd: topUp.amountVnd
+                  }
+                }
+              });
+
+              return boostOut;
+            })
+          );
 
           try {
             await clearShopMemoryCache();
@@ -516,7 +623,7 @@ export async function checkBoostPaymentStatusAction(orderCode: number) {
 export async function boostWithCoinsAction({
   productId,
   hours,
-  clientUserId
+  clientUserId: _clientUserId
 }: {
   productId: string;
   hours: number;
@@ -530,12 +637,11 @@ export async function boostWithCoinsAction({
     let authUser: any = null;
     try {
       authUser = await requireUser();
-    } catch {}
-
-    const userId = authUser?.id || clientUserId;
-    if (!userId) {
+    } catch {
       return { success: false, error: "Vui lòng đăng nhập để sử dụng tính năng." };
     }
+
+    const userId = authUser.id;
 
     const product = await prisma.product.findUnique({
       where: { id: productId },
@@ -546,69 +652,69 @@ export async function boostWithCoinsAction({
       return { success: false, error: "Bạn chỉ có thể đẩy sản phẩm trong tủ đồ của chính mình." };
     }
 
-    const { coins: requiredCoins } = calculateBoostPrice(hours);
+    const { safeHours, coins: requiredCoins } = calculateBoostPrice(hours);
 
-    const result = await prisma.$transaction(async (tx) => {
-      const user = await tx.user.findUnique({
-        where: { id: userId },
-        select: { cloopCoins: true }
-      });
+    const result = await withProductBoostLock(productId, () =>
+      prisma.$transaction(async (tx) => {
+        const user = await tx.user.findUnique({
+          where: { id: userId },
+          select: { cloopCoins: true }
+        });
 
-      if (!user || user.cloopCoins < requiredCoins) {
-        throw new Error(`Bạn cần ${requiredCoins} Lá. Số dư hiện tại: ${user?.cloopCoins || 0} Lá.`);
-      }
-
-      const updatedUser = await tx.user.update({
-        where: { id: userId },
-        data: {
-          cloopCoins: { decrement: requiredCoins }
-        },
-        select: { cloopCoins: true }
-      });
-
-      const now = new Date();
-      const currentExpiry =
-        product.boostExpiresAt && product.boostExpiresAt > now ? product.boostExpiresAt : now;
-      const newExpiresAt = new Date(currentExpiry.getTime() + hours * 3600 * 1000);
-
-      const updatedProduct = await tx.product.update({
-        where: { id: productId },
-        data: {
-          boostExpiresAt: newExpiresAt,
-          lastBumpedAt: now,
-          status: "ON_MARKET",
-          boostScore: { increment: requiredCoins }
-        },
-        select: { boostScore: true }
-      });
-
-      await tx.listing.updateMany({
-        where: { productId, isDeleted: false, status: "HIDDEN" },
-        data: { status: "AVAILABLE" }
-      });
-
-      await tx.coinLedgerEntry.create({
-        data: {
-          userId,
-          type: "BOOST_SPEND",
-          amount: -requiredCoins,
-          balanceAfter: updatedUser.cloopCoins,
-          description: `Đẩy Top sản phẩm "${product.title}" (${hours} giờ, +${requiredCoins} Lá tích lũy)`,
-          metadata: {
-            productId: product.id,
-            hours,
-            costCoins: requiredCoins
-          }
+        if (!user || user.cloopCoins < requiredCoins) {
+          throw new Error(`Bạn cần ${requiredCoins} Lá. Số dư hiện tại: ${user?.cloopCoins || 0} Lá.`);
         }
-      });
 
-      return {
-        newBalance: updatedUser.cloopCoins,
-        boostExpiresAt: newExpiresAt,
-        boostScore: updatedProduct.boostScore,
-        addedCoins: requiredCoins
-      };
-    });
+        // 🛡️ CHỐNG RACE CONDITION DOUBLE-SPEND: Trừ Lá nguyên tử có điều kiện cloopCoins >= requiredCoins
+        const coinCharge = await tx.user.updateMany({
+          where: {
+            id: userId,
+            cloopCoins: { gte: requiredCoins }
+          },
+          data: {
+            cloopCoins: { decrement: requiredCoins }
+          }
+        });
+
+        if (coinCharge.count === 0) {
+          throw new Error("Số dư Lá không đủ hoặc giao dịch bị trùng lặp.");
+        }
+
+        const updatedUser = await tx.user.findUniqueOrThrow({
+          where: { id: userId },
+          select: { cloopCoins: true }
+        });
+
+        const boostOut = await lockAndExtendProductBoostInTx(tx, {
+          productId,
+          expectedOwnerId: userId,
+          hours: safeHours,
+          coins: requiredCoins
+        });
+
+        await tx.coinLedgerEntry.create({
+          data: {
+            userId,
+            type: "BOOST_SPEND",
+            amount: -requiredCoins,
+            balanceAfter: updatedUser.cloopCoins,
+            description: `Đẩy Top sản phẩm "${boostOut.title}" (${safeHours} giờ, +${requiredCoins} Lá tích lũy)`,
+            metadata: {
+              productId,
+              hours: safeHours,
+              costCoins: requiredCoins
+            }
+          }
+        });
+
+        return {
+          newBalance: updatedUser.cloopCoins,
+          boostExpiresAt: boostOut.computedExpiresAt,
+          boostScore: boostOut.newBoostScore,
+          addedCoins: requiredCoins
+        };
+      })
+    );
 
     try {
       await clearShopMemoryCache();
@@ -638,11 +744,11 @@ export async function boostWithCoinsAction({
 // ==========================================
 export async function purchaseBoostPackage(
   productId: string,
-  requestedUserId?: string,
+  _requestedUserId?: string,
   packageType: "BOOST" | "HIGHLIGHT" = "BOOST"
 ) {
   if (packageType === "BOOST") {
-    return boostWithCoinsAction({ productId, hours: 24, clientUserId: requestedUserId });
+    return boostWithCoinsAction({ productId, hours: 24 });
   }
 
   // Highlight hào quang vĩnh viễn (300 Lá)
@@ -650,9 +756,18 @@ export async function purchaseBoostPackage(
     let authUser: any = null;
     try {
       authUser = await requireUser();
-    } catch {}
-    const userId = authUser?.id || requestedUserId;
-    if (!userId) return { success: false, error: "Vui lòng đăng nhập" };
+    } catch {
+      return { success: false, error: "Vui lòng đăng nhập" };
+    }
+    const userId = authUser.id;
+
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true, userId: true }
+    });
+    if (!product || product.userId !== userId) {
+      return { success: false, error: "Bạn chỉ có thể kích hoạt Hào Quang cho sản phẩm của chính mình." };
+    }
 
     const cost = 300;
     const result = await prisma.$transaction(async (tx) => {
@@ -664,9 +779,15 @@ export async function purchaseBoostPackage(
         throw new Error(`Cần ${cost} Lá để kích hoạt.`);
       }
 
-      const updatedUser = await tx.user.update({
+      const coinCharge = await tx.user.updateMany({
+        where: { id: userId, cloopCoins: { gte: cost } },
+        data: { cloopCoins: { decrement: cost } }
+      });
+      if (coinCharge.count === 0) {
+        throw new Error(`Cần ${cost} Lá để kích hoạt hoặc giao dịch bị trùng lặp.`);
+      }
+      const updatedUser = await tx.user.findUniqueOrThrow({
         where: { id: userId },
-        data: { cloopCoins: { decrement: cost } },
         select: { cloopCoins: true }
       });
 
@@ -695,6 +816,6 @@ export async function purchaseBoostPackage(
 
     return { success: true, newBalance: result, message: "Đã bật Hào Quang thành công!" };
   } catch (err: any) {
-    return { success: false, error: err.message };
+    return { success: false, error: err.message || "Không thể bật Hào Quang." };
   }
 }

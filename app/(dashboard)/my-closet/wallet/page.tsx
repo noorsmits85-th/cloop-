@@ -40,25 +40,17 @@ export default async function WalletPage({
 
   const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-  // Tự động kiểm tra SLA và hoàn cọc tức thì cho user ngay khi mở xem Ví
-  try {
-    const { evaluateEscrowSlaForOrders } = await import("@/lib/escrow-sla-checker");
-    await evaluateEscrowSlaForOrders({ userId, limit: 10 });
-  } catch (slaErr) {
-    console.warn("Wallet Escrow SLA trigger notice:", slaErr);
-  }
-
+  // Tự động kiểm tra SLA ngầm không chặn tốc độ mở trang Ví
+  import("@/lib/escrow-sla-checker")
+    .then(({ evaluateEscrowSlaForOrders }) =>
+      evaluateEscrowSlaForOrders({ userId, limit: 10 }).catch(() => {})
+    )
+    .catch(() => {});
 
   try {
-    // ⚡ TỐI ƯU SIÊU TỐC: Dùng userAuth sẵn có, gộp product count và tinh gọn invoice query
-    // Lấy số dư ví cập nhật mới nhất từ DB sau khi vừa xử lý SLA tự động
-    const freshUser = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { walletBalance: true, cloopCoins: true, name: true }
-    });
-
+    // Tối ưu siêu tốc: Dùng userAuth đã được cache sẵn từ requireUser(), không gọi lại prisma.user.findUnique tuần tự
     userProfile = {
-      walletBalance: freshUser?.walletBalance ?? userAuth.walletBalance ?? 0,
+      walletBalance: userAuth.walletBalance ?? 0,
       cloopCoins: userAuth.cloopCoins ?? 100,
       name: userAuth.name || ""
     };
@@ -113,6 +105,16 @@ export default async function WalletPage({
           platformFee: true,
           createdAt: true,
           updatedAt: true,
+          ledgerEntries: {
+            where: {
+              type: "WITHDRAWAL_HOLD",
+              status: "COMPLETED",
+            },
+            select: {
+              amount: true,
+              description: true,
+            },
+          },
           rental: {
             select: {
               id: true,
@@ -202,7 +204,7 @@ export default async function WalletPage({
       amount: -w.amount,
       desc: `Lệnh rút tiền về ${w.bankName || "Ngân hàng"} (${w.bankAccountNumber || "STK"})`,
       date: w.createdAt?.toISOString ? w.createdAt.toISOString() : new Date().toISOString(),
-      status: w.status === "COMPLETED" ? "SUCCESS" : w.status === "PENDING" ? "PENDING" : "FAILED"
+      status: (w.status === "COMPLETED" || w.status === "APPROVED") ? "SUCCESS" : w.status === "PENDING" ? "PENDING" : "FAILED"
     });
   });
 
@@ -213,13 +215,29 @@ export default async function WalletPage({
     const itemTitle = inv.rental?.product?.title || "Trang phục";
     const orderShortId = inv.rental?.id ? inv.rental.id.slice(0, 8).toUpperCase() : "";
 
-    // 🔴 Nếu tôi là Khách thuê (Renter) -> Tiền ra thanh toán tiền thuê + cọc qua VietQR PayOS
+    // 🔴 Nếu tôi là Khách thuê (Renter) -> Tiền ra thanh toán tiền thuê + cọc (qua Số dư Ví và/hoặc VietQR PayOS)
     if (isRenter) {
+      const holdEntries = (inv as any).ledgerEntries || [];
+      const walletUsed = holdEntries.reduce(
+        (sum: number, e: any) =>
+          (e.description || "").startsWith("[WALLET_ROLLOVER_OUT]")
+            ? sum + Math.abs(Number(e.amount || 0))
+            : sum,
+        0
+      );
+      const qrPaid = Math.max(0, Number(inv.amount || 0) - walletUsed);
+      const paymentSourceLabel =
+        walletUsed > 0 && qrPaid === 0
+          ? `Luân chuyển 100% Số dư Ví đơn #${orderShortId} ("${itemTitle}")`
+          : walletUsed > 0
+          ? `Thanh toán đơn #${orderShortId} (Ví: ${walletUsed.toLocaleString("vi-VN")}đ + QR: ${qrPaid.toLocaleString("vi-VN")}đ - "${itemTitle}")`
+          : `Thanh toán thuê & cọc đơn #${orderShortId} ("${itemTitle}")`;
+
       vndTransactions.push({
         id: `pay-${inv.id}`,
         type: "EXPENSE",
         amount: -inv.amount,
-        desc: `Thanh toán thuê & cọc đơn #${orderShortId} ("${itemTitle}")`,
+        desc: paymentSourceLabel,
         date: inv.createdAt?.toISOString ? inv.createdAt.toISOString() : new Date().toISOString(),
         status: "SUCCESS"
       });

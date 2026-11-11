@@ -1,0 +1,26 @@
+[
+  {
+    "relname": "blog_posts",
+    "owner": "postgres",
+    "reloptions": [
+      "security_invoker=true",
+      "security_barrier=true"
+    ],
+    "definition": " SELECT id,\n    title,\n    content,\n    cover_image,\n    \"productId\",\n    \"userId\",\n    status,\n    \"isPinned\",\n    \"createdAt\",\n    \"updatedAt\",\n    \"isDeleted\"\n   FROM \"BlogPost\"\n  WHERE \"isDeleted\" = false AND status = 'PUBLISHED'::text;",
+    "anon_insert": false,
+    "anon_update": false,
+    "authenticated_update": false
+  },
+  {
+    "relname": "product_images",
+    "owner": "postgres",
+    "reloptions": [
+      "security_invoker=true",
+      "security_barrier=true"
+    ],
+    "definition": " SELECT id,\n    \"productId\",\n    url,\n    NULL::text AS \"storageProvider\",\n    NULL::text AS \"publicId\",\n    width,\n    height,\n    NULL::integer AS bytes,\n    format,\n    \"isPrimary\",\n    \"sortOrder\",\n    \"createdAt\"\n   FROM \"ProductImage\" pi\n  WHERE (EXISTS ( SELECT 1\n           FROM products p\n          WHERE p.id = pi.\"productId\" AND p.\"isDeleted\" = false AND (p.status = ANY (ARRAY['ON_MARKET'::\"ProductStatus\", 'IN_CLOSET'::\"ProductStatus\"]))));",
+    "anon_insert": false,
+    "anon_update": false,
+    "authenticated_update": false
+  }
+]

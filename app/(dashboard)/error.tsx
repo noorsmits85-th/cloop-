@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
-import { AlertTriangle, RefreshCw, Loader2, Shirt } from "lucide-react";
-import { fastLoginAction } from "@/app/(storefront)/login/actions";
-import { toast } from "sonner";
+import * as Sentry from "@sentry/nextjs";
+import { AlertTriangle, RefreshCw, Shirt, LogIn } from "lucide-react";
 
 export default function DashboardError({
   error,
@@ -13,28 +12,9 @@ export default function DashboardError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
-
   useEffect(() => {
-    console.error("⚠️ [CLOOP Dashboard Error Boundary]:", error);
+    Sentry.captureException(error);
   }, [error]);
-
-  const handleQuickReauth = async () => {
-    setIsLoggingIn(true);
-    try {
-      const res = await fastLoginAction({ redirectTo: window.location.pathname || '/my-closet' });
-      if (res?.error) {
-        toast.error("Lỗi đăng nhập: " + res.error);
-      } else {
-        toast.success("Khôi phục phiên thành công!");
-        window.location.reload();
-      }
-    } catch (err: any) {
-      toast.error(err?.message || "Lỗi khôi phục phiên");
-    } finally {
-      setIsLoggingIn(false);
-    }
-  };
 
   return (
     <div className="min-h-[50vh] flex items-center justify-center p-4 font-ui text-stone-800">
@@ -48,7 +28,7 @@ export default function DashboardError({
             Tạm thời gián đoạn kết nối Tủ đồ
           </h2>
           <p className="text-xs text-stone-500 leading-relaxed">
-            Dữ liệu hoặc phiên làm việc của mục này đang được đồng bộ. Bấm thử lại hoặc khôi phục phiên 1-chạm để vào ngay.
+            Dữ liệu hoặc phiên làm việc của mục này đang được đồng bộ. Vui lòng bấm thử lại hoặc đăng nhập lại để tiếp tục.
           </p>
         </div>
 
@@ -67,14 +47,13 @@ export default function DashboardError({
             <RefreshCw size={15} />
             Thử lại
           </button>
-          <button
-            type="button"
-            disabled={isLoggingIn}
-            onClick={handleQuickReauth}
+          <Link
+            href="/login"
             className="w-full flex items-center justify-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 py-3 px-4 rounded-xl text-xs font-bold transition cursor-pointer"
           >
-            {isLoggingIn ? <Loader2 size={15} className="animate-spin" /> : <span>Đăng nhập lại 1-chạm</span>}
-          </button>
+            <LogIn size={15} />
+            <span>Đăng nhập lại</span>
+          </Link>
         </div>
 
         <div className="pt-2 border-t border-stone-100">

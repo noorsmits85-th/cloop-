@@ -1,4 +1,5 @@
-import { createClient } from "@/src/utils/supabase/server";
+import { headers } from "next/headers";
+import { getOptionalAuthUser } from "@/src/lib/auth";
 import { 
   Fraunces, 
   Be_Vietnam_Pro, 
@@ -13,7 +14,7 @@ import ClientLayout from "./components/ClientLayout";
 import CrispChat from "./components/CrispChat";
 import { Toaster } from "sonner";
 
-// 🌿 1. Font Tiêu Đề Lớn & Logo: Fraunces (Chuẩn sang trọng 100% như mẫu Ví CLOOP)
+// 1. Font Tiêu Đề Lớn & Logo: Fraunces
 const fraunces = Fraunces({
   subsets: ["latin", "vietnamese"],
   display: "swap",
@@ -21,7 +22,7 @@ const fraunces = Fraunces({
   weight: ["400", "500", "600", "700", "800", "900"],
 });
 
-// 🌿 2. Font Nội Dung & Giao Diện: Be Vietnam Pro (Hiện đại, tối ưu tiếng Việt có dấu)
+// 2. Font Nội Dung & Giao Diện: Be Vietnam Pro
 const beVietnamPro = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
   display: "swap",
@@ -29,7 +30,7 @@ const beVietnamPro = Be_Vietnam_Pro({
   weight: ["300", "400", "500", "600", "700", "800"],
 });
 
-// 🌿 3. Font Chữ Viết Tay Nghệ Thuật (Scrapbook / Lookbook): Dancing Script
+// 3. Font Chữ Viết Tay Nghệ Thuật (Scrapbook / Lookbook): Dancing Script
 const dancingScript = Dancing_Script({
   subsets: ["latin", "vietnamese"],
   display: "swap",
@@ -37,7 +38,7 @@ const dancingScript = Dancing_Script({
   weight: ["500", "600", "700"],
 });
 
-// 🌿 4. Font Ghi Chú Sổ Tay Lưu Bút: Caveat
+// 4. Font Ghi Chú Sổ Tay Lưu Bút: Caveat
 const caveat = Caveat({
   subsets: ["latin", "latin-ext"],
   display: "swap",
@@ -45,7 +46,7 @@ const caveat = Caveat({
   weight: ["500", "600", "700"],
 });
 
-// 🌿 5. Font Cổ Điển Tạp Chí: Cormorant Garamond
+// 5. Font Cổ Điển Tạp Chí: Cormorant Garamond
 const cormorant = Cormorant_Garamond({
   subsets: ["latin", "latin-ext"],
   display: "swap",
@@ -54,12 +55,10 @@ const cormorant = Cormorant_Garamond({
 });
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   let initialUser = null;
   try {
-    const supabase = await createClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    const user = session?.user;
-    
+    const user = await getOptionalAuthUser();
     if (user) {
       initialUser = {
         id: user.id,
@@ -84,6 +83,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <meta name="apple-mobile-web-app-title" content="CLOOP" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
         <script
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `
               if (typeof window !== 'undefined') {

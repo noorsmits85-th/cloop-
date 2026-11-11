@@ -256,11 +256,24 @@ export function DigitalEvidenceTimeline({
                           <FileText size={12} className="text-emerald-700" /> Tệp chứng cứ số đính kèm:
                         </span>
                         <div className="flex flex-wrap gap-3">
-                          {ev.mediaUrls.map((url, i) => (
-                            <div key={i} className="relative w-24 h-24 rounded-xl overflow-hidden border border-stone-200 bg-stone-100 shrink-0">
-                              <img src={url} alt={`Evidence file ${i + 1}`} className="w-full h-full object-cover" />
-                            </div>
-                          ))}
+                          {ev.mediaUrls.map((url, i) => {
+                            const isVid =
+                              url.includes("ext=.mp4") ||
+                              url.includes(".mp4") ||
+                              url.includes(".mov") ||
+                              url.includes(".webm") ||
+                              url.includes("video%2F") ||
+                              url.includes("#video");
+                            return (
+                              <div key={i} className="relative w-32 h-24 rounded-xl overflow-hidden border border-stone-200 bg-stone-900 shrink-0">
+                                {isVid ? (
+                                  <video src={url} controls preload="metadata" className="w-full h-full object-contain" />
+                                ) : (
+                                  <img src={url} alt={`Evidence file ${i + 1}`} className="w-full h-full object-cover" />
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     ) : isFinalStage ? (

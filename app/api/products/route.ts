@@ -1,51 +1,92 @@
+import crypto from "node:crypto";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { supabaseAdmin } from "@/src/lib/supabase";
 import { requireUser } from "@/src/lib/auth";
 
+const createProductPayloadSchema = z.object({
+  title: z.string().trim().min(2, "Tên sản phẩm quá ngắn").max(160),
+  description: z.string().max(4000).optional().nullable(),
+  size: z.string().trim().min(1).max(32),
+  bust: z.coerce.number().int().min(30).max(200).optional().nullable(),
+  waist: z.coerce.number().int().min(30).max(200).optional().nullable(),
+  hips: z.coerce.number().int().min(30).max(200).optional().nullable(),
+  gender: z.enum(["FEMALE", "MALE", "UNISEX"]).optional().default("UNISEX"),
+  condition: z
+    .enum(["NEW_WITH_TAGS", "LIKE_NEW", "GOOD", "FAIR"])
+    .optional()
+    .default("LIKE_NEW"),
+  category: z.string().trim().min(1).max(100),
+  brand: z.string().max(100).optional().nullable(),
+  color: z.string().max(80).optional().nullable(),
+  material: z.string().max(100).optional().nullable(),
+  style: z.string().max(100).optional().nullable(),
+  occasion: z.string().max(100).optional().nullable(),
+  season: z.string().max(80).optional().nullable(),
+  province: z.string().trim().min(1).max(100),
+  districtId: z.coerce.number().int().positive().optional().nullable(),
+  wardCode: z.string().max(32).optional().nullable(),
+  specificAddress: z.string().max(300).optional().default(""),
+  latitude: z.coerce.number().min(-90).max(90).optional().nullable(),
+  longitude: z.coerce.number().min(-180).max(180).optional().nullable(),
+  status: z.enum(["IN_CLOSET", "LISTED"]).optional().default("IN_CLOSET"),
+});
+
 export async function POST(request: Request) {
   try {
+    let user;
+    try {
+      user = await requireUser();
+    } catch {
+      return NextResponse.json(
+        { success: false, message: "Vui lòng đăng nhập để đăng sản phẩm." },
+        { status: 401 }
+      );
+    }
+
     if (!supabaseAdmin) {
       throw new Error("Missing Supabase Admin Key");
     }
 
     const adminClient = supabaseAdmin as any;
-    const user = await requireUser();
-    const body = await request.json();
-    const { client_upload_id, ...productData } = body;
+    const rawBody = await request.json();
 
-    productData.userId = user.id;
-
-    if (client_upload_id) {
-      const { data: existingProduct } = await adminClient
-        .from("products")
-        .select("id")
-        .eq("id", client_upload_id)
-        .eq("userId", user.id)
-        .maybeSingle();
-
-      if (existingProduct) {
-        return NextResponse.json({ success: true, outfitId: existingProduct.id });
-      }
+    const parsed = createProductPayloadSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: parsed.error.issues[0]?.message || "Dữ liệu sản phẩm không hợp lệ.",
+        },
+        { status: 400 }
+      );
     }
 
-    // Visual embeddings are generated asynchronously into product_image_embeddings.
+    const safeProductData = parsed.data;
+    const productId = crypto.randomUUID();
+
+    // Server-side assignment of id and userId; privileged fields (boostScore, boostExpiresAt, isHighlighted, likeCount) are never accepted from client.
     const { data, error } = await adminClient
       .from("products")
       .insert([
         {
-          id: client_upload_id,
-          ...productData,
+          id: productId,
+          userId: user.id,
+          ...safeProductData,
         },
       ])
-      .select();
+      .select("id");
 
     if (error) throw error;
 
-    return NextResponse.json({ success: true, outfitId: data[0].id });
-  } catch (error: any) {
+    return NextResponse.json({ success: true, outfitId: data?.[0]?.id || productId });
+  } catch (error: unknown) {
     // TODO: integrate Sentry/LogRocket tracking and return only safe error messages to users.
-    console.error("Product creation API error:", error?.message || error);
-    return NextResponse.json({ success: false, message: "Khong the luu san pham." }, { status: 500 });
+    console.error("Product creation API error:", error);
+    return NextResponse.json(
+      { success: false, message: "Không thể lưu sản phẩm lúc này." },
+      { status: 500 }
+    );
   }
 }
 
@@ -57,8 +98,8 @@ export async function GET(request: Request) {
     const search = searchParams.get("search");
     const size = searchParams.get("size");
     const material = searchParams.get("material");
-    const page = parseInt(searchParams.get("page") || "1", 10);
-    const limit = parseInt(searchParams.get("limit") || "24", 10);
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "24", 10) || 24));
 
     const { getShopProducts } = await import("@/src/lib/queries/shop");
     const result = await getShopProducts({
@@ -69,13 +110,16 @@ export async function GET(request: Request) {
       size: size || undefined,
       material: material || undefined,
       page,
-      limit
+      limit,
     });
 
     return NextResponse.json({ success: true, ...result });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    // TODO: integrate Sentry/LogRocket tracking for GET /api/products errors
     console.error("GET /api/products error:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: "Không thể tải danh sách sản phẩm lúc này." },
+      { status: 500 }
+    );
   }
 }
-

@@ -390,11 +390,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
               
               <div className="text-center space-y-1">
                 <h3 className="font-heading text-xl font-bold uppercase tracking-wide text-[#183A2D]">
-                  {authMode === 'login' ? 'Đăng Nhập CLOOP' : authMode === 'register' ? 'Đăng Ký Tài Khoản Mới' : authMode === 'forgot' ? 'Quên Mật Khẩu' : 'Nhập Mã Khôi Phục'}
+                  {authMode === 'login' ? 'Đăng Nhập' : authMode === 'register' ? 'Đăng Ký' : authMode === 'forgot' ? 'Quên Mật Khẩu' : 'Nhập Mã Khôi Phục'}
                 </h3>
-                <p className="text-xs text-stone-500 font-normal leading-relaxed max-w-xs mx-auto">
-                  {authMode === 'login' ? 'Chào mừng bạn quay trở lại với thời trang tuần hoàn.' : authMode === 'register' ? 'Tạo tài khoản miễn phí để đăng đồ, thuê đồ và tích lũy điểm xanh.' : authMode === 'forgot' ? 'Nhập email để nhận mã OTP khôi phục mật khẩu.' : `Mã bảo mật đã được gửi tới ${resetEmail}. Nhập mã và mật khẩu mới.`}
-                </p>
               </div>
 
               {/* 🟢 TAB CHUYỂN ĐỔI RÕ RÀNG: ĐĂNG NHẬP / ĐĂNG KÝ */}
@@ -531,7 +528,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                       // Nếu bị lỗi (đặc biệt là Invalid credentials do unconfirmed email), tự động mở khóa qua API
                       if (signInError) {
                         try {
-                          const unlockRes = await fetch("/api/auth/unlock-unconfirmed", {
+                          const unlockRes = await fetch("", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({ email: cleanEmail })
@@ -619,7 +616,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
                       // Tự động kích hoạt email_confirmed_at và đồng bộ Prisma
                       try {
-                        await fetch("/api/auth/unlock-unconfirmed", {
+                        await fetch("", {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({ email: cleanEmail, name, userId: signUpData?.user?.id })
@@ -762,37 +759,13 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                 </button>
               </form> 
 
-              <div className="flex flex-col gap-2 mt-4 text-[11px] font-medium text-gray-500">
+              <div className="flex flex-col gap-2 mt-3 text-[11px] font-medium text-gray-500">
                 {authMode === 'login' && (
-                  <>
-                    {/* Hộp nổi bật dành riêng cho người chưa có tài khoản */}
-                    <div className="p-3 rounded-2xl bg-amber-50/90 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 text-center space-y-1.5 my-1">
-                      <p className="text-[11px] text-amber-900 dark:text-amber-200 font-semibold">Chưa có tài khoản CLOOP?</p>
-                      <button 
-                        type="button" 
-                        onClick={() => switchAuthMode('register')} 
-                        className="w-full py-2.5 px-3 bg-white dark:bg-stone-800 hover:bg-stone-50 border border-amber-300 dark:border-amber-700/80 rounded-xl text-xs font-bold text-[#183A2D] dark:text-emerald-300 shadow-2xs transition flex items-center justify-center gap-1.5 cursor-pointer"
-                      >
-                        <span>Tạo tài khoản mới ngay (chỉ mất 10s)</span>
-                      </button>
-                    </div>
-
-                    <button onClick={() => switchAuthMode('forgot')} className="hover:text-[#183A2D] transition hover:underline cursor-pointer py-1">Quên mật khẩu?</button>
-                  </>
+                  <button onClick={() => switchAuthMode('forgot')} className="hover:text-[#183A2D] transition hover:underline cursor-pointer py-1">
+                    Quên mật khẩu?
+                  </button>
                 )}
 
-                {authMode === 'register' && (
-                  <div className="p-3 rounded-2xl bg-emerald-50/90 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 text-center space-y-1.5 my-1">
-                    <p className="text-[11px] text-emerald-900 dark:text-emerald-200 font-semibold">Đã có tài khoản từ trước?</p>
-                    <button 
-                      type="button" 
-                      onClick={() => switchAuthMode('login')} 
-                      className="w-full py-2.5 px-3 bg-white dark:bg-stone-800 hover:bg-stone-50 border border-emerald-300 dark:border-emerald-700/80 rounded-xl text-xs font-bold text-[#183A2D] dark:text-emerald-300 shadow-2xs transition flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <span>Bấm vào đây để Đăng Nhập</span>
-                    </button>
-                  </div>
-                )}
                 {(authMode === 'forgot' || authMode === 'forgot_otp') && (
                   <button onClick={() => switchAuthMode('login')} className="hover:text-[#183A2D] transition hover:underline cursor-pointer">Quay lại đăng nhập</button>
                 )}
@@ -819,16 +792,6 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                     {otpCooldown > 0 ? `Chưa nhận được mã? Gửi lại (${otpCooldown}s)` : 'Chưa nhận được mã? Gửi lại'}
                   </button>
                 )}
-
-                <div className="pt-2 border-t border-stone-200/60">
-                  <button
-                    type="button"
-                    onClick={() => setShowAuthModal(false)}
-                    className="text-stone-400 hover:text-stone-700 text-[11px] font-semibold py-1 transition cursor-pointer"
-                  >
-                    Để sau • Tiếp tục xem trang phục
-                  </button>
-                </div>
               </div>
             </motion.div>
           </div>

@@ -476,11 +476,12 @@ export default function AiStylistChat({
     let activeId = cskhTicketId;
     if (!activeId) {
       const initRes = await getOrCreateSupportTicket();
-      if (initRes.success && initRes.ticket) {
-        activeId = initRes.ticket.id;
-        setCskhTicketId(activeId);
+      if (initRes.success && initRes.ticket && initRes.ticket.id) {
+        const createdTicketId = String(initRes.ticket.id);
+        activeId = createdTicketId;
+        setCskhTicketId(createdTicketId);
         if (typeof window !== "undefined") {
-          localStorage.setItem("cloop_customer_ticket_id", activeId);
+          localStorage.setItem("cloop_customer_ticket_id", createdTicketId);
         }
       }
     }
@@ -739,20 +740,20 @@ export default function AiStylistChat({
                 : "flex h-[460px] max-h-[75vh] w-[320px] sm:w-[350px] flex-col overflow-hidden rounded-2xl border border-stone-300/90 bg-[#FAF8F3] text-[#142A1E] shadow-[0_16px_48px_rgba(0,0,0,0.35)] relative z-[9999]"
             }
           >
-            {/* 👑 REFINED CHRISTMAS PINE GREEN HEADER */}
-            <div className="bg-[#1E5638] p-2.5 px-3 text-white border-b border-[#2D7A51] shadow-2xs">
+            {/* 👑 ELEGANT HEADER */}
+            <div className={isMobileApp ? "bg-gradient-to-r from-[#5C3A3F] via-[#7A4952] to-[#9E5361] p-2.5 px-3 text-white border-b border-white/10 shadow-2xs" : "bg-[#1E5638] p-2.5 px-3 text-white border-b border-[#2D7A51] shadow-2xs"}>
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2">
-                  <div className="relative flex h-6.5 w-6.5 items-center justify-center rounded-md bg-white/10 text-white border border-white/20 p-0.5">
+                  <div className="relative flex h-6.5 w-6.5 items-center justify-center rounded-md bg-white/15 text-white border border-white/20 p-0.5">
                     <CloopChatBotIcon className="w-5 h-5" />
-                    <span className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400 border border-[#1E5638]" />
+                    <span className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-rose-200 border border-[#5C3A3F]" />
                   </div>
                   <div className="text-left">
                     <h3 className="text-[11px] font-heading font-extrabold uppercase tracking-wider text-white leading-tight">
                       TRỢ LÝ CLOOP
                     </h3>
-                    <p className="text-[8.5px] text-[#A3E39F] font-ui leading-tight font-medium">
-                      {isTyping ? "Đang phản hồi..." : "Hoạt động 24/7 • Tìm đồ chuẩn gu"}
+                    <p className="text-[8.5px] text-rose-100 font-ui leading-tight font-medium">
+                      {isTyping ? "Đang phản hồi..." : "Hoạt động 24/7 • Phối đồ chuẩn gu"}
                     </p>
                   </div>
                 </div>
@@ -774,7 +775,7 @@ export default function AiStylistChat({
                   onClick={() => setActiveTab("stylist")}
                   className={`py-0.5 rounded transition-all flex items-center justify-center gap-1 cursor-pointer ${
                     activeTab === "stylist"
-                      ? "bg-white text-[#1E5638] shadow-2xs font-extrabold"
+                      ? "bg-white text-[#141418] shadow-2xs font-extrabold"
                       : "text-stone-300 hover:text-white"
                   }`}
                 >
@@ -787,7 +788,7 @@ export default function AiStylistChat({
                   onClick={() => setActiveTab("cskh")}
                   className={`relative py-0.5 rounded transition-all flex items-center justify-center gap-1 cursor-pointer ${
                     activeTab === "cskh"
-                      ? "bg-white text-[#1E5638] shadow-2xs font-extrabold"
+                      ? "bg-white text-[#141418] shadow-2xs font-extrabold"
                       : "text-stone-300 hover:text-white"
                   }`}
                 >
@@ -1144,18 +1145,28 @@ export default function AiStylistChat({
         whileTap={{ scale: 0.92 }}
         animate={{
           scale: [1, 1.04, 1],
-          boxShadow: [
-            "0 4px 16px rgba(30,86,56,0.35)",
-            "0 0 18px rgba(46,182,125,0.65), 0 0 6px rgba(255,255,255,0.35)",
-            "0 4px 16px rgba(30,86,56,0.35)",
-          ],
+          boxShadow: isMobileApp
+            ? [
+                "0 4px 14px rgba(181,83,101,0.28)",
+                "0 0 18px rgba(194,100,117,0.5), 0 0 6px rgba(255,255,255,0.4)",
+                "0 4px 14px rgba(181,83,101,0.28)",
+              ]
+            : [
+                "0 4px 16px rgba(30,86,56,0.35)",
+                "0 0 18px rgba(46,182,125,0.65), 0 0 6px rgba(255,255,255,0.35)",
+                "0 4px 16px rgba(30,86,56,0.35)",
+              ],
         }}
         transition={{
           duration: 2.8,
           repeat: Infinity,
           ease: "easeInOut",
         }}
-        className="relative flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gradient-to-br from-[#1E5638] to-[#2D7A51] ring-2 ring-emerald-200/60 text-white border border-white/20 transition-all duration-200 cursor-pointer group"
+        className={
+          isMobileApp
+            ? "relative flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gradient-to-br from-[#C26475] via-[#B55365] to-[#9E4253] ring-2 ring-white/90 text-white border border-white/40 transition-all duration-200 cursor-pointer group"
+            : "relative flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gradient-to-br from-[#1E5638] to-[#2D7A51] ring-2 ring-emerald-200/60 text-white border border-white/20 transition-all duration-200 cursor-pointer group"
+        }
         title="Trợ lý CLOOP"
       >
         <CloopChatBotIcon className="w-5.5 h-5.5 transition-transform duration-200 group-hover:scale-105" />

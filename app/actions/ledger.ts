@@ -1,36 +1,27 @@
 "use server";
 
-import { LedgerType } from "@prisma/client";
 import { prisma } from "@/src/lib/prisma";
-import { createClient } from "@/src/utils/supabase/server";
 import { requireAdmin } from "@/src/lib/auth";
 import { settleCompletedRentalOrder, settleDisputedRentalOrder } from "@/lib/settlement-engine";
+import { recordDepositInInternal } from "@/src/lib/ledger-internal";
 
 /**
- * Hành động: Ghi nhận Khách nạp tiền cọc + thuê vào Sổ cái
- * Được gọi khi thanh toán QR thành công hoặc admin duyệt nạp tiền tay
+ * Hành động: Ghi nhận Khách nạp tiền cọc + thuê vào Sổ cái (Chỉ dành cho Admin)
  */
 export async function recordDepositIn(invoiceId: string, amount: number) {
   try {
-    const supabase = await createClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    const adminId = session?.user?.id;
+    const { profile: admin } = await requireAdmin();
 
-    await prisma.ledgerTransaction.create({
-      data: {
-        invoiceId,
-        type: LedgerType.DEPOSIT_IN,
-        amount,
-        description: "Thu tiền ký cược và tiền thuê",
-        adminId,
-        status: "COMPLETED",
-      }
-    });
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return { success: false, error: "Số tiền không hợp lệ." };
+    }
+
+    await recordDepositInInternal(invoiceId, amount, admin.id);
 
     return { success: true };
   } catch (err: any) {
     console.error("Lỗi ghi Sổ cái (Deposit):", err);
-    return { success: false, error: err.message };
+    return { success: false, error: "Không thể ghi nhận giao dịch sổ cái." };
   }
 }
 
@@ -91,6 +82,6 @@ export async function processReconciliation(
     return { success: true, settlement: res };
   } catch (err: any) {
     console.error("Lỗi đối soát Sổ cái:", err);
-    return { success: false, error: err.message || "Lỗi đối soát Sổ cái" };
+    return { success: false, error: "Lỗi đối soát Sổ cái" };
   }
 }

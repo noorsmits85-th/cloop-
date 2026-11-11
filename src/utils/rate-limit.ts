@@ -1,10 +1,14 @@
-﻿import "server-only";
+import "server-only";
+import { getTrustedClientIp } from "@/src/lib/request-ip";
+
+export { getTrustedClientIp };
 
 interface RateLimitRecord {
   count: number;
   resetAt: number;
 }
 
+const MAX_RATE_LIMIT_ENTRIES = 10000;
 const rateLimitMap = new Map<string, RateLimitRecord>();
 
 // Cleanup stale entries every 5 minutes to prevent memory leak
@@ -26,6 +30,10 @@ export function checkRateLimit(
   const record = rateLimitMap.get(identifier);
 
   if (!record || now > record.resetAt) {
+    if (rateLimitMap.size >= MAX_RATE_LIMIT_ENTRIES) {
+      const oldestKey = rateLimitMap.keys().next().value;
+      if (oldestKey) rateLimitMap.delete(oldestKey);
+    }
     rateLimitMap.set(identifier, {
       count: 1,
       resetAt: now + windowMs,

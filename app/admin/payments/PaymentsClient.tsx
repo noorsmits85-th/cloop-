@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { CheckCircle, Clock, User, CreditCard, ArrowRight, ShieldCheck, RefreshCw, FileText, CheckCircle2, Phone, AlertCircle, QrCode, X, Search, Check, Info } from "lucide-react";
-import { PayoutItem, markPayoutCompletedAction, syncPayosTransactionStatusAction } from "./actions";
+import { PayoutItem, markPayoutCompletedAction, syncPayosTransactionStatusAction, rejectWithdrawalAction } from "./actions";
 
 function getVietQRBankId(bankName: string): string {
   const b = (bankName || "").toLowerCase();
@@ -123,9 +123,35 @@ export default function PaymentsClient({ initialItems }: { initialItems: PayoutI
       if (res.success) {
         setCompletedIds(prev => [...prev, item.id]);
         setSelectedQrItem(null);
-        alert(`😊 Đã giải ngân thành công [Mã GD: ${res.bankRefCode}] cho ${item.ownerName} (${item.netPayoutAmount.toLocaleString()}₫) và đồng bộ Sổ Cái Kế Toán.`);
+        alert(`Đã giải ngân thành công [Mã GD: ${res.bankRefCode}] cho ${item.ownerName} (${item.netPayoutAmount.toLocaleString()}₫) và đồng bộ Sổ Cái Kế Toán.`);
       } else {
         setFormError(res.error || "Không thể hoàn tất đối soát.");
+      }
+    } catch (err: any) {
+      setFormError("Lỗi hệ thống: " + err.message);
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleRejectWithdrawal = async (item: PayoutItem) => {
+    if (item.type !== "WITHDRAWAL") return;
+    const reason = window.prompt(
+      `Nhập lý do từ chối lệnh rút tiền ${item.orderCode} (${item.netPayoutAmount.toLocaleString()}₫) của ${item.ownerName} (số dư đóng băng sẽ hoàn lại về ví khả dụng):`,
+      "Chưa khớp chứng từ đối soát hoặc thông tin tài khoản nhận chưa chính xác"
+    );
+    if (reason === null) return;
+
+    setProcessingId(item.id);
+    setFormError(null);
+    try {
+      const res = await rejectWithdrawalAction(item.id, reason);
+      if (res.success) {
+        setCompletedIds(prev => [...prev, item.id]);
+        setSelectedQrItem(null);
+        alert(`Đã từ chối lệnh rút ${item.orderCode} và hoàn trả an toàn ${item.netPayoutAmount.toLocaleString()}₫ về ví của ${item.ownerName}.`);
+      } else {
+        setFormError(("error" in res && res.error) ? res.error : "Không thể từ chối lệnh rút tiền.");
       }
     } catch (err: any) {
       setFormError("Lỗi hệ thống: " + err.message);
@@ -258,7 +284,7 @@ export default function PaymentsClient({ initialItems }: { initialItems: PayoutI
                           onClick={() => handleCopy(order.bankAccount, `${order.id}-stk`)}
                           className="text-[11px] font-bold text-stone-700 hover:text-emerald-800 bg-white hover:bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-stone-200 transition cursor-pointer shadow-2xs"
                         >
-                          {copiedType === `${order.id}-stk` ? "✓ Đã copy STK" : "Sao chép STK"}
+                          {copiedType === `${order.id}-stk` ? "Đã copy STK" : "Sao chép STK"}
                         </button>
                         <button
                           onClick={() => handleOpenModal(order)}
@@ -269,6 +295,39 @@ export default function PaymentsClient({ initialItems }: { initialItems: PayoutI
                       </div>
                     </div>
                   </div>
+
+                  {/* CHỨNG TỪ ĐỐI SOÁT CHÉO 3 BÊN (3-WAY RECONCILIATION PROOF) */}
+                  {order.type === "WITHDRAWAL" && order.reconciliation && (
+                    <div className={`p-3 rounded-2xl border text-xs space-y-1.5 ${
+                      order.reconciliation.isReconciled
+                        ? "bg-emerald-50/70 border-emerald-200 text-emerald-950"
+                        : "bg-red-50 border-red-300 text-red-900"
+                    }`}>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-bold flex items-center gap-1.5">
+                          <ShieldCheck size={14} className={order.reconciliation.isReconciled ? "text-emerald-700" : "text-red-700"} />
+                          {order.reconciliation.isReconciled
+                            ? "Đối soát 3 bên: Khớp 100% chứng từ PayOS & Sổ Cái"
+                            : `Cảnh báo đối soát: Lệch ${order.reconciliation.unexplainedDiscrepancy.toLocaleString("vi-VN")}₫ chưa có chứng từ PayOS`}
+                        </span>
+                        <span className="font-mono text-[11px] font-semibold">
+                          Tổng thu hợp lệ: {order.reconciliation.totalVerifiedInflow.toLocaleString("vi-VN")}₫ &bull; Đã rút: {order.reconciliation.totalApprovedWithdrawals.toLocaleString("vi-VN")}₫
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-stone-600">
+                        <span className="font-semibold">Nguồn tiền gốc:</span>
+                        {order.reconciliation.sourceOrderCodes.length > 0 ? (
+                          order.reconciliation.sourceOrderCodes.map((code) => (
+                            <span key={code} className="font-mono bg-white px-2 py-0.5 rounded border border-stone-200 text-stone-800 font-bold">
+                              {code}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="italic text-red-700 font-semibold">Chưa tìm thấy hóa đơn PayOS PAID nào gắn với ví này</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* SỐ TIỀN CHI TIẾT & NÚT ĐỐI SOÁT */}
@@ -300,6 +359,16 @@ export default function PaymentsClient({ initialItems }: { initialItems: PayoutI
                       <ShieldCheck size={14} />
                       Đối Soát & Xác Thực Chi Trả
                     </button>
+                    {order.type === "WITHDRAWAL" && (
+                      <button
+                        type="button"
+                        disabled={processingId === order.id}
+                        onClick={() => handleRejectWithdrawal(order)}
+                        className="bg-white hover:bg-red-50 text-red-700 border border-red-200 font-bold text-xs px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 justify-center cursor-pointer disabled:opacity-50"
+                      >
+                        Từ Chối & Hoàn Số Dư
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -523,6 +592,16 @@ export default function PaymentsClient({ initialItems }: { initialItems: PayoutI
                     <><CheckCircle2 size={16} /> Xác Nhận Đã Chuyển & Chốt Sổ Cái</>
                   )}
                 </button>
+                {selectedQrItem.type === "WITHDRAWAL" && (
+                  <button
+                    type="button"
+                    disabled={processingId === selectedQrItem.id}
+                    onClick={() => handleRejectWithdrawal(selectedQrItem)}
+                    className="w-full py-2.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-bold rounded-2xl transition cursor-pointer disabled:opacity-50"
+                  >
+                    Từ Chối Lệnh Rút & Hoàn Số Dư Về Ví
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setSelectedQrItem(null)}

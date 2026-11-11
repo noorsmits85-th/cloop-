@@ -4,6 +4,7 @@ import { prismaAdmin } from "@/src/lib/prisma";
 import { SupportTicketStatus, SupportSenderType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/src/utils/supabase/server";
+import { requireAdmin } from "@/src/lib/auth";
 
 export interface TicketSummary {
   id: string;
@@ -52,6 +53,7 @@ async function getCurrentCustomerProfile() {
           id: true,
           name: true,
           email: true,
+          role: true,
           avatar: true,
           rating: true,
           reviewCount: true,
@@ -84,6 +86,7 @@ async function getCurrentCustomerProfile() {
 
     return {
       userId: user.id,
+      role: dbUser?.role || "USER",
       name: fullName,
       phone,
       email,
@@ -102,6 +105,87 @@ async function getCurrentCustomerProfile() {
   }
 }
 
+const GUEST_TICKET_COOKIE_NAME = "cloop_guest_support_ticket";
+
+function getGuestTicketSecret(): string {
+  const s = (
+    process.env.WALLET_SEAL_SECRET ||
+    process.env.PAYOS_CHECKSUM_KEY ||
+    process.env.SHIPPING_QUOTE_SECRET ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    ""
+  ).trim();
+  return s;
+}
+
+async function computeGuestTicketSignature(ticketId: string): Promise<string | null> {
+  try {
+    const secret = getGuestTicketSecret();
+    if (!secret || !ticketId) return null;
+    const cryptoMod = await import("node:crypto");
+    return cryptoMod
+      .createHmac("sha256", secret)
+      .update(`cloop_guest_ticket_v1|${ticketId}`)
+      .digest("hex")
+      .slice(0, 32);
+  } catch {
+    return null;
+  }
+}
+
+async function setGuestTicketCookie(ticketId: string): Promise<void> {
+  try {
+    const sig = await computeGuestTicketSignature(ticketId);
+    if (!sig) return;
+    const headersMod = await import("next/headers");
+    const cookieStore = await headersMod.cookies();
+    if (typeof (cookieStore as any)?.set === "function") {
+      (cookieStore as any).set(GUEST_TICKET_COOKIE_NAME, `${ticketId}:${sig}`, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV !== "development",
+        sameSite: "strict",
+        path: "/",
+        maxAge: 7 * 24 * 60 * 60,
+      });
+    }
+  } catch {
+    // Non-fatal in environments without mutable response cookies
+  }
+}
+
+async function hasValidGuestTicketOwnership(ticketId: string): Promise<boolean> {
+  try {
+    if (!ticketId) return false;
+    const expectedSig = await computeGuestTicketSignature(ticketId);
+    if (!expectedSig) return false;
+    const headersMod = await import("next/headers");
+    const cookieStore = await headersMod.cookies();
+    const rawCookie =
+      typeof (cookieStore as any)?.get === "function"
+        ? (cookieStore as any).get(GUEST_TICKET_COOKIE_NAME)?.value
+        : undefined;
+    if (!rawCookie || typeof rawCookie !== "string") return false;
+    const [cookieTicketId, cookieSig] = rawCookie.split(":");
+    if (cookieTicketId !== ticketId || !cookieSig) return false;
+    const cryptoMod = await import("node:crypto");
+    const a = Buffer.from(cookieSig, "utf8");
+    const b = Buffer.from(expectedSig, "utf8");
+    return a.length === b.length && cryptoMod.timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
+}
+
+function sanitizeClientTicket(ticket: any, isAuthenticatedOwnerOrAdmin: boolean) {
+  if (!ticket || typeof ticket !== "object") return ticket;
+  if (isAuthenticatedOwnerOrAdmin) return ticket;
+  return {
+    ...ticket,
+    customerEmail: null,
+    customerPhone: null,
+  };
+}
+
 /**
  * 1. Khách hàng: Lấy hoặc tạo ticket hỗ trợ (Đồng bộ danh tính chính chủ & minh bạch 100%)
  */
@@ -114,38 +198,60 @@ export async function getOrCreateSupportTicket(params?: {
 }) {
   try {
     const profile = await getCurrentCustomerProfile();
-    const resolvedUserId = params?.userId || profile?.userId || null;
+    // Không bao giờ tin params.userId từ client để mạo danh
+    const resolvedUserId = profile?.userId || null;
+    const isAdmin = profile?.role === "ADMIN";
     const resolvedName =
       (params?.customerName && params.customerName !== "Khách hàng" && params.customerName !== "Khách Hàng")
-        ? params.customerName
+        ? params.customerName.trim().slice(0, 80)
         : (profile?.name || "Khách Hàng");
     const resolvedPhone = params?.customerPhone || profile?.phone || null;
     const resolvedEmail = params?.customerEmail || profile?.email || null;
 
-    // Nếu có ticketId lưu ở client, kiểm tra còn tồn tại không
+    // Nếu có ticketId lưu ở client, kiểm tra còn tồn tại và BẮT BUỘC chứng minh quyền sở hữu
     if (params?.ticketId) {
       const existing = await prismaAdmin.supportTicket.findUnique({
         where: { id: params.ticketId },
       });
       if (existing) {
-        // Cập nhật thông tin chính chủ nếu ticket cũ chưa có hoặc là "Khách hàng"
-        if (
-          (resolvedUserId && !existing.userId) ||
-          (resolvedName && existing.customerName === "Khách hàng") ||
-          (resolvedPhone && !existing.customerPhone)
-        ) {
-          const updated = await prismaAdmin.supportTicket.update({
-            where: { id: existing.id },
-            data: {
-              userId: resolvedUserId || existing.userId,
-              customerName: resolvedName !== "Khách Hàng" ? resolvedName : existing.customerName,
-              customerPhone: resolvedPhone || existing.customerPhone,
-              customerEmail: resolvedEmail || existing.customerEmail,
-            },
-          });
-          return { success: true, ticket: updated };
+        const isAccountOwner = Boolean(resolvedUserId && existing.userId && existing.userId === resolvedUserId);
+        const isGuestOwner = !existing.userId ? await hasValidGuestTicketOwnership(existing.id) : false;
+        const canAccessExisting = isAdmin || isAccountOwner || isGuestOwner;
+
+        if (!canAccessExisting) {
+          // Chặn IDOR & chiếm đoạt ticket khách vãng lai: nếu không chứng minh được quyền sở hữu, từ chối tiết lộ ticket cũ
+          if (typeof prismaAdmin.supportTicket.create !== "function") {
+            return {
+              success: false,
+              error: "Forbidden: Bạn không có quyền truy cập phiên hỗ trợ này.",
+              ticket: null,
+            };
+          }
+        } else {
+          if (
+            (resolvedUserId && !existing.userId && isGuestOwner) ||
+            (resolvedName && existing.customerName === "Khách hàng") ||
+            (resolvedPhone && !existing.customerPhone)
+          ) {
+            const updated = await prismaAdmin.supportTicket.update({
+              where: { id: existing.id },
+              data: {
+                userId: existing.userId || resolvedUserId,
+                customerName: resolvedName !== "Khách Hàng" ? resolvedName : existing.customerName,
+                customerPhone: resolvedPhone || existing.customerPhone,
+                customerEmail: resolvedEmail || existing.customerEmail,
+              },
+            });
+            return {
+              success: true,
+              ticket: sanitizeClientTicket(updated, Boolean(resolvedUserId || isAdmin)),
+            };
+          }
+          return {
+            success: true,
+            ticket: sanitizeClientTicket(existing, Boolean(resolvedUserId || isAdmin)),
+          };
         }
-        return { success: true, ticket: existing };
       }
     }
 
@@ -159,7 +265,6 @@ export async function getOrCreateSupportTicket(params?: {
         orderBy: { lastMessageAt: "desc" },
       });
       if (userTicket) {
-        // Đồng bộ lại tên/sđt nếu có thay đổi
         if (
           (resolvedName && resolvedName !== "Khách Hàng" && userTicket.customerName !== resolvedName) ||
           (resolvedPhone && userTicket.customerPhone !== resolvedPhone)
@@ -193,18 +298,57 @@ export async function getOrCreateSupportTicket(params?: {
       },
     });
 
-    return { success: true, ticket: newTicket };
+    if (!resolvedUserId && newTicket?.id) {
+      await setGuestTicketCookie(newTicket.id);
+    }
+
+    return {
+      success: true,
+      ticket: sanitizeClientTicket(newTicket, Boolean(resolvedUserId || isAdmin)),
+    };
   } catch (error: any) {
     console.error("Error in getOrCreateSupportTicket:", error);
-    return { success: false, error: error.message || "Không thể tạo phiên chat" };
+    return { success: false, error: "Không thể tạo phiên chat", ticket: null };
   }
 }
 
 /**
- * 2. Lấy toàn bộ tin nhắn của một ticket
+ * 2. Lấy toàn bộ tin nhắn của một ticket (chống IDOR cho cả tài khoản và khách vãng lai)
  */
 export async function getTicketMessages(ticketId: string) {
   try {
+    const ticket = await prismaAdmin.supportTicket.findUnique({
+      where: { id: ticketId },
+      select: { id: true, userId: true },
+    });
+    if (!ticket) {
+      return { success: false, error: "Không tìm thấy phiên hỗ trợ", messages: [] };
+    }
+
+    const profile = await getCurrentCustomerProfile();
+    let isAdmin = profile?.role === "ADMIN";
+    if (!isAdmin) {
+      try {
+        await requireAdmin();
+        isAdmin = true;
+      } catch {
+        isAdmin = false;
+      }
+    }
+
+    if (!isAdmin) {
+      if (ticket.userId) {
+        if (profile?.userId !== ticket.userId) {
+          return { success: false, error: "Bạn không có quyền xem cuộc trò chuyện này.", messages: [] };
+        }
+      } else {
+        const isGuestOwner = await hasValidGuestTicketOwnership(ticket.id);
+        if (!isGuestOwner) {
+          return { success: false, error: "Bạn không có quyền xem cuộc trò chuyện khách vãng lai này.", messages: [] };
+        }
+      }
+    }
+
     const messages = await prismaAdmin.supportMessage.findMany({
       where: { ticketId },
       orderBy: { createdAt: "asc" },
@@ -212,12 +356,12 @@ export async function getTicketMessages(ticketId: string) {
     return { success: true, messages };
   } catch (error: any) {
     console.error("Error in getTicketMessages:", error);
-    return { success: false, error: error.message, messages: [] };
+    return { success: false, error: "Không thể tải tin nhắn", messages: [] };
   }
 }
 
 /**
- * 3. Khách hàng gửi tin nhắn cho CSKH
+ * 3. Khách hàng gửi tin nhắn cho CSKH (chống IDOR & chống chiếm đoạt ticket)
  */
 export async function sendCustomerMessage(params: {
   ticketId: string;
@@ -226,13 +370,37 @@ export async function sendCustomerMessage(params: {
 }) {
   try {
     const { ticketId, content } = params;
-    if (!content.trim()) return { success: false, error: "Nội dung trống" };
+    const cleanContent = (content || "").trim().slice(0, 2000);
+    if (!cleanContent) return { success: false, error: "Nội dung trống" };
 
-    // Tìm profile người gửi để ghi nhận danh tính chuẩn
+    const ticket = await prismaAdmin.supportTicket.findUnique({
+      where: { id: ticketId },
+      select: { id: true, userId: true },
+    });
+    if (!ticket) {
+      return { success: false, error: "Không tìm thấy phiên hỗ trợ" };
+    }
+
     const profile = await getCurrentCustomerProfile();
+    const isAdmin = profile?.role === "ADMIN";
+    let isGuestOwner = false;
+
+    if (!isAdmin) {
+      if (ticket.userId) {
+        if (profile?.userId !== ticket.userId) {
+          return { success: false, error: "Bạn không có quyền gửi tin nhắn vào phiên hỗ trợ này." };
+        }
+      } else {
+        isGuestOwner = await hasValidGuestTicketOwnership(ticket.id);
+        if (!isGuestOwner) {
+          return { success: false, error: "Bạn không có quyền gửi tin nhắn vào phiên hỗ trợ khách vãng lai này." };
+        }
+      }
+    }
+
     const displayName =
       (params.senderName && params.senderName !== "Khách hàng" && params.senderName !== "Khách Hàng")
-        ? params.senderName
+        ? params.senderName.trim().slice(0, 80)
         : (profile?.name || "Khách Hàng");
 
     const message = await prismaAdmin.supportMessage.create({
@@ -240,21 +408,20 @@ export async function sendCustomerMessage(params: {
         ticketId,
         senderType: SupportSenderType.USER,
         senderName: displayName,
-        content: content.trim(),
+        content: cleanContent,
         isRead: false,
       },
     });
 
-    // Cập nhật ticket: tăng unreadAdminCount để kích hoạt chuông báo cho Admin
-    // Đồng thời đồng bộ tên khách nếu trước đó chưa có
     const updateData: any = {
-      lastMessage: content.trim(),
+      lastMessage: cleanContent,
       lastMessageAt: new Date(),
       status: SupportTicketStatus.OPEN,
       unreadAdminCount: { increment: 1 },
     };
 
-    if (profile?.userId) {
+    // Chỉ gán userId nếu ticket trước đó là của chính khách vãng lai này (đã xác minh isGuestOwner)
+    if (profile?.userId && !ticket.userId && isGuestOwner) {
       updateData.userId = profile.userId;
       if (profile.name && profile.name !== "Khách Hàng") {
         updateData.customerName = profile.name;
@@ -278,12 +445,12 @@ export async function sendCustomerMessage(params: {
     return { success: true, message };
   } catch (error: any) {
     console.error("Error in sendCustomerMessage:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: "Không thể gửi tin nhắn" };
   }
 }
 
 /**
- * 4. Admin gửi tin nhắn cho khách (Hiển thị 'Chuyên viên CSKH CLOOP')
+ * 4. Admin gửi tin nhắn cho khách (Bắt buộc xác thực quyền Admin)
  */
 export async function sendAdminMessage(params: {
   ticketId: string;
@@ -291,6 +458,7 @@ export async function sendAdminMessage(params: {
   agentTitle?: string;
 }) {
   try {
+    await requireAdmin();
     const { ticketId, content, agentTitle } = params;
     if (!content.trim()) return { success: false, error: "Nội dung trống" };
 
@@ -306,7 +474,6 @@ export async function sendAdminMessage(params: {
       },
     });
 
-    // Cập nhật ticket: reset unreadAdminCount, tăng unreadUserCount
     await prismaAdmin.supportTicket.update({
       where: { id: ticketId },
       data: {
@@ -323,7 +490,7 @@ export async function sendAdminMessage(params: {
     return { success: true, message };
   } catch (error: any) {
     console.error("Error in sendAdminMessage:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: "Bạn không có quyền thực hiện thao tác này." };
   }
 }
 
@@ -336,6 +503,7 @@ export async function getAllSupportTickets(statusFilter?: SupportTicketStatus | 
   error?: string;
 }> {
   try {
+    await requireAdmin();
     const where: any = {};
     if (statusFilter && statusFilter !== "ALL") {
       where.status = statusFilter;
@@ -362,7 +530,6 @@ export async function getAllSupportTickets(statusFilter?: SupportTicketStatus | 
       take: 60,
     });
 
-    // Thu thập danh sách userId để truy vấn auth.users lấy SĐT và Địa chỉ chuẩn GHN
     const userIds = tickets.map((t) => t.userId).filter(Boolean) as string[];
     const metaMap: Record<string, any> = {};
 
@@ -383,7 +550,6 @@ export async function getAllSupportTickets(statusFilter?: SupportTicketStatus | 
     const enrichedTickets: TicketSummary[] = tickets.map((t) => {
       const authMeta = t.userId ? metaMap[t.userId] || {} : {};
 
-      // Xác định tên khách chuẩn (không hiển thị generic "Khách Hàng" nếu có tên thực)
       const rawCustomerName = t.customerName?.trim();
       const hasSpecificSavedName =
         rawCustomerName &&
@@ -418,7 +584,6 @@ export async function getAllSupportTickets(statusFilter?: SupportTicketStatus | 
         authMeta.location ||
         null;
 
-      // Đồng bộ ngầm vào database nếu thông tin trong ticket cũ đang thiếu
       if (
         (realName && (!t.customerName || t.customerName === "Khách hàng" || t.customerName === "Khách Hàng")) ||
         (realPhone && !t.customerPhone)
@@ -458,7 +623,7 @@ export async function getAllSupportTickets(statusFilter?: SupportTicketStatus | 
     return { success: true, tickets: enrichedTickets };
   } catch (error: any) {
     console.error("Error in getAllSupportTickets:", error);
-    return { success: false, error: error.message, tickets: [] };
+    return { success: false, error: "Bạn không có quyền truy cập danh sách hỗ trợ.", tickets: [] };
   }
 }
 
@@ -467,6 +632,7 @@ export async function getAllSupportTickets(statusFilter?: SupportTicketStatus | 
  */
 export async function markTicketReadByAdmin(ticketId: string) {
   try {
+    await requireAdmin();
     await prismaAdmin.supportTicket.update({
       where: { id: ticketId },
       data: { unreadAdminCount: 0 },
@@ -480,7 +646,7 @@ export async function markTicketReadByAdmin(ticketId: string) {
     return { success: true };
   } catch (error: any) {
     console.error("Error in markTicketReadByAdmin:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: "Unauthorized" };
   }
 }
 
@@ -489,6 +655,7 @@ export async function markTicketReadByAdmin(ticketId: string) {
  */
 export async function updateTicketStatus(ticketId: string, status: SupportTicketStatus) {
   try {
+    await requireAdmin();
     const updated = await prismaAdmin.supportTicket.update({
       where: { id: ticketId },
       data: { status },
@@ -497,7 +664,7 @@ export async function updateTicketStatus(ticketId: string, status: SupportTicket
     return { success: true, ticket: updated };
   } catch (error: any) {
     console.error("Error in updateTicketStatus:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: "Unauthorized" };
   }
 }
 
@@ -506,6 +673,7 @@ export async function updateTicketStatus(ticketId: string, status: SupportTicket
  */
 export async function getAdminUnreadTotal() {
   try {
+    await requireAdmin();
     const aggregate = await prismaAdmin.supportTicket.aggregate({
       _sum: { unreadAdminCount: true },
       where: { status: SupportTicketStatus.OPEN },

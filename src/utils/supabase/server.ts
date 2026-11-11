@@ -1,6 +1,8 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import type { Database } from "@/types/supabase";
+
+const SESSION_MAX_AGE_SECONDS = 14 * 24 * 60 * 60; // 14 days
 
 export async function createClient() {
   const cookieStore = await cookies();
@@ -20,7 +22,8 @@ export async function createClient() {
                 ...options,
                 path: '/',
                 sameSite: 'lax',
-                maxAge: 365 * 24 * 60 * 60,
+                secure: process.env.NODE_ENV === 'production',
+                maxAge: SESSION_MAX_AGE_SECONDS,
               })
             );
           } catch {

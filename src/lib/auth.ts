@@ -1,91 +1,98 @@
+import "server-only";
 import { cache } from "react";
+import { cookies } from "next/headers";
+import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/src/utils/supabase/server";
 import { prisma } from "@/src/lib/prisma";
 import { redirect } from "next/navigation";
 
-export const ADMIN_EMAILS = [
-  "tranthitrinh0501@gmail.com",
-  "th4212044@gmail.com",
-  "noorsmits85@gmail.com",
-  "trangh2910@gmail.com",
-  "tp785053@gmail.com"
-];
-
-// ⚡ IN-MEMORY SWR CACHE (30s TTL): Triệt tiêu 100% các truy vấn DB lặp lại khi người dùng chuyển tab Dashboard
-const userAuthCache = new Map<string, { user: any; expiry: number }>();
+// Short-lived per-user profile cache (10s TTL) to avoid redundant prisma.user.findUnique
+// calls across rapid tab switches and concurrent Server Actions in the same session.
+const USER_PROFILE_CACHE_TTL_MS = 10_000;
+const userProfileCache = new Map<
+  string,
+  {
+    profile: {
+      id: string;
+      name: string | null;
+      avatar: string | null;
+      role: string;
+      walletBalance: number;
+      cloopCoins: number;
+      isVerified: boolean;
+    };
+    expiry: number;
+  }
+>();
 
 export function clearUserAuthCache(userId?: string) {
   if (userId) {
-    userAuthCache.delete(userId);
+    userProfileCache.delete(userId);
   } else {
-    userAuthCache.clear();
+    userProfileCache.clear();
   }
 }
 
 /**
- * Lấy User Session hiện tại từ Supabase HTTP-only Cookies và đồng bộ với bảng Prisma User
- * ⚡ TỐI ƯU HÓA: Kết hợp In-Memory Cache (30s TTL - 0ms) + React cache() deduplicate
+ * Kiểm tra nhanh cookie phiên đăng nhập và xác thực JWT qua getUser().
+ * Được bọc bởi React.cache() để RootLayout và các Server Component con dùng chung
+ * đúng 1 lời gọi duy nhất trong suốt vòng đời của 1 HTTP request.
+ * Nếu khách vãng lai không có cookie sb-*, trả về null ngay lập tức (0ms).
+ */
+export const getOptionalAuthUser = cache(async () => {
+  try {
+    const cookieStore = await cookies();
+    const hasSupabaseCookie = cookieStore
+      .getAll()
+      .some((c) => c.name.startsWith("sb-") || c.name.includes("auth-token"));
+
+    if (!hasSupabaseCookie) {
+      return null;
+    }
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
+
+    if (error || !user) {
+      return null;
+    }
+
+    return user;
+  } catch {
+    return null;
+  }
+});
+
+/**
+ * Lấy User hiện tại từ Supabase Auth (luôn xác thực chữ ký JWT qua getUser())
+ * và đồng bộ với bảng Prisma User.
+ * Sử dụng React.cache() để deduplicate trong phạm vi 1 HTTP request.
  */
 export const requireUser = cache(async () => {
-  const supabase = await createClient();
-  
-  // ⚡ SIÊU TỐI ƯU TỐC ĐỘ: Đọc User từ Session Cookie cục bộ (0ms, không tốn HTTPS roundtrip qua Singapore)
-  const { data: { session } } = await supabase.auth.getSession();
-  let user = session?.user;
+  const user = await getOptionalAuthUser();
 
   if (!user) {
-    const { data: { user: fetchedUser }, error } = await supabase.auth.getUser();
-    if (error || !fetchedUser) {
-      throw new Error("Unauthorized: Không tìm thấy phiên đăng nhập.");
-    }
-    user = fetchedUser;
+    throw new Error("Unauthorized: Không tìm thấy phiên đăng nhập hợp lệ.");
   }
 
-  // ⚡ Cache Hit: Trả về ngay lập tức trong 0ms nếu trong 30s qua đã lấy thông tin
-  const cached = userAuthCache.get(user.id);
-  if (cached && Date.now() < cached.expiry) {
-    return cached.user;
-  }
-
-  const name = user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Thành viên CLOOP";
+  const name =
+    user.user_metadata?.name ||
+    user.user_metadata?.full_name ||
+    user.email?.split("@")[0] ||
+    "Thành viên CLOOP";
   const email = user.email || `${user.id}@cloop.vn`;
-  const isAdminEmail = ADMIN_EMAILS.includes(email.toLowerCase());
 
-  // ⚡ Tối ưu siêu tốc: Đọc trước bằng findUnique (2ms, không lock database)
   try {
-    let profile = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: {
-        id: true,
-        name: true,
-        avatar: true,
-        role: true,
-        walletBalance: true,
-        cloopCoins: true,
-        isVerified: true,
-      }
-    });
+    const now = Date.now();
+    const cached = userProfileCache.get(user.id);
+    let profile = cached && cached.expiry > now ? cached.profile : null;
 
-    if (profile && isAdminEmail && profile.role !== "ADMIN") {
-      await prisma.user.update({
-        where: { id: profile.id },
-        data: { role: "ADMIN" }
-      });
-      profile.role = "ADMIN";
-    }
-
-    // Chỉ khi user chưa có trong database mới thực hiện ghi mới (create)
     if (!profile) {
-      profile = await prisma.user.create({
-        data: {
-          id: user.id,
-          email: email,
-          password: "supabase_auth_managed",
-          name: name,
-          walletBalance: 0,
-          cloopCoins: 100,
-          role: isAdminEmail ? "ADMIN" : "USER"
-        },
+      profile = await prisma.user.findUnique({
+        where: { id: user.id },
         select: {
           id: true,
           name: true,
@@ -94,14 +101,47 @@ export const requireUser = cache(async () => {
           walletBalance: true,
           cloopCoins: true,
           isVerified: true,
-        }
+        },
+      });
+
+      // Chỉ khi user chưa có trong database mới thực hiện tạo hồ sơ mặc định với quyền USER
+      if (!profile) {
+        profile = await prisma.user.create({
+          data: {
+            id: user.id,
+            email: email,
+            password: "supabase_auth_managed",
+            name: name,
+            walletBalance: 0,
+            cloopCoins: 100,
+            role: "USER",
+          },
+          select: {
+            id: true,
+            name: true,
+            avatar: true,
+            role: true,
+            walletBalance: true,
+            cloopCoins: true,
+            isVerified: true,
+          },
+        });
+      }
+
+      userProfileCache.set(user.id, {
+        profile,
+        expiry: now + USER_PROFILE_CACHE_TTL_MS,
       });
     }
 
     const effectiveName = profile.name || name;
-    const effectiveAvatar = profile.avatar || user.user_metadata?.avatar_url || user.user_metadata?.avatar || null;
+    const effectiveAvatar =
+      profile.avatar ||
+      user.user_metadata?.avatar_url ||
+      user.user_metadata?.avatar ||
+      null;
 
-    const result = {
+    return {
       id: user.id,
       email: email,
       name: effectiveName,
@@ -117,51 +157,12 @@ export const requireUser = cache(async () => {
         avatar_url: effectiveAvatar,
       },
     };
-    userAuthCache.set(user.id, { user: result, expiry: Date.now() + 30000 });
-    return result;
   } catch (syncErr) {
-    try {
-      if (user.email) {
-        const profile = await prisma.user.update({
-          where: { email: user.email },
-          data: { id: user.id },
-          select: {
-            id: true,
-            name: true,
-            avatar: true,
-            role: true,
-            walletBalance: true,
-            cloopCoins: true,
-            isVerified: true,
-          }
-        });
-
-        const effectiveName = profile.name || name;
-        const effectiveAvatar = profile.avatar || user.user_metadata?.avatar_url || user.user_metadata?.avatar || null;
-
-        const updatedResult = {
-          id: user.id,
-          email: email,
-          name: effectiveName,
-          role: profile.role,
-          isVerified: profile.isVerified === true,
-          avatar: effectiveAvatar,
-          walletBalance: profile.walletBalance,
-          cloopCoins: profile.cloopCoins,
-          metadata: {
-            ...(user.user_metadata || {}),
-            name: effectiveName,
-            avatar: effectiveAvatar,
-            avatar_url: effectiveAvatar,
-          },
-        };
-        userAuthCache.set(user.id, { user: updatedResult, expiry: Date.now() + 30000 });
-        return updatedResult;
-      }
-    } catch (_) {}
+    // TODO: Tích hợp hệ thống tracking (Sentry/LogRocket) để giám sát lỗi đồng bộ hồ sơ người dùng
+    Sentry.captureException(syncErr);
   }
 
-  const fallbackResult = {
+  return {
     id: user.id,
     email: email,
     name: name,
@@ -172,37 +173,50 @@ export const requireUser = cache(async () => {
     cloopCoins: 100,
     metadata: user.user_metadata || {},
   };
-  userAuthCache.set(user.id, { user: fallbackResult, expiry: Date.now() + 30000 });
-  return fallbackResult;
 });
 
+async function verifyAdminMfaAssurance(): Promise<boolean> {
+  try {
+    const supabase = await createClient();
+    const mfaApi = (supabase as any)?.auth?.mfa;
+    if (!mfaApi || typeof mfaApi.getAuthenticatorAssuranceLevel !== "function") {
+      return false;
+    }
+    const { data, error } = await mfaApi.getAuthenticatorAssuranceLevel();
+    if (error || !data) {
+      return false;
+    }
+    return data.currentLevel === "aal2";
+  } catch {
+    return false;
+  }
+}
+
 /**
- * Dành cho API / Server Actions: Kiểm tra role ADMIN
- * Ném lỗi nếu không phải Admin.
+ * Dành cho API / Server Actions: Kiểm tra role ADMIN kèm bắt buộc xác thực MFA (AAL2).
+ * Tái sử dụng kết quả từ requireUser() để không phải gọi prisma.user.findUnique lần 2.
  */
 export async function requireAdmin() {
   const user = await requireUser();
 
-  // Bỏ qua RLS của Supabase, truy vấn trực tiếp qua Prisma
-  const profile = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: { id: true, role: true, name: true }
-  });
-
-  if (!profile) {
-    throw new Error("Forbidden: Không tìm thấy hồ sơ người dùng.");
-  }
-
-  if (profile.role !== "ADMIN") {
+  if (user.role !== "ADMIN") {
     throw new Error("Forbidden: Yêu cầu quyền Quản trị viên (ADMIN).");
   }
 
-  return { authUser: user, profile };
+  const hasMfa = await verifyAdminMfaAssurance();
+  if (!hasMfa) {
+    throw new Error("Forbidden: Quản trị viên bắt buộc phải xác thực đa nhân tố MFA (AAL2).");
+  }
+
+  return {
+    authUser: user,
+    profile: { id: user.id, role: user.role, name: user.name },
+  };
 }
 
 /**
- * Dành cho Pages / Layouts: Kiểm tra role ADMIN
- * Chuyển hướng về trang chủ nếu không phải Admin.
+ * Dành cho Pages / Layouts: Kiểm tra role ADMIN kèm bắt buộc xác thực MFA (AAL2).
+ * Chuyển hướng về trang chủ nếu không phải Admin hoặc chưa hoàn tất MFA AAL2.
  */
 export async function requireAdminOrRedirect() {
   let user = null;
@@ -213,6 +227,11 @@ export async function requireAdminOrRedirect() {
   }
 
   if (!user || user.role !== "ADMIN") {
+    redirect("/");
+  }
+
+  const hasMfa = await verifyAdminMfaAssurance();
+  if (!hasMfa) {
     redirect("/");
   }
 

@@ -3,21 +3,16 @@
 import { requireUser } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 
-// ⚡ IN-MEMORY SWR CACHE (60s TTL: Triệt tiêu 98% số lần query DB khi chuyển tab)
+// IN-MEMORY SWR CACHE (60s TTL: Triệt tiêu 98% số lần query DB khi chuyển tab)
 const disputeStatsCache = new Map<string, { count: number; expiry: number }>();
 
 export async function getUserDisputeStats(passedUserId?: string) {
   try {
-    let userId = passedUserId;
-    if (!userId) {
-      const user = await requireUser();
-      if (!user) return { success: false, count: 0 };
-      userId = user.id;
-    }
+    const user = await requireUser();
+    if (!user) return { success: false, count: 0 };
 
-    if (!userId) {
-      return { success: false, count: 0 };
-    }
+    // Chặn IDOR: chỉ ADMIN mới được truy vấn thống kê khiếu nại của userId khác
+    const userId = user.role === "ADMIN" && passedUserId ? passedUserId : user.id;
 
     const cached = disputeStatsCache.get(userId);
     if (cached && Date.now() < cached.expiry) {

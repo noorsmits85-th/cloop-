@@ -1,0 +1,2070 @@
+{
+  "checkedAt": "2026-11-11T03:06:05.972Z",
+  "results": {
+    "column_grants": [
+      {
+        "grantee": "anon",
+        "table_name": "BlogPost",
+        "column_name": "content",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "BlogPost",
+        "column_name": "cover_image",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "BlogPost",
+        "column_name": "createdAt",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "BlogPost",
+        "column_name": "id",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "BlogPost",
+        "column_name": "isDeleted",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "BlogPost",
+        "column_name": "isPinned",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "BlogPost",
+        "column_name": "productId",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "BlogPost",
+        "column_name": "status",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "BlogPost",
+        "column_name": "title",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "BlogPost",
+        "column_name": "updatedAt",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "BlogPost",
+        "column_name": "userId",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "Listing",
+        "column_name": "basePrice",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "Listing",
+        "column_name": "createdAt",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "Listing",
+        "column_name": "deposit",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "Listing",
+        "column_name": "greenPoints",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "Listing",
+        "column_name": "id",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "Listing",
+        "column_name": "isDeleted",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "Listing",
+        "column_name": "listingType",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "Listing",
+        "column_name": "minDays",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "Listing",
+        "column_name": "pricing_tiers",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "Listing",
+        "column_name": "productId",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "Listing",
+        "column_name": "salePrice",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "Listing",
+        "column_name": "status",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "Listing",
+        "column_name": "turnaround_days",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "Listing",
+        "column_name": "updatedAt",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "ProductImage",
+        "column_name": "createdAt",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "ProductImage",
+        "column_name": "format",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "ProductImage",
+        "column_name": "height",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "ProductImage",
+        "column_name": "id",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "ProductImage",
+        "column_name": "isPrimary",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "ProductImage",
+        "column_name": "productId",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "ProductImage",
+        "column_name": "sortOrder",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "ProductImage",
+        "column_name": "url",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "ProductImage",
+        "column_name": "width",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "Review",
+        "column_name": "comment",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "Review",
+        "column_name": "createdAt",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "Review",
+        "column_name": "id",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "Review",
+        "column_name": "isPublished",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "Review",
+        "column_name": "productId",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "Review",
+        "column_name": "rating",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "Review",
+        "column_name": "rentalId",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "Review",
+        "column_name": "revieweeId",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "Review",
+        "column_name": "reviewerId",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "Review",
+        "column_name": "type",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "Review",
+        "column_name": "updatedAt",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "blog_posts",
+        "column_name": "content",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "blog_posts",
+        "column_name": "cover_image",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "blog_posts",
+        "column_name": "createdAt",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "blog_posts",
+        "column_name": "id",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "blog_posts",
+        "column_name": "isDeleted",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "blog_posts",
+        "column_name": "isPinned",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "blog_posts",
+        "column_name": "productId",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "blog_posts",
+        "column_name": "status",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "blog_posts",
+        "column_name": "title",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "blog_posts",
+        "column_name": "updatedAt",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "blog_posts",
+        "column_name": "userId",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "product_images",
+        "column_name": "createdAt",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "product_images",
+        "column_name": "format",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "product_images",
+        "column_name": "height",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "product_images",
+        "column_name": "id",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "product_images",
+        "column_name": "isPrimary",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "product_images",
+        "column_name": "productId",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "product_images",
+        "column_name": "sortOrder",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "product_images",
+        "column_name": "url",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "product_images",
+        "column_name": "width",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "products",
+        "column_name": "boostExpiresAt",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "products",
+        "column_name": "boostScore",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "products",
+        "column_name": "brand",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "products",
+        "column_name": "bust",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "products",
+        "column_name": "category",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "products",
+        "column_name": "color",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "products",
+        "column_name": "condition",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "products",
+        "column_name": "createdAt",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "products",
+        "column_name": "description",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "products",
+        "column_name": "gender",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "products",
+        "column_name": "hips",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "products",
+        "column_name": "id",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "products",
+        "column_name": "isDeleted",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "products",
+        "column_name": "isHighlighted",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "products",
+        "column_name": "lastBumpedAt",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "products",
+        "column_name": "material",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "products",
+        "column_name": "occasion",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "products",
+        "column_name": "province",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "products",
+        "column_name": "season",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "products",
+        "column_name": "size",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "products",
+        "column_name": "status",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "products",
+        "column_name": "style",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "products",
+        "column_name": "title",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "products",
+        "column_name": "updatedAt",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "products",
+        "column_name": "userId",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "anon",
+        "table_name": "products",
+        "column_name": "waist",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "BlogPost",
+        "column_name": "content",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "BlogPost",
+        "column_name": "cover_image",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "BlogPost",
+        "column_name": "createdAt",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "BlogPost",
+        "column_name": "id",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "BlogPost",
+        "column_name": "isDeleted",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "BlogPost",
+        "column_name": "isPinned",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "BlogPost",
+        "column_name": "productId",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "BlogPost",
+        "column_name": "status",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "BlogPost",
+        "column_name": "title",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "BlogPost",
+        "column_name": "updatedAt",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "BlogPost",
+        "column_name": "userId",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "Listing",
+        "column_name": "basePrice",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "Listing",
+        "column_name": "createdAt",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "Listing",
+        "column_name": "deposit",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "Listing",
+        "column_name": "greenPoints",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "Listing",
+        "column_name": "id",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "Listing",
+        "column_name": "isDeleted",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "Listing",
+        "column_name": "listingType",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "Listing",
+        "column_name": "minDays",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "Listing",
+        "column_name": "pricing_tiers",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "Listing",
+        "column_name": "productId",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "Listing",
+        "column_name": "salePrice",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "Listing",
+        "column_name": "status",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "Listing",
+        "column_name": "turnaround_days",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "Listing",
+        "column_name": "updatedAt",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "ProductImage",
+        "column_name": "createdAt",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "ProductImage",
+        "column_name": "format",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "ProductImage",
+        "column_name": "height",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "ProductImage",
+        "column_name": "id",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "ProductImage",
+        "column_name": "isPrimary",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "ProductImage",
+        "column_name": "productId",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "ProductImage",
+        "column_name": "sortOrder",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "ProductImage",
+        "column_name": "url",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "ProductImage",
+        "column_name": "width",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "Review",
+        "column_name": "comment",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "Review",
+        "column_name": "createdAt",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "Review",
+        "column_name": "id",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "Review",
+        "column_name": "isPublished",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "Review",
+        "column_name": "productId",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "Review",
+        "column_name": "rating",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "Review",
+        "column_name": "rentalId",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "Review",
+        "column_name": "revieweeId",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "Review",
+        "column_name": "reviewerId",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "Review",
+        "column_name": "type",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "Review",
+        "column_name": "updatedAt",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "blog_posts",
+        "column_name": "content",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "blog_posts",
+        "column_name": "cover_image",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "blog_posts",
+        "column_name": "createdAt",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "blog_posts",
+        "column_name": "id",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "blog_posts",
+        "column_name": "isDeleted",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "blog_posts",
+        "column_name": "isPinned",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "blog_posts",
+        "column_name": "productId",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "blog_posts",
+        "column_name": "status",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "blog_posts",
+        "column_name": "title",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "blog_posts",
+        "column_name": "updatedAt",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "blog_posts",
+        "column_name": "userId",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "product_images",
+        "column_name": "createdAt",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "product_images",
+        "column_name": "format",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "product_images",
+        "column_name": "height",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "product_images",
+        "column_name": "id",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "product_images",
+        "column_name": "isPrimary",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "product_images",
+        "column_name": "productId",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "product_images",
+        "column_name": "sortOrder",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "product_images",
+        "column_name": "url",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "product_images",
+        "column_name": "width",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "products",
+        "column_name": "boostExpiresAt",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "products",
+        "column_name": "boostScore",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "products",
+        "column_name": "brand",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "products",
+        "column_name": "bust",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "products",
+        "column_name": "category",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "products",
+        "column_name": "color",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "products",
+        "column_name": "condition",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "products",
+        "column_name": "createdAt",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "products",
+        "column_name": "description",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "products",
+        "column_name": "gender",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "products",
+        "column_name": "hips",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "products",
+        "column_name": "id",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "products",
+        "column_name": "isDeleted",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "products",
+        "column_name": "isHighlighted",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "products",
+        "column_name": "lastBumpedAt",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "products",
+        "column_name": "material",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "products",
+        "column_name": "occasion",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "products",
+        "column_name": "province",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "products",
+        "column_name": "season",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "products",
+        "column_name": "size",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "products",
+        "column_name": "status",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "products",
+        "column_name": "style",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "products",
+        "column_name": "title",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "products",
+        "column_name": "updatedAt",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "products",
+        "column_name": "userId",
+        "privilege_type": "SELECT"
+      },
+      {
+        "grantee": "authenticated",
+        "table_name": "products",
+        "column_name": "waist",
+        "privilege_type": "SELECT"
+      }
+    ],
+    "storage_policies": [
+      {
+        "tablename": "objects",
+        "policyname": "public_read_catalog_images_only",
+        "roles": [
+          "anon",
+          "authenticated"
+        ],
+        "cmd": "SELECT",
+        "qual": "(bucket_id = ANY (ARRAY['products'::text, 'cloop-media'::text]))",
+        "with_check": null
+      }
+    ],
+    "buckets": [
+      {
+        "id": "cloop-disputes-private",
+        "name": "cloop-disputes-private",
+        "public": false,
+        "file_size_limit": 104857600,
+        "allowed_mime_types": [
+          "image/jpeg",
+          "image/png",
+          "image/webp",
+          "video/mp4",
+          "video/webm",
+          "video/quicktime"
+        ]
+      },
+      {
+        "id": "cloop-media",
+        "name": "cloop-media",
+        "public": true,
+        "file_size_limit": 10485760,
+        "allowed_mime_types": [
+          "image/jpeg",
+          "image/png",
+          "image/webp",
+          "image/gif"
+        ]
+      },
+      {
+        "id": "products",
+        "name": "products",
+        "public": true,
+        "file_size_limit": 10485760,
+        "allowed_mime_types": [
+          "image/jpeg",
+          "image/png",
+          "image/webp",
+          "image/gif"
+        ]
+      }
+    ],
+    "functions": [
+      {
+        "proname": "array_to_halfvec",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "array_to_halfvec",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "array_to_halfvec",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "array_to_halfvec",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "array_to_sparsevec",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "array_to_sparsevec",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "array_to_sparsevec",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "array_to_sparsevec",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "array_to_vector",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "array_to_vector",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "array_to_vector",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "array_to_vector",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "avg",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "avg",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "binary_quantize",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "binary_quantize",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "cosine_distance",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "cosine_distance",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "cosine_distance",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "gin_extract_query_trgm",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "gin_extract_value_trgm",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "gin_trgm_consistent",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "gin_trgm_triconsistent",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "gtrgm_compress",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "gtrgm_consistent",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "gtrgm_decompress",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "gtrgm_distance",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "gtrgm_in",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "gtrgm_options",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "gtrgm_out",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "gtrgm_penalty",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "gtrgm_picksplit",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "gtrgm_same",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "gtrgm_union",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "halfvec",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "halfvec_accum",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "halfvec_add",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "halfvec_avg",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "halfvec_cmp",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "halfvec_combine",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "halfvec_concat",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "halfvec_eq",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "halfvec_ge",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "halfvec_gt",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "halfvec_in",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "halfvec_l2_squared_distance",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "halfvec_le",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "halfvec_lt",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "halfvec_mul",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "halfvec_ne",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "halfvec_negative_inner_product",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "halfvec_out",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "halfvec_recv",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "halfvec_send",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "halfvec_spherical_distance",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "halfvec_sub",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "halfvec_to_float4",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "halfvec_to_sparsevec",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "halfvec_to_vector",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "halfvec_typmod_in",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "hamming_distance",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "hnsw_bit_support",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "hnsw_halfvec_support",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "hnsw_sparsevec_support",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "hnswhandler",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "inner_product",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "inner_product",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "inner_product",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "ivfflat_bit_support",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "ivfflat_halfvec_support",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "ivfflathandler",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "jaccard_distance",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "l1_distance",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "l1_distance",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "l1_distance",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "l2_distance",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "l2_distance",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "l2_distance",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "l2_norm",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "l2_norm",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "l2_normalize",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "l2_normalize",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "l2_normalize",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "set_limit",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "show_limit",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "show_trgm",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "similarity",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "similarity_dist",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "similarity_op",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "sparsevec",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "sparsevec_cmp",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "sparsevec_eq",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "sparsevec_ge",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "sparsevec_gt",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "sparsevec_in",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "sparsevec_l2_squared_distance",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "sparsevec_le",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "sparsevec_lt",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "sparsevec_ne",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "sparsevec_negative_inner_product",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "sparsevec_out",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "sparsevec_recv",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "sparsevec_send",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "sparsevec_to_halfvec",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "sparsevec_to_vector",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "sparsevec_typmod_in",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "strict_word_similarity",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "strict_word_similarity_commutator_op",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "strict_word_similarity_dist_commutator_op",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "strict_word_similarity_dist_op",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "strict_word_similarity_op",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "subvector",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "subvector",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "sum",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "sum",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "vector",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "vector_accum",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "vector_add",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "vector_avg",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "vector_cmp",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "vector_combine",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "vector_concat",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "vector_dims",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "vector_dims",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "vector_eq",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "vector_ge",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "vector_gt",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "vector_in",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "vector_l2_squared_distance",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "vector_le",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "vector_lt",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "vector_mul",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "vector_ne",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "vector_negative_inner_product",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "vector_norm",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "vector_out",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "vector_recv",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "vector_send",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "vector_spherical_distance",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "vector_sub",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "vector_to_float4",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "vector_to_halfvec",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "vector_to_sparsevec",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "vector_typmod_in",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "word_similarity",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "word_similarity_commutator_op",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "word_similarity_dist_commutator_op",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "word_similarity_dist_op",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "word_similarity_op",
+        "prosecdef": false,
+        "anon_execute": true,
+        "authenticated_execute": true
+      }
+    ],
+    "views": [
+      {
+        "relname": "blog_posts",
+        "relkind": "v",
+        "reloptions": [
+          "security_invoker=true",
+          "security_barrier=true"
+        ],
+        "anon_select": false,
+        "authenticated_select": false
+      },
+      {
+        "relname": "product_images",
+        "relkind": "v",
+        "reloptions": [
+          "security_invoker=true",
+          "security_barrier=true"
+        ],
+        "anon_select": false,
+        "authenticated_select": false
+      }
+    ]
+  }
+}

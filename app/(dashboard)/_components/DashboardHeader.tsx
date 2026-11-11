@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
-import { Search, Bell, Plus, Award, LogOut, Menu, Package, Wallet, Leaf, Truck, CheckCircle2, AlertTriangle, Star, Clock, Check, Loader2 } from "lucide-react";
+import { Search, Bell, Plus, Award, LogOut, Menu, Package, Wallet, Leaf, Truck, CheckCircle2, AlertTriangle, Clock, Check, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { getUserNotificationsAction, NotificationItem } from "@/app/actions/notification";
 import { useAuthModal } from "@/app/AuthModalContext";
-import { toast } from "sonner";
 
 export function DashboardHeader({
   currentUser,
@@ -25,9 +24,13 @@ export function DashboardHeader({
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoadingNotifs, setIsLoadingNotifs] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
+  const inFlightRef = useRef(false);
+  const onUnreadCountChangeRef = useRef(onUnreadCountChange);
+  onUnreadCountChangeRef.current = onUnreadCountChange;
 
-  // ⚡ TẢI THÔNG BÁO THỰC TẾ TỪ SERVER VÀ ĐỒNG BỘ TRẠNG THÁI ĐÃ ĐỌC PERSISTENT
-  const loadNotifications = async () => {
+  const loadNotifications = useCallback(async () => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
     try {
       setIsLoadingNotifs(true);
       const res = await getUserNotificationsAction();
@@ -37,55 +40,67 @@ export function DashboardHeader({
           readIds = JSON.parse(localStorage.getItem("cloop_read_notif_ids") || "[]");
         } catch {}
 
-        const updated = res.notifications.map(n => ({
+        const updated = res.notifications.map((n) => ({
           ...n,
-          isRead: n.isRead || readIds.includes(n.id)
+          isRead: n.isRead || readIds.includes(n.id),
         }));
 
         setNotifications(updated);
-        const unread = updated.filter(n => !n.isRead).length;
+        const unread = updated.filter((n) => !n.isRead).length;
         setUnreadCount(unread);
-        onUnreadCountChange?.(unread);
+        onUnreadCountChangeRef.current?.(unread);
       }
     } catch (e) {
       console.error("Lỗi tải thông báo header:", e);
     } finally {
       setIsLoadingNotifs(false);
+      inFlightRef.current = false;
     }
-  };
+  }, []);
 
   useEffect(() => {
-    // 🛡️ CHỈ TẢI VÀ SUBSCRIBE REALTIME NẾU ĐÃ ĐĂNG NHẬP (Tiết kiệm 100% quota cho khách & bot)
     if (!currentUser?.isLoggedIn) {
       setNotifications([]);
       setUnreadCount(0);
       return;
     }
 
-    loadNotifications();
+    let isMounted = true;
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-    // 🔔 Supabase Realtime Channel: Chỉ mở cho user thật đã đăng nhập
+    // Lùi 180ms sau khi mount để nhường băng thông cho trang chính render trước
+    const initialTimer = setTimeout(() => {
+      if (isMounted) loadNotifications();
+    }, 180);
+
+    const scheduleReload = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        if (isMounted) loadNotifications();
+      }, 1000);
+    };
+
+    const userFilter = currentUser.id ? `userId=eq.${currentUser.id}` : undefined;
     const channel = supabase
-      .channel("header_notifications_sync")
+      .channel(`header_notifications_sync_${currentUser.id || "auth"}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "rental_history" },
-        () => loadNotifications()
+        scheduleReload
       )
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "coin_ledger_entries" },
-        () => loadNotifications()
-      )
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "ledger_transactions" },
-        () => loadNotifications()
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "coin_ledger_entries",
+          ...(userFilter ? { filter: userFilter } : {}),
+        },
+        scheduleReload
       )
       .subscribe();
 
     let lastFetch = Date.now();
-    // 🛡️ TĂNG THROTTLE FOCUS TỪ 30s LÊN 5 PHÚT (300.000ms) ĐỂ CHỐNG SPAM TAB
     const handleThrottledFocus = () => {
       const now = Date.now();
       if (now - lastFetch > 300000) {
@@ -103,13 +118,15 @@ export function DashboardHeader({
     window.addEventListener("focus", handleThrottledFocus);
 
     return () => {
+      isMounted = false;
+      clearTimeout(initialTimer);
+      if (debounceTimer) clearTimeout(debounceTimer);
       supabase.removeChannel(channel);
       window.removeEventListener("notifications-updated", handleSync);
       window.removeEventListener("focus", handleThrottledFocus);
     };
-  }, [currentUser?.isLoggedIn]);
+  }, [currentUser?.isLoggedIn, currentUser?.id, loadNotifications]);
 
-  // Đóng notification khi click ra ngoài
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
@@ -123,13 +140,13 @@ export function DashboardHeader({
   const handleMarkAllRead = (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      const allIds = notifications.map(n => n.id);
+      const allIds = notifications.map((n) => n.id);
       const existingRead: string[] = JSON.parse(localStorage.getItem("cloop_read_notif_ids") || "[]");
       const combined = Array.from(new Set([...existingRead, ...allIds]));
       localStorage.setItem("cloop_read_notif_ids", JSON.stringify(combined));
     } catch {}
 
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     setUnreadCount(0);
     onUnreadCountChange?.(0);
     window.dispatchEvent(new CustomEvent("notifications-updated"));
@@ -141,8 +158,8 @@ export function DashboardHeader({
       if (!existingRead.includes(item.id)) {
         const combined = [...existingRead, item.id];
         localStorage.setItem("cloop_read_notif_ids", JSON.stringify(combined));
-        setNotifications(prev => prev.map(n => n.id === item.id ? { ...n, isRead: true } : n));
-        setUnreadCount(prev => {
+        setNotifications((prev) => prev.map((n) => (n.id === item.id ? { ...n, isRead: true } : n)));
+        setUnreadCount((prev) => {
           const next = Math.max(0, prev - 1);
           onUnreadCountChange?.(next);
           return next;
@@ -182,7 +199,6 @@ export function DashboardHeader({
           <Menu size={24} />
         </button>
 
-        {/* Search Bar */}
         <div className="hidden md:flex items-center w-[250px] lg:w-[350px] h-[44px] bg-stone-50 border border-stone-200 rounded-full px-4 focus-within:bg-white focus-within:border-[#183A2D] focus-within:shadow-sm transition-all">
           <Search size={16} className="text-gray-400" />
           <input
@@ -194,7 +210,6 @@ export function DashboardHeader({
       </div>
 
       <div className="flex items-center gap-3 md:gap-5">
-        {/* CHUÔNG THÔNG BÁO TƯƠNG TÁC */}
         <div className="relative" ref={notifRef}>
           <button 
             type="button"
@@ -213,11 +228,8 @@ export function DashboardHeader({
             )}
           </button>
 
-          {/* DROPDOWN DANH SÁCH THÔNG BÁO */}
           {showNotifications && (
             <div className="absolute right-0 mt-3 w-80 sm:w-96 bg-white border border-stone-200 rounded-3xl shadow-2xl z-50 overflow-hidden text-left animate-in fade-in zoom-in-95 duration-150 font-body">
-              
-              {/* Header Dropdown */}
               <div className="px-4 py-3 bg-[#183A2D] text-white flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold uppercase tracking-wider font-ui">Thông báo CLOOP</span>
@@ -242,7 +254,6 @@ export function DashboardHeader({
                 )}
               </div>
 
-              {/* Danh sách thông báo */}
               <div className="divide-y divide-stone-100 max-h-[380px] overflow-y-auto">
                 {isLoadingNotifs && notifications.length === 0 ? (
                   <div className="p-8 text-center text-stone-400 text-xs flex flex-col items-center gap-2">
@@ -291,7 +302,6 @@ export function DashboardHeader({
                 )}
               </div>
 
-              {/* Footer */}
               <div className="p-2.5 bg-stone-50 border-t border-stone-100 text-center font-ui">
                 <Link
                   href="/my-closet/notifications"
@@ -323,7 +333,6 @@ export function DashboardHeader({
 
         <div className="w-[1px] h-6 bg-gray-200 mx-1 hidden sm:block"></div>
 
-        {/* User Dropdown Profile or Login Button */}
         {!currentUser?.isLoggedIn ? (
           <button
             type="button"
@@ -346,7 +355,6 @@ export function DashboardHeader({
               </div>
             </div>
 
-            {/* Dropdown Menu */}
             <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all transform origin-top-right scale-95 group-hover:scale-100 font-ui py-2 z-50">
               <div className="px-4 py-2 border-b border-gray-100 sm:hidden">
                 <div className="text-xs font-bold text-[#183A2D] capitalize">{currentUser?.name || "Member"}</div>

@@ -17,14 +17,12 @@ export default async function MyClosetOrdersPage() {
 
   const userId = userAuth.id;
 
-  // ⚡ LAZY SLA EVALUATION TRIGGER:
-  // Tự động giải ngân & nhả cọc cho các đơn quá hạn SLA 24h của user mà không cần chờ Cronjob 1 lần/ngày
-  try {
-    const { evaluateEscrowSlaForOrders } = await import("@/lib/escrow-sla-checker");
-    await evaluateEscrowSlaForOrders({ userId, limit: 10 });
-  } catch (slaErr) {
-    console.warn("Lazy Escrow SLA non-blocking trigger notice:", slaErr);
-  }
+  // LAZY SLA EVALUATION TRIGGER: Chạy ngầm không chặn luồng render trang Orders
+  import("@/lib/escrow-sla-checker")
+    .then(({ evaluateEscrowSlaForOrders }) =>
+      evaluateEscrowSlaForOrders({ userId, limit: 10 }).catch(() => {})
+    )
+    .catch(() => {});
 
   let escrowRaw: any[] = [];
   let rentedRaw: any[] = [];

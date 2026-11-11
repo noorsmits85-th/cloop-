@@ -1,5 +1,7 @@
 import { prisma } from "@/src/lib/prisma";
 import { cache } from "react";
+import { maskPublicAddress } from "@/src/utils/shipping";
+import { createClient } from "@/src/utils/supabase/server";
 
 // ⚡ HIGH-SPEED SWR IN-MEMORY CACHE FOR PRODUCT DETAILS (0-1ms latency)
 const productDetailCache = new Map<string, { data: any; expiry: number }>();
@@ -83,6 +85,21 @@ export const getProductDetail = cache(async (id: string) => {
 
   if (!product || product.isDeleted) {
     return null;
+  }
+
+  // Nếu món đồ đang ẩn khỏi sàn (isShopHidden hoặc tất cả listing đều HIDDEN), chỉ chủ sở hữu mới xem được
+  const hasVisibleListing = product.listings.some((l: any) => l.status !== "HIDDEN");
+  const isHiddenFromPublic = Boolean((product as any).isShopHidden) || (product.listings.length > 0 && !hasVisibleListing);
+  if (isHiddenFromPublic) {
+    let viewerId: string | null = null;
+    try {
+      const supabase = await createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      viewerId = user?.id || null;
+    } catch {}
+    if (!viewerId || viewerId !== product.userId) {
+      return null;
+    }
   }
 
   // 3. Collect reviews (direct relation or via rental product_id)
@@ -199,7 +216,7 @@ export const getProductDetail = cache(async (id: string) => {
     occasion: product.occasion,
     province: product.province,
     ward: product.wardCode,
-    specificAddress: product.specificAddress,
+    specificAddress: maskPublicAddress(product.specificAddress || product.province, "Toàn quốc"),
     targetHeight,
     targetWeight,
     chest: product.bust,
@@ -225,7 +242,9 @@ export const getProductDetail = cache(async (id: string) => {
     averageRating,
   };
 
-    productDetailCache.set(id, { data, expiry: Date.now() + CACHE_TTL_MS });
+    if (!isHiddenFromPublic) {
+      productDetailCache.set(id, { data, expiry: Date.now() + CACHE_TTL_MS });
+    }
     return data;
   } catch (error) {
     console.error(`[Product Service Error] Failed to fetch product ID ${id}:`, error);

@@ -358,25 +358,9 @@ export default function GoogleFlowFashionHero({ initialProducts }: GoogleFlowFas
   const [isVisualSearchOpen, setIsVisualSearchOpen] = useState(false);
   const [isVoiceSearchOpen, setIsVoiceSearchOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<FashionItem | null>(null);
-  const [heroProducts, setHeroProducts] = useState<any[]>(initialProducts && initialProducts.length > 0 ? initialProducts : []);
-
-  useEffect(() => {
-    if (initialProducts && initialProducts.length > 0) {
-      setHeroProducts(initialProducts);
-    } else {
-      getShopProductsAction({ type: "all", limit: 32 })
-        .then((res) => {
-          if (res.success && res.products && res.products.length > 0) {
-            setHeroProducts(res.products);
-          }
-        })
-        .catch(() => {});
-    }
-  }, [initialProducts]);
-
   const mosaicColumns = useMemo(() => {
-    return buildMosaicColumns(heroProducts);
-  }, [heroProducts]);
+    return buildMosaicColumns(initialProducts && initialProducts.length > 0 ? initialProducts : REAL_DEFAULT_PRODUCTS);
+  }, [initialProducts]);
 
   return (
     <>

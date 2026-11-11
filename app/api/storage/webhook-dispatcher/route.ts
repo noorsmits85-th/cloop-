@@ -1,26 +1,22 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/src/lib/auth";
+import { requireAdmin } from "@/src/lib/auth";
 
 export const runtime = "nodejs";
 
 export async function GET() {
   try {
-    //  Auth guard
-    let userAuth: any = null;
     try {
-      userAuth = await requireUser();
-    } catch {
-      const { createClient } = await import("@/src/utils/supabase/server");
-      const supabase = await createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user?.id) {
-        userAuth = user;
+      await requireAdmin();
+    } catch (authError: unknown) {
+      const msg = authError instanceof Error ? authError.message : "";
+      if (msg.startsWith("Forbidden")) {
+        return NextResponse.json(
+          { error: "Bạn không có quyền truy cập cấu hình kho lưu trữ nội bộ." },
+          { status: 403 }
+        );
       }
-    }
-
-    if (!userAuth) {
       return NextResponse.json(
-        { error: "Vui lòng đăng nhập để lấy cấu hình kho lưu trữ." },
+        { error: "Vui lòng đăng nhập tài khoản Quản trị viên." },
         { status: 401 }
       );
     }
@@ -37,16 +33,21 @@ export async function GET() {
       );
     }
 
-    // Cân bằng tải tự động giữa Kho 1 (5TB) và Kho 2 (5TB)
     const selectedWebhookUrl = webhooks[Math.floor(Math.random() * webhooks.length)];
-    const targetFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID_5TB || process.env.GOOGLE_DRIVE_FOLDER_ID || "";
+    const targetFolderId =
+      process.env.GOOGLE_DRIVE_FOLDER_ID_5TB || process.env.GOOGLE_DRIVE_FOLDER_ID || "";
 
     return NextResponse.json({
       success: true,
       webhookUrl: selectedWebhookUrl,
       folderId: targetFolderId,
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Lỗi máy chủ nội bộ." }, { status: 500 });
+  } catch (error: unknown) {
+    // TODO: integrate Sentry/LogRocket tracking for storage dispatcher errors
+    console.error("Webhook dispatcher error:", error);
+    return NextResponse.json(
+      { error: "Lỗi máy chủ nội bộ." },
+      { status: 500 }
+    );
   }
 }

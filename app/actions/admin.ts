@@ -1,40 +1,19 @@
 "use server";
 
-import { prisma } from "@/src/lib/prisma";
-import { createClient } from "@/src/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import { requireAdmin } from "@/src/lib/auth";
 import { settleCompletedRentalOrder } from "@/lib/settlement-engine";
-
-// Xác thực quyền Admin
-export async function requireAdmin() {
-  const supabase = await createClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  
-  if (!session?.user?.id) {
-    throw new Error("Không tìm thấy phiên đăng nhập.");
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { role: true, id: true, name: true, email: true }
-  });
-
-  if (!user || user.role !== "ADMIN") {
-    throw new Error("Bạn không có quyền thực hiện hành động này.");
-  }
-
-  return user;
-}
+import { toSafeActionError } from "@/src/lib/safe-error";
 
 /**
  * Giải ngân và hoàn cọc cho một đơn thuê hoàn tất
  */
 export async function releaseSingleEscrowOrderAction(rentalId: string) {
   try {
-    const admin = await requireAdmin();
+    const { profile } = await requireAdmin();
 
     const result = await settleCompletedRentalOrder(rentalId, {
-      actorId: admin.id,
+      actorId: profile.id,
       actorRole: "ADMIN",
     });
 
@@ -45,10 +24,12 @@ export async function releaseSingleEscrowOrderAction(rentalId: string) {
 
     return {
       success: true,
-      message: `Đã hoàn tất giải ngân đơn #${rentalId.slice(0, 8)}! Hoàn cọc: ${result.depositRefunded.toLocaleString('vi-VN')}₫ | Trả chủ tủ: ${result.lenderEarnings.toLocaleString('vi-VN')}₫`
+      message: `Đã hoàn tất giải ngân đơn #${rentalId.slice(0, 8)}! Hoàn cọc: ${result.depositRefunded.toLocaleString("vi-VN")}₫ | Trả chủ tủ: ${result.lenderEarnings.toLocaleString("vi-VN")}₫`,
+      error: undefined as string | undefined,
     };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Lỗi khi giải ngân đơn hàng." };
+  } catch (error: unknown) {
+    // TODO: Tích hợp hệ thống tracking (Sentry/LogRocket) để theo dõi lỗi giải ngân Escrow
+    return toSafeActionError(error, "Lỗi khi giải ngân đơn hàng.");
   }
 }
 
@@ -69,8 +50,10 @@ export async function refreshAdminViewsAction() {
     return {
       success: true,
       message: "Đã làm mới số liệu thực tế toàn bộ hệ thống quản trị.",
+      error: undefined as string | undefined,
     };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Lỗi khi làm mới số liệu." };
+  } catch (error: unknown) {
+    // TODO: Tích hợp hệ thống tracking (Sentry/LogRocket) để theo dõi lỗi làm mới số liệu Admin
+    return toSafeActionError(error, "Lỗi khi làm mới số liệu.");
   }
 }

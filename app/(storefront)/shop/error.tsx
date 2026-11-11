@@ -1,6 +1,7 @@
-"use client"; // Error components must be Client Components
+"use client";
 
 import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 import { AlertTriangle, RefreshCcw } from "lucide-react";
 
 export default function ShopError({
@@ -11,8 +12,7 @@ export default function ShopError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Log the error to an error reporting service
-    console.error("ShopError Boundary Caught:", error);
+    Sentry.captureException(error);
   }, [error]);
 
   return (
@@ -26,7 +26,7 @@ export default function ShopError({
       <p className="text-gray-600 max-w-md mb-8">
         Server đang bận rộn cập nhật các bộ sưu tập mới nhất. Quý khách vui lòng thử lại sau giây lát.
       </p>
-      
+
       <div className="flex gap-4">
         <button
           onClick={() => reset()}
@@ -36,7 +36,7 @@ export default function ShopError({
           Thử lại
         </button>
         <button
-          onClick={() => window.location.href = "/"}
+          onClick={() => (window.location.href = "/")}
           className="bg-white text-black border border-gray-300 hover:bg-gray-50 rounded-full py-2 px-8 transition-colors font-medium"
         >
           Về trang chủ

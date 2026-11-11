@@ -1,3 +1,4 @@
+import "server-only";
 import { PrismaClient } from "@prisma/client";
 
 const createExtendedClient = (baseClient: PrismaClient) => {
@@ -89,9 +90,9 @@ function getSanitizedDatabaseUrl() {
   // Đặt connection_limit=1 cho mỗi serverless function trên Vercel để tránh chạm trần Pool Supabase khi nhiều hàm chạy song song.
   try {
     const parsed = new URL(rawUrl);
-    parsed.searchParams.set("connection_limit", "1");
+    parsed.searchParams.set("connection_limit", "5");
     parsed.searchParams.set("pool_timeout", "10");
-    parsed.searchParams.set("connect_timeout", "10");
+    parsed.searchParams.set("connect_timeout", "15");
 
     // Khi kết nối qua PgBouncer / Supavisor ở Transaction Mode (cổng 6543 hoặc host pooler),
     // Prisma BẮT BUỘC cần cờ pgbouncer=true để tắt prepared statements.
@@ -104,9 +105,9 @@ function getSanitizedDatabaseUrl() {
     // Fallback an toàn nếu DATABASE_URL chứa ký tự đặc biệt khiến new URL() ném ngoại lệ
     let url = rawUrl;
     if (url.includes("connection_limit=")) {
-      url = url.replace(/connection_limit=\d+/g, "connection_limit=1");
+      url = url.replace(/connection_limit=\d+/g, "connection_limit=5");
     } else {
-      url += (url.includes("?") ? "&" : "?") + "connection_limit=1";
+      url += (url.includes("?") ? "&" : "?") + "connection_limit=5";
     }
 
     if (url.includes("pool_timeout=")) {
@@ -116,9 +117,9 @@ function getSanitizedDatabaseUrl() {
     }
 
     if (url.includes("connect_timeout=")) {
-      url = url.replace(/connect_timeout=\d+/g, "connect_timeout=10");
+      url = url.replace(/connect_timeout=\d+/g, "connect_timeout=15");
     } else {
-      url += (url.includes("?") ? "&" : "?") + "connect_timeout=10";
+      url += (url.includes("?") ? "&" : "?") + "connect_timeout=15";
     }
 
     if ((url.includes(":6543") || url.includes("pooler.supabase.com")) && !url.includes("pgbouncer=true")) {

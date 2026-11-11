@@ -1,0 +1,177 @@
+{
+  "date": "2026-11-11",
+  "target": "https://cloop-sable.vercel.app",
+  "mode": "read-only GET; no response bodies retained",
+  "results": [
+    {
+      "path": "/",
+      "status": 200,
+      "sensitiveFileSignatureDetected": false,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://res.cloudinary.com https://challenges.cloudflare.com https://cdn.jsdelivr.net https://vercel.live; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' blob: data: https:; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss:; frame-src 'self' https://challenges.cloudflare.com https://*.payos.vn https://res.cloudinary.com; media-src 'self' blob: data: https://res.cloudinary.com https:; object-src 'none'; base-uri 'self'; form-action 'self' https://*.payos.vn; frame-ancestors *; upgrade-insecure-requests;",
+        "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+        "x-frame-options": null,
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin",
+        "permissions-policy": "camera=(self), microphone=(self), geolocation=(), browsing-topics=()",
+        "access-control-allow-origin": null,
+        "access-control-allow-credentials": null
+      },
+      "redirectPath": null
+    },
+    {
+      "path": "/.env",
+      "status": 404,
+      "sensitiveFileSignatureDetected": false,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://res.cloudinary.com https://challenges.cloudflare.com https://cdn.jsdelivr.net https://vercel.live; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' blob: data: https:; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss:; frame-src 'self' https://challenges.cloudflare.com https://*.payos.vn https://res.cloudinary.com; media-src 'self' blob: data: https://res.cloudinary.com https:; object-src 'none'; base-uri 'self'; form-action 'self' https://*.payos.vn; frame-ancestors *; upgrade-insecure-requests;",
+        "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+        "x-frame-options": null,
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin",
+        "permissions-policy": "camera=(self), microphone=(self), geolocation=(), browsing-topics=()",
+        "access-control-allow-origin": null,
+        "access-control-allow-credentials": null
+      },
+      "redirectPath": null
+    },
+    {
+      "path": "/.git/config",
+      "status": 404,
+      "sensitiveFileSignatureDetected": false,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://res.cloudinary.com https://challenges.cloudflare.com https://cdn.jsdelivr.net https://vercel.live; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' blob: data: https:; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss:; frame-src 'self' https://challenges.cloudflare.com https://*.payos.vn https://res.cloudinary.com; media-src 'self' blob: data: https://res.cloudinary.com https:; object-src 'none'; base-uri 'self'; form-action 'self' https://*.payos.vn; frame-ancestors *; upgrade-insecure-requests;",
+        "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+        "x-frame-options": null,
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin",
+        "permissions-policy": "camera=(self), microphone=(self), geolocation=(), browsing-topics=()",
+        "access-control-allow-origin": null,
+        "access-control-allow-credentials": null
+      },
+      "redirectPath": null
+    },
+    {
+      "path": "/backup.sql",
+      "status": 404,
+      "sensitiveFileSignatureDetected": false,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://res.cloudinary.com https://challenges.cloudflare.com https://cdn.jsdelivr.net https://vercel.live; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' blob: data: https:; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss:; frame-src 'self' https://challenges.cloudflare.com https://*.payos.vn https://res.cloudinary.com; media-src 'self' blob: data: https://res.cloudinary.com https:; object-src 'none'; base-uri 'self'; form-action 'self' https://*.payos.vn; frame-ancestors *; upgrade-insecure-requests;",
+        "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+        "x-frame-options": null,
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin",
+        "permissions-policy": "camera=(self), microphone=(self), geolocation=(), browsing-topics=()",
+        "access-control-allow-origin": null,
+        "access-control-allow-credentials": null
+      },
+      "redirectPath": null
+    },
+    {
+      "path": "/api-docs",
+      "status": 404,
+      "sensitiveFileSignatureDetected": false,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://res.cloudinary.com https://challenges.cloudflare.com https://cdn.jsdelivr.net https://vercel.live; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' blob: data: https:; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss:; frame-src 'self' https://challenges.cloudflare.com https://*.payos.vn https://res.cloudinary.com; media-src 'self' blob: data: https://res.cloudinary.com https:; object-src 'none'; base-uri 'self'; form-action 'self' https://*.payos.vn; frame-ancestors *; upgrade-insecure-requests;",
+        "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+        "x-frame-options": null,
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin",
+        "permissions-policy": "camera=(self), microphone=(self), geolocation=(), browsing-topics=()",
+        "access-control-allow-origin": null,
+        "access-control-allow-credentials": null
+      },
+      "redirectPath": null
+    },
+    {
+      "path": "/api/pricing/suggest-tiers?basePrice=10000",
+      "status": 200,
+      "sensitiveFileSignatureDetected": false,
+      "headers": {
+        "content-type": "application/json",
+        "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://res.cloudinary.com https://challenges.cloudflare.com https://cdn.jsdelivr.net https://vercel.live; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' blob: data: https:; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss:; frame-src 'self' https://challenges.cloudflare.com https://*.payos.vn https://res.cloudinary.com; media-src 'self' blob: data: https://res.cloudinary.com https:; object-src 'none'; base-uri 'self'; form-action 'self' https://*.payos.vn; frame-ancestors *; upgrade-insecure-requests;",
+        "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+        "x-frame-options": null,
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin",
+        "permissions-policy": "camera=(self), microphone=(self), geolocation=(), browsing-topics=()",
+        "access-control-allow-origin": null,
+        "access-control-allow-credentials": null
+      },
+      "redirectPath": null
+    },
+    {
+      "path": "/api/storage/webhook-dispatcher",
+      "status": 401,
+      "sensitiveFileSignatureDetected": false,
+      "headers": {
+        "content-type": "application/json",
+        "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://res.cloudinary.com https://challenges.cloudflare.com https://cdn.jsdelivr.net https://vercel.live; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' blob: data: https:; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss:; frame-src 'self' https://challenges.cloudflare.com https://*.payos.vn https://res.cloudinary.com; media-src 'self' blob: data: https://res.cloudinary.com https:; object-src 'none'; base-uri 'self'; form-action 'self' https://*.payos.vn; frame-ancestors *; upgrade-insecure-requests;",
+        "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+        "x-frame-options": null,
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin",
+        "permissions-policy": "camera=(self), microphone=(self), geolocation=(), browsing-topics=()",
+        "access-control-allow-origin": null,
+        "access-control-allow-credentials": null
+      },
+      "redirectPath": null
+    },
+    {
+      "path": "/api/disputes/evidence-stream",
+      "status": 401,
+      "sensitiveFileSignatureDetected": false,
+      "headers": {
+        "content-type": "application/json",
+        "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://res.cloudinary.com https://challenges.cloudflare.com https://cdn.jsdelivr.net https://vercel.live; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' blob: data: https:; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss:; frame-src 'self' https://challenges.cloudflare.com https://*.payos.vn https://res.cloudinary.com; media-src 'self' blob: data: https://res.cloudinary.com https:; object-src 'none'; base-uri 'self'; form-action 'self' https://*.payos.vn; frame-ancestors *; upgrade-insecure-requests;",
+        "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+        "x-frame-options": null,
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin",
+        "permissions-policy": "camera=(self), microphone=(self), geolocation=(), browsing-topics=()",
+        "access-control-allow-origin": null,
+        "access-control-allow-credentials": null
+      },
+      "redirectPath": null
+    },
+    {
+      "path": "/admin",
+      "status": 307,
+      "sensitiveFileSignatureDetected": false,
+      "headers": {
+        "content-type": "text/plain",
+        "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://res.cloudinary.com https://challenges.cloudflare.com https://cdn.jsdelivr.net https://vercel.live; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' blob: data: https:; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss:; frame-src 'self' https://challenges.cloudflare.com https://*.payos.vn https://res.cloudinary.com; media-src 'self' blob: data: https://res.cloudinary.com https:; object-src 'none'; base-uri 'self'; form-action 'self' https://*.payos.vn; frame-ancestors *; upgrade-insecure-requests;",
+        "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+        "x-frame-options": null,
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin",
+        "permissions-policy": "camera=(self), microphone=(self), geolocation=(), browsing-topics=()",
+        "access-control-allow-origin": null,
+        "access-control-allow-credentials": null
+      },
+      "redirectPath": "/login"
+    },
+    {
+      "path": "/my-closet/wallet",
+      "status": 307,
+      "sensitiveFileSignatureDetected": false,
+      "headers": {
+        "content-type": "text/plain",
+        "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://res.cloudinary.com https://challenges.cloudflare.com https://cdn.jsdelivr.net https://vercel.live; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' blob: data: https:; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https: wss:; frame-src 'self' https://challenges.cloudflare.com https://*.payos.vn https://res.cloudinary.com; media-src 'self' blob: data: https://res.cloudinary.com https:; object-src 'none'; base-uri 'self'; form-action 'self' https://*.payos.vn; frame-ancestors *; upgrade-insecure-requests;",
+        "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+        "x-frame-options": null,
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin",
+        "permissions-policy": "camera=(self), microphone=(self), geolocation=(), browsing-topics=()",
+        "access-control-allow-origin": null,
+        "access-control-allow-credentials": null
+      },
+      "redirectPath": "/login"
+    }
+  ]
+}

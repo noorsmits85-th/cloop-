@@ -1,4 +1,5 @@
 import React from "react";
+import { requireAdminOrRedirect } from "@/src/lib/auth";
 import { getAiStylistLogs } from "@/app/actions/ai-stylist-logs";
 import StylistLogsTable from "./StylistLogsTable";
 
@@ -19,6 +20,8 @@ interface AdminStylistLogsPageProps {
 export default async function AdminStylistLogsPage({
   searchParams,
 }: AdminStylistLogsPageProps) {
+  await requireAdminOrRedirect();
+
   const resolvedParams = await searchParams;
   const currentPage = Number(resolvedParams.page) || 1;
   const search = resolvedParams.search || "";

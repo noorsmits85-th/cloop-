@@ -5,6 +5,8 @@ import { requireUser } from "@/src/lib/auth";
 import { revalidatePath } from "next/cache";
 import { calculateDynamicGhnFee, extractProvince, maskOrderPii } from "@/src/utils/shipping";
 import { settleCompletedRentalOrder, settleDisputedRentalOrder } from "@/lib/settlement-engine";
+import { verifyAndFinalizeDisputeEvidenceList } from "@/src/lib/dispute-evidence-seal";
+import { verifyUploadedDisputeFile } from "@/src/services/gcsStorage";
 
 
 export async function renterReceivedAction(orderId: string) {
@@ -88,7 +90,7 @@ export async function renterReturnAction(orderId: string) {
 
     const rental = await prisma.rentalHistory.findFirst({
       where: { id: orderId, renterId: userAuth.id },
-      include: { invoice: true, product: true }
+      include: { invoice: true, product: true, shipments: true }
     });
 
     if (!rental) {
@@ -109,9 +111,16 @@ export async function renterReturnAction(orderId: string) {
 
     // Tạo Shipment chiều về
     try {
+      const deliveryShipment = rental.shipments?.find((s) => s.direction === "DELIVERY");
+      const renterDeliveryAddr = (deliveryShipment?.deliveryAddress as any) || {};
+
       const pickupAddress = {
-        name: rental.renter_name || "Khách thuê",
-        phone: rental.renter_phone || "",
+        name: rental.renter_name || renterDeliveryAddr.name || "Khách thuê",
+        phone: rental.renter_phone || renterDeliveryAddr.phone || "",
+        province: renterDeliveryAddr.province || "Hà Nội",
+        districtId: renterDeliveryAddr.districtId,
+        wardCode: renterDeliveryAddr.wardCode,
+        specificAddress: renterDeliveryAddr.specificAddress || renterDeliveryAddr.address || "",
       };
 
       const deliveryAddress = {
@@ -131,7 +140,8 @@ export async function renterReturnAction(orderId: string) {
           },
         },
         update: {
-          status: "IN_TRANSIT",
+          provider: rental.shippingCode === "SELF_PICKUP" ? "SELF_PICKUP" : "GHN",
+          status: rental.shippingCode === "SELF_PICKUP" ? "DELIVERED" : "IN_TRANSIT",
           shippingFeeCollected: 0,
           pickupAddress,
           deliveryAddress,
@@ -141,8 +151,9 @@ export async function renterReturnAction(orderId: string) {
         create: {
           rentalId: rental.id,
           direction: "RETURN",
-          status: "IN_TRANSIT",
-          clientOrderCode: `${rental.id}-RETURN`,
+          provider: rental.shippingCode === "SELF_PICKUP" ? "SELF_PICKUP" : "GHN",
+          status: rental.shippingCode === "SELF_PICKUP" ? "DELIVERED" : "IN_TRANSIT",
+          clientOrderCode: `${rental.id.slice(0, 8).toUpperCase()}-RETURN`,
           shippingFeeCollected: 0,
           pickupAddress,
           deliveryAddress,
@@ -339,23 +350,6 @@ export async function completeOrderAction(orderId: string) {
   }
 }
 
-function isEvidenceVideo(url: string): boolean {
-  if (!url) return false;
-  const lower = url.toLowerCase();
-  return (
-    lower.includes("#video") ||
-    lower.includes("type=video") ||
-    lower.endsWith(".mp4") ||
-    lower.endsWith(".mov") ||
-    lower.endsWith(".webm") ||
-    lower.endsWith(".avi") ||
-    lower.endsWith(".mkv") ||
-    lower.includes("/video/") ||
-    lower.includes("video") ||
-    lower.includes("drive.google.com/file")
-  );
-}
-
 export async function raiseDisputeWithProposalAction(
   orderId: string,
   description: string,
@@ -371,22 +365,7 @@ export async function raiseDisputeWithProposalAction(
     }
 
     if (!Array.isArray(images) || images.length === 0) {
-      return { success: false, error: "Bắt buộc phải đính kèm ít nhất 1 ảnh bằng chứng." };
-    }
-
-    // URL validation: must be secure HTTPS from trusted media hosts (Google Drive 10TB Vault, Google Cloud, Cloudinary)
-    const isValidImages = images.every(img =>
-      typeof img === "string" &&
-      (img.startsWith("https://drive.google.com/") ||
-       img.startsWith("https://lh3.googleusercontent.com/") ||
-       img.startsWith("https://storage.googleapis.com/") ||
-       img.startsWith("https://script.google.com/") ||
-       img.startsWith("https://res.cloudinary.com/") ||
-       img.startsWith("https://") ||
-       img.startsWith("/"))
-    );
-    if (!isValidImages) {
-      return { success: false, error: "Định dạng hình ảnh/video bằng chứng không hợp lệ hoặc không an toàn." };
+      return { success: false, error: "Bắt buộc phải đính kèm ít nhất 1 ảnh/video bằng chứng." };
     }
 
     const cleanDeduction = Math.floor(Math.max(0, Number(suggestedDeduction) || 0));
@@ -411,10 +390,33 @@ export async function raiseDisputeWithProposalAction(
 
     const isRenter = rental.renterId === userAuth.id;
     const isOwner = rental.product.userId === userAuth.id || rental.ownerId === userAuth.id;
+    const isAdmin = (userAuth as any).role === "ADMIN";
 
-    if (!isRenter && !isOwner) {
+    if (!isRenter && !isOwner && !isAdmin) {
       return { success: false, error: "Forbidden: Bạn không có quyền khiếu nại đơn hàng này." };
     }
+
+    // 🛡️ 2b. Xác thực & đóng dấu bằng chứng qua dịch vụ dùng chung (Chặn URL giả #video, chặn cross-order / cross-uploader, nghiệm thu GCS key disputes/...)
+    const evidenceVerification = await verifyAndFinalizeDisputeEvidenceList({
+      rawUrls: images,
+      rentalId: orderId,
+      uploaderId: userAuth.id,
+      allowAdminUploader: isAdmin,
+      maxItems: 5,
+      verifyGcsObject: verifyUploadedDisputeFile,
+    });
+
+    if (!evidenceVerification.ok || evidenceVerification.verifiedUrls.length === 0) {
+      return {
+        success: false,
+        error:
+          evidenceVerification.error ||
+          "Định dạng hình ảnh/video bằng chứng không hợp lệ, chưa được máy chủ nghiệm thu hoặc không thuộc đơn hàng này.",
+      };
+    }
+
+    const verifiedImages = evidenceVerification.verifiedUrls;
+    const hasVerifiedUnboxingVideo = evidenceVerification.hasVerifiedVideo;
 
     const depositAmount = rental.invoice?.depositAmount || 0;
     const rentalFee = rental.invoice?.rentalFee || 0;
@@ -424,16 +426,12 @@ export async function raiseDisputeWithProposalAction(
       }
 
       // 🛡️ NGUYÊN TẮC NGHĨA VỤ CHỨNG MINH (BURDEN OF PROOF):
-      // Chủ tủ bắt buộc phải có video mở hộp đối soát khi nhận lại kiện hàng từ shipper.
-      // Nếu chủ tủ không có video mở hộp đối soát, chủ tủ tự chịu 100% trách nhiệm và không thể mở khiếu nại trừ cọc của khách!
-      if (cleanDeduction > 0) {
-        const hasUnboxingVideo = images.some(isEvidenceVideo);
-        if (!hasUnboxingVideo) {
-          return {
-            success: false,
-            error: "Theo Nguyên Tắc Nghĩa Vụ Chứng Minh (Burden of Proof): Chủ tủ bắt buộc phải đính kèm video quay rõ quá trình mở hộp đối soát niêm phong khi nhận lại hàng từ shipper. Không có video mở hộp đối soát = Chủ tủ tự chịu toàn bộ trách nhiệm, hệ thống từ chối mở khiếu nại trừ cọc!",
-          };
-        }
+      // Chủ tủ bắt buộc phải có video mở hộp đối soát đã được máy chủ CLOOP nghiệm thu cho đúng đơn hàng này.
+      if (cleanDeduction > 0 && !hasVerifiedUnboxingVideo) {
+        return {
+          success: false,
+          error: "Theo Nguyên Tắc Nghĩa Vụ Chứng Minh (Burden of Proof): Chủ tủ bắt buộc phải đính kèm video quay rõ quá trình mở hộp đối soát niêm phong đã được máy chủ CLOOP nghiệm thu cho đúng đơn hàng này. Không có video mở hộp đối soát = Chủ tủ tự chịu toàn bộ trách nhiệm, hệ thống từ chối mở khiếu nại trừ cọc!",
+        };
       }
     } else {
       if (cleanDeduction > rentalFee) {
@@ -462,7 +460,7 @@ export async function raiseDisputeWithProposalAction(
           rentalId: orderId,
           invoiceId: rental.invoice?.id || null,
           description: description.trim(),
-          images: images.slice(0, 5),
+          images: verifiedImages,
           severity: cleanDeduction > 200000 ? "HIGH" : cleanDeduction > 0 ? "MEDIUM" : "LOW",
           suggestedDeduction: cleanDeduction,
           status: "PENDING_REVIEW",
@@ -843,16 +841,32 @@ export async function rejectAndEscalateDisputeAction(
     }
 
     // 🛡️ NGUYÊN TẮC NGHĨA VỤ CHỨNG MINH CHO KHÁCH THUÊ (BURDEN OF PROOF):
-    // Chủ tủ đã cung cấp video mở hộp và hóa đơn dịch vụ hợp lệ.
-    // Nếu khách thuê muốn từ chối bồi thường để chuyển lên BQT phân xử, BẮT BUỘC phải cung cấp video bảo chứng
-    // (video lúc nhận hàng bóc seal từ shipper hoặc video lúc đóng gói gửi trả nguyên vẹn).
-    // Nếu khách thuê không có video bảo chứng, khách buộc phải chấp nhận bồi thường theo hóa đơn thực tế của chủ tủ!
+    // Mọi bằng chứng phản tố cũng phải đi qua dịch vụ xác thực & nghiệm thu dùng chung (verifyAndFinalizeDisputeEvidenceList)
+    const counterEvidenceCheck = await verifyAndFinalizeDisputeEvidenceList({
+      rawUrls: counterEvidenceUrls || [],
+      rentalId: rental.id,
+      uploaderId: userAuth.id,
+      allowAdminUploader: (userAuth as any).role === "ADMIN",
+      maxItems: 5,
+      verifyGcsObject: verifyUploadedDisputeFile,
+    });
+
+    if (!counterEvidenceCheck.ok) {
+      return {
+        success: false,
+        error:
+          counterEvidenceCheck.error ||
+          "Bằng chứng phản tố không hợp lệ, chưa được máy chủ nghiệm thu hoặc không thuộc đơn hàng này.",
+      };
+    }
+
+    const verifiedCounterUrls = counterEvidenceCheck.verifiedUrls;
+
     if (isRenter) {
-      const hasCounterVideo = Array.isArray(counterEvidenceUrls) && counterEvidenceUrls.some(isEvidenceVideo);
-      if (!hasCounterVideo) {
+      if (!counterEvidenceCheck.hasVerifiedVideo) {
         return {
           success: false,
-          error: "Theo Nguyên Tắc Nghĩa Vụ Chứng Minh: Để từ chối yêu cầu bồi thường của Chủ tủ, Khách thuê bắt buộc phải cung cấp video bảo chứng (video lúc mở hộp nhận đồ hoặc video lúc đóng gói gửi trả). Nếu không có video bảo chứng, bạn phải chấp nhận bồi thường theo hóa đơn thực tế của chủ tủ.",
+          error: "Theo Nguyên Tắc Nghĩa Vụ Chứng Minh: Để từ chối yêu cầu bồi thường của Chủ tủ, Khách thuê bắt buộc phải cung cấp video bảo chứng đã được máy chủ CLOOP nghiệm thu cho đúng đơn hàng này (video lúc mở hộp nhận đồ hoặc video lúc đóng gói gửi trả). Nếu không có video bảo chứng hợp lệ, bạn phải chấp nhận bồi thường theo hóa đơn thực tế của chủ tủ.",
         };
       }
     }
@@ -863,17 +877,22 @@ export async function rejectAndEscalateDisputeAction(
         if (dispute.adminNotes) parsedNotes = JSON.parse(dispute.adminNotes);
       } catch (e) {}
 
+      const mergedImages = Array.from(
+        new Set([...(Array.isArray(dispute.images) ? dispute.images : []), ...verifiedCounterUrls])
+      );
+
       const disputeLock = await tx.dispute.updateMany({
         where: { id: disputeId, status: "PENDING_REVIEW" },
         data: {
           status: "DISPUTED",
+          images: mergedImages,
           adminNotes: JSON.stringify({
             ...parsedNotes,
             escalatedByUserId: userAuth.id,
             escalateReason: reason || "Khách thuê không đồng ý mức bồi thường và đã cung cấp video bảo chứng.",
             escalatedAt: new Date().toISOString(),
-            renterCounterVideos: counterEvidenceUrls || [],
-            hasRenterProof: counterEvidenceUrls.length > 0,
+            renterCounterVideos: verifiedCounterUrls,
+            hasRenterProof: verifiedCounterUrls.length > 0,
           })
         }
       });
@@ -892,7 +911,7 @@ export async function rejectAndEscalateDisputeAction(
           afterStatus: "DISPUTED",
           metadata: JSON.stringify({ 
             reason,
-            counterVideosCount: counterEvidenceUrls.length,
+            counterVideosCount: verifiedCounterUrls.length,
           })
         }
       });
@@ -1125,6 +1144,15 @@ export async function loadMoreOrdersAction({
   }
 }
 
+function scrubOrderReviewContact(raw?: string | null): string {
+  if (!raw || typeof raw !== "string") return "";
+  return raw
+    .replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, "")
+    .replace(/[a-zA-Z0-9._%+-]+\s*(?:@|\(at\)|\[at\])\s*[a-zA-Z0-9.-]+\s*(?:\.|\(dot\)|\[dot\])\s*[a-zA-Z]{2,}/gi, "[Đã ẩn Email bảo mật]")
+    .replace(/(?:(?:\+?84|0)[\s._\-()\/]*[35789](?:[\s._\-()\/]*\d){8})\b|\b0\d(?:[\s._\-]*\d){8,9}\b/g, "[Đã ẩn SĐT bảo mật]")
+    .replace(/\b(z[\s._\-]*a[\s._\-]*l[\s._\-]*o|telegram|facebook|instagram|thuê\s+ngoài|thue\s+ngoai|giao\s+dịch\s+ngoài|giao\s+dich\s+ngoai|không\s+qua\s+sàn|khong\s+qua\s+san)\b/gi, "[Liên hệ qua CLOOP]");
+}
+
 export async function submitReviewAction({
   rentalId,
   rating,
@@ -1138,6 +1166,13 @@ export async function submitReviewAction({
 }) {
   try {
     const userAuth = await requireUser();
+    const cleanedComment = scrubOrderReviewContact(comment?.trim() || "");
+    if (cleanedComment !== (comment?.trim() || "")) {
+      return {
+        success: false,
+        error: "Chính sách An toàn CLOOP: Đánh giá không được chứa số điện thoại, email, Zalo hoặc thông tin giao dịch ngoài sàn.",
+      };
+    }
 
     return await prisma.$transaction(async (tx) => {
       // 1. Validate rental and permissions
@@ -1244,7 +1279,14 @@ export async function submitReviewAction({
   }
 }
 
-export async function getScrubbedReviewsAction(targetUserId: string, currentUserId?: string) {
+export async function getScrubbedReviewsAction(targetUserId: string, _currentUserId?: string) {
+    let currentUserId: string | undefined;
+    try {
+      const { createClient } = await import("@/src/utils/supabase/server");
+      const supabase = await createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      currentUserId = user?.id;
+    } catch {}
   try {
     const rawReviews = await prisma.review.findMany({
       where: { revieweeId: targetUserId },
@@ -1295,6 +1337,7 @@ export async function getScrubbedReviewsAction(targetUserId: string, currentUser
       }
       return {
         ...review,
+        comment: scrubOrderReviewContact(review.comment),
         isMasked: false
       };
     });

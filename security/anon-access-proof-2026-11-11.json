@@ -1,0 +1,36 @@
+{
+  "viewDelete": [
+    {
+      "relname": "blog_posts",
+      "anon_delete": false,
+      "authenticated_delete": false
+    },
+    {
+      "relname": "product_images",
+      "anon_delete": false,
+      "authenticated_delete": false
+    }
+  ],
+  "storageGrants": [
+    {
+      "rolname": "authenticated",
+      "can_select": true,
+      "can_insert": true,
+      "can_update": true,
+      "can_delete": true
+    },
+    {
+      "rolname": "anon",
+      "can_select": true,
+      "can_insert": true,
+      "can_update": true,
+      "can_delete": true
+    }
+  ],
+  "anonReadProbe": [
+    {
+      "anon_can_read_nonpublic_blog": false,
+      "anon_can_read_image_view": true
+    }
+  ]
+}

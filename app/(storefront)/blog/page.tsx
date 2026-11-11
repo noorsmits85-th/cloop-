@@ -9,6 +9,7 @@ import {
   Share2, MessageSquare, Shirt, ArrowRight, X, Feather, Check, Leaf, Droplet
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { getPublicBlogFeedAction } from "@/app/actions/blog";
 
 interface UserProfile {
   id: string;
@@ -258,20 +259,12 @@ export default function BlogJournalPage() {
     fetchMyProfile();
   }, [currentUserId]);
 
-  // Fetch toàn bộ data bài viết (Supabase + LocalStorage fallback + Default Stories)
+  // Fetch toàn bộ data bài viết qua Server Action an toàn + LocalStorage fallback + Default Stories
   useEffect(() => {
     async function fetchRealDataFeed() {
       try {
-        // 🌟 Truy vấn bảng BlogPost kèm liên kết tác giả và trang phục trong tủ đồ
-        const { data: blogData, error: blogErr } = await supabase
-          .from("BlogPost")
-          .select("*, author:User(id, name, avatar), product:products(id, title, size, ProductImage(url, isPrimary), Listing(basePrice, listingType))")
-          .order("isPinned", { ascending: false })
-          .order("createdAt", { ascending: false });
-
-        if (blogErr) {
-          console.warn("Lỗi fetch BlogPost từ Supabase:", blogErr);
-        }
+        const feedRes = await getPublicBlogFeedAction();
+        const blogData = feedRes.success ? feedRes.posts : [];
 
         let loadedBlogs: any[] = (blogData || []).map((b: any) => {
           let linkedProduct = null;

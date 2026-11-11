@@ -2,7 +2,8 @@
 
 import React, { useEffect } from "react";
 import Link from "next/link";
-import { AlertTriangle, RefreshCw, Home, ShieldAlert } from "lucide-react";
+import * as Sentry from "@sentry/nextjs";
+import { AlertTriangle, RefreshCw, Home } from "lucide-react";
 
 export default function AdminError({
   error,
@@ -12,7 +13,7 @@ export default function AdminError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("⛔ [Admin Route Exception Captured]:", error);
+    Sentry.captureException(error);
   }, [error]);
 
   return (

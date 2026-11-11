@@ -10,6 +10,10 @@ export interface SlaEvaluationResult {
   errors: string[];
 }
 
+// Bộ đệm giảm tải (Cooldown 60s/user) tránh việc chuyển qua lại giữa trang Orders và Wallet gọi lặp lại DB + GHN API
+const userSlaEvaluationCooldown = new Map<string, number>();
+const SLA_COOLDOWN_MS = 60 * 1000;
+
 /**
  * [SECURITY ARCHITECTURE] 4-GUARD ESCROW SLA EVALUATION & AUTOMATIC SETTLEMENT
  *
@@ -43,6 +47,14 @@ export async function evaluateEscrowSlaForOrders(options?: {
     logisticAlertOrders: [],
     errors: [],
   };
+
+  if (options?.userId) {
+    const lastRun = userSlaEvaluationCooldown.get(options.userId) || 0;
+    if (Date.now() - lastRun < SLA_COOLDOWN_MS) {
+      return result;
+    }
+    userSlaEvaluationCooldown.set(options.userId, Date.now());
+  }
 
   const now = new Date();
   const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);

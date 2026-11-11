@@ -1,29 +1,65 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { requireUser } from "@/src/lib/auth";
+import { parseSafeBase64Image } from "@/src/lib/server-image-guard";
+import { fetchSafeAllowedImage, isAllowedMediaUrl } from "@/src/lib/ssrf-guard";
 import { executeWithGeminiPool } from "@/src/utils/gemini-pool";
 
 export async function POST(req: Request) {
   try {
+    try {
+      await requireUser();
+    } catch {
+      return NextResponse.json(
+        { error: "Vui lòng đăng nhập để sử dụng tính năng phân tích vóc dáng." },
+        { status: 401 }
+      );
+    }
+
     const { userImageBase64, productImageUrl } = await req.json();
 
     if (!userImageBase64 || !productImageUrl) {
       return NextResponse.json({ error: "Thiếu dữ liệu ảnh" }, { status: 400 });
     }
 
-    // 1. Tải ảnh sản phẩm về và chuyển sang Base64
-    const productRes = await fetch(productImageUrl);
-    const productBuffer = await productRes.arrayBuffer();
-    const productBase64 = Buffer.from(productBuffer).toString("base64");
-    const productMime = productRes.headers.get("content-type") || "image/jpeg";
-
-    // 2. Tách phần header của userImageBase64 (nếu có data:image/png;base64,...)
-    let userBase64 = userImageBase64;
-    let userMime = "image/jpeg";
-    if (userImageBase64.includes(";base64,")) {
-      const parts = userImageBase64.split(";base64,");
-      userMime = parts[0].split(":")[1];
-      userBase64 = parts[1];
+    if (typeof productImageUrl !== "string" || !isAllowedMediaUrl(productImageUrl)) {
+      return NextResponse.json(
+        { error: "URL ảnh sản phẩm không thuộc kho lưu trữ hợp lệ của CLOOP." },
+        { status: 400 }
+      );
     }
+
+    // 1. Validate userImageBase64 magic bytes & size
+    let parsedUserImage;
+    try {
+      parsedUserImage = parseSafeBase64Image(userImageBase64);
+    } catch (imgErr: unknown) {
+      const code = imgErr instanceof Error ? imgErr.message : "";
+      if (code === "IMAGE_TOO_LARGE") {
+        return NextResponse.json(
+          { error: "Ảnh tải lên quá lớn (tối đa 5MB)." },
+          { status: 413 }
+        );
+      }
+      return NextResponse.json(
+        { error: "Định dạng ảnh người dùng không hợp lệ (chỉ hỗ trợ JPG, PNG, WEBP)." },
+        { status: 400 }
+      );
+    }
+
+    // 2. Fetch product image exclusively via SSRF guard
+    let safeProductImage;
+    try {
+      safeProductImage = await fetchSafeAllowedImage(productImageUrl, 10 * 1024 * 1024);
+    } catch {
+      return NextResponse.json(
+        { error: "Không thể tải ảnh sản phẩm hợp lệ để đối chiếu." },
+        { status: 400 }
+      );
+    }
+
+    const productBase64 = safeProductImage.buffer.toString("base64");
+    const productMime = safeProductImage.mimeType;
 
     const prompt = `Bạn là một AI Stylist chuyên nghiệp của CLOOP (nền tảng thời trang tuần hoàn). 
 Dưới đây là 2 bức ảnh: Ảnh 1 là người dùng, Ảnh 2 là trang phục. 
@@ -34,8 +70,8 @@ Chỉ trả về tối đa 3-4 câu ngắn gọn, súc tích, văn phong lịch 
     const imageParts = [
       {
         inlineData: {
-          data: userBase64,
-          mimeType: userMime,
+          data: parsedUserImage.base64,
+          mimeType: parsedUserImage.mimeType,
         },
       },
       {
@@ -53,7 +89,7 @@ Chỉ trả về tối đa 3-4 câu ngắn gọn, súc tích, văn phong lịch 
         const result = await model.generateContent([prompt, ...imageParts]);
         const response = await result.response;
         return response.text();
-      } catch (err) {
+      } catch {
         const fallbackModel = genAI.getGenerativeModel({ model: "gemini-3.8-flash" });
         const result = await fallbackModel.generateContent([prompt, ...imageParts]);
         const response = await result.response;
@@ -62,10 +98,11 @@ Chỉ trả về tối đa 3-4 câu ngắn gọn, súc tích, văn phong lịch 
     });
 
     return NextResponse.json({ feedback: text });
-  } catch (error: any) {
-    console.error("Lỗi Gemini API:", error);
+  } catch (error: unknown) {
+    // TODO: integrate Sentry/LogRocket tracking for analyze-fit errors
+    console.error("Lỗi Gemini API analyze-fit:", error);
     return NextResponse.json(
-      { error: "Không thể phân tích ảnh lúc này. Vui lòng thử lại sau.", details: error.message },
+      { error: "Không thể phân tích ảnh lúc này. Vui lòng thử lại sau." },
       { status: 500 }
     );
   }

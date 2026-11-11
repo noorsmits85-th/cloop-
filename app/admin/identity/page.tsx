@@ -1,6 +1,5 @@
-import { redirect } from 'next/navigation';
-import { createClient } from '@/src/utils/supabase/server';
 import { prisma } from '@/src/lib/prisma';
+import { requireAdminOrRedirect } from '@/src/lib/auth';
 import IdentityVerificationClient, { AdminUserItem } from './IdentityVerificationClient';
 import Link from 'next/link';
 import { UserCheck, ArrowUpRight } from 'lucide-react';
@@ -8,47 +7,60 @@ import { UserCheck, ArrowUpRight } from 'lucide-react';
 export const dynamic = "force-dynamic";
 
 export default async function AdminIdentityPage() {
-  // 1. Tận dụng lớp bảo mật Admin của layout, truy vấn dữ liệu song song (0ms blocking)
-  const [rawUsers, rentalsWithPhone, kycTopUps] = await Promise.all([
-    prisma.user.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: 100,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        isVerified: true,
-        completedOrders: true,
-        createdAt: true,
-      },
-    }),
-    prisma.rentalHistory.findMany({
-      where: {
-        OR: [
-          { renter_phone: { not: null } },
-          { owner_phone: { not: null } },
-        ],
-      },
-      select: {
-        renterId: true,
-        ownerId: true,
-        renter_phone: true,
-        owner_phone: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    }),
-    prisma.coinTopUp.findMany({
-      where: { packageCode: { in: ["KYC_1K", "KYC_2K"] }, status: "PAID" },
-      select: {
-        userId: true,
-        orderCode: true,
-        paidAt: true,
-        rawPayload: true,
-      },
-      orderBy: { paidAt: 'desc' },
-    }),
-  ]);
+  await requireAdminOrRedirect();
+
+  // 1. Truy vấn dữ liệu người dùng cần hiển thị trước
+  const rawUsers = await prisma.user.findMany({
+    orderBy: { createdAt: 'desc' },
+    take: 100,
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      isVerified: true,
+      completedOrders: true,
+      createdAt: true,
+    },
+  });
+
+  const userIds = rawUsers.map((u) => u.id);
+
+  // 2. Truy vấn song song số điện thoại và giao dịch KYC chỉ cho đúng 100 user trên trang này (tránh quét toàn bảng)
+  const [rentalsWithPhone, kycTopUps] = userIds.length > 0
+    ? await Promise.all([
+        prisma.rentalHistory.findMany({
+          where: {
+            OR: [
+              { renterId: { in: userIds }, renter_phone: { not: null } },
+              { ownerId: { in: userIds }, owner_phone: { not: null } },
+            ],
+          },
+          select: {
+            renterId: true,
+            ownerId: true,
+            renter_phone: true,
+            owner_phone: true,
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 250,
+        }),
+        prisma.coinTopUp.findMany({
+          where: {
+            userId: { in: userIds },
+            packageCode: { in: ["KYC_1K", "KYC_2K"] },
+            status: "PAID",
+          },
+          select: {
+            userId: true,
+            orderCode: true,
+            paidAt: true,
+            rawPayload: true,
+          },
+          orderBy: { paidAt: 'desc' },
+        }),
+      ])
+    : [[], []];
 
   // Tạo Map lookup số điện thoại và KYC Topup O(1)
   const phoneMap = new Map<string, string>();

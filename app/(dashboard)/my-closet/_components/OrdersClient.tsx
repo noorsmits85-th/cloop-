@@ -184,142 +184,293 @@ export function OrdersClient({
   const [packagingUploadProgress, setPackagingUploadProgress] = useState("");
   const [packagingUploadPercent, setPackagingUploadPercent] = useState<number>(0);
 
-  // TẢI TRỰC TIẾP LÊN GOOGLE DRIVE 5TB (RESUMABLE UPLOAD - BYPASS 4.5MB VERCEL LIMIT)
-  const fileToBase64 = (f: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(f);
-      reader.onload = () => {
-        const res = reader.result as string;
-        const clean = res.split(",")[1];
-        resolve(clean || "");
+  // TẢI TRỰC TIẾP BẰNG CHỨNG RIÊNG TƯ (PRIVATE GCS SIGNED URL / CHUNKED RESUMABLE DRIVE + SERVER FINALIZE)
+  const MAX_DISPUTE_VIDEO_BYTES = 100 * 1024 * 1024; // 100MB đồng bộ với Backend API
+  const MAX_DISPUTE_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB cho ảnh
+  const RESUMABLE_CHUNK_BYTES = 8 * 1024 * 1024; // 8MB mỗi chunk (bội số của 256KB)
+
+  const queryResumableOffset = (sessionUri: string, totalSize: number): Promise<number> => {
+    return new Promise((resolve) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", sessionUri, true);
+      xhr.timeout = 15000;
+      xhr.setRequestHeader("Content-Range", `bytes */${totalSize}`);
+      xhr.onload = () => {
+        if (xhr.status === 308) {
+          const rangeHeader = xhr.getResponseHeader("Range");
+          const match = rangeHeader?.match(/bytes=0-(\d+)/i);
+          if (match) {
+            resolve(Number(match[1]) + 1);
+            return;
+          }
+        }
+        resolve(0);
       };
-      reader.onerror = (err) => reject(err);
+      xhr.onerror = () => resolve(0);
+      xhr.ontimeout = () => resolve(0);
+      xhr.onabort = () => resolve(0);
+      xhr.send(null);
     });
+  };
+
+  const uploadChunkWithRetry = (
+    sessionUri: string,
+    file: File,
+    startByte: number,
+    endByteExcl: number,
+    mimeType: string,
+    onProgress?: (text: string, percent?: number) => void
+  ): Promise<{ completed: boolean; fileId?: string }> => {
+    const chunkBlob = file.slice(startByte, endByteExcl);
+    const total = file.size;
+
+    const attemptOnce = (): Promise<{ completed: boolean; fileId?: string }> =>
+      new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", sessionUri, true);
+        xhr.timeout = 45000;
+        xhr.setRequestHeader("Content-Type", mimeType);
+        xhr.setRequestHeader("Content-Range", `bytes ${startByte}-${endByteExcl - 1}/${total}`);
+
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable && onProgress) {
+            const uploadedSoFar = Math.min(total, startByte + e.loaded);
+            const pct = Math.round((uploadedSoFar / total) * 100);
+            onProgress(`Đang tải bảo mật (${pct}%)...`, pct);
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status === 200 || xhr.status === 201) {
+            try {
+              const driveFile = JSON.parse(xhr.responseText);
+              resolve({ completed: true, fileId: driveFile?.id });
+            } catch {
+              reject(new Error("Phản hồi hoàn tất từ kho lưu trữ không hợp lệ."));
+            }
+          } else if (xhr.status === 308) {
+            resolve({ completed: false });
+          } else {
+            reject(new Error(`Upload chunk HTTP ${xhr.status}`));
+          }
+        };
+
+        xhr.onerror = () => reject(new Error("Mất kết nối mạng khi đang tải phân đoạn video."));
+        xhr.ontimeout = () => reject(new Error("Quá thời gian chờ khi tải phân đoạn video."));
+        xhr.onabort = () => reject(new Error("Phiên tải phân đoạn đã bị hủy."));
+        xhr.send(chunkBlob);
+      });
+
+    return (async () => {
+      let lastErr: unknown;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          return await attemptOnce();
+        } catch (err) {
+          lastErr = err;
+          if (attempt < 3) {
+            await new Promise((r) => setTimeout(r, 800 * attempt));
+          }
+        }
+      }
+      throw lastErr instanceof Error ? lastErr : new Error("Lỗi tải phân đoạn bằng chứng.");
+    })();
   };
 
   const uploadMediaFileDirect = async (
     file: File,
-    onProgress?: (text: string, percent?: number) => void
+    onProgress?: (text: string, percent?: number) => void,
+    explicitRentalId?: string
   ): Promise<string> => {
-    const isVideo = file.type.startsWith("video/") || file.name.match(/\.(mp4|mov|webm|avi|m4v)$/i) !== null;
+    const isVideo =
+      file.type.startsWith("video/") || file.name.match(/\.(mp4|mov|webm)$/i) !== null;
+    const normalizedMime = file.type || (isVideo ? "video/mp4" : "image/jpeg");
+    const targetRentalId = (
+      explicitRentalId ||
+      selectedOrderForDispute?.id ||
+      counterDisputeData?.orderId ||
+      packagingOrder?.id ||
+      ""
+    ).trim();
 
-    // 1A. Thử xin Resumable Upload Session URI để Client PUT thẳng lên Google Drive 5TB
+    if (!targetRentalId) {
+      throw new Error("Không xác định được mã đơn thuê (rentalId) để gắn kết bằng chứng bảo mật.");
+    }
+
+    const maxAllowedBytes = isVideo ? MAX_DISPUTE_VIDEO_BYTES : MAX_DISPUTE_IMAGE_BYTES;
+    if (file.size <= 0 || file.size > maxAllowedBytes) {
+      throw new Error(
+        isVideo
+          ? "Video bằng chứng vượt quá giới hạn 100MB. Vui lòng chọn đoạn video từ 100MB trở xuống."
+          : "Ảnh bằng chứng vượt quá giới hạn 10MB."
+      );
+    }
+
+    // 1A. Thử luồng Private Google Cloud Storage Signed URL (/api/disputes/upload-url) với đầy đủ requiredHeaders
     try {
-      const sessionRes = await fetch("/api/storage/drive-resumable", {
+      const gcsInitRes = await fetch("/api/disputes/upload-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          filename: file.name,
-          mimeType: file.type || (isVideo ? "video/mp4" : "image/jpeg"),
-          fileSize: file.size,
+          rentalId: targetRentalId,
+          fileName: file.name,
+          contentType: normalizedMime,
         }),
       });
 
-      if (sessionRes.ok) {
-        const sessionData = await sessionRes.json();
-        if (sessionData.sessionUri) {
-          return await new Promise<string>((resolve, reject) => {
+      if (gcsInitRes.ok) {
+        const gcsJson = await gcsInitRes.json();
+        const uploadMeta = gcsJson?.data;
+        if (uploadMeta?.uploadUrl && uploadMeta?.objectName) {
+          await new Promise<void>((resolve, reject) => {
             const xhr = new XMLHttpRequest();
-            xhr.open("PUT", sessionData.sessionUri, true);
-            xhr.setRequestHeader("Content-Type", file.type || (isVideo ? "video/mp4" : "image/jpeg"));
-
+            xhr.open("PUT", uploadMeta.uploadUrl, true);
+            xhr.timeout = 60000;
+            const reqHeaders: Record<string, string> = uploadMeta.requiredHeaders || {
+              "Content-Type": normalizedMime,
+            };
+            for (const [k, v] of Object.entries(reqHeaders)) {
+              xhr.setRequestHeader(k, String(v));
+            }
             xhr.upload.onprogress = (e) => {
               if (e.lengthComputable && onProgress) {
                 const pct = Math.round((e.loaded / e.total) * 100);
-                onProgress(`Đang mã hóa bảo mật: %`);
+                onProgress(`Đang tải lên kho bảo mật GCS (${pct}%)...`, pct);
               }
             };
-
             xhr.onload = () => {
-              if (xhr.status === 200 || xhr.status === 201) {
-                try {
-                  const driveFile = JSON.parse(xhr.responseText);
-                  const fileId = driveFile.id;
-                  const finalUrl = `https://drive.google.com/file/d/${fileId}/preview${isVideo ? "#video" : ""}`;
-                  resolve(finalUrl);
-                } catch {
-                  resolve(`https://drive.google.com/uc?id=${sessionData.fileName}&export=view${isVideo ? "#video" : ""}`);
-                }
-              } else {
-                reject(new Error(`Google Drive HTTP ${xhr.status}`));
-              }
+              if (xhr.status >= 200 && xhr.status < 300) resolve();
+              else reject(new Error(`GCS PUT HTTP ${xhr.status}`));
             };
-
-            xhr.onerror = () => reject(new Error("Lỗi kết nối khi tải trực tiếp lên Google Drive."));
+            xhr.onerror = () => reject(new Error("Lỗi mạng khi tải lên GCS"));
+            xhr.ontimeout = () => reject(new Error("Quá hạn thời gian tải lên GCS"));
+            xhr.onabort = () => reject(new Error("Đã hủy tải lên GCS"));
             xhr.send(file);
           });
+
+          return uploadMeta.objectName;
         }
       }
-    } catch (directErr) {
-      console.warn("Direct Drive upload fallback to server:", directErr);
+    } catch (gcsErr) {
+      console.warn("Private GCS signed upload fallback to Resumable Drive:", gcsErr);
     }
 
-    // 1B. Thử bắn thẳng sang Dual-Webhook Google Apps Script 10TB (Bypass 4.5MB Vercel & CORS qua text/plain)
-    if (file.size <= 35 * 1024 * 1024) {
-      try {
-        if (onProgress) onProgress("Đang kết nối trung tâm lưu trữ...");
-        const configRes = await fetch("/api/storage/webhook-dispatcher");
-        if (configRes.ok) {
-          const { webhookUrl, folderId } = await configRes.json();
-          if (webhookUrl) {
-            if (onProgress) onProgress("Đang tối ưu tư liệu đối soát...");
-            const base64Data = await fileToBase64(file);
-            const payload = JSON.stringify({
-              fileName: file.name,
-              filename: file.name,
-              mimeType: file.type || (isVideo ? "video/mp4" : "image/jpeg"),
-              base64: base64Data,
-              data: base64Data,
-              folderId: folderId || undefined,
-            });
+    // 1B. Luồng Chunked Resumable Upload lên Private Google Drive + Nghiệm thu SEAL phía Server
+    try {
+      const sessionCacheKey = `cloop_resumable_${targetRentalId}_${file.name}_${file.size}_${file.lastModified}`;
+      let sessionUri =
+        typeof window !== "undefined" ? window.sessionStorage.getItem(sessionCacheKey) : null;
+      let offset = 0;
 
-            if (onProgress) onProgress("Đang bảo mật và lưu trữ tư liệu...");
-            const uploadRes = await fetch(webhookUrl, {
-              method: "POST",
-              redirect: "follow",
-              headers: {
-                "Content-Type": "text/plain;charset=utf-8",
-              },
-              body: payload,
-            });
+      if (sessionUri) {
+        offset = await queryResumableOffset(sessionUri, file.size);
+        if (offset === 0) {
+          sessionUri = null;
+          if (typeof window !== "undefined") window.sessionStorage.removeItem(sessionCacheKey);
+        }
+      }
 
-            if (uploadRes.ok) {
-              const result = await uploadRes.json();
-              if (result && (result.fileId || result.url || result.viewUrl)) {
-                const finalUrl =
-                  result.url ||
-                  result.viewUrl ||
-                  `https://drive.google.com/file/d/${result.fileId}/preview${isVideo ? "#video" : ""}`;
-                return isVideo && !finalUrl.toLowerCase().includes("video") ? `${finalUrl}#video` : finalUrl;
-              }
+      if (!sessionUri) {
+        const sessionRes = await fetch("/api/storage/drive-resumable", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            rentalId: targetRentalId,
+            filename: file.name,
+            mimeType: normalizedMime,
+            fileSize: file.size,
+          }),
+        });
+
+        if (sessionRes.ok) {
+          const sessionData = await sessionRes.json();
+          if (sessionData?.sessionUri) {
+            sessionUri = sessionData.sessionUri;
+            if (typeof window !== "undefined" && sessionUri) {
+              window.sessionStorage.setItem(sessionCacheKey, sessionUri);
             }
           }
         }
-      } catch (webhookErr) {
-        console.warn("Direct Apps Script 10TB upload fallback:", webhookErr);
       }
+
+      if (sessionUri) {
+        let uploadedFileId: string | undefined;
+        while (offset < file.size) {
+          const nextEnd = Math.min(offset + RESUMABLE_CHUNK_BYTES, file.size);
+          const chunkRes = await uploadChunkWithRetry(
+            sessionUri,
+            file,
+            offset,
+            nextEnd,
+            normalizedMime,
+            onProgress
+          );
+          offset = nextEnd;
+          if (chunkRes.completed && chunkRes.fileId) {
+            uploadedFileId = chunkRes.fileId;
+            break;
+          }
+        }
+
+        if (typeof window !== "undefined") {
+          window.sessionStorage.removeItem(sessionCacheKey);
+        }
+
+        if (uploadedFileId) {
+          if (onProgress) onProgress("Đang nghiệm thu chữ ký số bằng chứng...", 99);
+          const finalizeRes = await fetch("/api/storage/drive-resumable", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              rentalId: targetRentalId,
+              fileId: uploadedFileId,
+            }),
+          });
+
+          if (finalizeRes.ok) {
+            const finalized = await finalizeRes.json();
+            if (finalized?.evidenceUrl || finalized?.url) {
+              return finalized.evidenceUrl || finalized.url;
+            }
+          }
+        }
+      }
+    } catch (directErr) {
+      console.warn("Resumable Drive upload fallback to server:", directErr);
     }
 
-    // 2. Dự phòng: Gửi qua tuyến /api/upload-drive (nếu file nhẹ hoặc OAuth chưa sẵn sàng)
+    // 2. Dự phòng: Gửi qua tuyến /api/upload-drive (cho tệp <= 15MB, lưu RIÊNG TƯ và trả về chứng từ SEAL)
+    if (file.size > 15 * 1024 * 1024) {
+      throw new Error(
+        "Kết nối tải trực tiếp tệp lớn đang gián đoạn. Vui lòng kiểm tra mạng và thử lại (hệ thống sẽ tự động tiếp tục từ phần đã tải)."
+      );
+    }
+
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("rentalId", targetRentalId);
     formData.append("targetKho", "auto");
 
-    if (onProgress) onProgress("Đang lưu trữ tư liệu...");
+    if (onProgress) onProgress("Đang lưu trữ tư liệu bảo mật...");
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
     const res = await fetch("/api/upload-drive", {
       method: "POST",
       body: formData,
-    });
+      signal: controller.signal,
+    }).finally(() => clearTimeout(timeout));
 
     if (!res.ok) {
       const errJson = await res.json().catch(() => null);
-      throw new Error(errJson?.error || "Lỗi tải tệp lên Kho lưu trữ.");
+      throw new Error(errJson?.error || "Lỗi tải tệp lên Kho lưu trữ bảo mật.");
     }
 
     const json = await res.json();
-    const rawUrl = json.url || json.viewUrl || "";
-    return isVideo && !rawUrl.toLowerCase().includes("video") ? `${rawUrl}#video` : rawUrl;
+    const sealedUrl = json.evidenceUrl || json.url || json.viewUrl || "";
+    if (!sealedUrl) {
+      throw new Error("Máy chủ không trả về chứng từ bằng chứng hợp lệ.");
+    }
+    return sealedUrl;
   };
 
   const handleUploadDisputeMedia = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -330,16 +481,20 @@ export function OrdersClient({
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        if (file.size > 200 * 1024 * 1024) {
-          toast.error(`Tệp có dung lượng vượt mức tối ưu. Quý khách vui lòng chọn đoạn video ngắn gọn hơn để hệ thống đối soát tức thì.`);
+        if (file.size > MAX_DISPUTE_VIDEO_BYTES) {
+          toast.error(`Tệp vượt quá giới hạn 100MB. Quý khách vui lòng chọn đoạn video từ 100MB trở xuống để hệ thống đối soát.`);
           continue;
         }
         setDisputeUploadProgress(`Đang chuẩn bị tệp ${i + 1}/${files.length}...`);
 
-        const finalUrl = await uploadMediaFileDirect(file, (msg, pct) => {
-          setDisputeUploadProgress(`Tệp ${i + 1}/${files.length}: ${msg}`);
-          if (typeof pct === "number") setDisputeUploadPercent(pct);
-        });
+        const finalUrl = await uploadMediaFileDirect(
+          file,
+          (msg, pct) => {
+            setDisputeUploadProgress(`Tệp ${i + 1}/${files.length}: ${msg}`);
+            if (typeof pct === "number") setDisputeUploadPercent(pct);
+          },
+          selectedOrderForDispute?.id
+        );
 
         if (finalUrl) {
           setDisputeImages((prev) => [...prev, finalUrl]);
@@ -348,7 +503,7 @@ export function OrdersClient({
       toast.success("Tư liệu đối soát đã được ghi nhận an toàn.");
     } catch (err: any) {
       console.error("Dispute upload error:", err);
-      toast.error(err.message || "Lỗi tải ảnh/video lên Kho Google.");
+      toast.error(err.message || "Lỗi tải ảnh/video lên Kho bảo mật.");
     } finally {
       setIsUploadingDisputeMedia(false);
       setDisputeUploadProgress("");
@@ -364,16 +519,20 @@ export function OrdersClient({
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        if (file.size > 200 * 1024 * 1024) {
-          toast.error(`Tệp có dung lượng vượt mức tối ưu. Quý khách vui lòng chọn đoạn video ngắn gọn hơn để hệ thống đối soát tức thì.`);
+        if (file.size > MAX_DISPUTE_VIDEO_BYTES) {
+          toast.error(`Tệp vượt quá giới hạn 100MB. Quý khách vui lòng chọn đoạn video từ 100MB trở xuống để hệ thống đối soát.`);
           continue;
         }
         setCounterUploadProgress(`Đang chuẩn bị video ${i + 1}/${files.length}...`);
 
-        const finalUrl = await uploadMediaFileDirect(file, (msg, pct) => {
-          setCounterUploadProgress(`Tệp ${i + 1}/${files.length}: ${msg}`);
-          if (typeof pct === "number") setCounterUploadPercent(pct);
-        });
+        const finalUrl = await uploadMediaFileDirect(
+          file,
+          (msg, pct) => {
+            setCounterUploadProgress(`Tệp ${i + 1}/${files.length}: ${msg}`);
+            if (typeof pct === "number") setCounterUploadPercent(pct);
+          },
+          counterDisputeData?.orderId
+        );
 
         if (finalUrl) {
           setCounterVideos((prev) => [...prev, finalUrl]);
@@ -382,7 +541,7 @@ export function OrdersClient({
       toast.success("Video đối soát đã được ghi nhận an toàn.");
     } catch (err: any) {
       console.error("Counter upload error:", err);
-      toast.error(err.message || "Lỗi tải video lên Kho Google.");
+      toast.error(err.message || "Lỗi tải video lên Kho bảo mật.");
     } finally {
       setIsUploadingCounterMedia(false);
       setCounterUploadProgress("");
@@ -398,16 +557,20 @@ export function OrdersClient({
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        if (file.size > 200 * 1024 * 1024) {
-          toast.error(`Tệp có dung lượng vượt mức tối ưu. Quý khách vui lòng chọn đoạn video ngắn gọn hơn để hệ thống đối soát tức thì.`);
+        if (file.size > MAX_DISPUTE_VIDEO_BYTES) {
+          toast.error(`Tệp vượt quá giới hạn 100MB. Quý khách vui lòng chọn đoạn video từ 100MB trở xuống để hệ thống đối soát.`);
           continue;
         }
         setPackagingUploadProgress(`Đang chuẩn bị tệp ${i + 1}/${files.length}...`);
 
-        const finalUrl = await uploadMediaFileDirect(file, (msg, pct) => {
-          setPackagingUploadProgress(`Tệp ${i + 1}/${files.length}: ${msg}`);
-          if (typeof pct === "number") setPackagingUploadPercent(pct);
-        });
+        const finalUrl = await uploadMediaFileDirect(
+          file,
+          (msg, pct) => {
+            setPackagingUploadProgress(`Tệp ${i + 1}/${files.length}: ${msg}`);
+            if (typeof pct === "number") setPackagingUploadPercent(pct);
+          },
+          packagingOrder?.id
+        );
 
         if (finalUrl) {
           setPackagingProofs((prev) => [...prev, finalUrl]);
@@ -1369,8 +1532,7 @@ export function OrdersClient({
                                     (deliveryShipment?.deliveryAddress as any)?.shippingMode === "SELF_BOOK";
                                   const trackingCode = order.shippingCode || deliveryShipment?.trackingCode;
                                   const pickupAddr = (deliveryShipment?.pickupAddress as any) || {};
-                                  const unmaskedStationAddress = order.product?.specificAddress || pickupAddr?.address || pickupAddr?.specificAddress || order.product?.province || "Hưng lĩnh, Nghệ An";
-                                  const ownerContactPhone = order.owner_phone || pickupAddr?.phone || "";
+                                  const maskedStationArea = order.product?.province || "Khu vực bảo mật qua CLOOP";
                                   const ownerContactName = order.owner_name || pickupAddr?.name || order.product?.user?.name || "Chủ tủ CLOOP";
 
                                   return (
@@ -1379,27 +1541,23 @@ export function OrdersClient({
                                         <div className="space-y-1.5">
                                           <p className="font-semibold text-blue-900 flex items-center gap-1.5">
                                             <PackageCheck size={14} className="text-blue-700 shrink-0" />
-                                            <span>Trang phục đã sẵn sàng tại trạm chủ tủ! Bạn có thể qua nhận đồ.</span>
+                                            <span>Trang phục đã sẵn sàng tại trạm điều phối CLOOP!</span>
                                           </p>
                                           <div className="p-2.5 bg-white/95 rounded-md border border-blue-200/90 text-[11px] text-stone-800 space-y-1 shadow-2xs">
                                             <div className="flex items-start gap-1.5 text-stone-900">
                                               <Store size={13} className="text-emerald-700 shrink-0 mt-0.5" />
                                               <div>
-                                                <span className="text-[10px] text-stone-500 uppercase font-bold block">Địa chỉ nhận đồ chính xác:</span>
-                                                <strong className="text-xs text-stone-900">{unmaskedStationAddress}</strong>
+                                                <span className="text-[10px] text-stone-500 uppercase font-bold block">Khu vực bàn giao qua CLOOP:</span>
+                                                <strong className="text-xs text-stone-900">{maskedStationArea}</strong>
                                               </div>
                                             </div>
                                             <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-stone-100 text-[10.5px]">
                                               <span>Chủ tủ: <strong>{ownerContactName}</strong></span>
-                                              {ownerContactPhone && (
-                                                <>
-                                                  <span>•</span>
-                                                  <span>SĐT liên hệ: <a href={`tel:${ownerContactPhone}`} className="font-mono font-bold text-emerald-800 underline">{ownerContactPhone}</a></span>
-                                                </>
-                                              )}
+                                              <span>•</span>
+                                              <span className="text-emerald-800 font-semibold">Bảo mật liên hệ qua hệ thống CLOOP</span>
                                             </div>
                                             <p className="text-[9.5px] text-stone-500 italic pt-0.5">
-                                              Hãy liên hệ với chủ tủ trước khi đến và bấm &quot;Đã nhận được đồ&quot; sau khi nhận trang phục.
+                                              Mọi điều phối bàn giao được thực hiện qua hệ thống CLOOP. Hãy bấm &quot;Đã nhận được đồ&quot; sau khi kiểm nhận trang phục.
                                             </p>
                                           </div>
                                         </div>

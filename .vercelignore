@@ -1,4 +1,10 @@
-﻿# Word Documents & Reports (Giam dung luong Vercel)
+# Environment & Security Audit Files
+.env
+.env.*
+!.env.example
+security/
+
+# Word Documents & Reports (Giam dung luong Vercel)
 *.docx
 *.md
 !README.md

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { visualSearchRateLimit } from "@/src/lib/rate-limit";
+import { getTrustedClientIp } from "@/src/lib/request-ip";
 import { parseSafeBase64Image } from "@/src/lib/server-image-guard";
 import { searchByValidatedOutfitImage } from "@/src/services/visualSearch";
 
@@ -7,42 +8,28 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 20;
 
-function getClientIp(request: NextRequest): string {
-  return (
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    request.headers.get("x-real-ip") ||
-    "unknown"
-  );
-}
-
 function visualSearchError(status: number, message: string, traceId?: string) {
   return NextResponse.json({ success: false, message, traceId }, { status });
 }
 
 export async function POST(request: NextRequest) {
-  const ip = getClientIp(request);
+  const ip = getTrustedClientIp(request);
 
   try {
-    if (visualSearchRateLimit) {
-      let allowed = true;
-      try {
-        allowed = (
-          await Promise.race([
-            visualSearchRateLimit.limit(`visual-search:${ip}`),
-            new Promise<never>((_, reject) => setTimeout(() => reject(new Error("RATE_LIMIT_TIMEOUT")), 800)),
-          ])
-        ).success;
-      } catch (rlErr: any) {
-        console.warn("[Visual Search RateLimit unavailable, fail-open]:", rlErr?.message || rlErr);
-      }
-      if (!allowed) {
-        return visualSearchError(429, "Ban dang tim bang hinh anh qua nhanh. Vui long thu lai sau it phut.");
-      }
+    const rlResult = await visualSearchRateLimit.limit(`visual-search:${ip}`);
+    if (!rlResult.success) {
+      return visualSearchError(
+        429,
+        "Ban dang tim bang hinh anh qua nhanh. Vui long thu lai sau it phut."
+      );
     }
 
     const contentLength = Number(request.headers.get("content-length") || "0");
     if (contentLength > 7 * 1024 * 1024) {
-      return visualSearchError(413, "Anh qua lon. Vui long dung anh JPG, PNG hoac WEBP toi da 5MB.");
+      return visualSearchError(
+        413,
+        "Anh qua lon. Vui long dung anh JPG, PNG hoac WEBP toi da 5MB."
+      );
     }
 
     const body = await request.json();
@@ -66,7 +53,8 @@ export async function POST(request: NextRequest) {
     }
 
     const colorHint = typeof body?.colorHint === "string" ? body.colorHint.slice(0, 24) : null;
-    const result = await searchByValidatedOutfitImage(image, { colorHint });
+    const garmentHint = typeof body?.garmentHint === "string" ? body.garmentHint.slice(0, 32) : null;
+    const result = await searchByValidatedOutfitImage(image, { colorHint, garmentHint });
     if (!result.success) {
       return visualSearchError(
         503,

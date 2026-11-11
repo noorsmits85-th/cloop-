@@ -1,0 +1,117 @@
+{
+  "checkedAt": "2026-11-11T03:33:36.422Z",
+  "results": {
+    "views": [
+      {
+        "relname": "blog_posts",
+        "reloptions": [
+          "security_invoker=true",
+          "security_barrier=true"
+        ],
+        "definition": " SELECT id,\n    title,\n    content,\n    cover_image,\n    \"productId\",\n    \"userId\",\n    status,\n    \"isPinned\",\n    \"createdAt\",\n    \"updatedAt\",\n    \"isDeleted\"\n   FROM \"BlogPost\"\n  WHERE \"isDeleted\" = false AND status = 'PUBLISHED'::text;",
+        "anon_insert": false,
+        "anon_update": false,
+        "anon_delete": false
+      },
+      {
+        "relname": "product_images",
+        "reloptions": [
+          "security_invoker=true",
+          "security_barrier=true"
+        ],
+        "definition": " SELECT id,\n    \"productId\",\n    url,\n    NULL::text AS \"storageProvider\",\n    NULL::text AS \"publicId\",\n    width,\n    height,\n    NULL::integer AS bytes,\n    format,\n    \"isPrimary\",\n    \"sortOrder\",\n    \"createdAt\"\n   FROM \"ProductImage\" pi\n  WHERE (EXISTS ( SELECT 1\n           FROM products p\n          WHERE p.id = pi.\"productId\" AND p.\"isDeleted\" = false AND (p.status = ANY (ARRAY['ON_MARKET'::\"ProductStatus\", 'IN_CLOSET'::\"ProductStatus\"]))));",
+        "anon_insert": false,
+        "anon_update": false,
+        "anon_delete": false
+      }
+    ],
+    "columnWrites": [],
+    "storagePolicies": [
+      {
+        "tablename": "objects",
+        "roles": [
+          "anon",
+          "authenticated"
+        ],
+        "cmd": "SELECT",
+        "qual": "(bucket_id = ANY (ARRAY['products'::text, 'cloop-media'::text]))",
+        "with_check": null
+      }
+    ],
+    "buckets": [
+      {
+        "id": "products",
+        "public": true,
+        "file_size_limit": "10485760",
+        "allowed_mime_types": [
+          "image/jpeg",
+          "image/png",
+          "image/webp",
+          "image/gif"
+        ]
+      },
+      {
+        "id": "cloop-media",
+        "public": true,
+        "file_size_limit": "10485760",
+        "allowed_mime_types": [
+          "image/jpeg",
+          "image/png",
+          "image/webp",
+          "image/gif"
+        ]
+      },
+      {
+        "id": "cloop-disputes-private",
+        "public": false,
+        "file_size_limit": "104857600",
+        "allowed_mime_types": [
+          "image/jpeg",
+          "image/png",
+          "image/webp",
+          "video/mp4",
+          "video/webm",
+          "video/quicktime"
+        ]
+      }
+    ],
+    "internalFunctions": [
+      {
+        "proname": "fn_auto_enable_rls_on_new_table",
+        "anon_execute": false
+      },
+      {
+        "proname": "fn_guard_coin_ledger_immutable",
+        "anon_execute": false
+      },
+      {
+        "proname": "fn_guard_coin_topups_integrity",
+        "anon_execute": false
+      },
+      {
+        "proname": "fn_guard_invoice_integrity",
+        "anon_execute": false
+      },
+      {
+        "proname": "fn_guard_ledger_immutable",
+        "anon_execute": false
+      },
+      {
+        "proname": "fn_guard_rental_financials",
+        "anon_execute": false
+      },
+      {
+        "proname": "fn_guard_user_sensitive_columns",
+        "anon_execute": false
+      },
+      {
+        "proname": "fn_guard_withdrawal_integrity",
+        "anon_execute": false
+      },
+      {
+        "proname": "fn_is_valid_finite_number",
+        "anon_execute": false
+      }
+    ]
+  }
+}

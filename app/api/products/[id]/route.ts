@@ -23,8 +23,12 @@ export async function GET(
       success: true,
       product,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    // TODO: integrate Sentry/LogRocket tracking for product detail errors
     console.error("Lỗi API lấy chi tiết sản phẩm:", error);
-    return NextResponse.json({ error: error.message || "Lỗi máy chủ" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Không thể tải thông tin sản phẩm lúc này." },
+      { status: 500 }
+    );
   }
 }

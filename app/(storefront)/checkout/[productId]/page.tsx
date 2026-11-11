@@ -1,29 +1,39 @@
 import { prisma } from "@/src/lib/prisma";
 import { redirect } from "next/navigation";
 import CheckoutClient from "./CheckoutClient";
+import { getUserVerifiedCheckoutWalletAction } from "@/app/actions/payment";
 
 export const revalidate = 0;
 
 export default async function CheckoutPage({ params }: { params: Promise<{ productId: string }> }) {
   const { productId } = await params;
 
-  // 1. Fetch Product Data
-  const product = await prisma.product.findUnique({
-    where: { id: productId },
-    include: {
-      images: {
-        where: { isPrimary: true },
-        take: 1
-      },
-      user: {
-        select: { id: true, name: true, rating: true, reviewCount: true }
-      },
-      listings: {
-        where: { status: "AVAILABLE" },
-        take: 1
+  // 1. Fetch Product Data & Verified Wallet Balance in parallel
+  const [product, walletInfo] = await Promise.all([
+    prisma.product.findUnique({
+      where: { id: productId },
+      include: {
+        images: {
+          where: { isPrimary: true },
+          take: 1
+        },
+        user: {
+          select: { id: true, name: true, rating: true, reviewCount: true }
+        },
+        listings: {
+          where: { status: "AVAILABLE" },
+          take: 1
+        }
       }
-    }
-  });
+    }),
+    getUserVerifiedCheckoutWalletAction().catch(() => ({
+      success: false,
+      walletBalance: 0,
+      rawWalletBalance: 0,
+      isReconciled: false,
+      sourceOrderCodes: [] as string[],
+    })),
+  ]);
 
   if (!product || product.listings.length === 0) {
     redirect("/shop");
@@ -55,6 +65,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ produ
         depositPrice={listing.deposit || 0}
         pricingTiers={pricingTiers}
         turnaroundDays={listing.turnaround_days || 2}
+        initialWalletBalance={walletInfo?.walletBalance || 0}
       />
     </div>
   );

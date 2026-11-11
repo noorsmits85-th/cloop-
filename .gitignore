@@ -23,6 +23,8 @@
 # misc
 .DS_Store
 *.pem
+*.key
+*.sql.bak
 
 # debug
 npm-debug.log*
@@ -30,8 +32,10 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files
+.env
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -41,12 +45,6 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
-
-.vercel
-
 /scratch/
-
-.vercel
-.env*
 *.docx
 .playwright-mcp/

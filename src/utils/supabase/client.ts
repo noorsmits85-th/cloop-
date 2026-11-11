@@ -1,6 +1,8 @@
 import { createBrowserClient } from '@supabase/ssr';
 import type { Database } from "@/types/supabase";
 
+const SESSION_MAX_AGE_SECONDS = 14 * 24 * 60 * 60; // 14 days
+
 let client: ReturnType<typeof createBrowserClient<Database>> | undefined;
 
 export function createClient() {
@@ -13,7 +15,8 @@ export function createClient() {
       cookieOptions: {
         path: '/',
         sameSite: 'lax',
-        maxAge: 365 * 24 * 60 * 60, // 1 năm lưu trữ phiên bền bỉ trên điện thoại & trình duyệt
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: SESSION_MAX_AGE_SECONDS,
       },
     }
   );

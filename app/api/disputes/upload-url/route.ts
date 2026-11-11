@@ -1,28 +1,43 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
+import { getTrustedClientIp } from "@/src/lib/request-ip";
 import { generateDisputeVideoUploadUrl } from "@/src/services/gcsStorage";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
+const ALLOWED_DISPUTE_MIMES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
+] as const;
+
 const requestSchema = z.object({
   rentalId: z.string().min(1, "Thiếu mã đơn thuê"),
-  fileName: z.string().min(1, "Thiếu tên tệp"),
-  contentType: z.string().refine(
-    (ct) => ct.startsWith("video/") || ct.startsWith("image/"),
-    "Chỉ chấp nhận tệp video (mp4, mov, webm) hoặc hình ảnh (jpg, png)"
-  ),
+  fileName: z.string().min(1, "Thiếu tên tệp").max(255),
+  contentType: z.enum(ALLOWED_DISPUTE_MIMES, {
+    message: "Chỉ chấp nhận tệp hình ảnh (jpg, png, webp) hoặc video (mp4, webm, mov)",
+  }),
 });
 
 export async function POST(req: Request) {
   try {
-    const user = await requireUser();
+    let user;
+    try {
+      user = await requireUser();
+    } catch {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
     if (!user) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown_ip";
+    const ip = getTrustedClientIp(req);
     const userAgent = req.headers.get("user-agent") || "unknown_ua";
 
     const body = await req.json();
@@ -69,26 +84,29 @@ export async function POST(req: Request) {
     });
 
     // 3. Structured Audit Log (KHÔNG log signed URL để tránh rò rỉ credential tạm thời)
-    console.log(JSON.stringify({
-      event: "DISPUTE_SIGNED_URL_REQUESTED",
-      traceId: uploadMeta.traceId,
-      rentalId,
-      actorId: user.id,
-      objectName: uploadMeta.objectName,
-      maxSizeBytes: uploadMeta.maxSizeBytes,
-      ip,
-      userAgent: userAgent.substring(0, 100),
-      timestamp: new Date().toISOString(),
-    }));
+    console.log(
+      JSON.stringify({
+        event: "DISPUTE_SIGNED_URL_REQUESTED",
+        traceId: uploadMeta.traceId,
+        rentalId,
+        actorId: user.id,
+        objectName: uploadMeta.objectName,
+        maxSizeBytes: uploadMeta.maxSizeBytes,
+        ip,
+        userAgent: userAgent.substring(0, 100),
+        timestamp: new Date().toISOString(),
+      })
+    );
 
     return NextResponse.json({
       success: true,
       data: uploadMeta,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    // TODO: integrate Sentry/LogRocket tracking for dispute upload URL errors
     console.error("API Dispute Upload URL Error:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "Lỗi máy chủ khi sinh link tải tệp" },
+      { success: false, error: "Lỗi máy chủ khi sinh link tải tệp" },
       { status: 500 }
     );
   }

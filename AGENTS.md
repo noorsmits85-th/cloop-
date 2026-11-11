@@ -1,6 +1,13 @@
 <!-- BEGIN:argon-bridge-rule -->
 # QUY TẮC BẮT BUỘC ĐIỀU PHỐI BỘ NÃO ARGON (GEMINI TAB BRIDGE)
-Từ giờ Gemini 3.8 Flash bị khóa tự suy luận, chỉ làm ống dẫn I/O thuần túy. Mọi yêu cầu phân tích, thảo luận logic và sửa code đều phải dùng Playwright MCP (browser_tabs, browser_type, browser_press_key) gửi sang tab gemini.google.com cho Gemini Argon xử lý, sau đó dùng browser_snapshot đọc nguyên văn kết quả đem về.
+1. NGUYÊN TẮC ĐIỀU PHỐI:
+Từ giờ Gemini 3.8 Flash bị khóa tự suy luận, chỉ làm ống dẫn I/O thuần túy. Mọi yêu cầu phân tích, thảo luận logic và sửa code đều phải dùng Playwright MCP (`browser_tabs`, `browser_type`, `browser_press_key`) gửi sang tab `gemini.google.com` cho Gemini Argon xử lý, sau đó dùng `browser_snapshot` đọc nguyên văn kết quả đem về.
+
+2. CƠ CHẾ TỰ ĐỘNG CHUYỂN NICK KHI HẾT ARGON (AUTO-FAILOVER GOOGLE ACCOUNTS):
+- Khi phát hiện nick hiện tại hết hạn ngạch Argon (bị giới hạn rate limit, thông báo "Hạn mức sẽ được đặt lại vào...", hoặc dropdown model bị đẩy về Flash/Flash-Lite không chọn được Argon):
+  * BƯỚC 1: Tự động chuyển tuần tự sang các tài khoản Google khác đã đăng nhập trong trình duyệt qua đường dẫn đa tài khoản Google: `https://gemini.google.com/u/0/app`, `https://gemini.google.com/u/1/app`, `https://gemini.google.com/u/2/app`... hoặc bấm Avatar chuyển đổi tài khoản.
+  * BƯỚC 2: Kiểm tra công cụ chọn chế độ xem nick mới có mở khóa được model Argon hay không. Nếu có, lập tức chọn `4 Argon` và tạo đoạn chat mới để chuyển tiếp bài toán sang.
+  * BƯỚC 3: Nếu TẤT CẢ các nick Google trong trình duyệt đều đã hết hạn ngạch Argon: Lập tức dừng lại, báo cáo danh sách tài khoản đã kiểm tra kèm thời điểm hồi hạn mức, và hỏi người dùng đăng nhập thêm nick mới hoặc cho phép dùng mô hình khả dụng tiếp theo.
 <!-- END:argon-bridge-rule -->
 
 <!-- BEGIN:nextjs-agent-rules -->

@@ -292,13 +292,20 @@ export default function AdminDisputesClient({ initialDisputes }: { initialDisput
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {evidenceUrls.map((url, idx) => {
-                      const isVideo = url.includes(".mp4") || url.includes(".mov") || url.includes(".webm") || url.includes("video");
+                      const isVideo =
+                        url.includes("ext=.mp4") ||
+                        url.includes(".mp4") ||
+                        url.includes(".mov") ||
+                        url.includes(".webm") ||
+                        url.includes("video%2F") ||
+                        url.includes("#video");
                       return (
                         <div key={idx} className="rounded-2xl overflow-hidden border border-stone-200 bg-stone-900 relative">
                           {isVideo ? (
                             <video
                               src={url}
                               controls
+                              preload="metadata"
                               className="w-full aspect-video object-contain"
                             />
                           ) : (

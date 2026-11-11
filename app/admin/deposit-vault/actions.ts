@@ -49,38 +49,71 @@ export async function getDepositVaultMetricsAction() {
       });
     };
 
-    // 1. CÁC ĐƠN HÀNG ĐANG TẠM GIỮ TIỀN CỌC THỰC TẾ (HÓA ĐƠN ĐÃ THANH TOÁN VÀ ĐƠN ĐANG TRONG QUÁ TRÌNH THUÊ)
-    const activeRentals = await prisma.rentalHistory.findMany({
-      where: {
-        status: { in: [...OPEN_RENTAL_STATUSES] },
-        invoice: {
-          status: "PAID",
-          depositAmount: { gt: 0 },
-        },
-      },
-      select: {
-        id: true,
-        start_date: true,
-        end_date: true,
-        status: true,
-        renter_name: true,
-        renter_phone: true,
-        owner_name: true,
-        owner_phone: true,
-        product: { select: { title: true } },
-        invoice: {
-          select: {
-            depositAmount: true,
-            rentalFee: true,
-            shippingFeeCollected: true,
-            amount: true,
-            status: true,
+    // 1 & 2. TRUY VẤN SONG SONG ĐƠN ĐANG GIỮ CỌC VÀ ĐƠN ĐÃ HOÀN CỌC (LOẠI BỎ WATERFALL)
+    const [activeRentals, settledRentals] = await Promise.all([
+      prisma.rentalHistory.findMany({
+        where: {
+          status: { in: [...OPEN_RENTAL_STATUSES] },
+          invoice: {
+            status: "PAID",
+            depositAmount: { gt: 0 },
           },
         },
-      },
-      orderBy: { end_date: "asc" },
-      take: 100,
-    });
+        select: {
+          id: true,
+          start_date: true,
+          end_date: true,
+          status: true,
+          renter_name: true,
+          renter_phone: true,
+          owner_name: true,
+          owner_phone: true,
+          product: { select: { title: true } },
+          invoice: {
+            select: {
+              depositAmount: true,
+              rentalFee: true,
+              shippingFeeCollected: true,
+              amount: true,
+              status: true,
+            },
+          },
+        },
+        orderBy: { end_date: "asc" },
+        take: 100,
+      }),
+      prisma.rentalHistory.findMany({
+        where: {
+          status: "LENDER_COMPLETED",
+          invoice: {
+            status: "PAID",
+            depositAmount: { gt: 0 },
+          },
+        },
+        select: {
+          id: true,
+          start_date: true,
+          end_date: true,
+          status: true,
+          renter_name: true,
+          renter_phone: true,
+          owner_name: true,
+          owner_phone: true,
+          product: { select: { title: true } },
+          invoice: {
+            select: {
+              depositAmount: true,
+              rentalFee: true,
+              shippingFeeCollected: true,
+              amount: true,
+              status: true,
+            },
+          },
+        },
+        orderBy: { end_date: "desc" },
+        take: 50,
+      }),
+    ]);
 
     let totalVault = 0;
     let pendingReturn = 0;
@@ -119,39 +152,6 @@ export async function getDepositVaultMetricsAction() {
         shippingFeeCollected: rent.invoice?.shippingFeeCollected || 0,
         isSettled: false,
       };
-    });
-
-    // 2. LỊCH SỬ TIỀN CỌC ĐÃ HOÀN TRẢ / GIẢI NGÂN HOÀN TẤT
-    const settledRentals = await prisma.rentalHistory.findMany({
-      where: {
-        status: "LENDER_COMPLETED",
-        invoice: {
-          status: "PAID",
-          depositAmount: { gt: 0 },
-        },
-      },
-      select: {
-        id: true,
-        start_date: true,
-        end_date: true,
-        status: true,
-        renter_name: true,
-        renter_phone: true,
-        owner_name: true,
-        owner_phone: true,
-        product: { select: { title: true } },
-        invoice: {
-          select: {
-            depositAmount: true,
-            rentalFee: true,
-            shippingFeeCollected: true,
-            amount: true,
-            status: true,
-          },
-        },
-      },
-      orderBy: { end_date: "desc" },
-      take: 50,
     });
 
     let totalHistoricalSettled = 0;

@@ -3,7 +3,15 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  const targetEmail = 'tranthitrinh0501@gmail.com';
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_ADMIN_GRANT_CLI !== 'true') {
+    throw new Error('SECURITY_BLOCK: Admin grant script requires ALLOW_ADMIN_GRANT_CLI=true in production.');
+  }
+
+  const targetEmail = (process.env.TARGET_ADMIN_EMAIL || '').trim();
+  if (!targetEmail) {
+    throw new Error('Missing required env TARGET_ADMIN_EMAIL.');
+  }
+
   console.log('--- Granting ADMIN role to:', targetEmail);
 
   const existing = await prisma.user.findFirst({
@@ -15,37 +23,15 @@ async function main() {
       where: { id: existing.id },
       data: { role: 'ADMIN' }
     });
-    console.log('✅ Successfully updated user to ADMIN:', {
+    console.log('Successfully updated user to ADMIN:', {
       id: updated.id,
       email: updated.email,
       name: updated.name,
       role: updated.role
     });
   } else {
-    const created = await prisma.user.create({
-      data: {
-        email: targetEmail,
-        password: 'supabase_auth_managed',
-        role: 'ADMIN',
-        name: 'Trinh Trần',
-        walletBalance: 0,
-        cloopCoins: 1000,
-        isVerified: true
-      }
-    });
-    console.log('✅ Created user with ADMIN role:', {
-      id: created.id,
-      email: created.email,
-      name: created.name,
-      role: created.role
-    });
+    throw new Error(`User with email ${targetEmail} does not exist. Register via Supabase Auth first.`);
   }
-
-  const admins = await prisma.user.findMany({
-    where: { role: 'ADMIN' },
-    select: { id: true, email: true, name: true, role: true }
-  });
-  console.log('📋 Current list of Admins in system:', admins);
 }
 
 main()
@@ -56,4 +42,7 @@ main()
   .catch((e) => {
     console.error('Error granting admin:', e);
     process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
   });

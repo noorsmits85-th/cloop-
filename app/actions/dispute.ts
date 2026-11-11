@@ -3,7 +3,17 @@
 import { DamageSeverity } from "@prisma/client";
 import { prisma } from "@/src/lib/prisma";
 import { requireUser, requireAdmin } from "@/src/lib/auth";
-import { generateDisputeVideoReadUrl } from "@/src/services/gcsStorage";
+import {
+  generateDisputeVideoReadUrl,
+  verifyUploadedDisputeFile,
+} from "@/src/services/gcsStorage";
+import {
+  buildSealedDisputeEvidenceUrl,
+  buildSignedEvidenceStreamPath,
+  parseEvidenceIntegrityAnchor,
+  verifyAndFinalizeDisputeEvidenceList,
+  verifySealedDisputeEvidenceUrl,
+} from "@/src/lib/dispute-evidence-seal";
 import { settleDisputedRentalOrder } from "@/lib/settlement-engine";
 
 export type DamageCategory = "WEAR_AND_TEAR" | "REPAIRABLE_DAMAGE" | "TOTAL_LOSS";
@@ -47,6 +57,12 @@ export async function createDispute(data: {
       return { success: false, error: "Bạn không có quyền khiếu nại cho đơn thuê này" };
     }
 
+    // 🛡️ CHỐT CHẶN BẢO MẬT SỐ TIỀN KHẤU TRỪ: Không chấp nhận số âm hoặc NaN
+    if (!Number.isFinite(data.suggestedDeduction) || data.suggestedDeduction < 0) {
+      return { success: false, error: "Số tiền đề xuất khấu trừ không hợp lệ." };
+    }
+    const safeSuggestedDeduction = Math.round(data.suggestedDeduction);
+
     // 1b. DIGITAL DAMAGE PROTOCOL: Chặn đứng hành vi đòi cọc với Hao mòn thông thường (Wear & Tear)
     const category: DamageCategory = data.damageCategory || 
       (data.severity === "LOW" ? "WEAR_AND_TEAR" : data.severity === "MEDIUM" ? "REPAIRABLE_DAMAGE" : "TOTAL_LOSS");
@@ -56,57 +72,57 @@ export async function createDispute(data: {
     const maxRepairableDeduction = Math.min(depositAmount, Math.max(500000, Math.round(depositAmount * 0.5)));
 
     if (category === "WEAR_AND_TEAR") {
-      if (data.suggestedDeduction > 0) {
+      if (safeSuggestedDeduction > 0) {
         return {
           success: false,
           error: "Theo Chính Sách Vận Hành CLOOP: Vết bẩn bề mặt (son môi, phấn trang điểm nhẹ, mồ hôi, nếp nhăn) thuộc phạm vi Hao Mòn Thông Thường (Wear & Tear) đã được tính trong giá thuê. Chủ tủ tự xử lý giặt ủi, không được khấu trừ tiền cọc của khách!",
         };
       }
     } else if (category === "REPAIRABLE_DAMAGE") {
-      // Hư hỏng có thể khắc phục: Giới hạn theo khung đền bù tối đa 50% cọc (hoặc trần sàn 500k) và không vượt quá cọc thực tế
-      if (data.suggestedDeduction > maxRepairableDeduction) {
+      if (safeSuggestedDeduction > maxRepairableDeduction) {
         return {
           success: false,
           error: `Đối với Hư hỏng có thể khắc phục (Repairable Damage), mức khấu trừ tối đa là ${maxRepairableDeduction.toLocaleString("vi-VN")}đ (theo khung đền bù tối đa 50% tiền cọc hoặc hạn mức sửa chữa), không được yêu cầu tịch thu toàn bộ tiền cọc!`,
         };
       }
     } else if (category === "TOTAL_LOSS") {
-      // Hỏng hoàn toàn / Mất đồ: Được phép trừ tới 100% cọc (depositAmount) mà KHÔNG bị vướng trần 500k
-      if (data.suggestedDeduction > depositAmount) {
+      if (safeSuggestedDeduction > depositAmount) {
         return {
           success: false,
-          error: `Đối với trường hợp Hỏng hoàn toàn / Mất đồ (Total Loss), số tiền khấu trừ (${data.suggestedDeduction.toLocaleString("vi-VN")}đ) không được vượt quá số tiền cọc thực tế (${depositAmount.toLocaleString("vi-VN")}đ) được ký quỹ trong đơn hàng!`,
+          error: `Đối với trường hợp Hỏng hoàn toàn / Mất đồ (Total Loss), số tiền khấu trừ (${safeSuggestedDeduction.toLocaleString("vi-VN")}đ) không được vượt quá số tiền cọc thực tế (${depositAmount.toLocaleString("vi-VN")}đ) được ký quỹ trong đơn hàng!`,
         };
       }
     }
 
-    // 1c. NGUYÊN TẮC NGHĨA VỤ CHỨNG MINH (BURDEN OF PROOF):
-    // Chủ tủ yêu cầu trừ cọc bắt buộc phải có video mở hộp đối soát khi nhận lại kiện hàng từ shipper.
-    // Nếu chủ tủ không có video mở hộp, chủ tủ phải tự chịu 100% trách nhiệm và hệ thống từ chối mở khiếu nại trừ cọc!
-    if (isOwner && data.suggestedDeduction > 0) {
-      const evidence = data.evidenceUrls || [];
-      const hasUnboxingVideo = evidence.some((url) => {
-        const lower = url.toLowerCase();
-        return (
-          lower.includes("#video") ||
-          lower.includes("type=video") ||
-          lower.endsWith(".mp4") ||
-          lower.endsWith(".mov") ||
-          lower.endsWith(".webm") ||
-          lower.endsWith(".avi") ||
-          lower.endsWith(".mkv") ||
-          lower.includes("/video/") ||
-          lower.includes("video") ||
-          lower.includes("drive.google.com/file")
-        );
-      });
+    // 1c. XÁC THỰC CHỨNG TỪ BẰNG CHỨNG TỪ MÁY CHỦ & NGUYÊN TẮC NGHĨA VỤ CHỨNG MINH (BURDEN OF PROOF):
+    // Tuyệt đối không tin chuỗi URL tự nhập (#video, drive.google.com/file...).
+    // Mọi bằng chứng phải đi qua dịch vụ xác thực & nghiệm thu dùng chung (verifyAndFinalizeDisputeEvidenceList).
+    const evidenceCheck = await verifyAndFinalizeDisputeEvidenceList({
+      rawUrls: data.evidenceUrls || [],
+      rentalId: data.rentalId,
+      uploaderId: user.id,
+      allowAdminUploader: isAdmin,
+      maxItems: 10,
+      verifyGcsObject: verifyUploadedDisputeFile,
+    });
 
-      if (!hasUnboxingVideo) {
-        return {
-          success: false,
-          error: "Theo Nguyên Tắc Nghĩa Vụ Chứng Minh (Burden of Proof): Chủ tủ bắt buộc phải đính kèm video quay rõ quá trình mở hộp đối soát niêm phong khi nhận lại hàng từ shipper. Không có video mở hộp = Chủ tủ tự chịu toàn bộ trách nhiệm, hệ thống từ chối mở khiếu nại trừ cọc!",
-        };
-      }
+    if (!evidenceCheck.ok) {
+      return {
+        success: false,
+        error:
+          evidenceCheck.error ||
+          "Bằng chứng đính kèm không hợp lệ, chưa được máy chủ nghiệm thu hoặc không thuộc đơn thuê này.",
+      };
+    }
+
+    const verifiedEvidenceList = evidenceCheck.verifiedUrls;
+    const hasVerifiedUnboxingVideo = evidenceCheck.hasVerifiedVideo;
+
+    if (isOwner && safeSuggestedDeduction > 0 && !hasVerifiedUnboxingVideo) {
+      return {
+        success: false,
+        error: "Theo Nguyên Tắc Nghĩa Vụ Chứng Minh (Burden of Proof): Chủ tủ bắt buộc phải tải lên video mở hộp đối soát niêm phong đã được máy chủ CLOOP nghiệm thu cho đúng đơn thuê này. Không có video mở hộp hợp lệ = Chủ tủ tự chịu toàn bộ trách nhiệm, hệ thống từ chối mở khiếu nại trừ cọc!",
+      };
     }
 
     // 1d. OWNER RISK ENGINE: Soi xét tần suất khiếu nại của Chủ tủ (Phát hiện Moral Hazard)
@@ -148,7 +164,8 @@ export async function createDispute(data: {
       };
     }
 
-    const targetInvoiceId = data.invoiceId || rental.invoice?.id;
+    // Chặn IDOR: Chỉ sử dụng rental.invoice.id từ DB, tuyệt đối không nhận data.invoiceId tùy ý từ client
+    const targetInvoiceId = rental.invoice?.id;
 
     // 3. Dùng Transaction để đảm bảo tạo Dispute và Audit Log cùng lúc (Atomic)
     const result = await prisma.$transaction(async (tx) => {
@@ -156,10 +173,10 @@ export async function createDispute(data: {
         data: {
           rentalId: data.rentalId,
           invoiceId: targetInvoiceId || null,
-          description: data.description,
+          description: String(data.description || "").slice(0, 2000),
           severity: data.severity,
-          suggestedDeduction: data.suggestedDeduction,
-          images: data.evidenceUrls || [],
+          suggestedDeduction: safeSuggestedDeduction,
+          images: verifiedEvidenceList,
           status: "PENDING_REVIEW",
           adminNotes: JSON.stringify({
             damageCategory: category,
@@ -182,7 +199,8 @@ export async function createDispute(data: {
             severity: data.severity,
             damageCategory: category,
             deduction: data.suggestedDeduction,
-            evidenceCount: (data.evidenceUrls || []).length,
+            evidenceCount: verifiedEvidenceList.length,
+            hasVerifiedUnboxingVideo,
             creatorRole: isAdmin ? "ADMIN" : isOwner ? "OWNER" : "RENTER",
             isHighDisputeOwner,
             ownerDisputeRate: `${ownerDisputeRate}%`,
@@ -210,6 +228,7 @@ export async function createDispute(data: {
 
     return { success: true, dispute: result };
   } catch (error: unknown) {
+    // TODO: integrate Sentry/LogRocket tracking for dispute creation errors
     const message = error instanceof Error ? error.message : "Lỗi xử lý khiếu nại";
     console.error("Lỗi tạo Dispute:", message);
     return { success: false, error: message };
@@ -229,10 +248,36 @@ export async function resolveDispute(data: {
     const { profile: admin } = await requireAdmin();
     if (!admin) throw new Error("Unauthorized Admin");
 
+    if (!Number.isFinite(data.finalDeduction) || data.finalDeduction < 0) {
+      return { success: false, error: "Số tiền khấu trừ quyết toán không hợp lệ." };
+    }
+    const safeFinalDeduction = Math.round(data.finalDeduction);
+
+    // Kiểm tra xem khiếu nại này xuất phát từ Khách thuê (RENTER - hàng lỗi/sai mẫu) hay Chủ tủ (OWNER - hư hỏng khi trả đồ)
+    const existingDispute = await prisma.dispute.findUnique({
+      where: { id: data.disputeId },
+      select: { adminNotes: true, rental: { select: { invoice: { select: { rentalFee: true } } } } },
+    });
+
+    let isItemDefect = false;
+    let refundRentalToRenter: number | undefined = undefined;
+    try {
+      if (existingDispute?.adminNotes) {
+        const parsedNotes = JSON.parse(existingDispute.adminNotes);
+        if (parsedNotes.initiatorRole === "RENTER" || parsedNotes.isItemDefect === true) {
+          isItemDefect = true;
+          const rentalFee = existingDispute.rental?.invoice?.rentalFee || 0;
+          refundRentalToRenter = safeFinalDeduction > 0 ? Math.min(safeFinalDeduction, rentalFee) : rentalFee;
+        }
+      }
+    } catch (_) {}
+
     const result = await settleDisputedRentalOrder(
       {
         disputeId: data.disputeId,
-        finalDeduction: data.finalDeduction,
+        finalDeduction: isItemDefect ? 0 : safeFinalDeduction,
+        isItemDefect,
+        refundRentalToRenter,
         adminId: admin.id,
         adminNotes: data.adminNotes,
       },
@@ -244,6 +289,7 @@ export async function resolveDispute(data: {
 
     return { success: true, dispute: result };
   } catch (error: unknown) {
+    // TODO: integrate Sentry/LogRocket tracking for dispute settlement errors
     const message = error instanceof Error ? error.message : "Lỗi giải quyết khiếu nại";
     console.error("Lỗi giải quyết Dispute:", message);
     return { success: false, error: message };
@@ -252,7 +298,7 @@ export async function resolveDispute(data: {
 
 /**
  * 🔒 LẤY LINK BẰNG CHỨNG TRANH CHẤP CÓ PHÂN QUYỀN CHẶT CHẼ
- * Chỉ cho phép Renter, Owner hoặc Admin của đúng hồ sơ đó xem video/ảnh.
+ * Chỉ cho phép Renter, Owner hoặc Admin của đúng hồ sơ đó xem video/ảnh qua luồng stream nội bộ có chữ ký 15 phút.
  */
 export async function getDisputeEvidenceUrls(params: {
   disputeId: string;
@@ -297,23 +343,48 @@ export async function getDisputeEvidenceUrls(params: {
 
   const urls = await Promise.all(
     requestedKeys.map(async (key) => {
-      // Nếu là URL trực tiếp, chỉ cho phép các domain tin cậy đã được cấu hình
-      if (key.startsWith("http://") || key.startsWith("https://")) {
+      // 1. Chứng từ SEAL nội bộ (`https://evidence.cloop.internal/v1/object?...`) -> sinh đường dẫn stream '/api/disputes/evidence-stream?...'
+      if (key.startsWith("https://evidence.cloop.internal/v1/object")) {
+        const verified = verifySealedDisputeEvidenceUrl(key, {
+          rentalId: dispute.rentalId,
+          allowAdminUploader: true,
+        });
+        if (!verified.valid || !verified.payload) {
+          throw new Error(verified.error || "Chứng từ bằng chứng không hợp lệ.");
+        }
+        if (verified.payload.provider === "gcs") {
+          const anchor = parseEvidenceIntegrityAnchor(verified.payload.checksumOrGeneration);
+          return generateDisputeVideoReadUrl(verified.payload.objectRef, anchor.gen);
+        }
+        return buildSignedEvidenceStreamPath({
+          disputeId: dispute.id,
+          evidenceUrl: key,
+          viewerId: user.id,
+        });
+      }
+
+      // 2. Đường dẫn GCS trực tiếp (`disputes/...`)
+      if (key.startsWith("disputes/")) {
+        return generateDisputeVideoReadUrl(key);
+      }
+
+      // 3. Nếu là URL lịch sử trực tiếp, chỉ cho phép các domain lưu trữ được phép trong CSP media-src/img-src
+      if (key.startsWith("https://")) {
         const parsed = new URL(key);
         const trustedDomains = [
           "storage.googleapis.com",
-          "drive.google.com",
-          "googleusercontent.com",
-          "googleapis.com",
           "res.cloudinary.com",
-          "supabase.co",
+          "notxrjsuukrrxdlboavo.supabase.co",
         ];
-        const isTrusted = trustedDomains.some((d) => parsed.hostname.endsWith(d));
+        const isTrusted =
+          parsed.protocol === "https:" &&
+          trustedDomains.some((d) => parsed.hostname === d || parsed.hostname.endsWith("." + d));
         if (!isTrusted) {
-          throw new Error("Bằng chứng chứa liên kết từ nguồn không tin cậy.");
+          throw new Error("Bằng chứng chứa liên kết từ nguồn không được phép phát trực tiếp.");
         }
         return key;
       }
+
       return generateDisputeVideoReadUrl(key);
     })
   );

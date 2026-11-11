@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { createGhnShipmentAction, markShipmentBookedAction } from "@/app/actions/shipment";
 
 type ShipmentRow = {
@@ -89,6 +90,7 @@ function getStatusBadge(status: string) {
 }
 
 export default function ShipmentQueueClient({ shipments }: { shipments: ShipmentRow[] }) {
+  const router = useRouter();
   const [selectedId, setSelectedId] = useState<string | null>(shipments[0]?.id || null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
@@ -144,6 +146,7 @@ export default function ShipmentQueueClient({ shipments }: { shipments: Shipment
           type: "success",
           text: result.message || `Tạo vận đơn GHN thành công! Mã: ${result.trackingCode}`,
         });
+        router.refresh();
       } else {
         setNotification({
           type: "error",
@@ -183,6 +186,7 @@ export default function ShipmentQueueClient({ shipments }: { shipments: Shipment
           text: result.message || "Đã lưu mã vận đơn thủ công thành công.",
         });
         setIsManualOpen(false);
+        router.refresh();
       } else {
         setNotification({
           type: "error",

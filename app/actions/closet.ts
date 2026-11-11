@@ -4,6 +4,7 @@ import { prisma } from "@/src/lib/prisma";
 import { requireUser } from "@/src/lib/auth";
 import { revalidatePath } from "next/cache";
 import { maskPublicAddress } from "@/src/utils/shipping";
+import { settleCompletedRentalOrder } from "@/lib/settlement-engine";
 
 export interface FormattedClosetProduct {
   id: string;
@@ -44,14 +45,16 @@ export interface ClosetMemory {
 export async function getClosetFullDataAction(userId: string) {
   try {
     const cleanId = (userId || "").trim().replace(/^@/, "");
+    if (!cleanId || cleanId.length < 2) {
+      return { success: false, error: "Người dùng không tồn tại" };
+    }
 
-    // 1. Tìm user theo id hoặc theo name/email
-    let activeUser = await prisma.user.findFirst({
+    // 1. Tìm user theo id hoặc tên hiển thị chính xác (TUYỆT ĐỐI KHÔNG cho phép startsWith email để chống dò quét Email Prefix Oracle)
+    const activeUser = await prisma.user.findFirst({
       where: {
         OR: [
           { id: cleanId },
-          { name: { equals: cleanId, mode: "insensitive" } },
-          { email: { startsWith: cleanId, mode: "insensitive" } }
+          { name: { equals: cleanId, mode: "insensitive" } }
         ]
       },
       select: {
@@ -65,11 +68,25 @@ export async function getClosetFullDataAction(userId: string) {
       }
     });
 
-    const targetUserId = activeUser?.id || cleanId;
+    if (!activeUser) {
+      return { success: false, error: "Người dùng không tồn tại" };
+    }
+
+    const targetUserId = activeUser.id;
 
     const [products, completedCount, blogPosts, authMetaRows] = await Promise.all([
       prisma.product.findMany({
-        where: { userId: targetUserId, isDeleted: false },
+        where: {
+          userId: targetUserId,
+          isDeleted: false,
+          status: "ON_MARKET",
+          listings: {
+            some: {
+              isDeleted: false,
+              status: "AVAILABLE"
+            }
+          }
+        },
         orderBy: { createdAt: "desc" },
         include: {
           images: {
@@ -77,7 +94,7 @@ export async function getClosetFullDataAction(userId: string) {
             orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }]
           },
           listings: {
-            where: { isDeleted: false }
+            where: { isDeleted: false, status: "AVAILABLE" }
           }
         }
       }),
@@ -96,49 +113,6 @@ export async function getClosetFullDataAction(userId: string) {
     ]);
 
     const authMeta = authMetaRows?.[0]?.raw_user_meta_data || {};
-
-    if (!activeUser) {
-      // Tự động phục hồi/khởi tạo người dùng nếu có ID hợp lệ để không bao giờ bị lỗi 404 khi truy cập link tủ đồ
-      try {
-        activeUser = await prisma.user.create({
-          data: {
-            id: targetUserId,
-            email: `${targetUserId}@cloop.vn`,
-            name: "Thành viên CLOOP",
-            password: "supabase_auth_managed",
-            walletBalance: 0,
-            cloopCoins: 100,
-            role: "USER"
-          },
-          select: {
-            id: true,
-            name: true,
-            avatar: true,
-            rating: true,
-            reviewCount: true,
-            completedOrders: true,
-            createdAt: true
-          }
-        });
-      } catch {
-        activeUser = await prisma.user.findUnique({
-          where: { id: userId },
-          select: {
-            id: true,
-            name: true,
-            avatar: true,
-            rating: true,
-            reviewCount: true,
-            completedOrders: true,
-            createdAt: true
-          }
-        });
-      }
-    }
-
-    if (!activeUser) {
-      return { success: false, error: "Người dùng không tồn tại" };
-    }
 
     const PLACEHOLDER_IMG = "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600";
     const formattedProducts: FormattedClosetProduct[] = [];
@@ -181,31 +155,11 @@ export async function getClosetFullDataAction(userId: string) {
           createdAt: item.createdAt.toISOString()
         });
       }
-
-      if (rentPrice === 0 && sellPrice === 0) {
-        formattedProducts.push({
-          id: `${item.id}-display`,
-          productId: item.id,
-          title: item.title,
-          image,
-          type: "Thuê",
-          priceText: "Liên hệ thuê",
-          location: productLoc,
-          size: item.size || "M",
-          category: item.category,
-          createdAt: item.createdAt.toISOString()
-        });
-      }
     });
 
     const joinDateObj = activeUser.createdAt ? new Date(activeUser.createdAt) : new Date();
     const joinDateStr = `${String(joinDateObj.getMonth() + 1).padStart(2, '0')}/${joinDateObj.getFullYear()}`;
     
-    // 🛡️ ĐỒNG BỘ 100% NGUỒN ĐỊA CHỈ THEO CHUẨN GHN:
-    // Ưu tiên 1: Địa chỉ trạm kho thực tế của các sản phẩm đang có trong tủ đồ (products[0].specificAddress / province)
-    // Ưu tiên 2: Địa chỉ bưu tá GHN lấy hàng của tủ đồ (authMeta.pickup_address / full_address)
-    // Ưu tiên 3: Tỉnh/Thành & Quận/Huyện GHN đã lưu (authMeta.district, authMeta.province)
-    // Fallback: authMeta.location hoặc Việt Nam
     const ghnAddressCandidate = 
       products[0]?.specificAddress ||
       authMeta.pickup_address ||
@@ -218,14 +172,14 @@ export async function getClosetFullDataAction(userId: string) {
 
     const ownerInfo: ClosetUserProfile = {
       id: activeUser.id,
-      name: activeUser.name || authMeta.name || "Thành viên CLOOP",
+      name: scrubPublicText(activeUser.name || authMeta.name || "Thành viên CLOOP"),
       avatar: activeUser.avatar || authMeta.avatar_url || authMeta.avatar || null,
       joinDate: joinDateStr,
-      bio: authMeta.bio || "Mình là một người yêu thời trang vintage và những chuyến đi. Mình tin rằng mỗi món đồ đều có một câu chuyện đẹp để kể lại.",
-      quote: authMeta.quote || "Lưu giữ ký ức qua từng chiếc váy.",
+      bio: scrubPublicText(authMeta.bio || "Mình là một người yêu thời trang vintage và những chuyến đi. Mình tin rằng mỗi món đồ đều có một câu chuyện đẹp để kể lại."),
+      quote: scrubPublicText(authMeta.quote || "Lưu giữ ký ức qua từng chiếc váy."),
       coverImage: authMeta.coverImage || null,
       location: userLoc,
-      todaysMemory: authMeta.todaysMemory || "Hôm nay mình vừa thêm đồ mới vào tủ đồ CLOOP. Cùng chia sẻ để sống xanh!",
+      todaysMemory: scrubPublicText(authMeta.todaysMemory || "Hôm nay mình vừa thêm đồ mới vào tủ đồ CLOOP. Cùng chia sẻ để sống xanh!"),
       rating: activeUser.rating !== undefined ? Number(activeUser.rating) : 5.0,
       reviewCount: activeUser.reviewCount ? Number(activeUser.reviewCount) : 0,
       completedOrders: Math.max(activeUser.completedOrders || 0, completedCount),
@@ -237,7 +191,7 @@ export async function getClosetFullDataAction(userId: string) {
           const d = new Date(b.createdAt);
           return {
             id: b.id,
-            title: b.title,
+            title: scrubPublicText(b.title),
             image: b.cover_image || products[0]?.images[0]?.url || "",
             date: `${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`
           };
@@ -253,12 +207,12 @@ export async function getClosetFullDataAction(userId: string) {
     };
   } catch (err: any) {
     console.error("Lỗi getClosetFullDataAction:", err);
-    return { success: false, error: err.message || "Lỗi tải tủ đồ." };
+    return { success: false, error: "Lỗi tải tủ đồ." };
   }
 }
 
 export async function updateClosetProfileAction(data: {
-  userId: string;
+  userId?: string;
   name?: string;
   avatar?: string | null;
   location?: string;
@@ -278,56 +232,57 @@ export async function updateClosetProfileAction(data: {
   fullAddress?: string;
 }) {
   try {
-    let authUserId = data.userId;
-    try {
-      const userAuth = await requireUser();
-      if (userAuth?.id) {
-        authUserId = userAuth.id;
-      }
-    } catch (_) {}
+    const user = await requireUser();
+    const targetUserId = user.id;
 
-    const targetUserId = authUserId || data.userId;
-    if (!targetUserId) {
-      return { success: false, error: "Vui lòng đăng nhập để cập nhật hồ sơ." };
-    }
+    const cleanName = data.name?.trim().slice(0, 80);
 
-    const cleanName = data.name?.trim();
+    const existingUser = await prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { name: true, isVerified: true }
+    });
+
+    // 🛡️ BẢO MẬT ĐỊNH DANH BANK-KYC: Nếu tài khoản đã xác thực danh tính (isVerified) và đã có tên gốc,
+    // không cho phép tự ý đổi họ tên pháp lý để lách đối chiếu chủ tài khoản ngân hàng.
+    const allowNameUpdate = Boolean(
+      cleanName && (!existingUser?.isVerified || !existingUser?.name?.trim())
+    );
 
     // 1. Cập nhật bảng Prisma User
     await prisma.user.update({
       where: { id: targetUserId },
       data: {
-        ...(cleanName && { name: cleanName }),
+        ...(allowNameUpdate && { name: cleanName }),
         ...(data.avatar !== undefined && { avatar: data.avatar })
       }
     });
 
-    // 2. Cập nhật trực tiếp raw_user_meta_data trong auth.users để đồng bộ tức thì
+    // 2. Cập nhật trực tiếp raw_user_meta_data trong auth.users để đồng bộ tức thì (Giới hạn độ dài chống JSONB Bloat)
     try {
       const metaPayload: Record<string, any> = {};
-      if (cleanName) {
+      if (allowNameUpdate && cleanName) {
         metaPayload.name = cleanName;
         metaPayload.full_name = cleanName;
       }
-      if (data.phone) metaPayload.phone = data.phone.trim();
-      if (data.location) metaPayload.location = data.location;
-      if (data.quote) metaPayload.quote = data.quote;
-      if (data.bio) metaPayload.bio = data.bio;
-      if (data.todaysMemory) metaPayload.todaysMemory = data.todaysMemory;
+      if (data.phone) metaPayload.phone = data.phone.trim().slice(0, 20);
+      if (data.location) metaPayload.location = data.location.slice(0, 200);
+      if (data.quote) metaPayload.quote = data.quote.slice(0, 200);
+      if (data.bio) metaPayload.bio = data.bio.slice(0, 500);
+      if (data.todaysMemory) metaPayload.todaysMemory = data.todaysMemory.slice(0, 300);
       if (data.avatar !== undefined) {
         metaPayload.avatar = data.avatar;
         metaPayload.avatar_url = data.avatar;
       }
       if (data.provinceId !== undefined && data.provinceId !== "") metaPayload.province_id = Number(data.provinceId);
       if (data.districtId !== undefined && data.districtId !== "") metaPayload.district_id = Number(data.districtId);
-      if (data.wardCode !== undefined) metaPayload.ward_code = String(data.wardCode);
-      if (data.province) metaPayload.province = data.province;
-      if (data.district) metaPayload.district = data.district;
-      if (data.ward) metaPayload.ward = data.ward;
-      if (data.specificAddress) metaPayload.specific_address = data.specificAddress;
-      if (data.addressNote !== undefined) metaPayload.address_note = data.addressNote;
-      if (data.pickupAddress) metaPayload.pickup_address = data.pickupAddress;
-      if (data.fullAddress) metaPayload.full_address = data.fullAddress;
+      if (data.wardCode !== undefined) metaPayload.ward_code = String(data.wardCode).slice(0, 30);
+      if (data.province) metaPayload.province = data.province.slice(0, 100);
+      if (data.district) metaPayload.district = data.district.slice(0, 100);
+      if (data.ward) metaPayload.ward = data.ward.slice(0, 100);
+      if (data.specificAddress) metaPayload.specific_address = data.specificAddress.slice(0, 250);
+      if (data.addressNote !== undefined) metaPayload.address_note = data.addressNote.slice(0, 250);
+      if (data.pickupAddress) metaPayload.pickup_address = data.pickupAddress.slice(0, 300);
+      if (data.fullAddress) metaPayload.full_address = data.fullAddress.slice(0, 300);
 
       await prisma.$executeRawUnsafe(
         `UPDATE auth.users SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || $1::jsonb WHERE id = $2::uuid;`,
@@ -344,38 +299,30 @@ export async function updateClosetProfileAction(data: {
       const supabase = await createClient();
       await supabase.auth.updateUser({
         data: {
-          ...(cleanName ? { name: cleanName, full_name: cleanName } : {}),
-          location: data.location || undefined,
-          quote: data.quote || undefined,
-          bio: data.bio || undefined,
-          todaysMemory: data.todaysMemory || undefined,
+          ...(allowNameUpdate && cleanName ? { name: cleanName, full_name: cleanName } : {}),
+          location: data.location ? data.location.slice(0, 200) : undefined,
+          quote: data.quote ? data.quote.slice(0, 200) : undefined,
+          bio: data.bio ? data.bio.slice(0, 500) : undefined,
+          todaysMemory: data.todaysMemory ? data.todaysMemory.slice(0, 300) : undefined,
           avatar: data.avatar || undefined,
-          phone: data.phone?.trim() || undefined,
+          phone: data.phone?.trim().slice(0, 20) || undefined,
           province_id: data.provinceId ? Number(data.provinceId) : undefined,
           district_id: data.districtId ? Number(data.districtId) : undefined,
-          ward_code: data.wardCode ? String(data.wardCode) : undefined,
-          province: data.province || undefined,
-          district: data.district || undefined,
-          ward: data.ward || undefined,
-          specific_address: data.specificAddress || undefined,
-          address_note: data.addressNote || undefined,
-          pickup_address: data.pickupAddress || undefined,
-          full_address: data.fullAddress || undefined,
+          ward_code: data.wardCode ? String(data.wardCode).slice(0, 30) : undefined,
+          province: data.province ? data.province.slice(0, 100) : undefined,
+          district: data.district ? data.district.slice(0, 100) : undefined,
+          ward: data.ward ? data.ward.slice(0, 100) : undefined,
+          specific_address: data.specificAddress ? data.specificAddress.slice(0, 250) : undefined,
+          address_note: data.addressNote ? data.addressNote.slice(0, 250) : undefined,
+          pickup_address: data.pickupAddress ? data.pickupAddress.slice(0, 300) : undefined,
+          full_address: data.fullAddress ? data.fullAddress.slice(0, 300) : undefined,
         }
       });
     } catch (sbErr) {
       console.warn("Supabase user metadata sync warning:", sbErr);
     }
 
-    // 4. Đồng bộ tên vào các yêu cầu rút tiền PENDING nếu có
-    if (cleanName) {
-      try {
-        await prisma.withdrawalRequest.updateMany({
-          where: { userId: targetUserId, status: "PENDING" },
-          data: { bankAccountHolder: cleanName.toUpperCase() }
-        });
-      } catch (_) {}
-    }
+    // 🛡️ BẢO MẬT: Tuyệt đối KHÔNG tự động sửa tên chủ thẻ trong các lệnh rút tiền đang PENDING khi đổi tên hồ sơ.
 
     // 5. Xóa sạch bộ nhớ đệm xác thực để request tiếp theo có dữ liệu mới ngay lập tức (0ms)
     try {
@@ -392,7 +339,7 @@ export async function updateClosetProfileAction(data: {
     return { success: true };
   } catch (err: any) {
     console.error("Lỗi updateClosetProfileAction:", err);
-    return { success: false, error: err.message || "Không thể cập nhật hồ sơ." };
+    return { success: false, error: "Không thể cập nhật hồ sơ." };
   }
 }
 
@@ -411,22 +358,8 @@ export async function saveUnifiedUserAddressAction(data: {
   fullAddress?: string;
 }) {
   try {
-    const { createClient } = await import("@/src/utils/supabase/server");
-    const supabase = await createClient();
-    let authUserId: string | null = null;
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user?.id) authUserId = user.id;
-    } catch (_) {}
-    if (!authUserId) {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user?.id) authUserId = session.user.id;
-      } catch (_) {}
-    }
-    if (!authUserId && data.userId) {
-      authUserId = data.userId;
-    }
+    const user = await requireUser();
+    const authUserId = user.id;
 
     const ghnParts = [data.specificAddress?.trim(), data.ward?.trim(), data.district?.trim(), data.province?.trim()].filter(Boolean);
     const fullAddr = data.fullAddress?.trim() || (ghnParts.join(", ") + (data.addressNote?.trim() ? ` (Ghi chú: ${data.addressNote.trim()})` : ""));
@@ -445,47 +378,59 @@ export async function saveUnifiedUserAddressAction(data: {
       full_address: fullAddr,
       location: locationStr
     };
+    const existingUser = await prisma.user.findUnique({
+      where: { id: authUserId },
+      select: { name: true, isVerified: true }
+    });
+    const canSetInitialName = Boolean(
+      data.name?.trim() && (!existingUser?.isVerified || !existingUser?.name?.trim())
+    );
+
     if (data.name?.trim()) {
-      metaPayload.name = data.name.trim();
-      metaPayload.full_name = data.name.trim();
+      // Lưu tên người nhận giao hàng riêng, tuyệt đối không ghi đè tên định danh đã khóa
+      metaPayload.recipient_name = data.name.trim().slice(0, 80);
+      if (canSetInitialName) {
+        metaPayload.name = data.name.trim().slice(0, 80);
+        metaPayload.full_name = data.name.trim().slice(0, 80);
+      }
     }
     if (data.phone?.trim()) {
-      metaPayload.phone = data.phone.trim();
+      metaPayload.contact_phone = data.phone.trim().slice(0, 20);
     }
 
-    if (authUserId) {
-      if (data.name?.trim()) {
-        try {
-          await prisma.user.update({
-            where: { id: authUserId },
-            data: { name: data.name.trim() }
-          });
-        } catch (_) {}
-      }
-
+    if (canSetInitialName && data.name?.trim()) {
       try {
-        await prisma.$executeRawUnsafe(
-          `UPDATE auth.users SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || $1::jsonb WHERE id = $2::uuid;`,
-          JSON.stringify(metaPayload),
-          authUserId
-        );
-      } catch (e) {
-        console.warn("Raw update fallback in saveUnifiedUserAddressAction:", e);
-      }
-      try {
-        await supabase.auth.updateUser({ data: metaPayload });
+        await prisma.user.update({
+          where: { id: authUserId },
+          data: { name: data.name.trim().slice(0, 80) }
+        });
       } catch (_) {}
-
-      try {
-        const { clearUserAuthCache } = await import("@/src/lib/auth");
-        clearUserAuthCache(authUserId);
-      } catch (_) {}
-
-      revalidatePath("/my-closet");
-      revalidatePath("/my-closet/profile");
-      revalidatePath("/admin/payments");
-      revalidatePath("/app");
     }
+
+    try {
+      await prisma.$executeRawUnsafe(
+        `UPDATE auth.users SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || $1::jsonb WHERE id = $2::uuid;`,
+        JSON.stringify(metaPayload),
+        authUserId
+      );
+    } catch (e) {
+      console.warn("Raw update fallback in saveUnifiedUserAddressAction:", e);
+    }
+    try {
+      const { createClient } = await import("@/src/utils/supabase/server");
+      const supabase = await createClient();
+      await supabase.auth.updateUser({ data: metaPayload });
+    } catch (_) {}
+
+    try {
+      const { clearUserAuthCache } = await import("@/src/lib/auth");
+      clearUserAuthCache(authUserId);
+    } catch (_) {}
+
+    revalidatePath("/my-closet");
+    revalidatePath("/my-closet/profile");
+    revalidatePath("/admin/payments");
+    revalidatePath("/app");
 
     return { 
       success: true, 
@@ -506,7 +451,7 @@ export async function saveUnifiedUserAddressAction(data: {
     };
   } catch (err: any) {
     console.error("Lỗi saveUnifiedUserAddressAction:", err);
-    return { success: false, error: err.message || "Không thể lưu địa chỉ GHN" };
+    return { success: false, error: "Không thể lưu địa chỉ GHN" };
   }
 }
 
@@ -525,101 +470,145 @@ export async function getClosetProfile(userId: string) {
   return profile;
 }
 
+function maskCounterpartyPhone(phone?: string | null): string {
+  if (!phone || typeof phone !== "string") return "Đã ẩn bảo mật qua CLOOP";
+  const cleaned = phone.trim();
+  if (cleaned.length < 7) return "Đã ẩn bảo mật qua CLOOP";
+  return cleaned.slice(0, 3) + "****" + cleaned.slice(-3);
+}
+
+function scrubPublicText(raw?: string | null): string {
+  if (!raw || typeof raw !== "string") return "";
+  return raw
+    .replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, "")
+    .replace(/[a-zA-Z0-9._%+-]+\s*(?:@|\(at\)|\[at\])\s*[a-zA-Z0-9.-]+\s*(?:\.|\(dot\)|\[dot\])\s*[a-zA-Z]{2,}/gi, "[Đã ẩn Email bảo mật]")
+    .replace(/(?:(?:\+?84|0)[\s._\-()\/]*[35789](?:[\s._\-()\/]*\d){8})\b/g, "[Đã ẩn SĐT bảo mật]")
+    .replace(/\b0\d(?:[\s._\-]*\d){8,9}\b/g, "[Đã ẩn SĐT bảo mật]")
+    .replace(/\b(z[\s._\-]*a[\s._\-]*l[\s._\-]*o|telegram|facebook|instagram|thuê\s+ngoài|thue\s+ngoai|giao\s+dịch\s+ngoài|giao\s+dich\s+ngoai|không\s+qua\s+sàn|khong\s+qua\s+san)\b/gi, "[Liên hệ qua CLOOP]");
+}
+
 export async function getClosetProducts(userId: string, page: number = 1, take: number = 12) {
-  const skip = (page - 1) * take;
+  const safePage = Math.max(1, Math.floor(Number(page) || 1));
+  const safeTake = Math.min(50, Math.max(1, Math.floor(Number(take) || 12)));
+  const skip = (safePage - 1) * safeTake;
+
+  const whereClause = {
+    userId,
+    isDeleted: false,
+    status: "ON_MARKET" as const,
+  };
+
   const products = await prisma.product.findMany({
-    where: { userId, isDeleted: false },
+    where: whereClause,
     orderBy: { lastBumpedAt: "desc" },
     skip,
-    take,
-    include: {
+    take: safeTake,
+    select: {
+      id: true,
+      userId: true,
+      title: true,
+      description: true,
+      category: true,
+      occasion: true,
+      size: true,
+      condition: true,
+      material: true,
+      color: true,
+      province: true,
+      status: true,
+      createdAt: true,
+      updatedAt: true,
+      lastBumpedAt: true,
       images: {
-        orderBy: { sortOrder: 'asc' },
-        take: 1
+        select: {
+          id: true,
+          url: true,
+          isPrimary: true,
+          sortOrder: true,
+        },
+        orderBy: { sortOrder: "asc" },
+        take: 1,
       },
-      listings: true
-    }
+      listings: {
+        where: {
+          isDeleted: false,
+          status: { not: "HIDDEN" },
+        },
+        select: {
+          id: true,
+          productId: true,
+          listingType: true,
+          basePrice: true,
+          salePrice: true,
+          deposit: true,
+          minDays: true,
+          pricing_tiers: true,
+          turnaround_days: true,
+          greenPoints: true,
+          status: true,
+          createdAt: true,
+        },
+      },
+    },
   });
 
   const totalCount = await prisma.product.count({
-    where: { userId, isDeleted: false }
+    where: whereClause,
+  });
+
+  // Hậu kiểm DTO công khai (đảm bảo loại bỏ hoàn toàn tọa độ GPS, địa chỉ chi tiết và snapshot ngay cả khi mock trả về dư trường)
+  const sanitizedProducts = products.map((item: any) => {
+    const {
+      specificAddress: _specificAddress,
+      latitude: _latitude,
+      longitude: _longitude,
+      districtId: _districtId,
+      wardCode: _wardCode,
+      ...rest
+    } = item;
+
+    const cleanListings = Array.isArray(rest.listings)
+      ? rest.listings
+          .filter((l: any) => !l?.isDeleted && l?.status !== "HIDDEN")
+          .map((l: any) => {
+            const { snapshot: _snapshot, ...listingRest } = l;
+            return { ...listingRest, snapshot: undefined };
+          })
+      : [];
+
+    return {
+      ...rest,
+      title: rest.title ? scrubPublicText(rest.title) : rest.title,
+      description: rest.description ? scrubPublicText(rest.description) : rest.description,
+      specificAddress: undefined,
+      latitude: undefined,
+      longitude: undefined,
+      districtId: undefined,
+      wardCode: undefined,
+      listings: cleanListings,
+    };
   });
 
   return {
-    products,
-    hasMore: skip + products.length < totalCount
+    products: sanitizedProducts,
+    hasMore: skip + products.length < totalCount,
   };
 }
 
-export async function getMyClosetMobileDataAction(clientUserId?: string) {
+export async function getMyClosetMobileDataAction(_clientUserId?: string) {
   try {
-    const { createClient } = await import("@/src/utils/supabase/server");
-    const supabase = await createClient();
-    let authUser: any = null;
-
-    // 1. Thử getUser()
+    let user: any = null;
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) authUser = user;
-    } catch (_) {}
-
-    // 2. Thử getSession()
-    if (!authUser) {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) authUser = session.user;
-      } catch (_) {}
-    }
-
-    // 3. Phân tích token từ Cookies cục bộ
-    if (!authUser) {
-      try {
-        const { cookies } = await import('next/headers');
-        const cookieStore = await cookies();
-        const allCookies = cookieStore.getAll();
-        const authCookies = allCookies
-          .filter(c => c.name.includes('-auth-token'))
-          .sort((a, b) => a.name.localeCompare(b.name));
-        if (authCookies.length > 0) {
-          let rawVal = authCookies.map(c => c.value).join('');
-          if (rawVal.startsWith('base64-')) {
-            rawVal = Buffer.from(rawVal.slice(7), 'base64').toString('utf-8');
-          }
-          const parsed = JSON.parse(rawVal);
-          const token = parsed?.access_token || (Array.isArray(parsed) ? parsed[0] : null);
-          let extractedId = parsed?.user?.id;
-          if (!extractedId && typeof token === 'string' && token.includes('.')) {
-            const parts = token.split('.');
-            if (parts.length >= 2) {
-              const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));
-              extractedId = payload?.sub;
-            }
-          }
-          if (extractedId) {
-            authUser = { id: extractedId };
-          }
-        }
-      } catch (_) {}
-    }
-
-    // 4. Nếu client gửi kèm clientUserId đã lưu trên điện thoại
-    if (!authUser && clientUserId) {
-      try {
-        const existing = await prisma.user.findUnique({
-          where: { id: clientUserId },
-          select: { id: true }
-        });
-        if (existing) {
-          authUser = { id: existing.id };
-        }
-      } catch (_) {}
-    }
-
-    if (!authUser?.id) {
+      user = await requireUser();
+    } catch {
       return { success: true, isLoggedIn: false };
     }
 
-    const userId = authUser.id;
+    if (!user?.id) {
+      return { success: true, isLoggedIn: false };
+    }
+
+    const userId = user.id;
 
     const [dbUser, products, rentalsAsOwner, rentalsAsRenter, authMetaRows, withdrawals] = await Promise.all([
       prisma.user.findUnique({
@@ -850,15 +839,16 @@ export async function getMyClosetMobileDataAction(clientUserId?: string) {
           productSize: r.product?.size || "M",
           productCategory: r.product?.category || "Trang phục",
           productMaterial: r.product?.material || "Cao cấp",
-          productLocation: r.product?.specificAddress || r.product?.province || "Hà Nội",
+          productLocation: maskPublicAddress(r.product?.specificAddress || r.product?.province, "Hà Nội"),
           amount: totalAmount,
           rentalFee,
           depositAmount,
           shippingFee: r.invoice?.shippingFeeCollected || 0,
           renterName: r.renter_name || "Khách thuê",
-          renterPhone: r.renter_phone || "",
+          // 🛡️ CHÍNH SÁCH KHÓA CHẶT LIÊN HỆ NGOÀI SÀN: Luôn mask số điện thoại ở mọi trạng thái đơn hàng
+          renterPhone: maskCounterpartyPhone(r.renter_phone),
           ownerName: r.owner_name || "Chủ đồ CLOOP",
-          ownerPhone: r.owner_phone || "",
+          ownerPhone: maskCounterpartyPhone(r.owner_phone),
           shippingCode: r.shippingCode || `GHN${r.id.slice(-8).toUpperCase()}VN`,
           createdAt: r.createdAt ? new Date(r.createdAt).toLocaleDateString("vi-VN") : ""
         };
@@ -884,15 +874,16 @@ export async function getMyClosetMobileDataAction(clientUserId?: string) {
           productSize: r.product?.size || "M",
           productCategory: r.product?.category || "Trang phục",
           productMaterial: r.product?.material || "Cao cấp",
-          productLocation: r.product?.specificAddress || r.product?.province || "Hà Nội",
+          productLocation: maskPublicAddress(r.product?.specificAddress || r.product?.province, "Hà Nội"),
           amount: totalAmount,
           rentalFee,
           depositAmount,
           shippingFee: r.invoice?.shippingFeeCollected || 0,
           renterName: r.renter_name || "Khách thuê",
-          renterPhone: r.renter_phone || "",
+          // 🛡️ CHÍNH SÁCH KHÓA CHẶT LIÊN HỆ NGOÀI SÀN: Luôn mask số điện thoại ở mọi trạng thái đơn hàng
+          renterPhone: maskCounterpartyPhone(r.renter_phone),
           ownerName: r.owner_name || "Chủ đồ CLOOP",
-          ownerPhone: r.owner_phone || "",
+          ownerPhone: maskCounterpartyPhone(r.owner_phone),
           shippingCode: r.shippingCode || `GHN${r.id.slice(-8).toUpperCase()}VN`,
           createdAt: r.createdAt ? new Date(r.createdAt).toLocaleDateString("vi-VN") : ""
         };
@@ -900,7 +891,7 @@ export async function getMyClosetMobileDataAction(clientUserId?: string) {
     };
   } catch (error: any) {
     console.error("Lỗi getMyClosetMobileDataAction:", error);
-    return { success: false, error: error.message || "Lỗi nạp dữ liệu cá nhân" };
+    return { success: false, error: "Lỗi nạp dữ liệu cá nhân" };
   }
 }
 
@@ -910,10 +901,17 @@ export async function getMyClosetMobileDataAction(clientUserId?: string) {
 export async function advanceMobileOrderStatusAction({
   orderId,
   action,
-  clientUserId
+  clientUserId: _clientUserId
 }: {
   orderId: string;
-  action: "CONFIRM_RECEIVED" | "CONFIRM_RETURNED" | "COMPLETE_ORDER";
+  action:
+    | "APPROVE_ORDER"
+    | "HANDOVER_SHIPPER"
+    | "CONFIRM_RECEIVED"
+    | "INITIATE_RETURN"
+    | "CONFIRM_RETURNED"
+    | "CONFIRM_RETURN"
+    | "COMPLETE_ORDER";
   clientUserId?: string;
 }) {
   try {
@@ -921,15 +919,7 @@ export async function advanceMobileOrderStatusAction({
       return { success: false, error: "Thiếu mã đơn hàng" };
     }
 
-    let authUser: any = null;
-    try {
-      authUser = await requireUser();
-    } catch {}
-
-    const userId = authUser?.id || clientUserId;
-    if (!userId) {
-      return { success: false, error: "Vui lòng đăng nhập" };
-    }
+    const user = await requireUser();
 
     const rental = await prisma.rentalHistory.findUnique({
       where: { id: orderId },
@@ -940,57 +930,223 @@ export async function advanceMobileOrderStatusAction({
       return { success: false, error: "Không tìm thấy đơn hàng" };
     }
 
-    const now = new Date();
-    let nextStatus = rental.status;
+    const isOwnerOrAdmin =
+      rental.ownerId === user.id ||
+      rental.product?.userId === user.id ||
+      user.role === "ADMIN";
+    const isRenterOrAdmin =
+      rental.renterId === user.id ||
+      user.role === "ADMIN";
 
-    if (action === "CONFIRM_RECEIVED") {
-      nextStatus = "BORROWER_RECEIVED";
-      await prisma.rentalHistory.update({
-        where: { id: orderId },
-        data: { status: "BORROWER_RECEIVED" }
-      });
-    } else if (action === "CONFIRM_RETURNED") {
-      nextStatus = "BORROWER_RETURNED";
-      await prisma.rentalHistory.update({
-        where: { id: orderId },
-        data: {
-          status: "BORROWER_RETURNED",
-          actual_return_date: now
-        }
-      });
-    } else if (action === "COMPLETE_ORDER") {
-      nextStatus = "LENDER_COMPLETED";
+    const ownerActions = new Set(["APPROVE_ORDER", "HANDOVER_SHIPPER", "CONFIRM_RETURN", "COMPLETE_ORDER"]);
+    const renterActions = new Set(["CONFIRM_RECEIVED", "INITIATE_RETURN", "CONFIRM_RETURNED"]);
+
+    if (ownerActions.has(action) && !isOwnerOrAdmin) {
+      return { success: false, error: "Bạn không có quyền thực hiện thao tác này." };
+    }
+
+    if (renterActions.has(action) && !isRenterOrAdmin) {
+      return { success: false, error: "Bạn không có quyền thực hiện thao tác này." };
+    }
+
+    if (!ownerActions.has(action) && !renterActions.has(action)) {
+      return { success: false, error: "Bạn không có quyền thực hiện thao tác này." };
+    }
+
+    // Bắt buộc hóa đơn đã PAID trước khi cho phép chuyển trạng thái qua PENDING
+    if (rental.invoice?.status !== "PAID") {
+      return { success: false, error: "Đơn hàng chưa được thanh toán thành công." };
+    }
+
+    // 🛡️ CHỐT CHẶN MÁY TRẠNG THÁI (STATE MACHINE GUARD): Cấm đảo ngược đơn đã hoàn tất hoặc đã hủy
+    if (rental.status === "LENDER_COMPLETED" || rental.status === "CANCELLED") {
+      return { success: false, error: "Đơn hàng đã đóng, không thể thay đổi trạng thái." };
+    }
+
+    const now = new Date();
+    let nextStatus: typeof rental.status = rental.status;
+
+    if (action === "APPROVE_ORDER") {
+      if (rental.status !== "PENDING_APPROVAL") {
+        return { success: false, error: "Chỉ có thể xác nhận chuẩn bị đồ khi đơn đang ở trạng thái chờ xử lý (PENDING_APPROVAL)." };
+      }
+      nextStatus = "OWNER_PACKED";
       await prisma.$transaction(async (tx) => {
-        await tx.rentalHistory.update({
-          where: { id: orderId },
+        const updated = await tx.rentalHistory.updateMany({
+          where: { id: orderId, status: "PENDING_APPROVAL" },
+          data: { status: "OWNER_PACKED" }
+        });
+        if (updated.count === 0) {
+          throw new Error("STATE_CONFLICT");
+        }
+        await tx.auditLog.create({
           data: {
-            status: "LENDER_COMPLETED",
-            completedAt: now,
-            actual_return_date: rental.actual_return_date || now
+            adminId: user.id,
+            action: "MOBILE_ORDER_APPROVE",
+            targetType: "RENTAL_HISTORY",
+            targetId: orderId,
+            beforeStatus: "PENDING_APPROVAL",
+            afterStatus: "OWNER_PACKED",
           }
         });
-
-        // Cập nhật trạng thái sản phẩm trở lại sẵn sàng cho thuê
-        if (rental.product_id) {
-          await tx.listing.updateMany({
-            where: { productId: rental.product_id, isDeleted: false },
-            data: { status: "AVAILABLE" }
-          });
-          await tx.product.update({
-            where: { id: rental.product_id },
-            data: { status: "ON_MARKET" }
-          });
+      });
+    } else if (action === "HANDOVER_SHIPPER") {
+      if (rental.status !== "OWNER_PACKED") {
+        return { success: false, error: "Chỉ có thể bàn giao vận chuyển sau khi chủ tủ đã xác nhận đóng gói (OWNER_PACKED)." };
+      }
+      nextStatus = "LENDER_SHIPPED";
+      await prisma.$transaction(async (tx) => {
+        const updated = await tx.rentalHistory.updateMany({
+          where: { id: orderId, status: "OWNER_PACKED" },
+          data: { status: "LENDER_SHIPPED" }
+        });
+        if (updated.count === 0) {
+          throw new Error("STATE_CONFLICT");
+        }
+        await tx.auditLog.create({
+          data: {
+            adminId: user.id,
+            action: "MOBILE_ORDER_HANDOVER_SHIPPER",
+            targetType: "RENTAL_HISTORY",
+            targetId: orderId,
+            beforeStatus: "OWNER_PACKED",
+            afterStatus: "LENDER_SHIPPED",
+          }
+        });
+      });
+    } else if (action === "CONFIRM_RECEIVED") {
+      if (rental.status !== "LENDER_SHIPPED") {
+        return { success: false, error: "Chỉ có thể xác nhận nhận đồ sau khi đơn hàng đã được bàn giao vận chuyển (LENDER_SHIPPED)." };
+      }
+      nextStatus = "BORROWER_RECEIVED";
+      await prisma.$transaction(async (tx) => {
+        const updated = await tx.rentalHistory.updateMany({
+          where: { id: orderId, status: "LENDER_SHIPPED" },
+          data: { status: "BORROWER_RECEIVED" }
+        });
+        if (updated.count === 0) {
+          throw new Error("STATE_CONFLICT");
+        }
+        await tx.auditLog.create({
+          data: {
+            adminId: user.id,
+            action: "MOBILE_ORDER_CONFIRM_RECEIVED",
+            targetType: "RENTAL_HISTORY",
+            targetId: orderId,
+            beforeStatus: "LENDER_SHIPPED",
+            afterStatus: "BORROWER_RECEIVED",
+          }
+        });
+      });
+    } else if (action === "INITIATE_RETURN" || action === "CONFIRM_RETURNED") {
+      if (rental.status !== "BORROWER_RECEIVED") {
+        return { success: false, error: "Chỉ có thể báo trả đồ sau khi đã xác nhận nhận đồ (BORROWER_RECEIVED)." };
+      }
+      nextStatus = "BORROWER_RETURNED";
+      await prisma.$transaction(async (tx) => {
+        const updated = await tx.rentalHistory.updateMany({
+          where: { id: orderId, status: "BORROWER_RECEIVED" },
+          data: {
+            status: "BORROWER_RETURNED",
+            actual_return_date: rental.shippingCode === "SELF_PICKUP" ? now : null
+          }
+        });
+        if (updated.count === 0) {
+          throw new Error("STATE_CONFLICT");
         }
 
-        // Hoàn cọc về ví của người thuê nếu có cọc và invoice
-        if (rental.invoice && rental.invoice.depositAmount > 0) {
-          await tx.user.update({
-            where: { id: rental.renterId },
-            data: {
-              walletBalance: { increment: rental.invoice.depositAmount }
-            }
-          });
+        await tx.shipment.upsert({
+          where: {
+            rentalId_direction: {
+              rentalId: rental.id,
+              direction: "RETURN",
+            },
+          },
+          update: {
+            status: "IN_TRANSIT",
+            shippingFeeCollected: 0,
+            bookedByUserId: user.id,
+          },
+          create: {
+            rentalId: rental.id,
+            direction: "RETURN",
+            provider: rental.shippingCode === "SELF_PICKUP" ? "SELF_PICKUP" : "GHN",
+            status: rental.shippingCode === "SELF_PICKUP" ? "DELIVERED" : "IN_TRANSIT",
+            clientOrderCode: `${rental.id.slice(0, 8).toUpperCase()}-RETURN`,
+            shippingFeeCollected: 0,
+            pickupAddress: {
+              name: rental.renter_name || "Khách thuê CLOOP",
+              phone: rental.renter_phone || "",
+            },
+            deliveryAddress: {
+              name: rental.owner_name || "Chủ tủ CLOOP",
+              phone: rental.owner_phone || "",
+              province: rental.product?.province || "Hà Nội",
+              districtId: rental.product?.districtId || undefined,
+              wardCode: rental.product?.wardCode || undefined,
+              specificAddress: rental.product?.specificAddress || "",
+            },
+            bookedByUserId: user.id,
+            trackingCode: `GHN-RET-${rental.id.slice(0, 6).toUpperCase()}`,
+          },
+        });
+
+        await tx.auditLog.create({
+          data: {
+            adminId: user.id,
+            action: "MOBILE_ORDER_INITIATE_RETURN",
+            targetType: "RENTAL_HISTORY",
+            targetId: orderId,
+            beforeStatus: "BORROWER_RECEIVED",
+            afterStatus: "BORROWER_RETURNED",
+          }
+        });
+      });
+    } else if (action === "CONFIRM_RETURN") {
+      if (rental.status !== "BORROWER_RETURNED") {
+        return { success: false, error: "Chỉ có thể xác nhận nhận lại đồ khi khách thuê đã báo gửi trả (BORROWER_RETURNED)." };
+      }
+      nextStatus = "BORROWER_RETURNED";
+      await prisma.$transaction(async (tx) => {
+        const updated = await tx.rentalHistory.updateMany({
+          where: { id: orderId, status: "BORROWER_RETURNED" },
+          data: {
+            status: "BORROWER_RETURNED",
+            actual_return_date: now
+          }
+        });
+        if (updated.count === 0) {
+          throw new Error("STATE_CONFLICT");
         }
+
+        await tx.shipment.updateMany({
+          where: { rentalId: orderId, direction: "RETURN" },
+          data: { status: "DELIVERED", updatedAt: now }
+        });
+
+        await tx.auditLog.create({
+          data: {
+            adminId: user.id,
+            action: "MOBILE_ORDER_CONFIRM_RETURN",
+            targetType: "RENTAL_HISTORY",
+            targetId: orderId,
+            beforeStatus: "BORROWER_RETURNED",
+            afterStatus: "BORROWER_RETURNED",
+          }
+        });
+      });
+    } else if (action === "COMPLETE_ORDER") {
+      if (rental.status !== "BORROWER_RETURNED") {
+        return {
+          success: false,
+          error: "Chỉ được quyết toán hoàn tất khi đơn hàng đang ở trạng thái đã trả đồ (BORROWER_RETURNED)."
+        };
+      }
+
+      nextStatus = "LENDER_COMPLETED" as typeof rental.status;
+      await settleCompletedRentalOrder(orderId, {
+        actorId: user.id,
+        actorRole: user.role === "ADMIN" ? "ADMIN" : "OWNER"
       });
     }
 
@@ -1006,13 +1162,14 @@ export async function advanceMobileOrderStatusAction({
       newStatus: nextStatus,
       message: action === "CONFIRM_RECEIVED"
         ? "Đã xác nhận nhận đồ thành công!"
-        : action === "CONFIRM_RETURNED"
+        : action === "CONFIRM_RETURNED" || action === "INITIATE_RETURN"
         ? "Đã báo gửi trả đồ thành công!"
-        : "Đã hoàn tất đơn hàng và hoàn cọc thành công!"
+        : action === "COMPLETE_ORDER"
+        ? "Đã hoàn tất đơn hàng và hoàn cọc thành công!"
+        : "Đã cập nhật trạng thái đơn hàng thành công!"
     };
   } catch (err: any) {
     console.error("Lỗi advanceMobileOrderStatusAction:", err);
-    return { success: false, error: err.message || "Không thể cập nhật đơn hàng" };
+    return { success: false, error: "Không thể cập nhật đơn hàng" };
   }
 }
-

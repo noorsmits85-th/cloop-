@@ -6,6 +6,14 @@ import { createClient } from "@/src/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+const PROFILE_CONTACT_GUARD_REGEX =
+  /(?:(?:\+?84|0)[\s._\-()\/]*[35789](?:[\s._\-()\/]*\d){8})\b|\b0\d(?:[\s._\-]*\d){8,9}\b|[a-zA-Z0-9._%+-]+\s*(?:@|\(at\)|\[at\])\s*[a-zA-Z0-9.-]+\s*(?:\.|\(dot\)|\[dot\])\s*[a-zA-Z]{2,}|\b(z[\s._\-]*a[\s._\-]*l[\s._\-]*o|telegram|facebook|instagram|thuê\s+ngoài|thue\s+ngoai|giao\s+dịch\s+ngoài|giao\s+dich\s+ngoai|không\s+qua\s+sàn|khong\s+qua\s+san)\b/i;
+
+function containsOffPlatformContact(val?: string | null): boolean {
+  if (!val || typeof val !== "string") return false;
+  return PROFILE_CONTACT_GUARD_REGEX.test(val.replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, ""));
+}
+
 const ProfileUpdateSchema = z.object({
   name: z.string().trim().min(2, "Tên hiển thị tối thiểu 2 ký tự").max(60, "Tên hiển thị tối đa 60 ký tự"),
   username: z.string().trim().max(40, "Tên tài khoản tối đa 40 ký tự").optional().or(z.literal("")),
@@ -28,21 +36,42 @@ export async function updateUserProfileWithValidation(input: ProfileUpdateInput)
 
     const validated = ProfileUpdateSchema.parse(input);
 
+    if (
+      containsOffPlatformContact(validated.bio) ||
+      containsOffPlatformContact(validated.quote) ||
+      containsOffPlatformContact(validated.todaysMemory) ||
+      containsOffPlatformContact(validated.username)
+    ) {
+      return {
+        success: false,
+        error: "Chính sách An toàn CLOOP: Hồ sơ công khai không được chứa số điện thoại, email, Zalo hoặc thông tin giao dịch ngoài sàn.",
+      };
+    }
+
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userAuth.id },
+      select: { name: true, isVerified: true }
+    });
+    const allowNameUpdate = Boolean(
+      validated.name && (!existingUser?.isVerified || !existingUser?.name?.trim())
+    );
+
     // 1. Cập nhật User trong cơ sở dữ liệu Prisma
     await prisma.user.update({
       where: { id: userAuth.id },
       data: {
-        ...(validated.name && { name: validated.name }),
+        ...(allowNameUpdate && { name: validated.name }),
         ...(validated.avatar !== undefined && { avatar: validated.avatar }),
       },
     });
 
     // 2. Cập nhật trực tiếp raw_user_meta_data trong auth.users để đồng bộ tức thì
     try {
-      const metaPayload: Record<string, any> = {
-        name: validated.name,
-        full_name: validated.name,
-      };
+      const metaPayload: Record<string, any> = {};
+      if (allowNameUpdate) {
+        metaPayload.name = validated.name;
+        metaPayload.full_name = validated.name;
+      }
       if (validated.username) metaPayload.username = validated.username;
       if (validated.location) metaPayload.location = validated.location;
       if (validated.quote) metaPayload.quote = validated.quote;
@@ -68,7 +97,7 @@ export async function updateUserProfileWithValidation(input: ProfileUpdateInput)
       const supabase = await createClient();
       await supabase.auth.updateUser({
         data: {
-          name: validated.name,
+          ...(allowNameUpdate ? { name: validated.name } : {}),
           username: validated.username || undefined,
           location: validated.location || undefined,
           quote: validated.quote || undefined,
@@ -114,11 +143,19 @@ export async function updateUserProfile(data: { name?: string; bio?: string; ava
   try {
     const userAuth = await requireUser();
 
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userAuth.id },
+      select: { name: true, isVerified: true }
+    });
+    const allowNameUpdate = Boolean(
+      data.name && (!existingUser?.isVerified || !existingUser?.name?.trim())
+    );
+
     // Cập nhật thông tin User trong DB
     await prisma.user.update({
       where: { id: userAuth.id },
       data: {
-        ...(data.name && { name: data.name }),
+        ...(allowNameUpdate && { name: data.name }),
         ...(data.bio && { bio: data.bio }),
         ...(data.avatar_url && { avatar: data.avatar_url })
       }
@@ -175,6 +212,48 @@ export async function updateUserSettingsAction(input: UserSettingsInput) {
     const cleanAccount = validated.bank_account?.trim().replace(/\s+/g, "");
     const cleanOwner = validated.bank_owner?.trim().toUpperCase();
 
+    if (cleanAccount && !/^[0-9]{6,32}$/.test(cleanAccount)) {
+      return { success: false, error: "Số tài khoản ngân hàng chỉ được chứa chữ số (6 - 32 số)." };
+    }
+
+    // 🛡️ CHỐT CHẶN BANK-KYC TẠI TRANG CÀI ĐẶT:
+    // Nếu người dùng truyền thông tin ngân hàng (bank_owner / bank_account / bank_name), bắt buộc đối chiếu với tên pháp lý trong bảng User
+    if (cleanOwner || cleanAccount || cleanBank) {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: userAuth.id },
+        select: { name: true, isVerified: true }
+      });
+
+      const legalName = (dbUser?.name || "").trim();
+      if (!dbUser?.isVerified || !legalName) {
+        return {
+          success: false,
+          error: "Vui lòng hoàn tất định danh tài khoản (eKYC) và cập nhật họ tên chính chủ trước khi cấu hình tài khoản ngân hàng."
+        };
+      }
+
+      if (cleanOwner) {
+        const normLegal = legalName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toUpperCase().replace(/[^A-Z0-9\s]/g, "").trim();
+        const normOwner = cleanOwner.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toUpperCase().replace(/[^A-Z0-9\s]/g, "").trim();
+        const legalTokens = normLegal.split(/\s+/).filter(Boolean);
+        const ownerTokens = normOwner.split(/\s+/).filter(Boolean);
+        const isMatched =
+          legalTokens.length >= 2 &&
+          ownerTokens.length >= 2 &&
+          new Set(legalTokens).size >= 2 &&
+          new Set(ownerTokens).size >= 2 &&
+          legalTokens.length === ownerTokens.length &&
+          legalTokens.every((t, idx) => t === ownerTokens[idx]);
+
+        if (!isMatched) {
+          return {
+            success: false,
+            error: `Quy tắc Bank-KYC: Tên chủ tài khoản ngân hàng ("${cleanOwner}") phải trùng khớp hoàn toàn với họ tên định danh chính chủ ("${legalName.toUpperCase()}").`
+          };
+        }
+      }
+    }
+
     const metaPayload: Record<string, any> = {};
     if (validated.pickup_address !== undefined) {
       metaPayload.pickup_address = validated.pickup_address;
@@ -182,7 +261,8 @@ export async function updateUserSettingsAction(input: UserSettingsInput) {
       metaPayload.location = validated.pickup_address;
     }
     if (normalizedPhone !== undefined) {
-      metaPayload.phone = normalizedPhone;
+      // 🛡️ Lưu SĐT liên hệ giao nhận riêng, không ghi đè cờ phone_verified nếu SĐT khác với SĐT đã eKYC
+      metaPayload.contact_phone = normalizedPhone;
     }
     if (cleanBank) {
       metaPayload.bank_name = cleanBank;
@@ -218,23 +298,10 @@ export async function updateUserSettingsAction(input: UserSettingsInput) {
       console.warn("Supabase user metadata sync warning:", sbErr);
     }
 
-    // 3. Nếu đổi STK, đồng bộ ngay lập tức vào tất cả các yêu cầu rút tiền PENDING
-    if (cleanAccount && cleanBank) {
-      try {
-        await prisma.withdrawalRequest.updateMany({
-          where: { userId: userAuth.id, status: "PENDING" },
-          data: {
-            bankName: cleanBank,
-            bankAccountNumber: cleanAccount,
-            bankAccountHolder: cleanOwner || userAuth.name?.toUpperCase() || "CHỦ TÀI KHOẢN"
-          }
-        });
-      } catch (wrErr) {
-        console.warn("Sync pending withdrawals warning:", wrErr);
-      }
-    }
+    // 🛡️ BẢO MẬT CHỐNG TOCTOU BANK SWAP:
+    // Tuyệt đối KHÔNG tự động cập nhật ngược thông tin ngân hàng vào các lệnh rút tiền PENDING đã tạo.
 
-    // 4. Xóa auth cache để phản hồi tức thì
+    // 3. Xóa auth cache để phản hồi tức thì
     try {
       const { clearUserAuthCache } = await import("@/src/lib/auth");
       clearUserAuthCache(userAuth.id);

@@ -1,0 +1,41 @@
+{
+  "date": "2026-11-11",
+  "mode": "offline actual-code execution with synthetic data; no live writes",
+  "evidence": [
+    {
+      "check": "single-component-address",
+      "privateAddressReturnedUnchanged": true
+    },
+    {
+      "check": "pending-order-mask",
+      "topLevelPhoneMasked": true,
+      "providerPayloadPhoneRetained": true,
+      "pickupFullAddressAliasRetained": true,
+      "note": "Actual disclosure depends on which keys provider payloads contain."
+    },
+    {
+      "check": "active-order-mask",
+      "invoicePaymentNotRequiredByMask": true,
+      "note": "Does not demonstrate an attacker can transition an unpaid order into OWNER_PACKED."
+    },
+    {
+      "check": "blog-contact-round-trip",
+      "storedAsPublic": true,
+      "contactReturnedInPublicFeed": true
+    },
+    {
+      "check": "review-contact-publication",
+      "contactStored": true,
+      "isPublished": true,
+      "actionSuccess": true
+    },
+    {
+      "check": "mobile-counterparty-phone",
+      "unpaidHidden": true,
+      "paidPendingRevealed": true,
+      "completedRevealed": true,
+      "disputedRevealed": true,
+      "cancelledHidden": true
+    }
+  ]
+}

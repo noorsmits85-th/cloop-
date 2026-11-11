@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
@@ -9,7 +9,6 @@ import {
   ArrowLeft,
   Shirt,
   Heart,
-  Store,
   ShoppingBag,
   Archive,
   Wallet,
@@ -17,11 +16,7 @@ import {
   Award,
   Settings,
   Bell,
-  Search,
-  Plus,
-  Menu,
   X,
-  LogOut,
   Loader2
 } from "lucide-react";
 import { toast } from "sonner";
@@ -40,11 +35,12 @@ export default function DashboardLayout({
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [disputeCount, setDisputeCount] = useState(0);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+  const lastFetchedUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    // 🛡️ CHỈ TẢI DISPUTE NẾU USER ĐÃ ĐĂNG NHẬP
     if (!currentUser?.isLoggedIn) {
       setDisputeCount(0);
+      lastFetchedUserIdRef.current = null;
       return;
     }
 
@@ -58,13 +54,20 @@ export default function DashboardLayout({
           setDisputeCount(disputeRes.count);
         }
       } catch (err: any) {
-        console.error("⚠️ [Dashboard Dispute Stats Fetch Error]:", err?.message || err);
+        console.error("[Dashboard Dispute Stats Fetch Error]:", err?.message || err);
       }
     }
 
-    loadDisputeStats();
+    // Tránh gọi chồng lấp cùng lúc với trang chính khi vừa mount/hydrate
+    let initialTimer: ReturnType<typeof setTimeout> | null = null;
+    const uid = currentUser.id || currentUser.email || "authenticated";
+    if (lastFetchedUserIdRef.current !== uid) {
+      lastFetchedUserIdRef.current = uid;
+      initialTimer = setTimeout(() => {
+        if (isMounted) loadDisputeStats();
+      }, 250);
+    }
 
-    // 🔔 Đồng bộ badge khiếu nại (có throttle 5 phút để tránh spam server khi tab focus liên tục)
     let lastFetch = Date.now();
     const handleThrottledSync = () => {
       const now = Date.now();
@@ -84,10 +87,11 @@ export default function DashboardLayout({
 
     return () => {
       isMounted = false;
+      if (initialTimer) clearTimeout(initialTimer);
       window.removeEventListener("dispute-updated", handleImmediateSync);
       window.removeEventListener("focus", handleThrottledSync);
     };
-  }, [currentUser?.isLoggedIn, currentUser?.id]);
+  }, [currentUser?.isLoggedIn, currentUser?.id, currentUser?.email]);
 
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
 
@@ -150,8 +154,6 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-stone-50 antialiased text-stone-800">
-      
-      {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm"
@@ -159,7 +161,6 @@ export default function DashboardLayout({
         />
       )}
 
-      {/* Sidebar - Cố định ở bên trái */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-[#E9E2D8] transform transition-transform duration-300 ease-in-out ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
@@ -187,7 +188,6 @@ export default function DashboardLayout({
           </button>
         </div>
 
-        {/* BANNER DÀNH CHO KHÁCH: ĐĂNG NHẬP TRỰC TIẾP TRÊN THANH ĐIỀU HƯỚNG */}
         {!currentUser?.isLoggedIn && (
           <div className="mx-4 mt-4 p-3.5 bg-gradient-to-br from-emerald-50/90 to-teal-50/70 border border-emerald-200/80 rounded-2xl shadow-xs">
             <div className="flex items-center gap-2 mb-1.5">
@@ -274,16 +274,13 @@ export default function DashboardLayout({
         </div>
       </aside>
 
-      {/* 🚀 TOP PROGRESS BAR: Phản hồi tức thì 0ms khi người dùng bấm chuyển tab */}
       {navigatingTo && (
         <div className="fixed top-0 left-0 right-0 z-[9999] h-[3.5px] bg-emerald-100/60 pointer-events-none">
           <div className="h-full bg-gradient-to-r from-[#183A2D] via-[#2E7D32] to-[#4ADE80] w-full animate-pulse shadow-xs"></div>
         </div>
       )}
 
-      {/* Main Content Wrapper - Bị đẩy sang phải bởi Sidebar */}
       <div className="md:pl-64 flex flex-col min-h-screen w-full">
-        {/* Top Header - Component tách riêng */}
         <DashboardHeader 
           currentUser={currentUser} 
           setCurrentUser={setCurrentUser} 
@@ -291,7 +288,6 @@ export default function DashboardLayout({
           onUnreadCountChange={setUnreadNotifCount}
         />
 
-        {/* Dashboard Content - Làm mờ nhẹ khi chuyển trang để tạo cảm giác phản hồi tức thì */}
         <main className={`flex-1 p-4 md:p-8 transition-opacity duration-150 ${navigatingTo ? "opacity-60 pointer-events-none" : "opacity-100"}`}>
           <div className="max-w-[1200px] w-full mx-auto pb-24 md:pb-8">
             {children}

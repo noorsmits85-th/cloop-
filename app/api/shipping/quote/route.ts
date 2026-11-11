@@ -121,6 +121,19 @@ function resolveDistrictAndWard(
   return { districtId: 1484, wardCode: wardCode || "1A0101" };
 }
 
+// Bộ nhớ đệm tuyến dịch vụ GHN theo cặp Quận/Huyện (TTL 24h) để triệt tiêu 1 vòng gọi mạng tuần tự
+const ghnServiceCache = new Map<string, { serviceId: number; serviceTypeId: number; expiresAt: number }>();
+
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 2500): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -159,40 +172,57 @@ export async function POST(req: Request) {
         const { districtId: fromDistrict, wardCode: fromWard } = resolveDistrictAndWard(fromDistrictId, fromWardCode, fromProvince);
         const { districtId: toDistrict, wardCode: toWard } = resolveDistrictAndWard(toDistrictId, toWardCode, toProvince);
 
-        // Tự động xác định service_id tối ưu từ GHN available-services cho tuyến đường này
+        // Tự động xác định service_id tối ưu từ GHN available-services cho tuyến đường này (kèm In-Memory Cache 24h)
         let selectedServiceId: number = 53321;
         let selectedServiceTypeId: number = 2;
-        try {
-          const availRes = await fetch("https://online-gateway.ghn.vn/shiip/public-api/v2/shipping-order/available-services", {
-            method: "POST",
-            headers: {
-              "Token": GHN_TOKEN,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              shop_id: Number(GHN_SHOP_ID) || 6591755,
-              from_district: fromDistrict,
-              to_district: toDistrict
-            })
-          });
-          if (availRes.ok) {
-            const availData = await availRes.json();
-            if (availData.data && availData.data.length > 0) {
-              const lightService = availData.data.find((s: any) => s.service_type_id === 2);
-              if (lightService) {
-                selectedServiceId = lightService.service_id;
-                selectedServiceTypeId = 2;
-              } else {
-                selectedServiceId = availData.data[0].service_id;
-                selectedServiceTypeId = availData.data[0].service_type_id || 2;
+        const routeCacheKey = `${fromDistrict}_${toDistrict}`;
+        const cachedService = ghnServiceCache.get(routeCacheKey);
+
+        if (cachedService && cachedService.expiresAt > Date.now()) {
+          selectedServiceId = cachedService.serviceId;
+          selectedServiceTypeId = cachedService.serviceTypeId;
+        } else {
+          try {
+            const availRes = await fetchWithTimeout(
+              "https://online-gateway.ghn.vn/shiip/public-api/v2/shipping-order/available-services",
+              {
+                method: "POST",
+                headers: {
+                  "Token": GHN_TOKEN,
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                  shop_id: Number(GHN_SHOP_ID) || 6591755,
+                  from_district: fromDistrict,
+                  to_district: toDistrict
+                })
+              },
+              2000
+            );
+            if (availRes.ok) {
+              const availData = await availRes.json();
+              if (availData.data && availData.data.length > 0) {
+                const lightService = availData.data.find((s: any) => s.service_type_id === 2);
+                if (lightService) {
+                  selectedServiceId = lightService.service_id;
+                  selectedServiceTypeId = 2;
+                } else {
+                  selectedServiceId = availData.data[0].service_id;
+                  selectedServiceTypeId = availData.data[0].service_type_id || 2;
+                }
+                ghnServiceCache.set(routeCacheKey, {
+                  serviceId: selectedServiceId,
+                  serviceTypeId: selectedServiceTypeId,
+                  expiresAt: Date.now() + 24 * 60 * 60 * 1000,
+                });
               }
             }
-          }
-        } catch (_) {}
+          } catch (_) {}
+        }
 
-        // Gọi song song cả Tính Cước & Leadtime Thời Gian Giao Dự Kiến chính thức từ hãng GHN
+        // Gọi song song cả Tính Cước & Leadtime Thời Gian Giao Dự Kiến chính thức từ hãng GHN (kèm Timeout 2.5s)
         const [feeRes, leadtimeRes] = await Promise.all([
-          fetch(GHN_FEE_URL, {
+          fetchWithTimeout(GHN_FEE_URL, {
             method: "POST",
             headers: { 
               "Token": GHN_TOKEN, 
@@ -211,8 +241,8 @@ export async function POST(req: Request) {
               width: 10,
               insurance_value: 0,
             })
-          }),
-          toWard ? fetch(GHN_LEADTIME_URL, {
+          }, 2500),
+          toWard ? fetchWithTimeout(GHN_LEADTIME_URL, {
             method: "POST",
             headers: { 
               "Token": GHN_TOKEN, 
@@ -227,7 +257,7 @@ export async function POST(req: Request) {
               service_id: selectedServiceId,
               service_type_id: selectedServiceTypeId
             })
-          }) : Promise.resolve(null)
+          }, 2500).catch(() => null) : Promise.resolve(null)
         ]);
 
         const data = await feeRes.json();
@@ -353,8 +383,12 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, options: signedQuotes }, { status: 200 });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    // TODO: integrate Sentry/LogRocket tracking for shipping quote errors
     console.error("Lỗi tính phí ship:", error);
-    return NextResponse.json({ error: "Không thể tính phí vận chuyển lúc này", details: error?.message }, { status: 500 });
+    return NextResponse.json(
+      { error: "Không thể tính phí vận chuyển lúc này" },
+      { status: 500 }
+    );
   }
 }

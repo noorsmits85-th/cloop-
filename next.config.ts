@@ -1,17 +1,27 @@
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
+const isDev = process.env.NODE_ENV !== "production";
+
+const allowedServerActionOrigins = [
+  "cloop-sable.vercel.app",
+  ...(process.env.NEXT_PUBLIC_SITE_URL
+    ? [process.env.NEXT_PUBLIC_SITE_URL.replace(/^https?:\/\//, "").replace(/\/$/, "")]
+    : []),
+  ...(isDev ? ["localhost:3000", "127.0.0.1:3000"] : []),
+];
+
 const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
-  allowedDevOrigins: ["192.168.1.8", "192.168.1.8:3000", "localhost:3000", "127.0.0.1:3000", "192.168.1.5:3000"],
+  productionBrowserSourceMaps: false,
+  allowedDevOrigins: ["localhost:3000", "127.0.0.1:3000"],
   experimental: {
     serverActions: {
-      bodySizeLimit: "50mb",
-      allowedOrigins: ["192.168.1.8:3000", "192.168.1.8", "localhost:3000", "127.0.0.1:3000", "192.168.1.5:3000", "cloop-sable.vercel.app", "*.vercel.app"],
+      bodySizeLimit: "12mb",
+      allowedOrigins: Array.from(new Set(allowedServerActionOrigins)),
     },
   },
-  // ⚡ GIẢM KÍCH THƯỚC SERVERLESS FUNCTIONS VERCEL: Loại bỏ các file không dùng khỏi bundle
   outputFileTracingExcludes: {
     "*": [
       "node_modules/@swc/core-win32-x64-msvc",
@@ -22,6 +32,7 @@ const nextConfig: NextConfig = {
       "tests/**",
       "scratch/**",
       "docs/**",
+      "security/**",
       "prisma/seed.ts",
       ".git/**",
       "**/*.md",
@@ -30,122 +41,73 @@ const nextConfig: NextConfig = {
       "**/*.py",
     ],
   },
-  // 📸 GIẢI PHÓNG 100% QUOTA IMAGE OPTIMIZATION VERCEL (Xóa bỏ cảnh báo đỏ 1.000 ảnh/tháng)
   images: {
     unoptimized: true,
     remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "res.cloudinary.com",
-      },
-      {
-        protocol: "https",
-        hostname: "notxrjsuukrrxdlboavo.supabase.co",
-      },
-      {
-        protocol: "https",
-        hostname: "images.unsplash.com",
-      },
-      {
-        protocol: "https",
-        hostname: "storage.googleapis.com",
-      },
-      {
-        protocol: "https",
-        hostname: "drive.googleusercontent.com",
-      },
-      {
-        protocol: "https",
-        hostname: "lh3.googleusercontent.com",
-      },
-      {
-        protocol: "https",
-        hostname: "*.googleusercontent.com",
-      },
-      {
-        protocol: "https",
-        hostname: "*.supabase.co",
-      },
+      { protocol: "https", hostname: "res.cloudinary.com" },
+      { protocol: "https", hostname: "notxrjsuukrrxdlboavo.supabase.co" },
+      { protocol: "https", hostname: "images.unsplash.com" },
+      { protocol: "https", hostname: "storage.googleapis.com" },
+      { protocol: "https", hostname: "drive.googleusercontent.com" },
+      { protocol: "https", hostname: "lh3.googleusercontent.com" },
     ],
   },
-  // 🛡️ BẢO MẬT HTTP HEADERS BỌC THÉP CHUẨN OWASP / A+ SECURITY RATING (REQ-026)
   async headers() {
-    // ⚡ Trong môi trường development (chạy HTTP qua LAN/localhost), tắt HSTS & upgrade-insecure-requests để điện thoại tải CSS/JS bình thường
     if (process.env.NODE_ENV === "development") {
       return [];
     }
 
-    const cspDirectives = `
-      default-src 'self';
-      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://res.cloudinary.com https://challenges.cloudflare.com https://cdn.jsdelivr.net https://vercel.live;
-      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-      img-src 'self' blob: data: https:;
-      font-src 'self' https://fonts.gstatic.com data:;
-      connect-src 'self' https: wss:;
-      frame-src 'self' https://challenges.cloudflare.com https://*.payos.vn https://res.cloudinary.com;
-      media-src 'self' blob: data: https://res.cloudinary.com https:;
-      object-src 'none';
-      base-uri 'self';
-      form-action 'self' https://*.payos.vn;
-      frame-ancestors *;
-      upgrade-insecure-requests;
-    `.replace(/\s{2,}/g, ' ').trim();
+    const staticCspDirectives = [
+      "default-src 'self'",
+      "script-src 'self' https://res.cloudinary.com https://challenges.cloudflare.com https://client.crisp.chat https://vercel.live",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://client.crisp.chat",
+      "img-src 'self' blob: data: https://res.cloudinary.com https://notxrjsuukrrxdlboavo.supabase.co https://storage.googleapis.com https://lh3.googleusercontent.com https://drive.googleusercontent.com https://images.unsplash.com https://img.vietqr.io https://vietqr.net https://image.crisp.chat https://client.crisp.chat",
+      "font-src 'self' https://fonts.gstatic.com https://client.crisp.chat data:",
+      "connect-src 'self' https://notxrjsuukrrxdlboavo.supabase.co wss://notxrjsuukrrxdlboavo.supabase.co https://api.cloudinary.com https://res.cloudinary.com https://storage.googleapis.com https://www.googleapis.com https://pay.payos.vn https://api-merchant.payos.vn https://online-gateway.ghn.vn https://client.crisp.chat wss://client.relay.crisp.chat https://storage.crisp.chat",
+      "frame-src 'self' https://challenges.cloudflare.com https://pay.payos.vn https://res.cloudinary.com https://game.crisp.chat",
+      "media-src 'self' blob: data: https://res.cloudinary.com https://notxrjsuukrrxdlboavo.supabase.co https://storage.googleapis.com",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self' https://pay.payos.vn",
+      "frame-ancestors 'none'",
+      "upgrade-insecure-requests",
+    ].join("; ");
 
     return [
       {
-        source: "/(.*)",
+        source: "/:path*",
         headers: [
-          { key: "Content-Security-Policy", value: cspDirectives },
+          { key: "Content-Security-Policy", value: staticCspDirectives },
+          { key: "X-Frame-Options", value: "DENY" },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
           { key: "Permissions-Policy", value: "camera=(self), microphone=(self), geolocation=(), browsing-topics=()" },
-          { key: "X-XSS-Protection", value: "1; mode=block" },
+          { key: "X-XSS-Protection", value: "0" },
         ],
       },
     ];
   },
   async redirects() {
     return [
-      {
-        source: "/amin",
-        destination: "/admin",
-        permanent: true,
-      },
-      {
-        source: "/amin/:path*",
-        destination: "/admin/:path*",
-        permanent: true,
-      },
+      { source: "/amin", destination: "/admin", permanent: true },
+      { source: "/amin/:path*", destination: "/admin/:path*", permanent: true },
     ];
   },
   async rewrites() {
     return [
-      {
-        source: "/on-thi-tdv",
-        destination: "/index.html",
-      },
-      {
-        source: "/tdv",
-        destination: "/index.html",
-      },
+      { source: "/on-thi-tdv", destination: "/index.html" },
+      { source: "/tdv", destination: "/index.html" },
     ];
-  },
-  typescript: {
-    ignoreBuildErrors: true,
   },
 };
 
-// ⚡ TỐI ƯU HÓA DUNG LƯỢNG VERCEL FUNCTION STORAGE: Tắt sourcemaps không cần thiết
-export default withSentryConfig(
-  nextConfig,
-  {
-    silent: true,
-    org: "cloop-tech",
-    project: "cloop-app",
-    sourcemaps: {
-      disable: true, // Tiết kiệm hàng chục GB Functions Storage trên Vercel
-    },
-    disableLogger: true,
-  }
-);
+export default withSentryConfig(nextConfig, {
+  silent: true,
+  org: "cloop-tech",
+  project: "cloop-app",
+  sourcemaps: {
+    disable: true,
+  },
+  disableLogger: true,
+});

@@ -95,22 +95,13 @@ export default async function AdminPage() {
   let recentTopUps: any[] = [];
   let pendingWithdrawals: any[] = [];
 
-  // 3. Khối try-catch tổng bảo vệ toàn bộ tầng Data Fetching, chia làm 3 đợt Batching
-  // nhằm tránh làm nghẽn hàng đợi kết nối Supavisor Pooler (connection_limit=1).
+  // 3. Khối try-catch tổng bảo vệ toàn bộ tầng Data Fetching, chạy đồng thời 1 lượt
+  // (connection_limit=5 trên PgBouncer/Supavisor) để loại bỏ waterfall 3 vòng tuần tự.
   try {
-    // ĐỢT 1: Chạy các truy vấn đếm (Count) nhẹ trước
-    const batch1Results = await Promise.allSettled([
+    const allResults = await Promise.allSettled([
       safeQuery("totalUsers", () => prisma.user.count(), 0),
       safeQuery("totalProducts", () => prisma.product.count({ where: { isDeleted: false } }), 0),
       safeQuery("totalRentals", () => prisma.rentalHistory.count({ where: { isDeleted: false } }), 0),
-    ]);
-
-    totalUsers = unwrapSettled(batch1Results[0], 0);
-    totalProducts = unwrapSettled(batch1Results[1], 0);
-    totalRentals = unwrapSettled(batch1Results[2], 0);
-
-    // ĐỢT 2: Chạy các truy vấn tổng hợp tài chính (Aggregations)
-    const batch2Results = await Promise.allSettled([
       // GMV thực tế từ các hóa đơn đã thanh toán
       safeQuery(
         "paidInvoiceAgg",
@@ -151,15 +142,7 @@ export default async function AdminPage() {
         }),
         { _sum: { amountVnd: 0, totalCoins: 0 } }
       ),
-    ]);
-
-    paidInvoiceAgg = unwrapSettled(batch2Results[0], { _sum: { amount: 0, depositAmount: 0, platformFee: 0, rentalFee: 0 } });
-    activeEscrowRentals = unwrapSettled(batch2Results[1], []);
-    feeRetainedAgg = unwrapSettled(batch2Results[2], { _sum: { amount: 0 } });
-    topUpAgg = unwrapSettled(batch2Results[3], { _sum: { amountVnd: 0, totalCoins: 0 } });
-
-    // ĐỢT 3: Chạy các truy vấn lấy danh sách gần nhất (findMany)
-    const batch3Results = await Promise.allSettled([
+      // Danh sách đơn hàng gần nhất
       safeQuery(
         "allRentals",
         () => prisma.rentalHistory.findMany({
@@ -192,6 +175,7 @@ export default async function AdminPage() {
         }),
         []
       ),
+      // Giao dịch nạp xu gần nhất
       safeQuery(
         "recentTopUps",
         () => prisma.coinTopUp.findMany({
@@ -208,6 +192,7 @@ export default async function AdminPage() {
         }),
         []
       ),
+      // Yêu cầu rút tiền chờ duyệt
       safeQuery(
         "pendingWithdrawals",
         () => prisma.withdrawalRequest.findMany({
@@ -227,9 +212,16 @@ export default async function AdminPage() {
       ),
     ]);
 
-    allRentals = unwrapSettled(batch3Results[0], []);
-    recentTopUps = unwrapSettled(batch3Results[1], []);
-    pendingWithdrawals = unwrapSettled(batch3Results[2], []);
+    totalUsers = unwrapSettled(allResults[0], 0);
+    totalProducts = unwrapSettled(allResults[1], 0);
+    totalRentals = unwrapSettled(allResults[2], 0);
+    paidInvoiceAgg = unwrapSettled(allResults[3], { _sum: { amount: 0, depositAmount: 0, platformFee: 0, rentalFee: 0 } });
+    activeEscrowRentals = unwrapSettled(allResults[4], []);
+    feeRetainedAgg = unwrapSettled(allResults[5], { _sum: { amount: 0 } });
+    topUpAgg = unwrapSettled(allResults[6], { _sum: { amountVnd: 0, totalCoins: 0 } });
+    allRentals = unwrapSettled(allResults[7], []);
+    recentTopUps = unwrapSettled(allResults[8], []);
+    pendingWithdrawals = unwrapSettled(allResults[9], []);
 
   } catch (globalCatchError) {
     // Lớp phòng thủ cuối cùng: Ghi nhận lỗi và tiếp tục render với fallback mặc định

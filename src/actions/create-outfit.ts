@@ -1,12 +1,7 @@
 "use server";
 
-import { PrismaClient } from "@prisma/client";
-
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
-
-// DONG BO TUYET DOI: De trong tron de triet tieu toan bo gach do dong 9!
-const prisma = globalForPrisma.prisma || new PrismaClient();
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+import { prisma } from "@/src/lib/prisma";
+import { requireUser } from "@/src/lib/auth";
 
 interface OutfitPayload {
   name: string;
@@ -36,27 +31,31 @@ interface OutfitPayload {
     bytes?: number;
     format?: string;
   }>;
-  owner_id: string; 
+  owner_id?: string;
 }
 
 export async function createOutfitAction(payload: OutfitPayload) {
   try {
-    if (!payload.owner_id || payload.owner_id === "user-test-uuid-123") {
-      return { success: false, message: "🚨 Lỗi xác thực: Phiên đăng nhập hợp lệ không tồn tại. Vui lòng đăng nhập lại!" };
+    let authUser;
+    try {
+      authUser = await requireUser();
+    } catch {
+      return { success: false, message: "Lỗi xác thực: Phiên đăng nhập hợp lệ không tồn tại. Vui lòng đăng nhập lại!" };
     }
 
+    const ownerId = authUser.id;
     const images = payload.images.map((image) => typeof image === "string" ? { url: image } : image);
 
     if (!payload.name.trim() || images.length === 0) {
-      return { success: false, message: "❌ Dữ liệu phục trang trống hoặc thiếu tệp tin lookbook." };
+      return { success: false, message: "Dữ liệu phục trang trống hoặc thiếu tệp tin lookbook." };
     }
 
     const userExists = await prisma.user.findUnique({
-      where: { id: payload.owner_id }
+      where: { id: ownerId }
     });
 
     if (!userExists) {
-      return { success: false, message: "🚨 Quyền truy cập bị từ chối: Tài khoản không có trong hệ thống dữ liệu cốt lõi." };
+      return { success: false, message: "Quyền truy cập bị từ chối: Tài khoản không có trong hệ thống dữ liệu cốt lõi." };
     }
 
     const newProduct = await prisma.product.create({
@@ -74,8 +73,8 @@ export async function createOutfitAction(payload: OutfitPayload) {
         specificAddress: payload.specificAddress,
         latitude: payload.lat,
         longitude: payload.lng,
-        userId: payload.owner_id, 
-        condition: "GOOD",       
+        userId: ownerId,
+        condition: "GOOD",
         images: {
           create: images.map((image, index) => ({
             url: image.url,
@@ -105,7 +104,7 @@ export async function createOutfitAction(payload: OutfitPayload) {
           create: [
             {
               eventType: "CREATED",
-              userId: payload.owner_id, 
+              userId: ownerId,
               co2Saved: 0.0,
               notes: `Sản phẩm quần áo được kích hoạt thành công dưới phân hệ: ${payload.listingType}`,
             },
@@ -124,7 +123,7 @@ export async function createOutfitAction(payload: OutfitPayload) {
     console.error("Lỗi hệ thống:", error);
     return {
       success: false,
-      message: "Trục trặc kết nối cơ sở dữ liệu PostgreSQL hệ thống.",
+      message: "Trục trặc kết nối cơ sở dữ liệu hệ thống.",
     };
   }
 }

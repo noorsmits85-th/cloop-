@@ -75,9 +75,77 @@ export default async function ProductDetailPage({ params, searchParams }: PagePr
     return notFound();
   }
 
+  // 🛡️ KIỂM TRA ĐIỀU KIỆN ĐÁNH GIÁ & TẢI CHI TIẾT SẢN PHẨM SONG SONG (CHỐNG WATERFALL)
+  let userRentalStatus: UserRentalEligibility = {
+    isLoggedIn: false,
+    canReview: false,
+    hasRented: false,
+    isCompleted: false,
+    hasReviewed: false,
+    reason: "Vui lòng đăng nhập để viết đánh giá.",
+  };
+
+  const checkEligibilityPromise = (async () => {
+    try {
+      const supabase = await createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
+
+      if (user) {
+        userRentalStatus.isLoggedIn = true;
+
+        const rental = await prisma.rentalHistory.findFirst({
+          where: {
+            product_id: id,
+            renterId: user.id,
+            isDeleted: false,
+          },
+          orderBy: { createdAt: "desc" },
+          include: {
+            reviews: {
+              where: {
+                reviewerId: user.id,
+                type: "RENTER_TO_OWNER",
+              },
+            },
+          },
+        });
+
+        if (!rental) {
+          userRentalStatus.hasRented = false;
+          userRentalStatus.canReview = false;
+          userRentalStatus.reason = "Bạn chưa từng thuê trang phục này. Hãy thuê và hoàn tất trải nghiệm để viết đánh giá nhé!";
+        } else if (rental.status !== "LENDER_COMPLETED" && rental.status !== "BORROWER_RETURNED") {
+          userRentalStatus.hasRented = true;
+          userRentalStatus.isCompleted = false;
+          userRentalStatus.canReview = false;
+          userRentalStatus.reason = "Đơn thuê đang được xử lý. Bạn sẽ có thể đánh giá sau khi hoàn tất trả đồ.";
+        } else if (rental.reviews && rental.reviews.length > 0) {
+          userRentalStatus.hasRented = true;
+          userRentalStatus.isCompleted = true;
+          userRentalStatus.hasReviewed = true;
+          userRentalStatus.canReview = false;
+          userRentalStatus.reason = "Bạn đã hoàn tất gửi đánh giá cho đơn thuê trang phục này.";
+        } else {
+          userRentalStatus.hasRented = true;
+          userRentalStatus.isCompleted = true;
+          userRentalStatus.hasReviewed = false;
+          userRentalStatus.canReview = true;
+          userRentalStatus.reason = "Bạn đủ điều kiện viết đánh giá xác thực (+50 Xu)!";
+        }
+      }
+    } catch (err) {
+      console.error("Lỗi xác thực quyền đánh giá của user:", err);
+    }
+  })();
+
   let product = null;
   try {
-    product = await getProductDetail(id);
+    const [fetchedProduct] = await Promise.all([
+      getProductDetail(id),
+      checkEligibilityPromise,
+    ]);
+    product = fetchedProduct;
   } catch (err) {
     console.error(`Lỗi tải chi tiết sản phẩm ${id}:`, err);
   }
@@ -102,69 +170,6 @@ export default async function ProductDetailPage({ params, searchParams }: PagePr
         </Link>
       </div>
     );
-  }
-
-  // 🛡️ KIỂM TRA ĐIỀU KIỆN ĐÁNH GIÁ: CHỈ CHO PHÉP KHÁCH ĐÃ THUÊ VÀ HOÀN TẤT ĐƠN HÀNG (CHỐNG SPAM)
-  let userRentalStatus: UserRentalEligibility = {
-    isLoggedIn: false,
-    canReview: false,
-    hasRented: false,
-    isCompleted: false,
-    hasReviewed: false,
-    reason: "Vui lòng đăng nhập để viết đánh giá.",
-  };
-
-  try {
-    const supabase = await createClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    const user = session?.user;
-
-    if (user) {
-      userRentalStatus.isLoggedIn = true;
-
-      // Tìm giao dịch thuê của user đối với sản phẩm này
-      const rental = await prisma.rentalHistory.findFirst({
-        where: {
-          product_id: id,
-          renterId: user.id,
-          isDeleted: false,
-        },
-        orderBy: { createdAt: "desc" },
-        include: {
-          reviews: {
-            where: {
-              reviewerId: user.id,
-              type: "RENTER_TO_OWNER",
-            },
-          },
-        },
-      });
-
-      if (!rental) {
-        userRentalStatus.hasRented = false;
-        userRentalStatus.canReview = false;
-        userRentalStatus.reason = "Bạn chưa từng thuê trang phục này. Hãy thuê và hoàn tất trải nghiệm để viết đánh giá nhé!";
-      } else if (rental.status !== "LENDER_COMPLETED" && rental.status !== "BORROWER_RETURNED") {
-        userRentalStatus.hasRented = true;
-        userRentalStatus.isCompleted = false;
-        userRentalStatus.canReview = false;
-        userRentalStatus.reason = "Đơn thuê đang được xử lý. Bạn sẽ có thể đánh giá sau khi hoàn tất trả đồ.";
-      } else if (rental.reviews && rental.reviews.length > 0) {
-        userRentalStatus.hasRented = true;
-        userRentalStatus.isCompleted = true;
-        userRentalStatus.hasReviewed = true;
-        userRentalStatus.canReview = false;
-        userRentalStatus.reason = "Bạn đã hoàn tất gửi đánh giá cho đơn thuê trang phục này.";
-      } else {
-        userRentalStatus.hasRented = true;
-        userRentalStatus.isCompleted = true;
-        userRentalStatus.hasReviewed = false;
-        userRentalStatus.canReview = true;
-        userRentalStatus.reason = "Bạn đủ điều kiện viết đánh giá xác thực (+50 Xu)!";
-      }
-    }
-  } catch (err) {
-    console.error("Lỗi xác thực quyền đánh giá của user:", err);
   }
 
   return (

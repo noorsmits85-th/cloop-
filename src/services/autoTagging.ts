@@ -1,4 +1,5 @@
 import { prisma } from "@/src/lib/prisma";
+import { fetchSafeAllowedImage } from "@/src/lib/ssrf-guard";
 import { getNextGeminiKey, markKeyCooldown } from "@/src/utils/gemini-pool";
 
 export async function autoTagProductBackground(productId: string, imageUrl: string) {
@@ -9,12 +10,9 @@ export async function autoTagProductBackground(productId: string, imageUrl: stri
       return;
     }
 
-    // 1. Tải ảnh từ URL về dạng base64
-    const imgRes = await fetch(imageUrl);
-    if (!imgRes.ok) throw new Error("Failed to fetch image");
-    const arrayBuffer = await imgRes.arrayBuffer();
-    const base64 = Buffer.from(arrayBuffer).toString('base64');
-    const mimeType = imgRes.headers.get("content-type") || "image/jpeg";
+    // 1. Tải ảnh từ URL an toàn qua SSRF Guard
+    const { buffer, mimeType } = await fetchSafeAllowedImage(imageUrl, 10 * 1024 * 1024);
+    const base64 = buffer.toString("base64");
 
     // 2. Yêu cầu AI phân tích ảnh
     const prompt = `Bạn là chuyên gia thời trang của CLOOP. Nhìn ảnh món đồ này, hãy điền các thông tin phân loại tự động vào JSON.
@@ -52,7 +50,7 @@ export async function autoTagProductBackground(productId: string, imageUrl: stri
     const raw: string = (data?.candidates?.[0]?.content?.parts || []).map((p: any) => p.text || "").join("");
     const jsonText = raw.match(/\{[\s\S]*\}/)?.[0];
     if (!jsonText) throw new Error("Empty response");
-    
+
     const parsed = JSON.parse(jsonText);
 
     // 3. Cập nhật vào Database (Phase A)
@@ -64,9 +62,9 @@ export async function autoTagProductBackground(productId: string, imageUrl: stri
         aiMaterial: parsed.aiMaterial || null,
         aiStyle: parsed.aiStyle || null,
         aiKeywords: Array.isArray(parsed.aiKeywords) ? parsed.aiKeywords : [],
-      }
+      },
     });
-    
+
     console.log(`[Auto-Tagging] Successfully tagged product ${productId}:`, parsed);
   } catch (error) {
     console.error(`[Auto-Tagging] Failed for product ${productId}:`, error);

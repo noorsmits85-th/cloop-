@@ -20,6 +20,7 @@ import VisualSearchModal from "@/app/components/VisualSearchModal";
 import VoiceSearchModal from "@/app/components/VoiceSearchModal";
 import DigitalProductPassport from "@/app/components/DigitalProductPassport";
 import BoostListingModal from "@/app/components/BoostListingModal";
+import LeafBoostHub from "@/app/components/LeafBoostHub";
 import OrderDetailModal, { formatOrderStatus } from "@/app/components/OrderDetailModal";
 import { useAuthModal } from "@/app/AuthModalContext";
 import { getShopProductsAction, createProductAction, updateProductFromAppAction } from "@/app/actions/product";
@@ -34,29 +35,51 @@ import { maskPublicAddress } from "@/src/utils/shipping";
 const FALLBACK_CLOUDINARY_IMG = "https://res.cloudinary.com/dfqbxmgqi/image/upload/v1790530424/cloop_mobile_closet/pt4xccwmvrjsrnhrgnib.png";
 
 // �️ BỘ LỌC DANH MỤC & DỊP MẶC TRANG PHỤC TUẦN HOÀN
-const OCCASIONS_TABS = [
+const CLOTHING_TABS = [
   { id: "all", name: "Tất cả" },
-  { id: "ao", name: "Áo" },
-  { id: "quan", name: "Quần" },
-  { id: "chan_vay", name: "Chân váy" },
   { id: "dam", name: "Đầm & Váy" },
-  { id: "set_do", name: "Set đồ" },
-  { id: "ao_khoac", name: "Áo khoác & Blazer" },
   { id: "ao_dai", name: "Áo dài" },
-  { id: "phu_kien", name: "Phụ kiện" },
-  { id: "dao_pho", name: "Dạo phố" },
-  { id: "tiec_cuoi", name: "Tiệc cưới" },
-  { id: "su_kien", name: "Sự kiện" },
-  { id: "concert", name: "Concert" },
-  { id: "chup_anh", name: "Chụp ảnh" },
-  { id: "du_lich", name: "Du lịch" },
-  { id: "the_thao", name: "Thể thao" },
-  { id: "da_ngoai", name: "Dã ngoại" },
-  { id: "sinh_nhat", name: "Sinh nhật" },
-  { id: "tot_nghiep", name: "Tốt nghiệp" },
-  { id: "le_hoi", name: "Lễ hội" },
-  { id: "cong_so", name: "Công sở" },
+  { id: "chan_vay", name: "Chân váy" },
+  { id: "set_do", name: "Set đồ" },
+  { id: "ao", name: "Áo" },
+  { id: "ao_khoac", name: "Áo khoác" },
+  { id: "quan", name: "Quần" },
 ];
+
+const ACCESSORY_TABS = [
+  { id: "all", name: "Tất cả" },
+  { id: "tui_vi", name: "Túi & Ví" },
+  { id: "giay_guoc", name: "Giày & Guốc" },
+  { id: "trang_suc", name: "Trang sức" },
+  { id: "khan_mu", name: "Khăn & Mũ" },
+  { id: "kinh_cai_ao", name: "Kính & Cài áo" },
+];
+
+const OCCASIONS_TABS = CLOTHING_TABS;
+
+function isAccessoryItem(item: any): boolean {
+  const text = `${item?.category || ""} ${item?.title || ""} ${item?.occasion || ""}`.toLowerCase();
+  return (
+    text.includes("phụ kiện") ||
+    text.includes("túi") ||
+    text.includes("ví") ||
+    text.includes("clutch") ||
+    text.includes("giày") ||
+    text.includes("guốc") ||
+    text.includes("sandal") ||
+    text.includes("trang sức") ||
+    text.includes("dây chuyền") ||
+    text.includes("vòng cổ") ||
+    text.includes("khuyên tai") ||
+    text.includes("bông tai") ||
+    text.includes("khăn") ||
+    text.includes("mũ") ||
+    text.includes("nón") ||
+    text.includes("kính") ||
+    text.includes("cài áo") ||
+    text.includes("thắt lưng")
+  );
+}
 
 // � DANH SÁCH NGÂN HÀNG VIỆT NAM THÔNG DỤNG
 const VIETNAM_BANKS = [
@@ -81,16 +104,26 @@ const VIETNAM_BANKS = [
   "Khác"
 ];
 
-const CATEGORIES_LIST = [
+const CLOTHING_CATEGORIES_LIST = [
+  "Đầm & Váy liền",
+  "Áo dài & Cổ phục",
+  "Chân váy",
+  "Set đồ & Bộ trang phục",
   "Áo",
   "Quần",
-  "Chân váy",
-  "Đầm & Váy liền",
-  "Set đồ & Bộ trang phục",
   "Áo khoác & Blazer",
-  "Áo dài & Cổ phục",
-  "Phụ kiện & Túi xách"
 ];
+
+const ACCESSORY_CATEGORIES_LIST = [
+  "Túi & Ví dự tiệc",
+  "Giày & Guốc",
+  "Trang sức",
+  "Khăn & Mũ",
+  "Kính & Cài áo",
+  "Phụ kiện & Túi xách",
+];
+
+const CATEGORIES_LIST = [...CLOTHING_CATEGORIES_LIST, ...ACCESSORY_CATEGORIES_LIST];
 
 const OCCASIONS_LIST = [
   "Dạo phố",
@@ -313,13 +346,312 @@ export default function MobileAppClient({
   const { currentUser, setShowAuthModal, openAuthModal } = useAuthModal();
   
   // 📱 ĐIỀU HƯỚNG CHÍNH NỘI BỘ APP (5 TABS ĐÁY CHUẨN ĐỒNG BỘ WEB)
-  const [activeTab, setActiveTab] = useState<"home" | "shop" | "orders" | "closet">("home");
+  const [activeTab, setActiveTab] = useState<"home" | "shop" | "boost" | "orders" | "closet">("home");
+  const [productGroup, setProductGroup] = useState<"clothing" | "accessories">("clothing");
   const [listingMode, setListingMode] = useState<"all" | "rent" | "sell">("all");
   const [selectedOccasion, setSelectedOccasion] = useState("Tất cả");
   const [searchQuery, setSearchQuery] = useState("");
   const [likedItems, setLikedItems] = useState<Record<string, boolean>>({});
   const [isVisualSearchOpen, setIsVisualSearchOpen] = useState(false);
   const [isVoiceSearchOpen, setIsVoiceSearchOpen] = useState(false);
+
+  // 🎨 BỘ CHUYỂN ĐỔI 7 TONE MÀU THỜI TRANG (ƯU TIÊN NHẸ NHÀNG, THANH LỊCH, THOÁNG SÁNG)
+  type MobileVibeId =
+    | "rose_champagne"
+    | "milk_tea_oat"
+    | "misty_lavender"
+    | "cloud_porcelain"
+    | "peach_blossom"
+    | "matcha_cream"
+    | "rose_noir";
+
+  const [mobileVibe, setMobileVibe] = useState<MobileVibeId>("rose_champagne");
+
+  useEffect(() => {
+    try {
+      const savedVibe = typeof window !== "undefined" ? localStorage.getItem("cloop_mobile_vibe_v2") : null;
+      if (
+        savedVibe === "rose_champagne" ||
+        savedVibe === "milk_tea_oat" ||
+        savedVibe === "misty_lavender" ||
+        savedVibe === "cloud_porcelain" ||
+        savedVibe === "peach_blossom" ||
+        savedVibe === "matcha_cream" ||
+        savedVibe === "rose_noir"
+      ) {
+        setMobileVibe(savedVibe);
+      }
+    } catch (_) {}
+  }, []);
+
+  const handleSelectVibe = (vibe: MobileVibeId, label: string) => {
+    setMobileVibe(vibe);
+    setLangToast(`Đã đổi tone: ${label}`);
+    setTimeout(() => setLangToast(null), 2000);
+    try {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("cloop_mobile_vibe_v2", vibe);
+      }
+    } catch (_) {}
+  };
+
+  const vibeConfig = useMemo(() => {
+    const configs = {
+      rose_champagne: {
+        id: "rose_champagne" as const,
+        name: "Hồng Trà & Lụa Champagne",
+        shortLabel: "Hồng Trà",
+        desc: "Thanh lịch",
+        swatch: "bg-gradient-to-tr from-[#C26475] to-[#F5E1DA]",
+        outerBg: "bg-[#F6F1EE] sm:bg-[#ECE3DF]",
+        appBg: "bg-[#FCF9F7] text-[#3B282A]",
+        headerBg: "bg-[#FCF9F7]/92 border-[#EAD8D4]/70",
+        brandText: "text-[#3B282A]",
+        primaryBtn: "bg-gradient-to-r from-[#C26475] via-[#B55365] to-[#A34859] text-white shadow-[0_6px_16px_rgba(181,83,101,0.25)]",
+        activePill: "bg-[#3B282A] text-[#FCF9F7] shadow-[0_4px_12px_rgba(59,40,42,0.16)]",
+        pillActive: "bg-[#3B282A] text-[#FCF9F7] shadow-xs",
+        inactivePill: "bg-white text-[#63484B] hover:bg-[#FBF0EE] border border-[#EAD8D4]",
+        heroGrad: "from-[#FBF0EE] via-[#F6E3DF] to-[#EFE0D8]",
+        heroBg: "bg-gradient-to-br from-[#FBF0EE] via-[#F6E3DF] to-[#EFE0D8]",
+        heroBorder: "border-[#E8CFCB]",
+        heroText: "text-[#3B282A]",
+        heroSubtext: "text-[#63484B]",
+        heroAccentText: "text-[#B55365]",
+        heroBadge: "bg-[#B55365] text-white",
+        heroSecondaryBtn: "bg-white/80 hover:bg-white text-[#3B282A] border border-[#DFC3BE]",
+        heroChipBg: "bg-white/75 text-[#4E3538] border border-white/90",
+        cardBorder: "border-[#F0E2DF] hover:border-[#C26475]/45",
+        rentBadge: "bg-[#3B282A]/85 backdrop-blur-md text-white border border-white/20",
+        buyBadge: "bg-[#B55365]/90 backdrop-blur-md text-white",
+        discountBadge: "bg-[#C26475] text-white",
+        priceText: "text-[#3B282A]",
+        priceColor: "text-[#3B282A]",
+        walletChip: "bg-[#FBF0EE] text-[#A34859] border-[#ECC8C2]",
+        linkAccent: "text-[#B55365]",
+        accentText: "text-[#B55365]",
+        dockBg: "bg-white/95 backdrop-blur-xl text-[#3B282A] border border-[#EAD8D4] shadow-[0_12px_32px_rgba(59,40,42,0.12)]",
+        dockActive: "text-[#B55365]",
+        dockInactive: "text-stone-400 hover:text-[#3B282A]",
+      },
+      milk_tea_oat: {
+        id: "milk_tea_oat" as const,
+        name: "Trà Sữa Yến Mạch & Hạnh Nhân",
+        shortLabel: "Trà Sữa",
+        desc: "Hàn Quốc",
+        swatch: "bg-gradient-to-tr from-[#9C6644] to-[#EDE0D4]",
+        outerBg: "bg-[#F5F1EA] sm:bg-[#E8E1D5]",
+        appBg: "bg-[#FBF9F5] text-[#3E3027]",
+        headerBg: "bg-[#FBF9F5]/92 border-[#E6DCD0]/80",
+        brandText: "text-[#3E3027]",
+        primaryBtn: "bg-gradient-to-r from-[#A67153] via-[#935E40] to-[#7F4F34] text-white shadow-[0_6px_16px_rgba(147,94,64,0.24)]",
+        activePill: "bg-[#4A372B] text-[#FBF9F5] shadow-[0_4px_12px_rgba(74,55,43,0.16)]",
+        pillActive: "bg-[#4A372B] text-[#FBF9F5] shadow-xs",
+        inactivePill: "bg-white text-[#665245] hover:bg-[#F5EFE6] border border-[#E6DCD0]",
+        heroGrad: "from-[#F7F1E7] via-[#EFE5D6] to-[#E6D7C3]",
+        heroBg: "bg-gradient-to-br from-[#F7F1E7] via-[#EFE5D6] to-[#E6D7C3]",
+        heroBorder: "border-[#DFCBB5]",
+        heroText: "text-[#3E3027]",
+        heroSubtext: "text-[#665245]",
+        heroAccentText: "text-[#935E40]",
+        heroBadge: "bg-[#8A5638] text-white",
+        heroSecondaryBtn: "bg-white/80 hover:bg-white text-[#3E3027] border border-[#D8C3AC]",
+        heroChipBg: "bg-white/75 text-[#4A372B] border border-white/90",
+        cardBorder: "border-[#ECE3D8] hover:border-[#935E40]/45",
+        rentBadge: "bg-[#4A372B]/85 backdrop-blur-md text-[#FBF9F5] border border-white/20",
+        buyBadge: "bg-[#935E40]/90 backdrop-blur-md text-white",
+        discountBadge: "bg-[#A67153] text-white",
+        priceText: "text-[#3E3027]",
+        priceColor: "text-[#3E3027]",
+        walletChip: "bg-[#F5EFE6] text-[#8A5638] border-[#E2D2C0]",
+        linkAccent: "text-[#8A5638]",
+        accentText: "text-[#8A5638]",
+        dockBg: "bg-[#FFFDF9]/95 backdrop-blur-xl text-[#3E3027] border border-[#E6DCD0] shadow-[0_12px_32px_rgba(62,48,39,0.12)]",
+        dockActive: "text-[#935E40]",
+        dockInactive: "text-stone-400 hover:text-[#3E3027]",
+      },
+      misty_lavender: {
+        id: "misty_lavender" as const,
+        name: "Tím Sương Mai & Ngọc Trai",
+        shortLabel: "Tím Sương",
+        desc: "Nàng thơ",
+        swatch: "bg-gradient-to-tr from-[#8062D6] to-[#E9E2FA]",
+        outerBg: "bg-[#F3F1F8] sm:bg-[#E5E0F0]",
+        appBg: "bg-[#FAF9FE] text-[#2E2542]",
+        headerBg: "bg-[#FAF9FE]/92 border-[#E2DCF2]/80",
+        brandText: "text-[#2E2542]",
+        primaryBtn: "bg-gradient-to-r from-[#8B6EF6] via-[#7A5AF8] to-[#6948E0] text-white shadow-[0_6px_16px_rgba(122,90,248,0.24)]",
+        activePill: "bg-[#352A4D] text-white shadow-[0_4px_12px_rgba(53,42,77,0.16)]",
+        pillActive: "bg-[#352A4D] text-white shadow-xs",
+        inactivePill: "bg-white text-[#564873] hover:bg-[#F3EFFC] border border-[#E2DCF2]",
+        heroGrad: "from-[#F3EFFD] via-[#EAE3FA] to-[#F5E8F7]",
+        heroBg: "bg-gradient-to-br from-[#F3EFFD] via-[#EAE3FA] to-[#F5E8F7]",
+        heroBorder: "border-[#DAD0F2]",
+        heroText: "text-[#2E2542]",
+        heroSubtext: "text-[#564873]",
+        heroAccentText: "text-[#7A5AF8]",
+        heroBadge: "bg-[#7A5AF8] text-white",
+        heroSecondaryBtn: "bg-white/80 hover:bg-white text-[#2E2542] border border-[#D4C8EE]",
+        heroChipBg: "bg-white/75 text-[#352A4D] border border-white/90",
+        cardBorder: "border-[#EAE5F5] hover:border-[#7A5AF8]/45",
+        rentBadge: "bg-[#352A4D]/85 backdrop-blur-md text-white border border-white/20",
+        buyBadge: "bg-[#7A5AF8]/90 backdrop-blur-md text-white",
+        discountBadge: "bg-[#8B6EF6] text-white",
+        priceText: "text-[#2E2542]",
+        priceColor: "text-[#2E2542]",
+        walletChip: "bg-[#F3EFFC] text-[#6948E0] border-[#DCD3F7]",
+        linkAccent: "text-[#7A5AF8]",
+        accentText: "text-[#7A5AF8]",
+        dockBg: "bg-white/95 backdrop-blur-xl text-[#2E2542] border border-[#E2DCF2] shadow-[0_12px_32px_rgba(46,37,66,0.12)]",
+        dockActive: "text-[#7A5AF8]",
+        dockInactive: "text-stone-400 hover:text-[#2E2542]",
+      },
+      cloud_porcelain: {
+        id: "cloud_porcelain" as const,
+        name: "Xanh Mây Trời & Trắng Sứ",
+        shortLabel: "Xanh Mây",
+        desc: "Thanh khiết",
+        swatch: "bg-gradient-to-tr from-[#4A81AB] to-[#E3EFF8]",
+        outerBg: "bg-[#EFF4F8] sm:bg-[#DFE8F0]",
+        appBg: "bg-[#F8FAFC] text-[#233647]",
+        headerBg: "bg-[#F8FAFC]/92 border-[#D8E5F0]/80",
+        brandText: "text-[#233647]",
+        primaryBtn: "bg-gradient-to-r from-[#568FB8] via-[#457CA5] to-[#366A91] text-white shadow-[0_6px_16px_rgba(69,124,165,0.24)]",
+        activePill: "bg-[#283E52] text-white shadow-[0_4px_12px_rgba(40,62,82,0.16)]",
+        pillActive: "bg-[#283E52] text-white shadow-xs",
+        inactivePill: "bg-white text-[#4A6378] hover:bg-[#EDF5FC] border border-[#D8E5F0]",
+        heroGrad: "from-[#EDF5FC] via-[#E1EEF9] to-[#DCE8F5]",
+        heroBg: "bg-gradient-to-br from-[#EDF5FC] via-[#E1EEF9] to-[#DCE8F5]",
+        heroBorder: "border-[#C8DCEE]",
+        heroText: "text-[#233647]",
+        heroSubtext: "text-[#4A6378]",
+        heroAccentText: "text-[#3E769E]",
+        heroBadge: "bg-[#3E769E] text-white",
+        heroSecondaryBtn: "bg-white/80 hover:bg-white text-[#233647] border border-[#C2D8EB]",
+        heroChipBg: "bg-white/75 text-[#283E52] border border-white/90",
+        cardBorder: "border-[#E3EDF5] hover:border-[#457CA5]/45",
+        rentBadge: "bg-[#283E52]/85 backdrop-blur-md text-white border border-white/20",
+        buyBadge: "bg-[#457CA5]/90 backdrop-blur-md text-white",
+        discountBadge: "bg-[#568FB8] text-white",
+        priceText: "text-[#233647]",
+        priceColor: "text-[#233647]",
+        walletChip: "bg-[#EDF5FC] text-[#366A91] border-[#CBE0F2]",
+        linkAccent: "text-[#3E769E]",
+        accentText: "text-[#3E769E]",
+        dockBg: "bg-white/95 backdrop-blur-xl text-[#233647] border border-[#D8E5F0] shadow-[0_12px_32px_rgba(35,54,71,0.12)]",
+        dockActive: "text-[#3E769E]",
+        dockInactive: "text-stone-400 hover:text-[#233647]",
+      },
+      peach_blossom: {
+        id: "peach_blossom" as const,
+        name: "Hồng Đào Phấn & Kem Bơ",
+        shortLabel: "Hồng Đào",
+        desc: "Dịu dàng",
+        swatch: "bg-gradient-to-tr from-[#E07A68] to-[#FCE8E2]",
+        outerBg: "bg-[#F7EFEA] sm:bg-[#EDE1DA]",
+        appBg: "bg-[#FFFDFB] text-[#402824]",
+        headerBg: "bg-[#FFFDFB]/92 border-[#F2DDD6]/80",
+        brandText: "text-[#402824]",
+        primaryBtn: "bg-gradient-to-r from-[#E57F6E] via-[#D66B5A] to-[#C45949] text-white shadow-[0_6px_16px_rgba(214,107,90,0.24)]",
+        activePill: "bg-[#452B26] text-white shadow-[0_4px_12px_rgba(69,43,38,0.16)]",
+        pillActive: "bg-[#452B26] text-white shadow-xs",
+        inactivePill: "bg-white text-[#6E4942] hover:bg-[#FFF2EE] border border-[#F2DDD6]",
+        heroGrad: "from-[#FFF2EE] via-[#FDE5DD] to-[#F9DBD2]",
+        heroBg: "bg-gradient-to-br from-[#FFF2EE] via-[#FDE5DD] to-[#F9DBD2]",
+        heroBorder: "border-[#F0CEC3]",
+        heroText: "text-[#402824]",
+        heroSubtext: "text-[#6E4942]",
+        heroAccentText: "text-[#CC5B49]",
+        heroBadge: "bg-[#D66B5A] text-white",
+        heroSecondaryBtn: "bg-white/80 hover:bg-white text-[#402824] border border-[#EBC5B9]",
+        heroChipBg: "bg-white/75 text-[#452B26] border border-white/90",
+        cardBorder: "border-[#F5E4DF] hover:border-[#D66B5A]/45",
+        rentBadge: "bg-[#452B26]/85 backdrop-blur-md text-white border border-white/20",
+        buyBadge: "bg-[#D66B5A]/90 backdrop-blur-md text-white",
+        discountBadge: "bg-[#E57F6E] text-white",
+        priceText: "text-[#402824]",
+        priceColor: "text-[#402824]",
+        walletChip: "bg-[#FFF2EE] text-[#C45949] border-[#F5CEC3]",
+        linkAccent: "text-[#D66B5A]",
+        accentText: "text-[#D66B5A]",
+        dockBg: "bg-white/95 backdrop-blur-xl text-[#402824] border border-[#F2DDD6] shadow-[0_12px_32px_rgba(64,40,36,0.12)]",
+        dockActive: "text-[#D66B5A]",
+        dockInactive: "text-stone-400 hover:text-[#402824]",
+      },
+      matcha_cream: {
+        id: "matcha_cream" as const,
+        name: "Matcha Sữa & Kem Bơ Nhạt",
+        shortLabel: "Matcha Sữa",
+        desc: "Tối giản",
+        swatch: "bg-gradient-to-tr from-[#6D9471] to-[#E9F2E6]",
+        outerBg: "bg-[#F1F4EE] sm:bg-[#E3E8DF]",
+        appBg: "bg-[#FAFBF8] text-[#2C3A2E]",
+        headerBg: "bg-[#FAFBF8]/92 border-[#DCE5D8]/80",
+        brandText: "text-[#2C3A2E]",
+        primaryBtn: "bg-gradient-to-r from-[#739977] via-[#5F8563] to-[#4E7252] text-white shadow-[0_6px_16px_rgba(95,133,99,0.24)]",
+        activePill: "bg-[#314233] text-white shadow-[0_4px_12px_rgba(49,66,51,0.16)]",
+        pillActive: "bg-[#314233] text-white shadow-xs",
+        inactivePill: "bg-white text-[#526654] hover:bg-[#EFF5EC] border border-[#DCE5D8]",
+        heroGrad: "from-[#F1F6EE] via-[#E6EFE2] to-[#DCE8D6]",
+        heroBg: "bg-gradient-to-br from-[#F1F6EE] via-[#E6EFE2] to-[#DCE8D6]",
+        heroBorder: "border-[#CBE0C3]",
+        heroText: "text-[#2C3A2E]",
+        heroSubtext: "text-[#526654]",
+        heroAccentText: "text-[#537A57]",
+        heroBadge: "bg-[#5F8563] text-white",
+        heroSecondaryBtn: "bg-white/80 hover:bg-white text-[#2C3A2E] border border-[#C5D9BD]",
+        heroChipBg: "bg-white/75 text-[#314233] border border-white/90",
+        cardBorder: "border-[#E3ECE0] hover:border-[#5F8563]/45",
+        rentBadge: "bg-[#314233]/85 backdrop-blur-md text-white border border-white/20",
+        buyBadge: "bg-[#5F8563]/90 backdrop-blur-md text-white",
+        discountBadge: "bg-[#739977] text-white",
+        priceText: "text-[#2C3A2E]",
+        priceColor: "text-[#2C3A2E]",
+        walletChip: "bg-[#EFF5EC] text-[#4E7252] border-[#CDE0C6]",
+        linkAccent: "text-[#5F8563]",
+        accentText: "text-[#5F8563]",
+        dockBg: "bg-white/95 backdrop-blur-xl text-[#2C3A2E] border border-[#DCE5D8] shadow-[0_12px_32px_rgba(44,58,46,0.12)]",
+        dockActive: "text-[#5F8563]",
+        dockInactive: "text-stone-400 hover:text-[#2C3A2E]",
+      },
+      rose_noir: {
+        id: "rose_noir" as const,
+        name: "Đen Vogue & Hồng San Hô",
+        shortLabel: "Đen Vogue",
+        desc: "Cá tính",
+        swatch: "bg-gradient-to-tr from-[#FF2E63] to-[#141418]",
+        outerBg: "bg-[#F8F3F4] sm:bg-[#EAE2E4]",
+        appBg: "bg-[#FDF9FA] text-[#141418]",
+        headerBg: "bg-[#FDF9FA]/92 border-rose-200/50",
+        brandText: "text-[#141418]",
+        primaryBtn: "bg-gradient-to-tr from-[#FF2E63] via-[#FF4B72] to-[#FF758F] text-white shadow-[0_6px_18px_rgba(255,46,99,0.32)]",
+        activePill: "bg-[#141418] text-white shadow-[0_4px_12px_rgba(20,20,24,0.2)]",
+        pillActive: "bg-[#141418] text-white shadow-xs",
+        inactivePill: "bg-white text-stone-700 hover:bg-rose-50/60 border border-rose-100",
+        heroGrad: "from-[#141418] via-[#2A121D] to-[#4A152B]",
+        heroBg: "bg-gradient-to-br from-[#141418] via-[#2A121D] to-[#4A152B]",
+        heroBorder: "border-white/10",
+        heroText: "text-white",
+        heroSubtext: "text-white/85",
+        heroAccentText: "text-[#FF758F]",
+        heroBadge: "bg-[#FF2E63] text-white",
+        heroSecondaryBtn: "bg-white/15 hover:bg-white/25 text-white border border-white/25",
+        heroChipBg: "bg-white/10 text-white/95 border border-white/15",
+        cardBorder: "border-rose-100/90 hover:border-[#FF2E63]/40",
+        rentBadge: "bg-[#141418]/85 backdrop-blur-md text-white border border-white/15",
+        buyBadge: "bg-[#FF2E63]/95 backdrop-blur-md text-white",
+        discountBadge: "bg-gradient-to-r from-[#FF2E63] to-[#FF758F] text-white",
+        priceText: "text-[#141418]",
+        priceColor: "text-[#141418]",
+        walletChip: "bg-[#FFF0F3] text-[#E11D48] border-[#FECDD3]",
+        linkAccent: "text-[#E11D48]",
+        accentText: "text-[#E11D48]",
+        dockBg: "bg-[#141418]/94 text-white border border-white/10 shadow-[0_16px_40px_rgba(20,20,24,0.32)]",
+        dockActive: "text-[#FF5E7E]",
+        dockInactive: "text-stone-400 hover:text-white",
+      },
+    };
+    return configs[mobileVibe];
+  }, [mobileVibe]);
 
   // � THIẾT LẬP NGÔN NGỮ (VIE / ENG)
   const [lang, setLang] = useState<"vi" | "en">("vi");
@@ -786,39 +1118,7 @@ export default function MobileAppClient({
         ...(merged.phone ? { ownerPhone: merged.phone } : {})
       }));
 
-      // 4. Lưu đồng bộ vào LocalStorage cho các lần truy cập tiếp theo
-      try {
-        if (typeof window !== "undefined") {
-          localStorage.setItem("cloop_unified_ghn_address", JSON.stringify(merged));
-          localStorage.setItem("cloop_saved_renter_info", JSON.stringify({
-            name: merged.recipientName || "",
-            phone: merged.phone || "",
-            provinceId: merged.provinceId,
-            districtId: merged.districtId,
-            wardCode: merged.wardCode,
-            province: merged.province,
-            district: merged.district,
-            ward: merged.ward,
-            addressDetail: merged.specificAddress,
-            note: merged.addressNote,
-            fullAddress: full
-          }));
-          localStorage.setItem("cloop_saved_pickup_location", JSON.stringify({
-            province: merged.province,
-            district: merged.district,
-            ward: merged.ward,
-            address: merged.specificAddress,
-            note: merged.addressNote,
-            phone: merged.phone || "",
-            provinceId: merged.provinceId,
-            districtId: merged.districtId,
-            wardCode: merged.wardCode,
-            fullAddress: full
-          }));
-        }
-      } catch (_) {}
-
-      // 5. Lưu vào Database (auth.users metadata) nếu người dùng đã đăng nhập
+      // 4. Lưu vào Database (auth.users metadata) nếu người dùng đã đăng nhập (Tuyệt đối không lưu PII vào LocalStorage)
       if (syncToBackend && (currentUser?.id || closetData?.user?.id)) {
         saveUnifiedUserAddressAction({
           userId: currentUser?.id || closetData?.user?.id,
@@ -1021,7 +1321,7 @@ export default function MobileAppClient({
   useEffect(() => {
     let initialAddr: any = null;
 
-    // 1. Ưu tiên số 1: Lấy địa chỉ chuẩn GHN từ Supabase Database (raw_user_meta_data)
+    // 1. Lấy địa chỉ chuẩn GHN từ Supabase Database (Đã xác thực từ Server)
     if (closetData?.user?.province || closetData?.user?.provinceId) {
       initialAddr = {
         provinceId: closetData.user.provinceId || "",
@@ -1036,52 +1336,20 @@ export default function MobileAppClient({
         phone: closetData.user.phone || "",
         recipientName: closetData.user.name || "",
       };
-    } else {
-      // 2. Ưu tiên số 2: Lấy từ LocalStorage đã lưu đồng nhất
-      try {
-        if (typeof window !== "undefined") {
-          const rawUnified = localStorage.getItem("cloop_unified_ghn_address");
-          if (rawUnified) {
-            initialAddr = JSON.parse(rawUnified);
-          } else {
-            const rawRenter = localStorage.getItem("cloop_saved_renter_info");
-            if (rawRenter) {
-              const p = JSON.parse(rawRenter);
-              initialAddr = {
-                provinceId: p.provinceId || "",
-                districtId: p.districtId || "",
-                wardCode: p.wardCode || "",
-                province: p.province || "",
-                district: p.district || "",
-                ward: p.ward || "",
-                specificAddress: p.addressDetail || p.address || "",
-                addressNote: p.note || "",
-                fullAddress: p.fullAddress || "",
-                phone: p.phone || "",
-                recipientName: p.name || "",
-              };
-            } else {
-              const rawLoc = localStorage.getItem("cloop_saved_pickup_location");
-              if (rawLoc) {
-                const l = JSON.parse(rawLoc);
-                initialAddr = {
-                  provinceId: l.provinceId || "",
-                  districtId: l.districtId || "",
-                  wardCode: l.wardCode || "",
-                  province: l.province || "",
-                  district: l.district || "",
-                  ward: l.ward || "",
-                  specificAddress: l.address || "",
-                  addressNote: l.note || "",
-                  fullAddress: l.fullAddress || "",
-                  phone: l.phone || "",
-                };
-              }
-            }
-          }
-        }
-      } catch (_) {}
     }
+
+    // Dọn dẹp các khóa PII nhạy cảm lưu trên LocalStorage cũ (Tuân thủ Luật Thép Bảo Mật)
+    try {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("cloop_saved_bank_info");
+        localStorage.removeItem("cloop_unified_ghn_address");
+        localStorage.removeItem("cloop_saved_renter_info");
+        localStorage.removeItem("cloop_saved_pickup_location");
+        localStorage.removeItem("cloop_saved_shipping_address");
+        localStorage.removeItem("cloop_shipping_address_history");
+        localStorage.removeItem("cloop_auth_user");
+      }
+    } catch (_) {}
 
     if (closetData?.user) {
       const userAddr = initialAddr?.fullAddress || closetData.user.pickupAddress || closetData.user.location || "";
@@ -1102,21 +1370,6 @@ export default function MobileAppClient({
         });
       }
     }
-
-    // Khôi phục ngân hàng đã lưu từ LocalStorage nếu có
-    try {
-      if (typeof window !== "undefined") {
-        const rawBank = localStorage.getItem("cloop_saved_bank_info");
-        if (rawBank) {
-          const b = JSON.parse(rawBank);
-          setBankForm(prev => ({
-            bankName: prev.bankName || b.bankName || "",
-            bankAccount: prev.bankAccount || b.bankAccount || "",
-            bankOwner: prev.bankOwner || b.bankOwner || "",
-          }));
-        }
-      }
-    } catch (_) {}
 
     if (initialAddr) {
       syncUnifiedAddress(initialAddr, false);
@@ -1403,11 +1656,39 @@ export default function MobileAppClient({
     });
   }, [closetOwnerProducts, closetOwnerFilter]);
 
-  // 🔍 LỌC THÔNG MINH SẢN PHẨM TRỰC TIẾP
+  // 🔍 TRẠNG THÁI BỘ LỌC ĐA CHIỀU XÂU CHUỖI THÔNG MINH (SIZE + GIÁ + SẮP XẾP + YÊU THÍCH)
+  const [selectedSizeFilter, setSelectedSizeFilter] = useState<string>("ALL");
+  const [selectedPriceFilter, setSelectedPriceFilter] = useState<"ALL" | "UNDER_100K" | "100K_200K" | "OVER_200K">("ALL");
+  const [selectedSortBy, setSelectedSortBy] = useState<"RECOMMENDED" | "PRICE_ASC" | "PRICE_DESC">("RECOMMENDED");
+  const [onlyLikedFilter, setOnlyLikedFilter] = useState<boolean>(false);
+  const [isFilterOpen, setIsFilterOpen] = useState<boolean>(false);
+  const [isTonePickerOpen, setIsTonePickerOpen] = useState<boolean>(false);
+
+  // Bộ đếm số lượng theo từng chế độ để hiển thị trực tiếp trên thanh điều khiển
+  const modeCounts = useMemo(() => {
+    let rentCount = 0;
+    let sellCount = 0;
+    for (const p of products) {
+      const rentP = Number(p.rentalPrice) || 0;
+      const sellP = Number(p.salePrice) || 0;
+      const isRentType = p.listingTypeRaw === "RENT" || (p.type && p.type.toLowerCase().includes("thuê"));
+      const isSellOnly = p.listingTypeRaw === "SELL" && rentP === 0;
+      if ((rentP > 0 || isRentType) && !isSellOnly) rentCount++;
+      const isSellType = p.listingTypeRaw === "SELL" || (p.type && (p.type.toLowerCase().includes("mua") || p.type.toLowerCase().includes("sở hữu")));
+      if (sellP > 0 || isSellType) sellCount++;
+    }
+    const likedCount = Object.values(likedItems).filter(Boolean).length;
+    return { all: products.length, rent: rentCount, sell: sellCount, liked: likedCount };
+  }, [products, likedItems]);
+
+  // 🔍 LỌC THÔNG MINH SẢN PHẨM TRỰC TIẾP (PHÂN LUỒNG QUẦN ÁO RIÊNG / PHỤ KIỆN RIÊNG)
   const filteredProducts = useMemo(() => {
-    let list = products;
-    
-    // Lọc theo chế độ Thuê đồ / Sở hữu
+    // 0. Tách luồng Quần áo riêng vs Phụ kiện riêng
+    let list = products.filter((p: any) =>
+      productGroup === "accessories" ? isAccessoryItem(p) : !isAccessoryItem(p)
+    );
+
+    // 1. Lọc theo chế độ Thuê đồ / Mua thanh lý
     if (listingMode === "rent") {
       list = list.filter((p: any) => {
         const rentP = Number(p.rentalPrice) || 0;
@@ -1423,30 +1704,74 @@ export default function MobileAppClient({
       });
     }
 
+    // 2. Lọc theo món đã thả tim yêu thích
+    if (onlyLikedFilter) {
+      list = list.filter((p: any) => Boolean(likedItems[p.id]));
+    }
+
+    // 3. Lọc theo Danh mục con của Quần áo hoặc Phụ kiện
     if (selectedOccasion !== "Tất cả") {
       list = list.filter((p: any) => {
-        const occ = (p.occasion || "").toLowerCase();
-        const cat = (p.category || "").toLowerCase();
-        const title = (p.title || "").toLowerCase();
+        const text = `${p.title || ""} ${p.category || ""} ${p.occasion || ""}`.toLowerCase();
         const target = selectedOccasion.toLowerCase();
-        return occ.includes(target) || cat.includes(target) || title.includes(target);
+        if (target === "đầm & váy") return text.includes("đầm") || text.includes("váy liền") || text.includes("váy");
+        if (target === "túi & ví") return text.includes("túi") || text.includes("ví") || text.includes("clutch");
+        if (target === "giày & guốc") return text.includes("giày") || text.includes("guốc") || text.includes("sandal");
+        if (target === "trang sức") return text.includes("trang sức") || text.includes("dây chuyền") || text.includes("vòng") || text.includes("khuyên") || text.includes("bông tai");
+        if (target === "khăn & mũ") return text.includes("khăn") || text.includes("mũ") || text.includes("nón");
+        if (target === "kính & cài áo") return text.includes("kính") || text.includes("cài áo") || text.includes("thắt lưng");
+        return text.includes(target);
       });
     }
+
+    // 4. Lọc theo Kích cỡ (Size)
+    if (selectedSizeFilter !== "ALL") {
+      list = list.filter((p: any) => {
+        const sz = String(p.size || "M").toUpperCase().trim();
+        return sz === selectedSizeFilter;
+      });
+    }
+
+    // 5. Lọc theo Khoảng giá
+    if (selectedPriceFilter !== "ALL") {
+      list = list.filter((p: any) => {
+        const isRent = p.listingTypeRaw !== "SELL";
+        const effectivePrice = isRent ? (Number(p.rentalPrice || p.price) || 0) : (Number(p.salePrice || p.price) || 0);
+        if (selectedPriceFilter === "UNDER_100K") return effectivePrice <= 100000;
+        if (selectedPriceFilter === "100K_200K") return effectivePrice > 100000 && effectivePrice <= 200000;
+        if (selectedPriceFilter === "OVER_200K") return effectivePrice > 200000;
+        return true;
+      });
+    }
+
+    // 6. Lọc theo từ khóa tìm kiếm
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       list = list.filter((p: any) => {
         const occ = (p.occasion || "").toLowerCase();
         const title = (p.title || "").toLowerCase();
         const desc = (p.description || "").toLowerCase();
-        return title.includes(q) || occ.includes(q) || desc.includes(q);
+        const owner = (p.ownerName || "").toLowerCase();
+        return title.includes(q) || occ.includes(q) || desc.includes(q) || owner.includes(q);
       });
     }
 
-    // ⚡ THUẬT TOÁN ĐUA TOP SÀN:
-    // 1. Chỉ các bài có hạn Đẩy Top còn hiệu lực (boostExpiresAt > now) mới được ưu tiên cụm đầu.
-    // 2. Món đồ có TỔNG SỐ LÁ ĐÃ TÍCH LŨY (boostScore) cao nhất luôn đứng trên người nộp cùng gói ít Lá hơn.
-    // 3. Cùng điểm Lá tích lũy: Ai có hạn boostExpiresAt xa hơn sẽ đứng trước.
+    // 7. Sắp xếp thông minh (Ưu tiên tôn vinh Đầm, Váy, Áo dài, Chân váy lên đầu trang khi ở chế độ Đề xuất)
+    const getFashionPriority = (item: any): number => {
+      const text = `${item.title || ""} ${item.category || ""} ${item.occasion || ""}`.toLowerCase();
+      if (text.includes("đầm") || text.includes("váy liền") || text.includes("dạ hội") || text.includes("áo dài")) return 3;
+      if (text.includes("váy") || text.includes("chân váy") || text.includes("set") || text.includes("tiệc")) return 2;
+      if (text.includes("bomber") || text.includes("khoác")) return 0;
+      return 1;
+    };
+
     return [...list].sort((a: any, b: any) => {
+      if (selectedSortBy === "PRICE_ASC" || selectedSortBy === "PRICE_DESC") {
+        const priceA = a.listingTypeRaw !== "SELL" ? (Number(a.rentalPrice || a.price) || 0) : (Number(a.salePrice || a.price) || 0);
+        const priceB = b.listingTypeRaw !== "SELL" ? (Number(b.rentalPrice || b.price) || 0) : (Number(b.salePrice || b.price) || 0);
+        return selectedSortBy === "PRICE_ASC" ? priceA - priceB : priceB - priceA;
+      }
+
       const aActive = Boolean(a.boostExpiresAt && new Date(a.boostExpiresAt) > new Date());
       const bActive = Boolean(b.boostExpiresAt && new Date(b.boostExpiresAt) > new Date());
       if (aActive && !bActive) return -1;
@@ -1457,9 +1782,25 @@ export default function MobileAppClient({
         if (bScore !== aScore) return bScore - aScore;
         return new Date(b.boostExpiresAt).getTime() - new Date(a.boostExpiresAt).getTime();
       }
+
+      const prioDiff = getFashionPriority(b) - getFashionPriority(a);
+      if (prioDiff !== 0) return prioDiff;
       return 0;
     });
-  }, [products, listingMode, selectedOccasion, searchQuery]);
+  }, [products, productGroup, listingMode, onlyLikedFilter, likedItems, selectedOccasion, selectedSizeFilter, selectedPriceFilter, searchQuery, selectedSortBy]);
+
+  // Ảnh đại diện chuẩn Váy Đầm / Áo dài cho 3 Thẻ Lookbook đầu trang
+  const showcaseImages = useMemo(() => {
+    const dressList = products.filter((p: any) => {
+      const t = `${p.title || ""} ${p.category || ""}`.toLowerCase();
+      return t.includes("váy") || t.includes("đầm") || t.includes("áo dài");
+    });
+    return {
+      rentDress: dressList[0]?.image || "/evening_dress.jpg",
+      saleDress: dressList[1]?.image || products[1]?.image || "/evening_dress.jpg",
+      lensLookbook: dressList[2]?.image || "/evening_dress.jpg",
+    };
+  }, [products]);
 
   // ❤️ THẢ TIM LƯU DATABASE THẬT
   const handleToggleLike = async (productId: string, e: React.MouseEvent) => {
@@ -1543,25 +1884,14 @@ export default function MobileAppClient({
     tomorrow.setDate(tomorrow.getDate() + 1);
     setCheckoutStartDate(tomorrow.toISOString().slice(0, 10));
 
-    // 💾 Lấy thông tin liên hệ & địa chỉ GHN đã lưu từ trước (làm 1 lần giữ mãi)
-    let savedInfo: any = null;
-    let savedLoc: any = null;
-    try {
-      if (typeof window !== "undefined") {
-        const raw = localStorage.getItem("cloop_saved_renter_info");
-        if (raw) savedInfo = JSON.parse(raw);
-        const rawLoc = localStorage.getItem("cloop_saved_pickup_location");
-        if (rawLoc) savedLoc = JSON.parse(rawLoc);
-      }
-    } catch (_) {}
-
-    const provId = unifiedAddress.provinceId || savedInfo?.provinceId || savedLoc?.provinceId || "";
-    const distId = unifiedAddress.districtId || savedInfo?.districtId || savedLoc?.districtId || "";
-    const wdCode = unifiedAddress.wardCode || savedInfo?.wardCode || savedLoc?.wardCode || "";
-    const addr = unifiedAddress.specificAddress || savedInfo?.addressDetail || savedInfo?.address || savedLoc?.address || closetData?.user?.specificAddress || closetData?.user?.address || "";
-    const note = unifiedAddress.addressNote || savedInfo?.note || savedLoc?.note || closetData?.user?.addressNote || "";
-    const phone = unifiedAddress.phone || savedInfo?.phone || closetData?.user?.phone || "";
-    const name = unifiedAddress.recipientName || savedInfo?.name || currentUser?.name || closetData?.user?.name || "";
+    // 💾 Lấy thông tin liên hệ & địa chỉ GHN đã lưu từ trạng thái đồng bộ của Server/Tài khoản
+    const provId = unifiedAddress.provinceId || closetData?.user?.provinceId || "";
+    const distId = unifiedAddress.districtId || closetData?.user?.districtId || "";
+    const wdCode = unifiedAddress.wardCode || closetData?.user?.wardCode || "";
+    const addr = unifiedAddress.specificAddress || closetData?.user?.specificAddress || closetData?.user?.address || "";
+    const note = unifiedAddress.addressNote || closetData?.user?.addressNote || "";
+    const phone = unifiedAddress.phone || closetData?.user?.phone || "";
+    const name = unifiedAddress.recipientName || currentUser?.name || closetData?.user?.name || "";
 
     setCheckoutRenterName(name);
     setCheckoutRenterPhone(phone);
@@ -1697,21 +2027,6 @@ export default function MobileAppClient({
       ? `${addressParts}${checkoutRenterNote.trim() ? ` (Ghi chú: ${checkoutRenterNote.trim()})` : ""}`
       : `Nhận trực tiếp tại trạm: ${checkoutProduct.specificAddress || checkoutProduct.location || "Hà Nội"}`;
 
-    // Lưu thông tin liên hệ vào LocalStorage nếu người dùng tích chọn
-    try {
-      if (saveRenterInfo && typeof window !== "undefined") {
-        localStorage.setItem("cloop_saved_renter_info", JSON.stringify({
-          name: checkoutRenterName.trim(),
-          phone: checkoutRenterPhone.trim(),
-          provinceId: checkoutProvinceId,
-          districtId: checkoutDistrictId,
-          wardCode: checkoutWardCode,
-          addressDetail: checkoutAddressDetail.trim(),
-          note: checkoutRenterNote.trim(),
-        }));
-      }
-    } catch (_) {}
-
     const deliveryAddressPayload = {
       provinceId: checkoutProvinceId,
       districtId: checkoutDistrictId,
@@ -1726,8 +2041,8 @@ export default function MobileAppClient({
       phone: checkoutRenterPhone.trim(),
     };
 
-    // Đồng bộ ngay địa chỉ này làm địa chỉ chuẩn GHN duy nhất toàn hệ thống
-    syncUnifiedAddress(deliveryAddressPayload, true);
+    // Đồng bộ ngay địa chỉ này làm địa chỉ chuẩn GHN duy nhất toàn hệ thống (Server-side)
+    syncUnifiedAddress(deliveryAddressPayload, Boolean(saveRenterInfo));
 
     try {
       const bookingPromise = createBooking({
@@ -1947,16 +2262,18 @@ export default function MobileAppClient({
     }
 
     if (!uploadData.title.trim() || uploadData.title.trim().length < 5) {
-      setPostError("Vui lòng nhập tên trang phục (tối thiểu 5 ký tự)!");
+      setPostError("Vui lòng nhập tên món đồ (tối thiểu 5 ký tự)!");
       return;
     }
 
-    if (!uploadData.targetHeight.trim()) {
+    const isUploadingAccessory = ACCESSORY_CATEGORIES_LIST.includes(uploadData.category);
+
+    if (!isUploadingAccessory && !uploadData.targetHeight.trim()) {
       setPostError("Vui lòng nhập chiều cao mặc đẹp (bắt buộc, VD: 1m55 - 1m65)!");
       return;
     }
 
-    if (!uploadData.targetWeight.trim()) {
+    if (!isUploadingAccessory && !uploadData.targetWeight.trim()) {
       setPostError("Vui lòng nhập cân nặng mặc vừa (bắt buộc, VD: 45 - 52 kg)!");
       return;
     }
@@ -2027,24 +2344,22 @@ export default function MobileAppClient({
         return;
       }
 
-      // 💾 LƯU TRẠM GỬI LÀM MẶC ĐỊNH VÀO LOCALSTORAGE CHO CÁC LẦN UP TIẾP THEO
-      try {
-        if (uploadData.saveLocationAsDefault && typeof window !== "undefined") {
-          const fullAddr = [uploadData.address.trim(), uploadData.ward.trim(), uploadData.district.trim(), uploadData.province.trim()].filter(Boolean).join(", ") + (uploadData.note?.trim() ? ` (Ghi chú: ${uploadData.note.trim()})` : "");
-          localStorage.setItem("cloop_saved_pickup_location", JSON.stringify({
-            province: uploadData.province.trim(),
-            district: uploadData.district.trim(),
-            ward: uploadData.ward.trim(),
-            address: uploadData.address.trim(),
-            note: uploadData.note?.trim() || "",
-            phone: uploadData.ownerPhone.trim(),
-            provinceId: selectedGhnProvinceId,
-            districtId: selectedGhnDistrictId,
-            wardCode: selectedGhnWardCode,
-            fullAddress: fullAddr,
-          }));
-        }
-      } catch (_) {}
+      // 💾 ĐỒNG BỘ TRẠM GỬI LÀM MẶC ĐỊNH LÊN DATABASE SERVER CHO CÁC LẦN ĐĂNG TIẾP THEO (Không lưu PII vào LocalStorage)
+      if (uploadData.saveLocationAsDefault) {
+        const fullAddr = [uploadData.address.trim(), uploadData.ward.trim(), uploadData.district.trim(), uploadData.province.trim()].filter(Boolean).join(", ") + (uploadData.note?.trim() ? ` (Ghi chú: ${uploadData.note.trim()})` : "");
+        syncUnifiedAddress({
+          province: uploadData.province.trim(),
+          district: uploadData.district.trim(),
+          ward: uploadData.ward.trim(),
+          specificAddress: uploadData.address.trim(),
+          addressNote: uploadData.note?.trim() || "",
+          phone: uploadData.ownerPhone.trim(),
+          provinceId: selectedGhnProvinceId,
+          districtId: selectedGhnDistrictId,
+          wardCode: selectedGhnWardCode,
+          fullAddress: fullAddr,
+        }, true);
+      }
 
       let res: { success: boolean; error?: string };
       if (editingProductId) {
@@ -2348,12 +2663,6 @@ export default function MobileAppClient({
           }
         } : prev);
 
-        try {
-          const currentSaved = localStorage.getItem("cloop_auth_user");
-          const parsed = currentSaved ? JSON.parse(currentSaved) : {};
-          localStorage.setItem("cloop_auth_user", JSON.stringify({ ...parsed, name: profileForm.name }));
-        } catch (_) {}
-
         await refreshPersonalData();
         setTimeout(() => setProfileSaveSuccess(false), 2500);
       }
@@ -2394,16 +2703,6 @@ export default function MobileAppClient({
 
       if (res.success) {
         setBankSaveSuccess(true);
-        try {
-          if (typeof window !== "undefined") {
-            localStorage.setItem("cloop_saved_bank_info", JSON.stringify({
-              bankName: effectiveBank,
-              bankAccount: cleanAcc,
-              bankOwner: cleanHolder,
-            }));
-          }
-        } catch (_) {}
-
         setBankForm(prev => ({ ...prev, bankName: effectiveBank }));
 
         // ⚡ Đồng bộ ngay lập tức vào state nội bộ của Mobile App (0ms)
@@ -2511,10 +2810,12 @@ export default function MobileAppClient({
   // Tối ưu hóa diện tích màn hình di động: Ảnh tỉ lệ chuẩn 3:4, gom nhóm thông số gọn gàng, triệt tiêu khoảng trống thừa
   const renderLuxuryCompactProductCard = (p: any, idx: number) => {
     const isLiked = !!likedItems[p.id];
+    const isInCart = cartItems.some((item: any) => item.id === p.id);
     const isRent = p.listingTypeRaw !== "SELL";
-    const rentPrice = p.rentalPrice || p.price || 0;
-    const salePrice = p.salePrice || p.price || 0;
+    const rentPrice = Number(p.rentalPrice || p.price || 0);
+    const salePrice = Number(p.salePrice || p.price || 0);
     const currentPrice = isRent ? rentPrice : salePrice;
+    const package3Days = isRent ? calculatePackageRentalFee(p, 3) : currentPrice;
     const itemImg = p.image || p.primaryImage || p.images?.[0] || FALLBACK_CLOUDINARY_IMG;
     const ownerName = p.ownerName || "Chủ tủ CLOOP";
 
@@ -2522,6 +2823,7 @@ export default function MobileAppClient({
     const retailPrice = dbOrigPrice > currentPrice 
       ? dbOrigPrice 
       : (isRent && currentPrice > 0 ? currentPrice * 9 : (currentPrice > 0 ? Math.round(currentPrice * 1.6) : 0));
+    const savedAmount = Math.max(0, retailPrice - currentPrice);
     const savedPercent = retailPrice > currentPrice 
       ? Math.min(95, Math.max(10, Math.round(((retailPrice - currentPrice) / retailPrice) * 100))) 
       : 0;
@@ -2530,101 +2832,83 @@ export default function MobileAppClient({
       <div
         key={p.id || idx}
         onClick={() => setSelectedProduct(p)}
-        className="group bg-white rounded-xl overflow-hidden border border-stone-200/80 shadow-2xs hover:shadow-md flex flex-col text-[#16442C] cursor-pointer active:scale-[0.985] transition-all duration-200"
+        className={`group bg-white rounded-2xl overflow-hidden border ${vibeConfig.cardBorder} shadow-2xs hover:shadow-md flex flex-col cursor-pointer active:scale-[0.99] transition-all duration-300`}
       >
-        {/* 1. Khung Ảnh Chuẩn Thời Trang (Aspect 3:4) - Ôm sát form dáng, thanh thoát */}
+        {/* 1. Khung Ảnh (Aspect 3:4) đồng đều 100% */}
         <div className="relative w-full aspect-[3/4] bg-stone-100 overflow-hidden">
           <Image
             src={itemImg}
             alt={p.title}
             fill
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
+            className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
             unoptimized
             loading="lazy"
           />
 
-          {/* Badges Tối giản: Thuê / Sở hữu + % Tiết kiệm */}
-          <div className="absolute top-1.5 left-1.5 flex items-center gap-1 z-10">
+          {/* Nhãn Thuê / Mua + Mức Ưu Đãi Tiết Kiệm % */}
+          <div className="absolute top-2 left-2 flex items-center gap-1 z-10">
             {Boolean(p.boostExpiresAt && new Date(p.boostExpiresAt) > new Date()) && (
-              <span className="bg-[#183A2D] text-white text-[8.5px] font-bold px-1.5 py-0.5 rounded shadow-2xs uppercase tracking-wider">
-                TOP
+              <span className="bg-amber-400 text-stone-950 text-[8.5px] font-black px-1.5 py-0.5 rounded-full shadow-2xs">
+                THỊNH HÀNH
               </span>
             )}
-            <span className={`text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-2xs ${
-              isRent ? "bg-[#1E5638]/95" : "bg-[#C92A2A]/95"
+            <span className={`text-[9.5px] font-bold px-2 py-0.5 rounded-full shadow-2xs ${
+              isRent ? vibeConfig.rentBadge : vibeConfig.buyBadge
             }`}>
               {isRent ? "Thuê" : "Mua"}
             </span>
             {savedPercent > 0 && (
-              <span className="bg-[#C92A2A] text-white text-[8.5px] font-black px-1 py-0.5 rounded shadow-2xs font-mono">
+              <span className={`${vibeConfig.discountBadge} text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-2xs font-mono`}>
                 -{savedPercent}%
               </span>
             )}
           </div>
 
-          {/* Nút yêu thích (Tim) nhỏ gọn góc trên phải */}
           <button
             type="button"
             onClick={(e) => handleToggleLike(p.id, e)}
-            className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-white/90 backdrop-blur-xs flex items-center justify-center text-stone-500 hover:text-red-500 transition shadow-2xs z-10 cursor-pointer"
+            className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center text-stone-600 hover:scale-110 transition shadow-2xs z-10 cursor-pointer"
+            title="Lưu yêu thích"
           >
-            <Heart size={12} className={isLiked ? "fill-[#C92A2A] text-[#C92A2A]" : "text-stone-400"} />
+            <Heart size={13} className={isLiked ? "fill-[#C26475] text-[#C26475]" : "text-stone-600"} />
           </button>
-
-          {/* Tag dịp mặc nếu có */}
-          {p.occasion && (
-            <div className="absolute bottom-1.5 left-1.5 bg-black/60 backdrop-blur-xs text-white text-[8.5px] font-medium px-1.5 py-0.5 rounded z-10">
-              {p.occasion}
-            </div>
-          )}
         </div>
 
-        {/* 2. Thân Card Cô Đọng & Thông Minh: Loại bỏ hoàn toàn khoảng trống thừa */}
-        <div className="p-2 flex flex-col justify-between flex-1">
-          <div>
-            {/* Tên trang phục: 2 dòng sắc nét, đều đặn */}
-            <h3 className="font-heading font-semibold text-[11px] sm:text-xs text-[#16442C] line-clamp-2 leading-tight min-h-[28px] group-hover:text-black">
+        {/* 2. Thân Card thông minh: Tên váy & Size + Giá Sale/Thuê + Hộp đối chiếu Giá Gốc & Tiết Kiệm */}
+        <div className="p-2.5 space-y-1.5 flex-1 flex flex-col justify-between">
+          <div className="flex items-center justify-between gap-1">
+            <h3 className="font-body font-bold text-[12px] text-stone-900 line-clamp-1 leading-snug flex-1">
               {p.title}
             </h3>
+            <span className="text-[9.5px] text-stone-600 font-bold bg-stone-100 px-1.5 py-0.5 rounded shrink-0">
+              {p.size || "M"}
+            </span>
+          </div>
 
-            {/* Dòng giá gom gọn trên 1 hàng ngang: Giá chính nổi bật + Giá gốc gạch ngang */}
-            <div className="flex items-baseline gap-1 mt-1">
-              <span className="font-heading font-black text-xs sm:text-[13px] text-[#1E5638]">
-                {currentPrice.toLocaleString("vi-VN")}đ
-              </span>
-              {isRent && (
-                <span className="text-[9px] text-stone-500 font-normal">/ngày</span>
-              )}
-              {retailPrice > 0 && (
-                <span className="text-[9px] text-stone-400 line-through font-mono ml-auto">
+          <div className="space-y-1">
+            <div className="flex items-baseline justify-between gap-1">
+              <div className="flex items-baseline gap-0.5 min-w-0">
+                <span className={`font-heading font-black text-[13.5px] ${vibeConfig.priceText} whitespace-nowrap`}>
+                  {currentPrice.toLocaleString("vi-VN")}đ
+                </span>
+                {isRent && (
+                  <span className="text-[9.5px] text-stone-500 font-semibold whitespace-nowrap">/ngày</span>
+                )}
+              </div>
+              {retailPrice > currentPrice && (
+                <span className="text-[9.5px] text-stone-400 line-through font-mono whitespace-nowrap shrink-0">
                   {retailPrice.toLocaleString("vi-VN")}đ
                 </span>
               )}
             </div>
-          </div>
 
-          {/* Dòng thông số tinh tế: Size • Tình trạng • @chủ_tủ gộp chung 1 dòng duy nhất */}
-          <div className="flex items-center justify-between text-[10px] text-stone-500 mt-1.5 pt-1.5 border-t border-stone-100">
-            <span className="truncate">
-              Size {p.size || "M"}{p.condition ? ` • ${p.condition}` : ""}
-            </span>
-            <span 
-              onClick={(e) => {
-                e.stopPropagation();
-                setViewingClosetOwner({
-                  id: p.userId || 'official',
-                  name: ownerName,
-                  avatar: p.ownerAvatar || null,
-                  rating: p.rating || 5.0,
-                  reviewCount: p.reviewCount || 0,
-                  completedOrders: p.completedOrders || 0,
-                  location: p.location || p.province || "Toàn quốc",
-                });
-              }}
-              className="text-stone-400 truncate max-w-[65px] hover:text-emerald-800 hover:underline cursor-pointer ml-1"
-            >
-              @{ownerName.toLowerCase().replace(/\s+/g, ".")}
-            </span>
+            {savedAmount > 0 && (
+              <div className="pt-0.5">
+                <span className="inline-block text-[9.5px] font-bold text-rose-700 bg-rose-50 border border-rose-200/70 px-1.5 py-0.5 rounded-md font-mono">
+                  Tiết kiệm {savedAmount.toLocaleString("vi-VN")}đ
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -2633,115 +2917,292 @@ export default function MobileAppClient({
 
   return (
     // �️ KHUNG NGOÀI THOÁNG ĐÃNG
-    <div className="min-h-screen bg-[#FAF8F5] sm:bg-[#EAE7E1] py-0 sm:py-8 flex justify-center selection:bg-[#1E5638] selection:text-white">
+    <div className={`h-dvh overflow-hidden ${vibeConfig.outerBg} py-0 sm:py-2 flex items-center justify-center transition-colors duration-300`}>
       
-      {/* 📱 KHUNG MÁY APP: TRẢI NGHIỆM 100% NATIVE MOBILE APP */}
+      {/* 📱 KHUNG MÁY APP CÂN ĐỐI 100% TRONG MÀN HÌNH */}
       <div 
         ref={scrollContainerRef}
-        className="w-full sm:max-w-[430px] min-h-screen sm:min-h-[890px] sm:max-h-[920px] bg-[#FBF9F5] text-[#16442C] antialiased sm:shadow-[0_25px_60px_rgba(0,0,0,0.18)] sm:rounded-[44px] sm:border-[6px] border-stone-800/80 relative overflow-y-auto overflow-x-hidden select-none pb-24 no-scrollbar flex flex-col"
+        className={`w-full sm:max-w-[420px] h-dvh sm:h-[calc(100dvh-16px)] ${vibeConfig.appBg} antialiased sm:shadow-[0_20px_50px_rgba(0,0,0,0.18)] sm:rounded-[36px] sm:border-[5px] border-stone-900 relative overflow-y-auto overflow-x-hidden select-none no-scrollbar flex flex-col transition-colors duration-300`}
       >
         
         {/* ========================================================
             � 1. HEADER NATIVE APP TINH TẾ & THOÁNG ĐÃNG
             ======================================================== */}
-        <div className="sticky top-0 z-40 bg-[#FBF9F5]/95 backdrop-blur-md pt-3.5 pb-2.5 px-4 border-b border-stone-200/60 transition-colors">
-          
-          {/* Tiêu đề & Logo chuẩn nhận diện CLOOP: Thoáng đãng, tinh tế, sang trọng */}
-          <div className="flex items-center justify-between mb-2.5 pt-0.5">
-            <div className="flex items-center gap-2">
-              <div className="relative w-8 h-8 flex items-center justify-center shrink-0">
-                <Image 
-                  src="/loogo.png" 
-                  alt="CLOOP Brand Logo" 
-                  width={32} 
-                  height={32} 
-                  className="mix-blend-multiply drop-shadow-xs" 
-                />
-              </div>
-              <span className="font-brand-title text-[22px] font-black tracking-[0.14em] text-[#1E5638] leading-none">
-                CLOOP
-              </span>
-            </div>
-
-            {/* �� �� NÚT CHUYỂN ĐỔI NGÔN NGỮ ĐƠN GỌN GÀNG (LÁ CỜ QUỐC KỲ CHUẨN SVG + VIE / ENG) */}
-            <button
-              type="button"
-              onClick={() => toggleLang(lang === "vi" ? "en" : "vi")}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/95 hover:bg-stone-100 active:scale-95 border border-stone-200 shadow-2xs transition-all cursor-pointer select-none shrink-0"
-              title={lang === "vi" ? "Chuyển sang English" : "Chuyển sang Tiếng Việt"}
-            >
-              {lang === "vi" ? (
-                <svg className="w-4 h-2.5 rounded-xs shadow-2xs shrink-0 overflow-hidden" viewBox="0 0 30 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect width="30" height="20" fill="#DA251D"/>
-                  <polygon points="15,4 16.5,8.8 21.5,8.8 17.5,11.8 19,16.5 15,13.5 11,16.5 12.5,11.8 8.5,8.8 13.5,8.8" fill="#FFFF00"/>
-                </svg>
-              ) : (
-                <svg className="w-4 h-2.5 rounded-xs shadow-2xs shrink-0 overflow-hidden" viewBox="0 0 60 30" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <clipPath id="uk-flag-mobile">
-                    <rect width="60" height="30" />
-                  </clipPath>
-                  <g clipPath="url(#uk-flag-mobile)">
-                    <rect width="60" height="30" fill="#012169"/>
-                    <path d="M0,0 L60,30 M60,0 L0,30" stroke="#FFF" strokeWidth="6"/>
-                    <path d="M0,0 L60,30 M60,0 L0,30" stroke="#C8102E" strokeWidth="4"/>
-                    <path d="M30,0 v30 M0,15 h60" stroke="#FFF" strokeWidth="10"/>
-                    <path d="M30,0 v30 M0,15 h60" stroke="#C8102E" strokeWidth="6"/>
-                  </g>
-                </svg>
-              )}
-              <span className="text-[11px] font-bold text-[#16442C] tracking-tight">
-                {lang === "vi" ? "Vie" : "Eng"}
-              </span>
-            </button>
-          </div>
-
-          {/* Ô TÌM KIẾM TRONG APP (HIỂN THỊ Ở TAB KHÁM PHÁ & SÀN ĐỒ) */}
-          {(activeTab === "home" || activeTab === "shop") && (
-            <div className="flex items-center gap-1.5">
-              <div className="relative flex-1 flex items-center">
-                <Search size={15} className="absolute left-3.5 text-stone-400 pointer-events-none" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={lang === "vi" ? "Tìm đầm tiệc cưới, dạ hội, áo dài..." : "Search dresses, gala, wedding outfits..."}
-                  className="w-full h-10 bg-white text-stone-900 placeholder-stone-400 pl-9 pr-8 rounded-xl text-xs font-medium outline-none border border-stone-200/90 shadow-2xs focus:border-[#1E5638] focus:ring-1 focus:ring-[#1E5638]"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-2.5 text-stone-400 hover:text-stone-600 p-1 cursor-pointer"
-                  >
-                    <X size={13} />
-                  </button>
-                )}
-              </div>
+        <div className={`sticky top-0 z-40 ${vibeConfig.headerBg} backdrop-blur-xl pt-2.5 pb-2 px-3 border-b shrink-0 transition-colors duration-300 space-y-2`}>
+          {/* HÀNG 1: LOGO + LỜI CHÀO THÂN THIỆN BÊN TRÁI + 2 ICON BÊN PHẢI */}
+          <div className="relative flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
               <button
                 type="button"
-                onClick={() => setIsVoiceSearchOpen(true)}
-                className="w-10 h-10 rounded-xl bg-white border border-stone-200/90 text-[#16442C] hover:bg-stone-50 flex items-center justify-center shadow-2xs active:scale-95 transition-transform shrink-0 cursor-pointer"
-                title="Tìm kiếm bằng giọng nói"
+                onClick={() => {
+                  setActiveTab("home");
+                  setListingMode("all");
+                  setSelectedOccasion("Tất cả");
+                  setSearchQuery("");
+                }}
+                className="flex items-center gap-1.5 cursor-pointer shrink-0"
               >
-                <Mic size={18} />
+                <img
+                  src="/loogo.png"
+                  alt="CLOOP"
+                  className="w-6 h-4 object-contain mix-blend-multiply"
+                />
+                <span className="font-brand-title text-[15.5px] font-black tracking-[0.12em] text-stone-900 leading-none">
+                  CLOOP
+                </span>
               </button>
+
+              <span className="h-3.5 w-px bg-stone-300/90 shrink-0" />
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("closet")}
+                className="flex items-center gap-1 text-[11.5px] font-medium text-stone-600 hover:text-stone-900 truncate cursor-pointer"
+              >
+                <style>{`
+                  @keyframes cloopHandWave {
+                    0%, 60%, 100% { transform: rotate(0deg); }
+                    10%, 30% { transform: rotate(16deg); }
+                    20% { transform: rotate(-10deg); }
+                    40% { transform: rotate(-6deg); }
+                    50% { transform: rotate(10deg); }
+                  }
+                `}</style>
+                <span className="truncate">
+                  {lang === "vi"
+                    ? (closetData?.user?.name ? `Xin chào, ${closetData.user.name}` : "Xin chào")
+                    : (closetData?.user?.name ? `Hello, ${closetData.user.name}` : "Hello")}
+                </span>
+                <span
+                  aria-hidden="true"
+                  className="inline-block text-[13px] leading-none shrink-0"
+                  style={{
+                    transformOrigin: "70% 70%",
+                    animation: "cloopHandWave 2.4s ease-in-out infinite",
+                  }}
+                >
+                  👋
+                </span>
+              </button>
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsTonePickerOpen((prev) => !prev)}
+                className="w-8 h-8 rounded-full bg-white border border-stone-200/90 shadow-2xs flex items-center justify-center cursor-pointer hover:bg-stone-50"
+                title="Đổi tone màu giao diện"
+              >
+                <span className={`w-3.5 h-3.5 rounded-full ${vibeConfig.primaryBtn}`} />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("orders");
+                  setOrderSubTab("cart");
+                }}
+                className="relative w-8 h-8 rounded-full bg-white border border-stone-200/90 text-stone-700 hover:bg-stone-50 flex items-center justify-center shadow-2xs cursor-pointer"
+                title="Giỏ đồ"
+              >
+                <ShoppingBag size={14} />
+                {cartItems.length > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-1 rounded-full bg-[#C26475] text-white text-[8px] font-extrabold flex items-center justify-center">
+                    {cartItems.length}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {isTonePickerOpen && (
+              <div className="absolute top-9 right-0 z-50 bg-white border border-stone-200 rounded-2xl p-2 shadow-xl flex items-center gap-2">
+                {([
+                  { id: "rose_champagne", label: "Hồng Trà", dot: "bg-gradient-to-tr from-[#C26475] to-[#F5E1DA]" },
+                  { id: "milk_tea_oat", label: "Trà Sữa", dot: "bg-gradient-to-tr from-[#9C6644] to-[#EDE0D4]" },
+                  { id: "misty_lavender", label: "Tím Sương", dot: "bg-gradient-to-tr from-[#8062D6] to-[#E9E2FA]" },
+                  { id: "cloud_porcelain", label: "Xanh Mây", dot: "bg-gradient-to-tr from-[#4A81AB] to-[#E3EFF8]" },
+                  { id: "peach_blossom", label: "Hồng Đào", dot: "bg-gradient-to-tr from-[#E07A68] to-[#FCE8E2]" },
+                  { id: "matcha_cream", label: "Matcha Sữa", dot: "bg-gradient-to-tr from-[#6D9471] to-[#E9F2E6]" },
+                  { id: "rose_noir", label: "Đen Vogue", dot: "bg-gradient-to-tr from-[#FF2E63] to-[#141418]" },
+                ] as const).map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => {
+                      handleSelectVibe(t.id, t.label);
+                      setIsTonePickerOpen(false);
+                    }}
+                    title={`Tone: ${t.label}`}
+                    className={`w-4.5 h-4.5 rounded-full ${t.dot} border border-stone-300 transition-transform cursor-pointer ${
+                      mobileVibe === t.id ? "scale-125 ring-2 ring-offset-1 ring-stone-800" : "opacity-80 hover:opacity-100"
+                    }`}
+                  />
+                ))}
+                <button
+                  type="button"
+                  onClick={() => toggleLang(lang === "vi" ? "en" : "vi")}
+                  className="h-6 px-2 rounded-lg bg-stone-100 hover:bg-stone-200 text-[9.5px] font-extrabold text-stone-800 cursor-pointer"
+                >
+                  {lang === "vi" ? "VN" : "EN"}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* HÀNG 2: THANH TÌM KIẾM TRẢI RỘNG (TÍCH HỢP NÚT CAMERA BÊN TRONG) */}
+          <div className="relative flex items-center h-9 bg-white rounded-full border border-stone-200/90 shadow-2xs focus-within:border-stone-500">
+            <Search size={14} className="ml-3 text-stone-400 shrink-0 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                if (activeTab !== "home" && activeTab !== "shop") setActiveTab("home");
+              }}
+              placeholder={
+                productGroup === "accessories"
+                  ? "Tìm túi xách, giày cao gót, trang sức..."
+                  : "Tìm đầm dự tiệc, váy, áo dài..."
+              }
+              className="w-full h-full bg-transparent text-stone-900 placeholder-stone-400 pl-2 pr-12 text-xs font-medium outline-none"
+            />
+            <div className="absolute right-1 flex items-center gap-0.5">
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="text-stone-400 hover:text-stone-600 p-1 cursor-pointer"
+                >
+                  <X size={13} />
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setIsVisualSearchOpen(true)}
-                className="w-10 h-10 rounded-xl bg-[#1E5638] text-white flex items-center justify-center shadow-xs active:scale-95 transition-transform shrink-0 cursor-pointer"
-                title="Tìm kiếm bằng hình ảnh AI"
+                className={`w-7 h-7 rounded-full ${vibeConfig.primaryBtn} flex items-center justify-center transition cursor-pointer`}
+                title="Tìm kiếm trang phục bằng hình ảnh"
               >
-                <Camera size={18} />
+                <Camera size={13} />
+              </button>
+            </div>
+          </div>
+
+          {/* HÀNG 3: TÁCH LUỒNG QUẦN ÁO RIÊNG / PHỤ KIỆN RIÊNG KÈM DANH MỤC CON TƯƠNG ỨNG */}
+          {(activeTab === "home" || activeTab === "shop") && (
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+              {/* Cụm chuyển đổi 2 luồng chính: Quần áo | Phụ kiện */}
+              <div className="flex items-center bg-stone-200/70 p-0.5 rounded-full shrink-0 border border-stone-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProductGroup("clothing");
+                    setSelectedOccasion("Tất cả");
+                  }}
+                  className={`h-6 px-2.5 rounded-full text-[11px] font-extrabold transition-all cursor-pointer whitespace-nowrap ${
+                    productGroup === "clothing"
+                      ? "bg-stone-900 text-white shadow-2xs"
+                      : "text-stone-600 hover:text-stone-900"
+                  }`}
+                >
+                  Quần áo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProductGroup("accessories");
+                    setSelectedOccasion("Tất cả");
+                  }}
+                  className={`h-6 px-2.5 rounded-full text-[11px] font-extrabold transition-all cursor-pointer whitespace-nowrap ${
+                    productGroup === "accessories"
+                      ? "bg-stone-900 text-white shadow-2xs"
+                      : "text-stone-600 hover:text-stone-900"
+                  }`}
+                >
+                  Phụ kiện
+                </button>
+              </div>
+
+              <span className="h-4 w-px bg-stone-300 shrink-0" />
+
+              {/* Dải danh mục con riêng biệt theo từng luồng */}
+              {(productGroup === "accessories" ? ACCESSORY_TABS : CLOTHING_TABS).map((tab) => {
+                const isActive = selectedOccasion === tab.name;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedOccasion(tab.name);
+                      if (tab.name === "Tất cả") setListingMode("all");
+                    }}
+                    className={`h-7 px-3 rounded-full text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer shrink-0 ${
+                      isActive ? vibeConfig.activePill : vibeConfig.inactivePill
+                    }`}
+                  >
+                    {tab.name}
+                  </button>
+                );
+              })}
+
+              <button
+                type="button"
+                onClick={() => setIsFilterOpen((prev) => !prev)}
+                className={`h-7 px-3 rounded-full text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer shrink-0 border ${
+                  isFilterOpen || selectedSizeFilter !== "ALL" || selectedPriceFilter !== "ALL" || selectedSortBy !== "RECOMMENDED"
+                    ? vibeConfig.activePill
+                    : "bg-white text-stone-700 border-stone-200/90"
+                }`}
+              >
+                Lọc Size &amp; Giá
               </button>
             </div>
           )}
 
-          {/* TOAST THÔNG BÁO CHUYỂN ĐỔI NGÔN NGỮ */}
+          {/* KHAY LỌC SIZE / GIÁ / SẮP XẾP (CHỈ BẬT KHI BẤM) */}
+          {isFilterOpen && (activeTab === "home" || activeTab === "shop") && (
+            <div className="bg-white p-2 rounded-xl border border-stone-200/90 shadow-2xs grid grid-cols-3 gap-1.5">
+              <select
+                value={selectedSizeFilter}
+                onChange={(e) => setSelectedSizeFilter(e.target.value)}
+                className="h-7.5 px-1.5 rounded-lg bg-stone-50 border border-stone-200/90 text-[10px] font-bold text-stone-700 outline-none cursor-pointer"
+              >
+                <option value="ALL">Mọi Size</option>
+                <option value="S">Size S</option>
+                <option value="M">Size M</option>
+                <option value="L">Size L</option>
+                <option value="XL">Size XL</option>
+              </select>
+
+              <select
+                value={selectedPriceFilter}
+                onChange={(e) => setSelectedPriceFilter(e.target.value as any)}
+                className="h-7.5 px-1.5 rounded-lg bg-stone-50 border border-stone-200/90 text-[10px] font-bold text-stone-700 outline-none cursor-pointer"
+              >
+                <option value="ALL">Mọi mức giá</option>
+                <option value="UNDER_100K">Dưới 100k</option>
+                <option value="100K_200K">100k - 200k</option>
+                <option value="OVER_200K">Trên 200k</option>
+              </select>
+
+              <select
+                value={selectedSortBy}
+                onChange={(e) => setSelectedSortBy(e.target.value as any)}
+                className="h-7.5 px-1.5 rounded-lg bg-stone-50 border border-stone-200/90 text-[10px] font-bold text-stone-700 outline-none cursor-pointer"
+              >
+                <option value="RECOMMENDED">Đề xuất</option>
+                <option value="PRICE_ASC">Giá tăng dần</option>
+                <option value="PRICE_DESC">Giá giảm dần</option>
+              </select>
+            </div>
+          )}
+
           {langToast && (
-            <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-[#1E5638] text-white text-[11px] font-bold px-3 py-1 rounded-full shadow-md border border-emerald-600/60 animate-bounce">
+            <div className={`absolute top-11 left-1/2 -translate-x-1/2 z-50 ${vibeConfig.activePill} text-[10.5px] font-bold px-3 py-1 rounded-full shadow-md whitespace-nowrap`}>
               {langToast}
             </div>
           )}
+
+            {/* �� �� NÚT CHUYỂN ĐỔI NGÔN NGỮ ĐƠN GỌN GÀNG (LÁ CỜ QUỐC KỲ CHUẨN SVG + VIE / ENG) */}
         </div>
 
         {/* ========================================================
@@ -2749,105 +3210,20 @@ export default function MobileAppClient({
             ======================================================== */}
 
         {/* ========================================================
-             TAB 1: KHÁM PHÁ (HOME) - BANNER & BST NỔI BẬT
+             TAB 1: KHÁM PHÁ (HOME) - THOÁNG ĐÃNG CHUẨN MÀN ĐIỆN THOẠI
             ======================================================== */}
         {activeTab === "home" && (
           <>
-            {/* BANNER BÌA TRÀN VIỀN (FULL-BLEED EDGE-TO-EDGE) */}
-            <div 
-              onClick={() => setActiveTab("shop")}
-              className="w-full shrink-0 relative overflow-hidden cursor-pointer border-b border-stone-200/80 group"
-              title="Khám phá toàn bộ sàn đồ tuần hoàn"
-            >
-              <img
-                src="/Mobile-cover.jpg"
-                alt="CLOOP - Mặc Đẹp. Dùng Lâu. Thuê • Sở Hữu • Trao Đổi"
-                className="w-full h-auto block object-cover group-hover:scale-[1.01] transition-transform duration-500"
-              />
-              <div className="absolute inset-0 bg-black/0 hover:bg-black/5 transition-colors" />
-            </div>
-
-            {/* THÔNG SỐ TÁC ĐỘNG TUẦN HOÀN */}
-            <div className="mx-3 mt-3 bg-white rounded-xl p-2.5 border border-stone-200/70 shadow-2xs flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-[#1E5638] ring-2 ring-red-300/80 shrink-0 ml-1" />
-                <div>
-                  <p className="text-[11px] font-bold text-[#16442C]">
-                    {totalProductsCount > 0 
-                      ? (lang === "vi" ? `${totalProductsCount * 120}+ lượt mặc tuần hoàn` : `${totalProductsCount * 120}+ circular rotations`) 
-                      : (lang === "vi" ? "Cộng đồng thời trang CLOOP" : "CLOOP Fashion Community")}
-                  </p>
-                  <p className="text-[9.5px] text-stone-500">
-                    {lang === "vi" ? "Đã giảm 65 tấn khí thải CO2e cùng cộng đồng" : "Saved 65 tons of CO2e with community"}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  if (!currentUser) {
-                    setShowAuthModal(true);
-                  } else {
-                    handleOpenCreateModal();
-                  }
-                }}
-                className="px-2.5 py-1.5 rounded-lg bg-[#1E5638] text-white text-[10px] font-bold shadow-2xs hover:bg-[#236341] transition active:scale-95 shrink-0 cursor-pointer"
-              >
-                {lang === "vi" ? "+ Đăng đồ" : "+ List"}
-              </button>
-            </div>
-
-            {/* DÃY DANH MỤC LỰA CHỌN ĐI TIỆC */}
-            <div className="px-3 pt-2 pb-2">
-              <div className="flex items-center justify-between mb-2 px-1">
-                <h2 className="font-heading font-black text-sm uppercase tracking-wider text-[#16442C]">
-                  {lang === "vi" ? "Gợi Ý Trang Phục Nổi Bật" : "Featured Outfits"}
-                </h2>
-                <button
-                  onClick={() => setActiveTab("shop")}
-                  className="text-[11px] font-bold text-[#C92A2A] hover:underline cursor-pointer flex items-center gap-0.5"
-                >
-                  {lang === "vi" ? "Xem tất cả →" : "View all →"}
-                </button>
-              </div>
-
-              {/* Dãy nút dịp tiệc */}
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
-                {OCCASIONS_TABS.map((tab) => {
-                  const isActive = selectedOccasion === tab.name;
-                  const label = lang === "en" 
-                    ? (tab.name === "Tất cả" ? "All" : tab.name === "Tiệc cưới" ? "Wedding" : tab.name === "Dạ hội" ? "Gala" : tab.name === "Sinh nhật" ? "Birthday" : tab.name === "Áo dài" ? "Heritage" : tab.name === "Phụ kiện" ? "Accessories" : tab.name)
-                    : tab.name;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => setSelectedOccasion(tab.name)}
-                      className={`px-3.5 py-1.5 rounded-full text-[11.5px] font-bold whitespace-nowrap transition-all cursor-pointer ${
-                        isActive
-                          ? "bg-[#1E5638] text-white shadow-xs"
-                          : "bg-white text-stone-700 hover:bg-stone-100 border border-stone-200/80"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* LƯỚI CARD SẢN PHẨM GỢI Ý - ẢNH TO NỔI BẬT CHUẨN E-COMMERCE */}
-            <div className="px-2.5 pb-28 flex-1">
-              {/* Chỉ báo trạng thái Snapshot hoặc Đang đồng bộ */}
+            <div className="px-3 pt-2.5 pb-6 space-y-4 flex-1">
               {usingSnapshot && (
-                <div className="mb-2.5 px-3 py-1.5 bg-stone-100/90 rounded-xl border border-stone-200/80 text-center text-[11px] font-medium text-stone-600">
+                <div className="px-3 py-1.5 bg-stone-100/90 rounded-xl border border-stone-200/80 text-center text-[11px] font-medium text-stone-600">
                   {isSyncing ? "Đang cập nhật danh mục mới nhất..." : "Đang hiển thị bản sao lưu đệm"}
                 </div>
               )}
 
               {isSyncing && products.length === 0 ? (
                 <div className="py-12 text-center text-stone-500 bg-white rounded-2xl border border-stone-200/80 p-6 space-y-3">
-                  <div className="w-6 h-6 border-2 border-[#1E5638]/20 border-t-[#1E5638] rounded-full animate-spin mx-auto" />
+                  <div className="w-6 h-6 border-2 border-stone-300 border-t-stone-900 rounded-full animate-spin mx-auto" />
                   <p className="text-xs font-medium text-stone-600">Đang đồng bộ danh mục trang phục...</p>
                 </div>
               ) : fetchStatus === "ERROR" && products.length === 0 ? (
@@ -2856,111 +3232,417 @@ export default function MobileAppClient({
                   <p className="text-[11px] text-stone-500">Dữ liệu trên sàn vẫn an toàn. Vui lòng thử kết nối lại.</p>
                   <button
                     onClick={() => { retryCountRef.current = 0; recoverFromError(); }}
-                    className="mt-2 px-4 py-1.5 bg-[#1E5638] text-white text-xs font-bold rounded-full cursor-pointer"
+                    className={`mt-2 px-4 py-1.5 ${vibeConfig.primaryBtn} text-xs font-bold rounded-xl cursor-pointer`}
                   >
                     Thử kết nối lại
                   </button>
                 </div>
               ) : filteredProducts.length === 0 ? (
-                <div className="py-12 text-center text-stone-500 bg-white rounded-2xl border border-stone-200/80 p-6 space-y-2">
-                  <p className="text-xs font-bold text-stone-700">Chưa có trang phục trong dịp &ldquo;{selectedOccasion}&rdquo;</p>
-                  <button
-                    onClick={() => { setSelectedOccasion("Tất cả"); setSearchQuery(""); }}
-                    className="mt-1 px-3.5 py-1.5 bg-[#1E5638] text-white text-xs font-bold rounded-full cursor-pointer"
-                  >
-                    Xem tất cả trang phục
-                  </button>
+                <div className="py-10 text-center text-stone-500 bg-white rounded-2xl border border-stone-200/80 p-6 space-y-2.5">
+                  <p className="text-xs font-bold text-stone-800">
+                    {productGroup === "accessories"
+                      ? `Chưa có món phụ kiện nào trong mục "${selectedOccasion}"`
+                      : "Không có trang phục khớp với bộ lọc hiện tại"}
+                  </p>
+                  <p className="text-[11px] text-stone-500">
+                    {productGroup === "accessories"
+                      ? "Bạn có thể đăng túi xách, giày guốc, trang sức vào mục Phụ kiện hoặc chuyển sang xem Quần áo."
+                      : "Thử đổi kích cỡ, mức giá hoặc danh mục khác để xem thêm đồ."}
+                  </p>
+                  <div className="flex items-center justify-center gap-2 pt-1">
+                    {productGroup === "accessories" && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUploadData((prev) => ({
+                            ...prev,
+                            category: "Túi & Ví dự tiệc",
+                            size: "Freesize",
+                          }));
+                          setIsUploadModalOpen(true);
+                        }}
+                        className={`px-3.5 py-1.5 ${vibeConfig.primaryBtn} text-xs font-bold rounded-xl cursor-pointer`}
+                      >
+                        + Đăng phụ kiện
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProductGroup("clothing");
+                        setListingMode("all");
+                        setSelectedOccasion("Tất cả");
+                        setSelectedSizeFilter("ALL");
+                        setSelectedPriceFilter("ALL");
+                        setOnlyLikedFilter(false);
+                        setSearchQuery("");
+                      }}
+                      className="px-3.5 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold rounded-xl cursor-pointer"
+                    >
+                      Xem tất cả quần áo
+                    </button>
+                  </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  {filteredProducts.map(renderLuxuryCompactProductCard)}
-                </div>
+                <>
+                  {(() => {
+                    // 1. Sắp xếp thông minh cho mục THỊNH HÀNH: ưu tiên Đầm/Váy/Áo dài rực rỡ & đồ đang Đẩy Top
+                    const getTrendingShowcasePriority = (item: any): number => {
+                      const t = `${item?.title || ""} ${item?.category || ""}`.toLowerCase();
+                      if (t.includes("bomber") || t.includes("khoác")) return 0;
+                      if (t.includes("đầm") || t.includes("váy") || t.includes("áo dài")) return 3;
+                      return 1;
+                    };
+
+                    const trendingItems = [...filteredProducts]
+                      .sort((a: any, b: any) => {
+                        const aPrio = getTrendingShowcasePriority(a);
+                        const bPrio = getTrendingShowcasePriority(b);
+                        if (bPrio !== aPrio) return bPrio - aPrio;
+                        const aBoost = Boolean(a.boostExpiresAt && new Date(a.boostExpiresAt) > new Date()) ? 1 : 0;
+                        const bBoost = Boolean(b.boostExpiresAt && new Date(b.boostExpiresAt) > new Date()) ? 1 : 0;
+                        if (bBoost !== aBoost) return bBoost - aBoost;
+                        const aScore = Number(a.boostScore || 0);
+                        const bScore = Number(b.boostScore || 0);
+                        if (bScore !== aScore) return bScore - aScore;
+                        return 0;
+                      })
+                      .slice(0, 6);
+
+                    // Lưu ID của 3 mẫu đầu tiên trong Thịnh Hành để xoay vòng thông minh, tránh lặp lại y hệt ở dòng đầu của mục Thuê & Thanh lý
+                    const topTrendingLeadIds = new Set(trendingItems.slice(0, 3).map((item: any) => item.id));
+
+                    const allRentItems = filteredProducts.filter((p: any) => p.listingTypeRaw !== "SELL");
+                    const smartRentItems = [
+                      ...allRentItems.filter((p: any) => !topTrendingLeadIds.has(p.id)),
+                      ...allRentItems.filter((p: any) => topTrendingLeadIds.has(p.id)),
+                    ];
+
+                    const allSaleItems = filteredProducts.filter((p: any) => p.listingTypeRaw === "SELL");
+                    const smartSaleItems = [
+                      ...allSaleItems.filter((p: any) => !topTrendingLeadIds.has(p.id)),
+                      ...allSaleItems.filter((p: any) => topTrendingLeadIds.has(p.id)),
+                    ];
+
+                    return (
+                      <div className="space-y-4">
+                        <style>{`
+                          @keyframes cloopTrendingSheen {
+                            0% { transform: translateX(-140%) skewX(-22deg); }
+                            45%, 100% { transform: translateX(220%) skewX(-22deg); }
+                          }
+                          @keyframes cloopFlamePulse {
+                            0%, 100% { transform: scale(1); box-shadow: 0 2px 10px rgba(244, 63, 94, 0.45); }
+                            50% { transform: scale(1.04); box-shadow: 0 4px 14px rgba(245, 158, 11, 0.65); }
+                          }
+                        `}</style>
+
+                        {/* THANH CHUYỂN MỤC GỌN GÀNG */}
+                        <div className="grid grid-cols-3 gap-1.5 bg-stone-200/60 p-1 rounded-xl border border-stone-200/80">
+                          <button
+                            type="button"
+                            onClick={() => setListingMode("all")}
+                            className={`h-7.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer whitespace-nowrap ${
+                              listingMode === "all"
+                                ? "bg-white text-stone-900 shadow-2xs"
+                                : "text-stone-600 hover:text-stone-900"
+                            }`}
+                          >
+                            Tất cả
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setListingMode(listingMode === "rent" ? "all" : "rent")}
+                            className={`h-7.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer whitespace-nowrap ${
+                              listingMode === "rent"
+                                ? "bg-[#1B4332] text-white shadow-2xs"
+                                : "text-stone-600 hover:text-stone-900"
+                            }`}
+                          >
+                            Thuê theo ngày
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setListingMode(listingMode === "sell" ? "all" : "sell")}
+                            className={`h-7.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer whitespace-nowrap ${
+                              listingMode === "sell"
+                                ? "bg-rose-600 text-white shadow-2xs"
+                                : "text-stone-600 hover:text-stone-900"
+                            }`}
+                          >
+                            Mua thanh lý
+                          </button>
+                        </div>
+
+                        {/* ====================================================
+                            MỤC 1: THỊNH HÀNH TUẦN NÀY (HIỆU ỨNG RỰC RỠ ÁNH KIM & LỬA HOT)
+                            ==================================================== */}
+                        {trendingItems.length > 0 && (
+                          <section className="relative rounded-2xl p-3 bg-gradient-to-br from-amber-50/80 via-white to-rose-50/60 border border-amber-200/90 shadow-[0_8px_24px_rgba(245,158,11,0.12)] space-y-2.5 overflow-hidden">
+                            <div className="flex items-center justify-between gap-2 relative z-10">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span className="w-2 h-4 rounded-full bg-gradient-to-b from-amber-400 via-orange-500 to-rose-500 shadow-[0_0_8px_rgba(249,115,22,0.6)] shrink-0" />
+                                <h2 className="font-heading font-extrabold text-[13.5px] bg-gradient-to-r from-stone-950 via-rose-950 to-amber-900 bg-clip-text text-transparent whitespace-nowrap">
+                                  Thịnh Hành Tuần Này
+                                </h2>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => setActiveTab("boost")}
+                                className="px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-400 via-amber-300 to-orange-400 text-stone-950 text-[10px] font-black shadow-[0_2px_10px_rgba(245,158,11,0.35)] hover:brightness-105 flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0 transition"
+                              >
+                                <Leaf size={10} className="fill-stone-950 text-stone-950" />
+                                <span>Đẩy Top &rarr;</span>
+                              </button>
+                            </div>
+
+                            <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-1 relative z-10">
+                              {trendingItems.map((item: any, idx: number) => {
+                                const isRent = item.listingTypeRaw !== "SELL";
+                                const rentPrice = Number(item.rentalPrice || item.price || 0);
+                                const salePrice = Number(item.salePrice || item.price || 0);
+                                const curPrice = isRent ? rentPrice : salePrice;
+                                const dbOrig = Number(item.originalPrice || item.storeRetailPrice || 0);
+                                const origPrice =
+                                  dbOrig > curPrice
+                                    ? dbOrig
+                                    : isRent && curPrice > 0
+                                      ? curPrice * 9
+                                      : curPrice > 0
+                                        ? Math.round(curPrice * 1.6)
+                                        : 0;
+                                const savedAmt = Math.max(0, origPrice - curPrice);
+                                const savedPct =
+                                  origPrice > curPrice
+                                    ? Math.min(95, Math.max(10, Math.round(((origPrice - curPrice) / origPrice) * 100)))
+                                    : 0;
+                                const imgUrl = item.image || item.primaryImage || item.images?.[0] || FALLBACK_CLOUDINARY_IMG;
+
+                                return (
+                                  <div
+                                    key={`trending-${item.id || idx}`}
+                                    onClick={() => setSelectedProduct(item)}
+                                    className="w-36 shrink-0 p-[1.5px] rounded-2xl bg-gradient-to-br from-amber-400 via-rose-400 to-amber-500 shadow-[0_6px_16px_rgba(244,63,94,0.16)] hover:shadow-[0_8px_22px_rgba(245,158,11,0.28)] transition-all cursor-pointer flex flex-col"
+                                  >
+                                    <div className="w-full h-full rounded-[14.5px] overflow-hidden bg-white flex flex-col">
+                                      <div className="relative w-full aspect-[3/4] bg-stone-100 overflow-hidden">
+                                        <Image
+                                          src={imgUrl}
+                                          alt={item.title}
+                                          fill
+                                          sizes="144px"
+                                          className="object-cover hover:scale-105 transition-transform duration-500"
+                                          unoptimized
+                                        />
+
+                                        {/* Dải ánh sáng lướt nhẹ qua ảnh (Radiant Sheen) */}
+                                        <div
+                                          aria-hidden="true"
+                                          className="pointer-events-none absolute inset-y-0 w-12 bg-gradient-to-r from-transparent via-white/40 to-transparent"
+                                          style={{
+                                            animation: `cloopTrendingSheen 3.8s ease-in-out ${idx * 0.45}s infinite`,
+                                          }}
+                                        />
+
+                                        {/* Huy hiệu Lửa HOT rực rỡ (Không ghi TOP 1, TOP 2) */}
+                                        <div className="absolute top-1.5 left-1.5 flex items-center gap-1">
+                                          <span
+                                            className="bg-gradient-to-r from-orange-500 via-rose-500 to-amber-500 text-white text-[8.5px] font-black px-1.5 py-0.5 rounded-full whitespace-nowrap flex items-center gap-0.5"
+                                            style={{ animation: "cloopFlamePulse 2.2s ease-in-out infinite" }}
+                                          >
+                                            <span>🔥</span>
+                                            <span>HOT</span>
+                                          </span>
+                                          <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full shadow-2xs whitespace-nowrap ${
+                                            isRent ? vibeConfig.rentBadge : vibeConfig.buyBadge
+                                          }`}>
+                                            {isRent ? "Thuê" : "Mua"}
+                                          </span>
+                                        </div>
+
+                                        {savedPct > 0 && (
+                                          <span className="absolute top-1.5 right-1.5 bg-gradient-to-r from-rose-600 to-orange-500 text-white text-[8.5px] font-black px-1.5 py-0.5 rounded-full shadow-2xs font-mono whitespace-nowrap">
+                                            -{savedPct}%
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      <div className="p-2 space-y-1 flex-1 flex flex-col justify-between bg-white">
+                                        <p className="text-[11px] font-bold text-stone-900 line-clamp-1">
+                                          {item.title}
+                                        </p>
+
+                                        <div className="space-y-0.5">
+                                          <div className="flex items-baseline justify-between gap-1">
+                                            <div className="flex items-baseline gap-0.5">
+                                              <span className={`font-heading font-black text-[12px] ${vibeConfig.priceText} whitespace-nowrap`}>
+                                                {curPrice.toLocaleString("vi-VN")}đ
+                                              </span>
+                                              {isRent && (
+                                                <span className="text-[8.5px] text-stone-500 font-semibold">/ng</span>
+                                              )}
+                                            </div>
+                                            {origPrice > curPrice && (
+                                              <span className="text-[8.5px] text-stone-400 line-through font-mono whitespace-nowrap">
+                                                {origPrice.toLocaleString("vi-VN")}đ
+                                              </span>
+                                            )}
+                                          </div>
+
+                                          {savedAmt > 0 && (
+                                            <div className="bg-gradient-to-r from-rose-50 to-amber-50/80 border border-rose-200/80 px-1.5 py-0.5 rounded text-[8.5px] font-bold text-rose-700 font-mono whitespace-nowrap">
+                                              Tiết kiệm {savedAmt.toLocaleString("vi-VN")}đ
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </section>
+                        )}
+
+                        {/* ====================================================
+                            MỤC 2: THUÊ THEO NGÀY
+                            ==================================================== */}
+                        {listingMode !== "sell" && smartRentItems.length > 0 && (() => {
+                          const displayedRent = listingMode === "rent" ? smartRentItems : smartRentItems.slice(0, 6);
+                          return (
+                            <section className="space-y-2.5">
+                              <div className="flex items-center justify-between gap-2 px-0.5">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <span className="w-2 h-4 rounded-full bg-[#1B4332] shrink-0" />
+                                  <h2 className="font-heading font-extrabold text-[13.5px] text-stone-900 whitespace-nowrap">
+                                    Thuê Theo Ngày
+                                  </h2>
+                                </div>
+
+                                {smartRentItems.length > 6 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setListingMode(listingMode === "rent" ? "all" : "rent")}
+                                    className="text-[10.5px] font-bold text-stone-600 hover:text-stone-900 cursor-pointer whitespace-nowrap shrink-0"
+                                  >
+                                    {listingMode === "rent" ? "Thu gọn" : "Xem tất cả \u2192"}
+                                  </button>
+                                )}
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-2.5">
+                                {displayedRent.map(renderLuxuryCompactProductCard)}
+                              </div>
+                            </section>
+                          );
+                        })()}
+
+                        {/* ====================================================
+                            MỤC 3: MUA THANH LÝ
+                            ==================================================== */}
+                        {listingMode !== "rent" && smartSaleItems.length > 0 && (() => {
+                          const displayedSale = listingMode === "sell" ? smartSaleItems : smartSaleItems.slice(0, 6);
+                          return (
+                            <section className="space-y-2.5 pt-1">
+                              <div className="flex items-center justify-between gap-2 px-0.5">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <span className="w-2 h-4 rounded-full bg-rose-600 shrink-0" />
+                                  <h2 className="font-heading font-extrabold text-[13.5px] text-stone-900 whitespace-nowrap">
+                                    Mua Thanh Lý
+                                  </h2>
+                                </div>
+
+                                {smartSaleItems.length > 6 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setListingMode(listingMode === "sell" ? "all" : "sell")}
+                                    className="text-[10.5px] font-bold text-stone-600 hover:text-stone-900 cursor-pointer whitespace-nowrap shrink-0"
+                                  >
+                                    {listingMode === "sell" ? "Thu gọn" : "Xem tất cả \u2192"}
+                                  </button>
+                                )}
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-2.5">
+                                {displayedSale.map(renderLuxuryCompactProductCard)}
+                              </div>
+                            </section>
+                          );
+                        })()}
+                      </div>
+                    );
+                  })()}
+                </>
               )}
             </div>
+
+            {/* THANH TÓM TẮT GIỎ ĐỒ NỔI THÔNG MINH (TỰ ĐỘNG HIỆN KHI KHÁCH CHỌN MÓN) */}
+            {cartItems.length > 0 && (
+              <div className="sticky bottom-14 inset-x-0 px-3 pb-1.5 z-30">
+                <div className={`${vibeConfig.activePill} rounded-xl px-3 py-2 shadow-lg flex items-center justify-between gap-2`}>
+                  <div className="text-[11px] leading-tight">
+                    <span className="font-bold">Giỏ đồ: {cartItems.length} món</span>
+                    <span className="mx-1.5 opacity-60">&bull;</span>
+                    <span className="font-mono font-bold">
+                      {cartItems.reduce((sum: number, item: any) => sum + calculatePackageRentalFee(item, item.minDays || 3), 0).toLocaleString("vi-VN")}đ
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab("orders");
+                      setOrderSubTab("cart");
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-white text-stone-900 text-[10.5px] font-extrabold whitespace-nowrap cursor-pointer"
+                  >
+                    Xem giỏ &amp; Đặt lịch &rarr;
+                  </button>
+                </div>
+              </div>
+            )}
           </>
         )}
 
         {/* ========================================================
-             TAB 2: SÀN ĐỒ (SHOP) - ĐỒNG BỘ 100% VỚI /shop BẢN WEB
+             TAB 2: SÀN ĐỒ (SHOP) - HIỂN THỊ NGAY LƯỚI SẢN PHẨM KHÔNG LẶP THANH BAR
             ======================================================== */}
         {activeTab === "shop" && (
-          <div className="px-2.5 pt-3 pb-6 flex-1 space-y-3">
-            {/* THANH CHỌN CHẾ ĐỘ: TẤT CẢ | THUÊ ĐỒ | SỞ HỮU (TỐI GIẢN, KHÔNG EMOJI MÀU MÈ) */}
-            <div className="flex bg-stone-200/80 p-1 rounded-2xl gap-1">
-              <button
-                onClick={() => setListingMode("all")}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center ${
-                  listingMode === "all" 
-                    ? "bg-[#1E5638] text-white shadow-xs" 
-                    : "text-stone-600 hover:text-stone-900"
-                }`}
-              >
-                <span>Tất cả</span>
-              </button>
-              <button
-                onClick={() => setListingMode("rent")}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center ${
-                  listingMode === "rent" 
-                    ? "bg-[#1E5638] text-white shadow-xs" 
-                    : "text-stone-600 hover:text-stone-900"
-                }`}
-              >
-                <span>Thuê đồ</span>
-              </button>
-              <button
-                onClick={() => setListingMode("sell")}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center ${
-                  listingMode === "sell" ? "bg-[#C92A2A] text-white shadow-xs" 
-                    : "text-stone-600 hover:text-stone-900"
-                }`}
-              >
-                <span>Sở hữu</span>
-              </button>
-            </div>
-
-            {/* DÃY DỊP TIỆC */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-              {OCCASIONS_TABS.map((tab) => {
-                const isActive = selectedOccasion === tab.name;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setSelectedOccasion(tab.name)}
-                    className={`px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer ${
-                      isActive
-                        ? "bg-[#1E5638] text-white shadow-xs"
-                        : "bg-white text-stone-700 hover:bg-stone-100 border border-stone-200/80"
-                    }`}
-                  >
-                    {tab.name}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* THÔNG TIN SỐ LƯỢNG */}
-            <div className="flex items-center justify-between px-1 text-[11px] text-stone-500 font-medium">
-              <span>Hiển thị {filteredProducts.length} món</span>
-              <span>{listingMode === "rent" ? "Chế độ: Thuê theo ngày" : listingMode === "sell" ? "Chế độ: Mua sở hữu" : "Tất cả phương thức"}</span>
-            </div>
-
-            {/* LƯỚI SẢN PHẨM TRÊN SÀN */}
+          <div className="px-3 pt-2.5 pb-6 flex-1">
             {filteredProducts.length === 0 ? (
-              <div className="py-12 text-center text-stone-500 bg-white rounded-2xl border border-stone-200/80 p-6 space-y-2">
+              <div className="py-12 text-center text-stone-500 bg-white rounded-3xl border border-stone-200/80 p-6 space-y-2">
                 <p className="text-xs font-bold text-stone-700">Không tìm thấy trang phục phù hợp</p>
                 <button
                   onClick={() => { setListingMode("all"); setSelectedOccasion("Tất cả"); setSearchQuery(""); }}
-                  className="mt-1 px-3.5 py-1.5 bg-[#1E5638] text-white text-xs font-bold rounded-full cursor-pointer"
+                  className={`mt-1 px-3.5 py-1.5 ${vibeConfig.primaryBtn} text-xs font-bold rounded-full cursor-pointer`}
                 >
                   Đặt lại bộ lọc
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2.5">
                 {filteredProducts.map(renderLuxuryCompactProductCard)}
               </div>
             )}
           </div>
+        )}
+
+        {/* ========================================================
+             PHÂN HỆ RIÊNG: KHU MUA LÁ & ĐẨY TOP TỦ ĐỒ (BOOST HUB)
+            ======================================================== */}
+        {activeTab === "boost" && (
+          <LeafBoostHub
+            currentUser={currentUser}
+            userCoins={closetData?.user?.cloopCoins || 0}
+            walletBalance={closetData?.user?.walletBalance || 0}
+            myProducts={safeMyProducts}
+            marketProducts={products}
+            onOpenAuth={() => setShowAuthModal(true)}
+            onOpenCreateProduct={handleOpenCreateModal}
+            onSelectProduct={(prod) => setSelectedProduct(prod)}
+            onBoostSuccess={handleBoostSuccess}
+            onRefreshUser={refreshPersonalData}
+          />
         )}
 
         {/* ========================================================
@@ -2969,12 +3651,12 @@ export default function MobileAppClient({
         {activeTab === "orders" && (
           <div className="p-3.5 space-y-3.5 flex-1">
             {/* SUB-TABS: ĐỒ ĐI THUÊ | ĐỒ CHO THUÊ | GIỎ THUÊ */}
-            <div className="flex bg-stone-200/80 p-1 rounded-2xl gap-1">
+            <div className="flex bg-white/80 backdrop-blur-md border border-stone-200/80 p-1 rounded-2xl gap-1 shadow-2xs">
               <button
                 onClick={() => setOrderSubTab("renter")}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-1 ${
+                className={`flex-1 py-2 text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-1 ${
                   orderSubTab === "renter" 
-                    ? "bg-[#1E5638] text-white shadow-xs" 
+                    ? vibeConfig.pillActive
                     : "text-stone-600 hover:text-stone-900"
                 }`}
               >
@@ -2982,9 +3664,9 @@ export default function MobileAppClient({
               </button>
               <button
                 onClick={() => setOrderSubTab("lender")}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-1 ${
+                className={`flex-1 py-2 text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-1 ${
                   orderSubTab === "lender" 
-                    ? "bg-[#1E5638] text-white shadow-xs" 
+                    ? vibeConfig.pillActive
                     : "text-stone-600 hover:text-stone-900"
                 }`}
               >
@@ -2992,15 +3674,15 @@ export default function MobileAppClient({
               </button>
               <button
                 onClick={() => setOrderSubTab("cart")}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-1 relative ${
+                className={`flex-1 py-2 text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-1 relative ${
                   orderSubTab === "cart" 
-                    ? "bg-[#1E5638] text-white shadow-xs" 
+                    ? vibeConfig.pillActive
                     : "text-stone-600 hover:text-stone-900"
                 }`}
               >
                 <span>Giỏ đồ ({cartItems.length})</span>
                 {cartItems.length > 0 && (
-                  <span className="w-2 h-2 rounded-full bg-emerald-600" />
+                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
                 )}
               </button>
             </div>
@@ -3009,7 +3691,7 @@ export default function MobileAppClient({
             {orderSubTab === "renter" && (
               <div className="space-y-3">
                 {safeOrdersAsRenter.length === 0 ? (
-                  <div className="py-12 text-center bg-white rounded-2xl border border-stone-200/80 p-6 space-y-3 text-stone-500">
+                  <div className="py-12 text-center bg-white rounded-3xl border border-stone-200/80 p-6 space-y-3 text-stone-500 shadow-xs">
                     <h4 className="font-bold text-sm text-stone-800">
                       {lang === "vi" ? "Chưa có đơn thuê trang phục nào" : "No rental orders yet"}
                     </h4>
@@ -3018,7 +3700,7 @@ export default function MobileAppClient({
                     </p>
                     <button
                       onClick={() => setActiveTab("shop")}
-                      className="px-4 py-2 bg-[#1E5638] text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer"
+                      className={`px-5 py-2.5 text-xs font-bold rounded-full cursor-pointer ${vibeConfig.primaryBtn}`}
                     >
                       {lang === "vi" ? "Dạo Sàn Đồ Ngay" : "Browse Shop Now"}
                     </button>
@@ -3034,7 +3716,7 @@ export default function MobileAppClient({
                             setSelectedOrderForDetail(order);
                             setOrderDetailRole("renter");
                           }}
-                          className="bg-white rounded-2xl p-3.5 border border-stone-200/80 hover:border-[#183A2D] shadow-2xs space-y-2.5 transition cursor-pointer active:scale-[0.99] group"
+                          className="bg-white rounded-2xl p-3.5 border border-stone-200/80 hover:border-stone-400 shadow-2xs space-y-2.5 transition cursor-pointer active:scale-[0.99] group"
                         >
                           <div className="flex items-center justify-between text-[11px]">
                             <span className="font-mono text-stone-400 font-medium">Đơn #{order.orderCode || order.id?.slice(-6) || idx + 1}</span>
@@ -3047,11 +3729,11 @@ export default function MobileAppClient({
                               <Image src={order.productImage || FALLBACK_CLOUDINARY_IMG} alt={order.productTitle || "Trang phục"} fill className="object-cover" unoptimized />
                             </div>
                             <div className="flex-1 min-w-0 text-xs">
-                              <h5 className="font-bold text-stone-900 truncate group-hover:text-[#183A2D] transition">{order.productTitle}</h5>
+                              <h5 className="font-bold text-stone-900 truncate transition">{order.productTitle}</h5>
                               <p className="text-stone-500 text-[11px] mt-0.5">Lịch thuê: {order.startDate} - {order.endDate}</p>
                               <div className="flex items-center justify-between mt-1">
-                                <span className="font-black text-[#16442C]">{(Number(order.amount) || 0).toLocaleString("vi-VN")}đ</span>
-                                <span className="text-[10.5px] text-[#183A2D] font-bold group-hover:underline flex items-center gap-0.5">
+                                <span className={`font-black ${vibeConfig.priceColor}`}>{(Number(order.amount) || 0).toLocaleString("vi-VN")}đ</span>
+                                <span className={`text-[10.5px] font-bold group-hover:underline flex items-center gap-0.5 ${vibeConfig.accentText}`}>
                                   <span>Xem chi tiết</span>
                                   <span>&rarr;</span>
                                 </span>
@@ -3061,7 +3743,7 @@ export default function MobileAppClient({
                           {order.isOverdue && order.status !== "LENDER_COMPLETED" && (
                             <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-[10.5px] text-stone-600 font-medium">
                               <span>Đã qua hạn thuê ({order.endDate})</span>
-                              <span className="underline font-bold text-[#183A2D]">Bấm để cập nhật &rarr;</span>
+                              <span className={`underline font-bold ${vibeConfig.accentText}`}>Bấm để cập nhật &rarr;</span>
                             </div>
                           )}
                         </div>
@@ -3076,7 +3758,7 @@ export default function MobileAppClient({
             {orderSubTab === "lender" && (
               <div className="space-y-3">
                 {safeOrdersAsLender.length === 0 ? (
-                  <div className="py-12 text-center bg-white rounded-2xl border border-stone-200/80 p-6 space-y-3 text-stone-500">
+                  <div className="py-12 text-center bg-white rounded-3xl border border-stone-200/80 p-6 space-y-3 text-stone-500 shadow-xs">
                     <h4 className="font-bold text-sm text-stone-800">
                       {lang === "vi" ? "Chưa có khách đặt thuê đồ" : "No rental bookings yet"}
                     </h4>
@@ -3085,7 +3767,7 @@ export default function MobileAppClient({
                     </p>
                     <button
                       onClick={handleOpenCreateModal}
-                      className="px-4 py-2 bg-[#1E5638] text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer"
+                      className={`px-5 py-2.5 text-xs font-bold rounded-full cursor-pointer ${vibeConfig.primaryBtn}`}
                     >
                       {lang === "vi" ? "+ Đăng Trang Phục Mới" : "+ List New Outfit"}
                     </button>
@@ -3101,7 +3783,7 @@ export default function MobileAppClient({
                             setSelectedOrderForDetail(order);
                             setOrderDetailRole("lender");
                           }}
-                          className="bg-white rounded-2xl p-3.5 border border-stone-200/80 hover:border-[#183A2D] shadow-2xs space-y-2.5 transition cursor-pointer active:scale-[0.99] group"
+                          className="bg-white rounded-2xl p-3.5 border border-stone-200/80 hover:border-stone-400 shadow-2xs space-y-2.5 transition cursor-pointer active:scale-[0.99] group"
                         >
                           <div className="flex items-center justify-between text-[11px]">
                             <span className="font-mono text-stone-400 font-medium">Yêu cầu #{order.orderCode || order.id?.slice(-6) || idx + 1}</span>
@@ -3114,11 +3796,11 @@ export default function MobileAppClient({
                               <Image src={order.productImage || FALLBACK_CLOUDINARY_IMG} alt={order.productTitle || "Trang phục"} fill className="object-cover" unoptimized />
                             </div>
                             <div className="flex-1 min-w-0 text-xs">
-                              <h5 className="font-bold text-stone-900 truncate group-hover:text-[#183A2D] transition">{order.productTitle}</h5>
+                              <h5 className="font-bold text-stone-900 truncate transition">{order.productTitle}</h5>
                               <p className="text-stone-500 text-[11px] mt-0.5">Lịch: {order.startDate} - {order.endDate}</p>
                               <div className="flex items-center justify-between mt-1">
-                                <span className="font-black text-[#16442C]">{(Number(order.amount) || 0).toLocaleString("vi-VN")}đ</span>
-                                <span className="text-[10.5px] text-[#183A2D] font-bold group-hover:underline flex items-center gap-0.5">
+                                <span className={`font-black ${vibeConfig.priceColor}`}>{(Number(order.amount) || 0).toLocaleString("vi-VN")}đ</span>
+                                <span className={`text-[10.5px] font-bold group-hover:underline flex items-center gap-0.5 ${vibeConfig.accentText}`}>
                                   <span>Xem chi tiết</span>
                                   <span>&rarr;</span>
                                 </span>
@@ -3137,14 +3819,14 @@ export default function MobileAppClient({
             {orderSubTab === "cart" && (
               <div className="space-y-3">
                 {cartItems.length === 0 ? (
-                  <div className="py-12 text-center space-y-3 bg-white rounded-2xl border border-stone-200/80 p-6">
+                  <div className="py-12 text-center space-y-3 bg-white rounded-3xl border border-stone-200/80 p-6 shadow-xs">
                     <h4 className="font-bold text-sm text-stone-800">Giỏ thuê của bạn đang trống</h4>
                     <p className="text-xs text-stone-500 max-w-xs mx-auto">
                       Hãy dạo Sàn đồ để chọn những mẫu trang phục ưng ý.
                     </p>
                     <button
                       onClick={() => setActiveTab("shop")}
-                      className="px-4 py-2 bg-[#1E5638] text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer"
+                      className={`px-5 py-2.5 text-xs font-bold rounded-full cursor-pointer ${vibeConfig.primaryBtn}`}
                     >
                       Dạo Sàn Đồ Ngay
                     </button>
@@ -3170,14 +3852,14 @@ export default function MobileAppClient({
                             <Image src={itemImg} alt={item.title} fill className="object-cover" unoptimized />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <span className="text-[9.5px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded">
+                            <span className="text-[9.5px] font-bold text-stone-700 bg-stone-100 px-1.5 py-0.5 rounded">
                               {item.occasion || "Đi tiệc"}
                             </span>
-                            <p className="text-xs font-black text-[#16442C] mt-1">
+                            <p className={`text-xs font-black mt-1 ${vibeConfig.priceColor}`}>
                               {(item.rentalPrice || item.price || 0).toLocaleString("vi-VN")}đ <span className="text-[10px] font-normal text-stone-500">/ ngày</span>
                             </p>
-                            <p className="text-[10px] text-emerald-800 font-medium">
-                              • Gói {item.minDays || 3} ngày: {packageFee.toLocaleString("vi-VN")}đ
+                            <p className={`text-[10px] font-bold ${vibeConfig.accentText}`}>
+                              Gói {item.minDays || 3} ngày: {packageFee.toLocaleString("vi-VN")}đ
                             </p>
                           </div>
                           <button
@@ -3190,7 +3872,7 @@ export default function MobileAppClient({
                       );
                     })}
 
-                    <div className="bg-white rounded-2xl p-4 border border-stone-200 space-y-2 mt-4">
+                    <div className="bg-white rounded-2xl p-4 border border-stone-200 space-y-2 mt-4 shadow-xs">
                       <div className="flex justify-between text-xs text-stone-600">
                         <span>Tạm tính phí thuê (gói 3 ngày):</span>
                         <span className="font-bold text-stone-900">
@@ -3198,12 +3880,12 @@ export default function MobileAppClient({
                         </span>
                       </div>
                       <div className="flex justify-between text-xs text-stone-600">
-                        <span>Bảo hiểm trang phục:</span>
-                        <span className="text-emerald-700 font-bold">Miễn phí</span>
+                        <span>Bảo vệ cọc Escrow:</span>
+                        <span className={`font-bold ${vibeConfig.accentText}`}>Miễn phí 100%</span>
                       </div>
                       <div className="pt-2 border-t border-stone-100 flex justify-between items-center">
-                        <span className="font-bold text-sm text-[#16442C]">Tổng thanh toán:</span>
-                        <span className="font-heading font-black text-base text-[#16442C]">
+                        <span className="font-bold text-sm text-stone-900">Tổng thanh toán:</span>
+                        <span className={`font-heading font-black text-base ${vibeConfig.priceColor}`}>
                           {cartItems.reduce((sum, item) => sum + calculatePackageRentalFee(item, item.minDays || 3), 0).toLocaleString("vi-VN")}đ
                         </span>
                       </div>
@@ -3213,7 +3895,7 @@ export default function MobileAppClient({
                             handleOpenCheckout(cartItems[0]);
                           }
                         }}
-                        className="w-full h-11 bg-[#1E5638] text-white font-bold text-xs rounded-xl shadow-md mt-2 flex items-center justify-center gap-2 cursor-pointer hover:bg-[#236341] transition"
+                        className={`w-full h-11 font-bold text-xs rounded-full mt-2 flex items-center justify-center gap-2 cursor-pointer transition ${vibeConfig.primaryBtn}`}
                       >
                         <span>Tiến hành đặt cọc &amp; giữ lịch ({cartItems.length} món)</span>
                       </button>
@@ -3233,28 +3915,28 @@ export default function MobileAppClient({
             
             {/* THẺ ĐĂNG NHẬP / ĐĂNG KÝ (NẾU CHƯA CÓ SESSION) */}
             {!currentUser && !closetData?.isLoggedIn ? (
-              <div className="bg-gradient-to-br from-[#1E5638] via-[#236341] to-[#15462D] text-white rounded-3xl p-5 space-y-4 relative overflow-hidden shadow-lg border border-red-500/20">
+              <div className={`${vibeConfig.heroBg} ${vibeConfig.heroText} rounded-[28px] p-5 space-y-4 relative overflow-hidden shadow-sm border ${vibeConfig.heroBorder}`}>
                 <div>
-                  <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-300">
-                    ĐỒNG BỘ TỦ ĐỒ THỜI TRANG TUẦN HOÀN
+                  <span className={`text-[10px] uppercase font-bold tracking-widest ${vibeConfig.heroAccentText}`}>
+                    TỦ ĐỒ TUẦN HOÀN CLOOP
                   </span>
-                  <h3 className="font-heading font-black text-xl text-white mt-1 leading-tight">
-                    Tủ Đồ Cá Nhân CLOOP
+                  <h3 className={`font-heading font-black text-xl ${vibeConfig.heroText} mt-1 leading-tight`}>
+                    Tủ Đồ Cá Nhân &amp; Ví Ký Quỹ
                   </h3>
-                  <p className="text-xs text-stone-300 mt-1 leading-relaxed">
-                    Đăng nhập hoặc đăng ký tài khoản miễn phí để quản lý tủ đồ, nhận lịch khách thuê, tích lũy điểm xanh và nhận thu nhập thụ động.
+                  <p className={`text-xs ${vibeConfig.heroSubtext} mt-1 leading-relaxed`}>
+                    Đăng nhập hoặc đăng ký tài khoản để quản lý tủ đồ, theo dõi lịch khách thuê và số dư ví trên sàn.
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-2.5">
                   <button
                     onClick={() => openAuthModal ? openAuthModal('register') : setShowAuthModal(true)}
-                    className="py-3 px-2 rounded-xl bg-white text-[#16442C] font-bold text-xs tracking-wider uppercase shadow-sm hover:bg-stone-100 transition cursor-pointer text-center flex items-center justify-center gap-1"
+                    className={`py-3 px-2 rounded-full font-bold text-xs tracking-wider uppercase cursor-pointer text-center flex items-center justify-center gap-1 ${vibeConfig.primaryBtn}`}
                   >
                     <span>Đăng Ký Mới</span>
                   </button>
                   <button
                     onClick={() => openAuthModal ? openAuthModal('login') : setShowAuthModal(true)}
-                    className="py-3 px-2 rounded-xl bg-emerald-900/80 border border-emerald-600/70 text-white font-bold text-xs tracking-wider uppercase shadow-sm hover:bg-emerald-800 transition cursor-pointer text-center flex items-center justify-center gap-1"
+                    className={`py-3 px-2 rounded-full font-bold text-xs tracking-wider uppercase shadow-2xs transition cursor-pointer text-center flex items-center justify-center gap-1 ${vibeConfig.heroSecondaryBtn}`}
                   >
                     <span>Đăng Nhập</span>
                   </button>
@@ -3262,11 +3944,11 @@ export default function MobileAppClient({
               </div>
             ) : (
               <>
-                {/* 1. THẺ HỒ SƠ TÓM TẮT TINH TẾ (GỌN GÀNG, KHÔNG BỊ NHỒI NHÉT) */}
-                <div className="bg-gradient-to-br from-[#1E5638] via-[#236341] to-[#15462D] text-white rounded-3xl p-4 space-y-3 shadow-md border border-red-500/20 relative overflow-hidden">
+                {/* 1. THẺ HỒ SƠ TÓM TẮT TINH TẾ */}
+                <div className={`${vibeConfig.heroBg} ${vibeConfig.heroText} rounded-[28px] p-4 space-y-3 shadow-sm border ${vibeConfig.heroBorder} relative overflow-hidden`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-emerald-800 text-white flex items-center justify-center font-heading font-black text-lg border-2 border-emerald-400 overflow-hidden shrink-0 shadow-xs">
+                      <div className={`w-12 h-12 rounded-full ${vibeConfig.heroChipBg} flex items-center justify-center font-heading font-black text-lg border-2 border-white overflow-hidden shrink-0 shadow-xs`}>
                         {closetData?.user?.avatar && typeof closetData.user.avatar === "string" && closetData.user.avatar.trim() !== "" ? (
                           <Image src={closetData.user.avatar} alt="Avatar" width={48} height={48} className="object-cover" unoptimized />
                         ) : (
@@ -3275,21 +3957,21 @@ export default function MobileAppClient({
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <h2 className="font-heading font-black text-base text-white truncate max-w-[170px]">
+                          <h2 className={`font-heading font-black text-base ${vibeConfig.heroText} truncate max-w-[170px]`}>
                             {displayName || "Thành viên CLOOP"}
                           </h2>
-                          <span className="text-[9px] bg-emerald-700/80 text-emerald-200 px-1.5 py-0.2 rounded font-bold shrink-0">
+                          <span className={`text-[9px] ${vibeConfig.heroChipBg} px-2 py-0.5 rounded-full font-bold shrink-0`}>
                             Chính chủ
                           </span>
                         </div>
-                        <p className="text-[11px] text-emerald-200/80 truncate max-w-[190px]">
+                        <p className={`text-[11px] ${vibeConfig.heroSubtext} truncate max-w-[190px]`}>
                           {closetData?.user?.email || currentUser?.email || "member@cloop.vn"}
                         </p>
-                        <p className="text-[10px] text-emerald-100/90 mt-0.5 truncate max-w-[210px]">
+                        <p className={`text-[10px] ${vibeConfig.heroSubtext} mt-0.5 truncate max-w-[210px]`}>
                           Gia nhập: {closetData?.user?.joinDate || "2026"} &bull; {
                             (unifiedAddress.district && unifiedAddress.province)
                               ? `${unifiedAddress.district}, ${unifiedAddress.province}`
-                              : (unifiedAddress.province || closetData?.user?.location || closetData?.user?.pickupAddress || closetData?.user?.fullAddress || "Chưa cập nhật địa chỉ")
+                              : (unifiedAddress.province || closetData?.user?.location || closetData?.user?.pickupAddress || closetData?.user?.fullAddress || "TP. Vinh, Nghệ An")
                           }
                         </p>
                       </div>
@@ -3298,7 +3980,7 @@ export default function MobileAppClient({
                     <button
                       onClick={refreshPersonalData}
                       disabled={isRefreshingCloset}
-                      className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-emerald-300 transition cursor-pointer"
+                      className={`p-2 rounded-full ${vibeConfig.heroChipBg} transition cursor-pointer`}
                       title="Làm mới dữ liệu"
                     >
                       <RefreshCw size={13} className={isRefreshingCloset ? "animate-spin" : ""} />
@@ -3306,31 +3988,31 @@ export default function MobileAppClient({
                   </div>
 
                   {/* 3 Viên nang số liệu cốt lõi */}
-                  <div className="grid grid-cols-3 gap-1.5 pt-1.5 border-t border-emerald-800/60 text-center">
+                  <div className="grid grid-cols-3 gap-1.5 pt-2 border-t border-black/5 text-center">
                     <button 
                       onClick={() => setActiveClosetView("wallet")}
-                      className="bg-white/10 hover:bg-white/20 transition rounded-xl py-1.5 px-1 cursor-pointer text-center"
+                      className={`${vibeConfig.heroChipBg} hover:opacity-90 transition rounded-2xl py-2 px-1 cursor-pointer text-center`}
                     >
-                      <span className="text-[9px] text-emerald-200 block">Ví tiền</span>
-                      <p className="font-mono font-bold text-xs text-emerald-300 mt-0.5 truncate">
+                      <span className={`text-[9px] ${vibeConfig.heroSubtext} block`}>Ví Ký Quỹ</span>
+                      <p className={`font-mono font-bold text-xs ${vibeConfig.heroText} mt-0.5 truncate`}>
                         {(closetData?.user?.walletBalance || 0).toLocaleString("vi-VN")}₫
                       </p>
                     </button>
                     <button 
                       onClick={() => setActiveClosetView("wallet")}
-                      className="bg-white/10 hover:bg-white/20 transition rounded-xl py-1.5 px-1 cursor-pointer text-center"
+                      className={`${vibeConfig.heroChipBg} hover:opacity-90 transition rounded-2xl py-2 px-1 cursor-pointer text-center`}
                     >
-                      <span className="text-[9px] text-emerald-200 block">Điểm Lá</span>
-                      <p className="font-mono font-bold text-xs text-white mt-0.5 truncate">
-                        {(closetData?.user?.cloopCoins || 0).toLocaleString("vi-VN")} Lá
+                      <span className={`text-[9px] ${vibeConfig.heroSubtext} block`}>Điểm thưởng</span>
+                      <p className={`font-mono font-bold text-xs ${vibeConfig.heroText} mt-0.5 truncate`}>
+                        {(closetData?.user?.cloopCoins || 0).toLocaleString("vi-VN")} Pts
                       </p>
                     </button>
                     <button 
                       onClick={() => setActiveClosetView("items")}
-                      className="bg-white/10 hover:bg-white/20 transition rounded-xl py-1.5 px-1 cursor-pointer text-center"
+                      className={`${vibeConfig.heroChipBg} hover:opacity-90 transition rounded-2xl py-2 px-1 cursor-pointer text-center`}
                     >
-                      <span className="text-[9px] text-emerald-200 block">Tủ đồ</span>
-                      <p className="font-mono font-bold text-xs text-white mt-0.5 truncate">
+                      <span className={`text-[9px] ${vibeConfig.heroSubtext} block`}>Tủ đồ</span>
+                      <p className={`font-mono font-bold text-xs ${vibeConfig.heroText} mt-0.5 truncate`}>
                         {safeMyProducts.length} món
                       </p>
                     </button>
@@ -3428,8 +4110,7 @@ export default function MobileAppClient({
                     {/* MỤC 4: ĐIỂM LÁ CLOOP (NẠP & ĐẨY BÀI) */}
                     <button
                       onClick={() => {
-                        setBoostTargetProductId(undefined);
-                        setIsBoostModalOpen(true);
+                        setActiveTab("boost");
                       }}
                       className="w-full bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-2xs flex items-center justify-between hover:border-[#183A2D]/50 transition active:scale-[0.99] cursor-pointer text-left group"
                     >
@@ -4264,37 +4945,44 @@ export default function MobileAppClient({
             �️ 7. THANH ĐIỀU HƯỚNG ĐÁY CHUẨN ĐỒNG BỘ WEB (5 TABS)
             TỰ ĐỘNG TRƯỢT XUỐNG ẨN KHI LƯỚT BÀI ĐỂ XEM ĐỒ RỘNG RÃI
             ======================================================== */}
-        <nav className={`fixed bottom-0 left-0 right-0 w-full sm:max-w-[430px] mx-auto z-50 bg-white/95 backdrop-blur-md border-t border-stone-200/80 px-2 py-2 flex items-center justify-around shadow-lg pb-[calc(0.6rem+env(safe-area-inset-bottom,0px))] sm:rounded-b-[40px] transition-transform duration-300 ease-in-out ${
-          isBottomBarVisible ? "translate-y-0" : "translate-y-full pointer-events-none"
-        }`}>
+        <div className="sticky bottom-16 left-0 right-0 w-full pointer-events-none z-40 flex justify-end px-3 -mt-12">
+          <div className="pointer-events-auto">
+            <AiStylistChat 
+              isMobileApp={true}
+              onSelectProduct={handleSelectProductFromAi}
+            />
+          </div>
+        </div>
+
+        <nav className={`sticky bottom-0 left-0 right-0 w-full mt-auto shrink-0 z-50 ${vibeConfig.dockBg} px-1.5 py-1.5 grid grid-cols-5 items-center border-t shadow-[0_-4px_20px_rgba(0,0,0,0.06)]`}>
           
           {/* TAB 1: KHÁM PHÁ (Trang chủ) */}
           <button
             onClick={() => { setActiveTab("home"); }}
-            className={`flex flex-col items-center justify-center flex-1 py-0.5 select-none transition-colors cursor-pointer ${
-              activeTab === "home" ? "text-[#1E5638] font-bold" : "text-stone-400 hover:text-stone-700 font-medium"
+            className={`flex flex-col items-center justify-center h-11 select-none transition-colors cursor-pointer ${
+              activeTab === "home" ? `${vibeConfig.dockActive} font-bold` : `${vibeConfig.dockInactive} font-medium`
             }`}
           >
-            <Compass size={20} strokeWidth={activeTab === "home" ? 2.5 : 1.8} />
-            <span className="text-[10px] tracking-tight mt-0.5">
+            <Compass size={19} strokeWidth={activeTab === "home" ? 2.5 : 1.8} />
+            <span className="text-[10px] tracking-tight mt-0.5 whitespace-nowrap">
               {lang === "vi" ? "Khám phá" : "Explore"}
             </span>
           </button>
 
-          {/* TAB 2: SÀN ĐỒ (ICON TÚI GIỎ CHUẨN video SHOP) */}
+          {/* TAB 2: KHU MUA LÁ & ĐẨY TOP RIÊNG */}
           <button
-            onClick={() => { setActiveTab("shop"); }}
-            className={`flex flex-col items-center justify-center flex-1 py-0.5 select-none transition-colors cursor-pointer ${
-              activeTab === "shop" ? "text-[#1E5638] font-bold" : "text-stone-400 hover:text-stone-700 font-medium"
+            onClick={() => { setActiveTab("boost"); }}
+            className={`flex flex-col items-center justify-center h-11 select-none transition-colors cursor-pointer ${
+              activeTab === "boost" ? `${vibeConfig.dockActive} font-bold` : `${vibeConfig.dockInactive} font-medium`
             }`}
           >
-            <ShoppingBag size={20} strokeWidth={activeTab === "shop" ? 2.5 : 1.8} />
-            <span className="text-[10px] tracking-tight mt-0.5">
-              {lang === "vi" ? "Sàn đồ" : "Shop"}
+            <Leaf size={19} strokeWidth={activeTab === "boost" ? 2.5 : 1.8} />
+            <span className="text-[10px] tracking-tight mt-0.5 whitespace-nowrap">
+              {lang === "vi" ? "Đẩy Top" : "Boost"}
             </span>
           </button>
 
-          {/* TAB 3:  NÚT "+ ĐĂNG ĐỒ" NỔI BẬT Ở GIỮA */}
+          {/* TAB 3: NÚT "+ ĐĂNG ĐỒ" CÂN ĐỐI Ở GIỮA */}
           <button
             onClick={() => {
               if (!currentUser) {
@@ -4303,12 +4991,12 @@ export default function MobileAppClient({
                 handleOpenCreateModal();
               }
             }}
-            className="flex flex-col items-center justify-center flex-1 py-0.5 select-none cursor-pointer group"
+            className="flex flex-col items-center justify-center h-11 select-none cursor-pointer group"
           >
-            <div className="w-8.5 h-8.5 rounded-full bg-gradient-to-tr from-[#1E5638] via-[#236341] to-[#2D7A51] ring-2 ring-red-100 text-white flex items-center justify-center shadow-[0_4px_12px_rgba(30,86,56,0.35)] group-hover:scale-105 transition-all -mt-2 mb-0.5">
-              <Plus size={18} strokeWidth={2.5} />
+            <div className={`w-9 h-9 rounded-full ${vibeConfig.primaryBtn} ring-2 ring-white flex items-center justify-center group-hover:scale-105 transition-all -mt-3 mb-0.5`}>
+              <Plus size={18} strokeWidth={2.6} />
             </div>
-            <span className="text-[9.5px] font-bold text-[#1E5638] tracking-tight">
+            <span className={`text-[10px] font-extrabold ${vibeConfig.dockActive} tracking-tight whitespace-nowrap`}>
               {lang === "vi" ? "Đăng đồ" : "+ List"}
             </span>
           </button>
@@ -4316,55 +5004,38 @@ export default function MobileAppClient({
           {/* TAB 4: ĐƠN HÀNG (Đồng bộ /my-closet/orders & Giỏ thuê) */}
           <button
             onClick={() => setActiveTab("orders")}
-            className={`flex flex-col items-center justify-center flex-1 py-0.5 select-none transition-colors cursor-pointer relative ${
-              activeTab === "orders" ? "text-[#1E5638] font-bold" : "text-stone-400 hover:text-stone-700 font-medium"
+            className={`flex flex-col items-center justify-center h-11 select-none transition-colors cursor-pointer relative ${
+              activeTab === "orders" ? `${vibeConfig.dockActive} font-bold` : `${vibeConfig.dockInactive} font-medium`
             }`}
           >
-            <Package size={20} strokeWidth={activeTab === "orders" ? 2.5 : 1.8} />
+            <Package size={19} strokeWidth={activeTab === "orders" ? 2.5 : 1.8} />
             {(cartItems.length > 0 || (safeOrdersAsRenter.length + safeOrdersAsLender.length) > 0) && (
-              <span className="absolute top-0 right-3 min-w-[14px] h-[14px] px-0.5 rounded-full bg-[#C92A2A] text-white text-[8.5px] font-extrabold flex items-center justify-center shadow-xs">
+              <span className="absolute top-0 right-3.5 min-w-[14px] h-[14px] px-1 rounded-full bg-[#C26475] text-white text-[8px] font-extrabold flex items-center justify-center shadow-xs">
                 {cartItems.length + safeOrdersAsRenter.length + safeOrdersAsLender.length}
               </span>
             )}
-            <span className="text-[10px] tracking-tight mt-0.5">
+            <span className="text-[10px] tracking-tight mt-0.5 whitespace-nowrap">
               {lang === "vi" ? "Đơn hàng" : "Orders"}
             </span>
-            {activeTab === "orders" && <span className="w-1.5 h-1.5 rounded-full bg-[#C92A2A] -mb-1 mt-0.5" />}
           </button>
 
           {/* TAB 5: TÔI (Đồng bộ /my-closet) */}
           <button
             onClick={() => { setActiveTab("closet"); setActiveClosetView("menu"); }}
-            className={`flex flex-col items-center justify-center flex-1 py-0.5 select-none transition-colors cursor-pointer relative ${
-              activeTab === "closet" ? "text-[#1E5638] font-bold" : "text-stone-400 hover:text-stone-700 font-medium"
+            className={`flex flex-col items-center justify-center h-11 select-none transition-colors cursor-pointer relative ${
+              activeTab === "closet" ? `${vibeConfig.dockActive} font-bold` : `${vibeConfig.dockInactive} font-medium`
             }`}
           >
-            <User size={20} strokeWidth={activeTab === "closet" ? 2.5 : 1.8} />
+            <User size={19} strokeWidth={activeTab === "closet" ? 2.5 : 1.8} />
             {safeMyProducts.length > 0 && (
-              <span className="absolute top-0 right-3 w-2 h-2 rounded-full bg-[#C92A2A] ring-2 ring-white" />
+              <span className="absolute top-0.5 right-4 w-2 h-2 rounded-full bg-[#C26475] ring-2 ring-white" />
             )}
-            <span className="text-[10px] tracking-tight mt-0.5">
+            <span className="text-[10px] tracking-tight mt-0.5 whitespace-nowrap">
               {lang === "vi" ? "Tôi" : "Me"}
             </span>
-            {activeTab === "closet" && <span className="w-1.5 h-1.5 rounded-full bg-[#C92A2A] -mb-1 mt-0.5" />}
           </button>
 
         </nav>
-
-        {/* ========================================================
-            💬 7.5. TRỢ LÝ AI STYLIST NỔI GỌN NHẸ (CHUẨN video ASSISTANT)
-            TỰ ĐỘNG HẠ XUỐNG DƯỚI KHI THANH ĐIỀU HƯỚNG ẨN
-            ======================================================== */}
-        <div className={`fixed left-0 right-0 w-full sm:max-w-[430px] mx-auto pointer-events-none z-40 flex justify-end px-3.5 transition-all duration-300 ease-in-out ${
-          isBottomBarVisible ? "bottom-20" : "bottom-5"
-        }`}>
-          <div className="pointer-events-auto">
-            <AiStylistChat 
-              isMobileApp={true}
-              onSelectProduct={handleSelectProductFromAi}
-            />
-          </div>
-        </div>
 
         {/* ========================================================
             📋 8. MENU 3 GẠCH QUICK DRAWER (PHÂN 4 NHÓM CHUẨN WEB)
@@ -5012,32 +5683,44 @@ export default function MobileAppClient({
                 <div className="flex items-baseline justify-between pb-3 border-b border-stone-200/80">
                   <div>
                     <span className="text-[10px] text-stone-500 uppercase font-bold tracking-wider block">
-                      {selectedProduct.listingTypeRaw === "SELL" ? "Giá chuyển nhượng" : "Chi phí thuê trang phục"}
+                      {selectedProduct.listingTypeRaw === "SELL" ? "Giá sale thanh lý" : "Giá thuê ưu đãi"}
                     </span>
-                    <div className="flex items-baseline gap-1.5 mt-0.5">
-                      <span className="font-heading font-black text-2xl text-[#1E5638]">
-                        {(selectedProduct.price || selectedProduct.rentalPrice || selectedProduct.salePrice || 0).toLocaleString("vi-VN")}đ
-                      </span>
-                      {selectedProduct.listingTypeRaw !== "SELL" && (
-                        <span className="text-xs text-stone-500 font-medium">/ ngày</span>
-                      )}
-                      {(Number(selectedProduct.originalPrice || selectedProduct.storeRetailPrice || 0) > (selectedProduct.price || selectedProduct.rentalPrice || selectedProduct.salePrice || 0) || (selectedProduct.listingTypeRaw !== "SELL" && (selectedProduct.price || selectedProduct.rentalPrice || 0) > 0)) && (
-                        <span className="text-sm text-stone-400 line-through font-mono">
-                          {(Number(selectedProduct.originalPrice || selectedProduct.storeRetailPrice || 0) > 0 
-                            ? Number(selectedProduct.originalPrice || selectedProduct.storeRetailPrice) 
-                            : (Number(selectedProduct.price || selectedProduct.rentalPrice || 0) * 9)
-                          ).toLocaleString("vi-VN")}đ
-                        </span>
-                      )}
-                    </div>
-                    {/* Tag Tiết kiệm % như bản web */}
-                    <div className="pt-1">
-                      <span className="text-[10px] font-bold text-[#C92A2A] bg-red-50 border border-red-200/80 px-2 py-0.5 rounded-md font-mono inline-flex items-center gap-1">
-                        Tiết kiệm {
-                          Math.round((1 - (Number(selectedProduct.price || selectedProduct.rentalPrice || selectedProduct.salePrice || 0) / (Number(selectedProduct.originalPrice || selectedProduct.storeRetailPrice || 0) > 0 ? Number(selectedProduct.originalPrice || selectedProduct.storeRetailPrice) : (Number(selectedProduct.price || selectedProduct.rentalPrice || 0) * 9)))) * 100)
-                        }% so với giá mua mới
-                      </span>
-                    </div>
+                    {(() => {
+                      const curP = Number(selectedProduct.price || selectedProduct.rentalPrice || selectedProduct.salePrice || 0);
+                      const rawOrig = Number(selectedProduct.originalPrice || selectedProduct.storeRetailPrice || 0);
+                      const origP = rawOrig > curP
+                        ? rawOrig
+                        : selectedProduct.listingTypeRaw !== "SELL" && curP > 0
+                          ? curP * 9
+                          : Math.round(curP * 1.6);
+                      const savedVnd = Math.max(0, origP - curP);
+                      const savedPct = origP > curP ? Math.min(95, Math.max(10, Math.round(((origP - curP) / origP) * 100))) : 0;
+
+                      return (
+                        <>
+                          <div className="flex items-baseline gap-2 mt-0.5 flex-wrap">
+                            <span className="font-heading font-black text-2xl text-[#1E5638]">
+                              {curP.toLocaleString("vi-VN")}đ
+                            </span>
+                            {selectedProduct.listingTypeRaw !== "SELL" && (
+                              <span className="text-xs text-stone-500 font-medium">/ ngày</span>
+                            )}
+                            {origP > curP && (
+                              <span className="text-xs text-stone-400 font-mono">
+                                Giá gốc: <span className="line-through">{origP.toLocaleString("vi-VN")}đ</span>
+                              </span>
+                            )}
+                          </div>
+                          {savedVnd > 0 && (
+                            <div className="pt-1">
+                              <span className="text-[10.5px] font-bold text-[#C92A2A] bg-red-50 border border-red-200/80 px-2 py-0.5 rounded-md font-mono inline-flex items-center gap-1">
+                                Tiết kiệm {savedVnd.toLocaleString("vi-VN")}đ (-{savedPct}%) so với giá gốc
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
 
                     {/* 🔀 TOGGLE CHUYỂN ĐỔI THUÊ HOẶC MUA (NẾU MÓN ĐỒ CÓ CẢ 2 HÌNH THỨC) */}
                     {Number(selectedProduct.rentalPrice || 0) > 0 && Number(selectedProduct.salePrice || 0) > 0 && (
@@ -5570,178 +6253,242 @@ export default function MobileAppClient({
                     </div>
                   </div>
 
-                  {/* 3. TÊN TRANG PHỤC */}
-                  <div>
-                    <label className="block text-xs font-bold text-stone-800 mb-1">
-                      Tên trang phục <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="VD: Đầm dạ hội lụa satin xẻ tà, Set áo dài gấm..."
-                      value={uploadData.title}
-                      onChange={(e) => setUploadData({ ...uploadData, title: e.target.value })}
-                      className="w-full h-11 px-3.5 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
-                    />
-                  </div>
+                  {/* 2B. PHÂN LUỒNG ĐĂNG ĐỒ: QUẦN ÁO RIÊNG / PHỤ KIỆN RIÊNG */}
+                  {(() => {
+                    const isUploadAccessory = ACCESSORY_CATEGORIES_LIST.includes(uploadData.category);
+                    return (
+                      <>
+                        <div className="bg-stone-100/80 p-3 rounded-2xl space-y-2 border border-stone-200">
+                          <span className="text-xs font-bold text-stone-800 block">Phân loại món đồ</span>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setUploadData({
+                                  ...uploadData,
+                                  category: CLOTHING_CATEGORIES_LIST[0],
+                                  size: uploadData.size === "Freesize" ? "M" : uploadData.size,
+                                })
+                              }
+                              className={`py-2 px-3 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                                !isUploadAccessory
+                                  ? "bg-[#1E5638] text-white border-[#1E5638] shadow-xs"
+                                  : "bg-white text-stone-600 border-stone-300"
+                              }`}
+                            >
+                              Quần áo
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setUploadData({
+                                  ...uploadData,
+                                  category: ACCESSORY_CATEGORIES_LIST[0],
+                                  size: "Freesize",
+                                  targetHeight: uploadData.targetHeight || "Freesize",
+                                  targetWeight: uploadData.targetWeight || "Freesize",
+                                })
+                              }
+                              className={`py-2 px-3 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                                isUploadAccessory
+                                  ? "bg-[#1E5638] text-white border-[#1E5638] shadow-xs"
+                                  : "bg-white text-stone-600 border-stone-300"
+                              }`}
+                            >
+                              Phụ kiện
+                            </button>
+                          </div>
+                        </div>
 
-                  {/* 4. DANH MỤC TRANG PHỤC & DỊP MẶC */}
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <div>
-                      <label className="block text-xs font-bold text-stone-800 mb-1">
-                        Danh mục trang phục <span className="text-rose-500">*</span>
-                      </label>
-                      <select
-                        value={uploadData.category}
-                        onChange={(e) => setUploadData({ ...uploadData, category: e.target.value })}
-                        className="w-full h-10 px-2.5 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
-                      >
-                        {CATEGORIES_LIST.map(c => (
-                          <option key={c} value={c}>{c}</option>
-                        ))}
-                      </select>
-                    </div>
+                        {/* 3. TÊN MÓN ĐỒ */}
+                        <div>
+                          <label className="block text-xs font-bold text-stone-800 mb-1">
+                            {isUploadAccessory ? "Tên phụ kiện" : "Tên trang phục"} <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            placeholder={
+                              isUploadAccessory
+                                ? "VD: Túi xách đính đá dự tiệc, Giày cao gót mũi nhọn..."
+                                : "VD: Đầm dạ hội lụa satin xẻ tà, Set áo dài gấm..."
+                            }
+                            value={uploadData.title}
+                            onChange={(e) => setUploadData({ ...uploadData, title: e.target.value })}
+                            className="w-full h-11 px-3.5 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
+                          />
+                        </div>
 
-                    <div>
-                      <label className="block text-xs font-bold text-stone-800 mb-1">
-                        Dịp mặc / Sự kiện <span className="text-rose-500">*</span>
-                      </label>
-                      <select
-                        value={uploadData.occasion}
-                        onChange={(e) => setUploadData({ ...uploadData, occasion: e.target.value })}
-                        className="w-full h-10 px-2.5 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
-                      >
-                        {OCCASIONS_LIST.map(o => (
-                          <option key={o} value={o}>{o}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
+                        {/* 4. DANH MỤC & DỊP SỬ DỤNG */}
+                        <div className="grid grid-cols-2 gap-2.5">
+                          <div>
+                            <label className="block text-xs font-bold text-stone-800 mb-1">
+                              {isUploadAccessory ? "Danh mục phụ kiện" : "Danh mục quần áo"} <span className="text-rose-500">*</span>
+                            </label>
+                            <select
+                              value={uploadData.category}
+                              onChange={(e) => setUploadData({ ...uploadData, category: e.target.value })}
+                              className="w-full h-10 px-2.5 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
+                            >
+                              {(isUploadAccessory ? ACCESSORY_CATEGORIES_LIST : CLOTHING_CATEGORIES_LIST).map((c) => (
+                                <option key={c} value={c}>
+                                  {c}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
 
-                  {/* 5. MÀU SẮC, SIZE & ĐỘ MỚI */}
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <label className="block text-[11px] font-bold text-stone-800 mb-1">
-                        Màu sắc <span className="text-rose-500">*</span>
-                      </label>
-                      <select
-                        value={uploadData.color}
-                        onChange={(e) => setUploadData({ ...uploadData, color: e.target.value })}
-                        className="w-full h-10 px-2 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
-                      >
-                        {COLORS_LIST.map(col => (
-                          <option key={col} value={col}>{col}</option>
-                        ))}
-                      </select>
-                    </div>
+                          <div>
+                            <label className="block text-xs font-bold text-stone-800 mb-1">
+                              Dịp phối đồ <span className="text-rose-500">*</span>
+                            </label>
+                            <select
+                              value={uploadData.occasion}
+                              onChange={(e) => setUploadData({ ...uploadData, occasion: e.target.value })}
+                              className="w-full h-10 px-2.5 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
+                            >
+                              {OCCASIONS_LIST.map((o) => (
+                                <option key={o} value={o}>
+                                  {o}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
 
-                    <div>
-                      <label className="block text-[11px] font-bold text-stone-800 mb-1">
-                        Size <span className="text-rose-500">*</span>
-                      </label>
-                      <select
-                        value={uploadData.size}
-                        onChange={(e) => setUploadData({ ...uploadData, size: e.target.value })}
-                        className="w-full h-10 px-2 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
-                      >
-                        {SIZES_LIST.map(s => (
-                          <option key={s} value={s}>{s}</option>
-                        ))}
-                      </select>
-                    </div>
+                        {/* 5. MÀU SẮC, SIZE & ĐỘ MỚI */}
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <label className="block text-[11px] font-bold text-stone-800 mb-1">
+                              Màu sắc <span className="text-rose-500">*</span>
+                            </label>
+                            <select
+                              value={uploadData.color}
+                              onChange={(e) => setUploadData({ ...uploadData, color: e.target.value })}
+                              className="w-full h-10 px-2 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
+                            >
+                              {COLORS_LIST.map((col) => (
+                                <option key={col} value={col}>
+                                  {col}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
 
-                    <div>
-                      <label className="block text-[11px] font-bold text-stone-800 mb-1">
-                        Độ mới <span className="text-rose-500">*</span>
-                      </label>
-                      <select
-                        value={uploadData.condition}
-                        onChange={(e) => setUploadData({ ...uploadData, condition: e.target.value })}
-                        className="w-full h-10 px-2 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
-                      >
-                        {CONDITIONS_LIST.map(c => (
-                          <option key={c.id} value={c.id}>{c.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-stone-800 mb-1">
+                              Kích cỡ <span className="text-rose-500">*</span>
+                            </label>
+                            <select
+                              value={uploadData.size}
+                              onChange={(e) => setUploadData({ ...uploadData, size: e.target.value })}
+                              className="w-full h-10 px-2 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
+                            >
+                              {SIZES_LIST.map((s) => (
+                                <option key={s} value={s}>
+                                  {s}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
 
-                  {/* 5B. THÔNG SỐ NGƯỜI MẶC (BẮT BUỘC CHIỀU CAO & CÂN NẶNG, 3 VÒNG LINH HOẠT) */}
-                  <div className="p-3 rounded-2xl bg-amber-50/50 border border-amber-200/80 space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-[#16442C]">
-                        Thông số người mặc chuẩn form
-                      </span>
-                      <span className="text-[10px] text-amber-800 font-semibold bg-amber-100/80 px-2 py-0.5 rounded-full">
-                        Cao &amp; Nặng bắt buộc
-                      </span>
-                    </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-stone-800 mb-1">
+                              Độ mới <span className="text-rose-500">*</span>
+                            </label>
+                            <select
+                              value={uploadData.condition}
+                              onChange={(e) => setUploadData({ ...uploadData, condition: e.target.value })}
+                              className="w-full h-10 px-2 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
+                            >
+                              {CONDITIONS_LIST.map((c) => (
+                                <option key={c.id} value={c.id}>
+                                  {c.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
 
-                    {/* Chiều cao & Cân nặng (Bắt buộc) */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-[11px] font-semibold text-stone-700 mb-1">
-                          Chiều cao mặc đẹp <span className="text-rose-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="VD: 1m55 - 1m65"
-                          value={uploadData.targetHeight}
-                          onChange={(e) => setUploadData({ ...uploadData, targetHeight: e.target.value })}
-                          className="w-full h-9 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-semibold text-stone-700 mb-1">
-                          Cân nặng mặc vừa <span className="text-rose-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="VD: 45 - 52 kg"
-                          value={uploadData.targetWeight}
-                          onChange={(e) => setUploadData({ ...uploadData, targetWeight: e.target.value })}
-                          className="w-full h-9 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
-                        />
-                      </div>
-                    </div>
+                        {/* 5B. THÔNG SỐ NGƯỜI MẶC (CHỈ HIỂN THỊ KHI ĐĂNG QUẦN ÁO) */}
+                        {!isUploadAccessory && (
+                          <div className="p-3 rounded-2xl bg-amber-50/50 border border-amber-200/80 space-y-2.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-[#16442C]">
+                                Thông số người mặc chuẩn form
+                              </span>
+                              <span className="text-[10px] text-amber-800 font-semibold bg-amber-100/80 px-2 py-0.5 rounded-full">
+                                Cao &amp; Nặng bắt buộc
+                              </span>
+                            </div>
 
-                    {/* Số đo 3 vòng (Linh hoạt - Không bắt buộc) */}
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="block text-[11px] font-semibold text-stone-600">
-                          Số đo 3 vòng (cm)
-                        </label>
-                        <span className="text-[9.5px] text-stone-400 italic">
-                          Linh hoạt • Không bắt buộc
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-3 gap-1.5">
-                        <input
-                          type="text"
-                          placeholder="V1 Ngực: 84"
-                          value={uploadData.bust}
-                          onChange={(e) => setUploadData({ ...uploadData, bust: e.target.value })}
-                          className="w-full h-8 px-2 rounded-lg border border-stone-200 bg-white text-[11px] text-center font-medium outline-none focus:border-[#1E5638]"
-                        />
-                        <input
-                          type="text"
-                          placeholder="V2 Eo: 64"
-                          value={uploadData.waist}
-                          onChange={(e) => setUploadData({ ...uploadData, waist: e.target.value })}
-                          className="w-full h-8 px-2 rounded-lg border border-stone-200 bg-white text-[11px] text-center font-medium outline-none focus:border-[#1E5638]"
-                        />
-                        <input
-                          type="text"
-                          placeholder="V3 Mông: 90"
-                          value={uploadData.hips}
-                          onChange={(e) => setUploadData({ ...uploadData, hips: e.target.value })}
-                          className="w-full h-8 px-2 rounded-lg border border-stone-200 bg-white text-[11px] text-center font-medium outline-none focus:border-[#1E5638]"
-                        />
-                      </div>
-                    </div>
-                  </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+                                  Chiều cao mặc đẹp <span className="text-rose-500">*</span>
+                                </label>
+                                <input
+                                  type="text"
+                                  required={!isUploadAccessory}
+                                  placeholder="VD: 1m55 - 1m65"
+                                  value={uploadData.targetHeight}
+                                  onChange={(e) => setUploadData({ ...uploadData, targetHeight: e.target.value })}
+                                  className="w-full h-9 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+                                  Cân nặng mặc vừa <span className="text-rose-500">*</span>
+                                </label>
+                                <input
+                                  type="text"
+                                  required={!isUploadAccessory}
+                                  placeholder="VD: 45 - 52 kg"
+                                  value={uploadData.targetWeight}
+                                  onChange={(e) => setUploadData({ ...uploadData, targetWeight: e.target.value })}
+                                  className="w-full h-9 px-3 rounded-xl border border-stone-300 bg-white text-xs font-medium outline-none focus:border-[#1E5638]"
+                                />
+                              </div>
+                            </div>
+
+                            <div>
+                              <div className="flex items-center justify-between mb-1">
+                                <label className="block text-[11px] font-semibold text-stone-600">
+                                  Số đo 3 vòng (cm)
+                                </label>
+                                <span className="text-[9.5px] text-stone-400 italic">
+                                  Không bắt buộc
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-3 gap-1.5">
+                                <input
+                                  type="text"
+                                  placeholder="V1 Ngực: 84"
+                                  value={uploadData.bust}
+                                  onChange={(e) => setUploadData({ ...uploadData, bust: e.target.value })}
+                                  className="w-full h-8 px-2 rounded-lg border border-stone-200 bg-white text-[11px] text-center font-medium outline-none focus:border-[#1E5638]"
+                                />
+                                <input
+                                  type="text"
+                                  placeholder="V2 Eo: 64"
+                                  value={uploadData.waist}
+                                  onChange={(e) => setUploadData({ ...uploadData, waist: e.target.value })}
+                                  className="w-full h-8 px-2 rounded-lg border border-stone-200 bg-white text-[11px] text-center font-medium outline-none focus:border-[#1E5638]"
+                                />
+                                <input
+                                  type="text"
+                                  placeholder="V3 Mông: 90"
+                                  value={uploadData.hips}
+                                  onChange={(e) => setUploadData({ ...uploadData, hips: e.target.value })}
+                                  className="w-full h-8 px-2 rounded-lg border border-stone-200 bg-white text-[11px] text-center font-medium outline-none focus:border-[#1E5638]"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
 
                   {/* 5C. CHẤT LIỆU */}
                   <div>
@@ -7368,10 +8115,12 @@ export default function MobileAppClient({
           </div>
         )}
 
-        {/* MODAL TÌM KIẾM HÌNH ẢNH LOOKBOOK BẰNG AI (nền tảng / video STYLE CROP) */}
+        {/* MODAL TÌM KIẾM HÌNH ẢNH LOOKBOOK BẰNG AI (QUÉT KHO TỨC THÌ + CHỌN ĐỒ NGAY TRONG APP) */}
         <VisualSearchModal
           isOpen={isVisualSearchOpen}
           onClose={() => setIsVisualSearchOpen(false)}
+          catalogProducts={products}
+          onSelectProduct={(prod) => handleOpenCheckout(prod)}
         />
 
         {/* MODAL TÌM KIẾM BẰNG GIỌNG NÓI TIẾNG VIỆT (0Đ NATIVE) */}

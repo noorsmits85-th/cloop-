@@ -1,6 +1,9 @@
 "use server";
 
+import * as Sentry from "@sentry/nextjs";
 import { prisma } from "@/src/lib/prisma";
+import { requireAdmin } from "@/src/lib/auth";
+import { toSafeActionError } from "@/src/lib/safe-error";
 import { revalidatePath } from "next/cache";
 
 export interface GetStylistLogsParams {
@@ -17,6 +20,8 @@ export async function getAiStylistLogs({
   sessionId = "",
 }: GetStylistLogsParams = {}) {
   try {
+    await requireAdmin();
+
     const skip = (Math.max(1, page) - 1) * pageSize;
     const whereClause: any = {};
 
@@ -42,8 +47,10 @@ export async function getAiStylistLogs({
         take: pageSize,
       }),
       prisma.aiStylistLog.count({ where: whereClause }),
-      prisma.aiStylistLog.groupBy({
-        by: ["sessionId"],
+      prisma.aiStylistLog.findMany({
+        where: whereClause,
+        distinct: ["sessionId"],
+        select: { sessionId: true },
       }),
     ]);
 
@@ -55,7 +62,8 @@ export async function getAiStylistLogs({
       currentPage: page,
     };
   } catch (error) {
-    console.error("[GET_AI_STYLIST_LOGS_ERROR]:", error);
+    // TODO: Tích hợp hệ thống tracking (Sentry/LogRocket) để theo dõi lỗi truy vấn AI Stylist Logs
+    Sentry.captureException(error);
     return {
       logs: [],
       totalCount: 0,
@@ -68,13 +76,15 @@ export async function getAiStylistLogs({
 
 export async function deleteAiStylistLog(id: string) {
   try {
+    await requireAdmin();
+
     await prisma.aiStylistLog.delete({
       where: { id },
     });
     revalidatePath("/admin/stylist-logs");
     return { success: true };
   } catch (error) {
-    console.error("[DELETE_AI_STYLIST_LOG_ERROR]:", error);
-    return { success: false, error: "Không thể xóa bản ghi." };
+    // TODO: Tích hợp hệ thống tracking (Sentry/LogRocket) để theo dõi lỗi xóa AI Stylist Log
+    return toSafeActionError(error, "Không thể xóa bản ghi.");
   }
 }

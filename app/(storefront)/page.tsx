@@ -154,20 +154,25 @@ export default function Home() {
 
   useEffect(() => {
     let isMounted = true;
-    getShopProductsAction({ type: "all", limit: 32 })
-      .then((res) => {
-        if (isMounted && res.success && Array.isArray(res.products) && res.products.length > 0) {
-          const clean = res.products.filter((p: any) => {
-            const img = p.images?.[0]?.url || p.images?.[0] || p.image || p.img;
-            return img && typeof img === "string" && !img.startsWith("/");
-          });
-          if (clean.length > 0) {
-            setProducts(clean);
+    const timer = setTimeout(() => {
+      getShopProductsAction({ type: "all", limit: 20 })
+        .then((res) => {
+          if (isMounted && res.success && Array.isArray(res.products) && res.products.length > 0) {
+            const clean = res.products.filter((p: any) => {
+              const img = p.images?.[0]?.url || p.images?.[0] || p.image || p.img;
+              return img && typeof img === "string" && !img.startsWith("/");
+            });
+            if (clean.length > 0) {
+              setProducts(clean);
+            }
           }
-        }
-      })
-      .catch((err) => console.error("Error loading storefront products:", err));
-    return () => { isMounted = false; };
+        })
+        .catch((err) => console.error("Error loading storefront products:", err));
+    }, 60);
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
   }, []);
 
   // Trích xuất linh hoạt ảnh mới nhất từ database chung cho từng dịp. Mục nào chưa có hình thì trả về null để ẩn

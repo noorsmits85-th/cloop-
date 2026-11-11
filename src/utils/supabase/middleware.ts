@@ -1,6 +1,8 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
+const SESSION_MAX_AGE_SECONDS = 14 * 24 * 60 * 60; // 14 days
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -32,7 +34,8 @@ export async function updateSession(request: NextRequest) {
                 ...options,
                 path: '/',
                 sameSite: 'lax',
-                maxAge: 365 * 24 * 60 * 60,
+                secure: process.env.NODE_ENV === 'production',
+                maxAge: SESSION_MAX_AGE_SECONDS,
               })
             );
           },
@@ -40,19 +43,13 @@ export async function updateSession(request: NextRequest) {
       }
     );
 
-    // ⚡ SIÊU TỐI ƯU: Đọc session từ cookie trước (0ms) thay vì luôn gửi request HTTPS sang server Supabase
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    let user = session?.user || null;
-    let error = sessionError;
+    // Always verify user authenticity with Supabase Auth server rather than trusting unverified cookie session
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
 
-    // Chỉ gọi getUser() qua mạng khi không có session hoặc token sắp hết hạn (< 60s) để refresh token
-    if (!user || (session?.expires_at && session.expires_at * 1000 < Date.now() + 60000)) {
-      const { data: { user: fetchedUser }, error: fetchError } = await supabase.auth.getUser();
-      user = fetchedUser;
-      error = fetchError;
-    }
-
-    return { response: supabaseResponse, user, error };
+    return { response: supabaseResponse, user: user || null, error };
   } catch (err: any) {
     console.error("⚠️ [Middleware Supabase Error]:", err?.message || err);
     return { response: supabaseResponse, user: null, error: err };

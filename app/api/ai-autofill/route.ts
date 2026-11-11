@@ -1,24 +1,42 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
+import { requireUser } from "@/src/lib/auth";
+import { parseSafeBase64Image } from "@/src/lib/server-image-guard";
 import { executeWithGeminiPool } from "@/src/utils/gemini-pool";
 
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   try {
+    try {
+      await requireUser();
+    } catch {
+      return NextResponse.json(
+        { error: "Vui lòng đăng nhập để sử dụng tính năng AI tự động điền thông tin." },
+        { status: 401 }
+      );
+    }
+
     const { base64Image } = await req.json();
-    if (!base64Image) {
+    if (!base64Image || typeof base64Image !== "string") {
       return NextResponse.json({ error: "Thiếu dữ liệu ảnh" }, { status: 400 });
     }
 
-    const mimeType = base64Image.match(/:(.*?);/)?.[1] || "image/jpeg";
-    const base64Data = base64Image.includes(",") ? base64Image.split(",")[1] : base64Image;
+    let safeImage;
+    try {
+      safeImage = parseSafeBase64Image(base64Image);
+    } catch {
+      return NextResponse.json(
+        { error: "Dữ liệu ảnh không hợp lệ (chỉ hỗ trợ JPG, PNG, WEBP tối đa 5MB)." },
+        { status: 400 }
+      );
+    }
 
     const imagePart = {
       inlineData: {
-        data: base64Data,
-        mimeType
-      }
+        data: safeImage.base64,
+        mimeType: safeImage.mimeType,
+      },
     };
 
     const prompt = `
@@ -71,7 +89,8 @@ Trả về đúng cấu trúc JSON sau:
     const parsedData = JSON.parse(responseText);
 
     return NextResponse.json({ success: true, data: parsedData });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    // TODO: integrate Sentry/LogRocket tracking for AI autofill errors
     console.error("Lỗi AI Auto-fill:", error);
     return NextResponse.json({ error: "Không thể nhận diện ảnh tự động" }, { status: 500 });
   }

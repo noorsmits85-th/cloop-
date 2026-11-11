@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchRateLimit } from "@/src/lib/rate-limit";
+import { getTrustedClientIp } from "@/src/lib/request-ip";
 import { getNextGeminiKey, markKeyCooldown } from "@/src/utils/gemini-pool";
 
 export const dynamic = "force-dynamic";
@@ -15,11 +16,13 @@ const STT_MODELS = ["gemini-3.5-flash-lite", "gemini-flash-lite-latest"];
 const ALLOWED_AUDIO = /^audio\/(webm|ogg|mp4|mpeg|wav|aac|x-m4a|m4a)/;
 const MAX_AUDIO_BYTES = 1.5 * 1024 * 1024;
 
-function getClientIp(request: NextRequest): string {
-  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown";
-}
-
-async function transcribe(model: string, apiKey: string, mimeType: string, data: string, signal: AbortSignal) {
+async function transcribe(
+  model: string,
+  apiKey: string,
+  mimeType: string,
+  data: string,
+  signal: AbortSignal
+) {
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
     {
@@ -46,38 +49,39 @@ async function transcribe(model: string, apiKey: string, mimeType: string, data:
     if (res.status === 429) markKeyCooldown(apiKey, 60_000);
     throw new Error(`${model}: ${json?.error?.message || res.status}`);
   }
-  const text: string = (json?.candidates?.[0]?.content?.parts || []).map((p: any) => p.text || "").join("");
+  const text: string = (json?.candidates?.[0]?.content?.parts || [])
+    .map((p: any) => p.text || "")
+    .join("");
   return text.replace(/["“”]/g, "").replace(/[.。]+$/, "").trim();
 }
 
 export async function POST(request: NextRequest) {
   try {
-    if (searchRateLimit) {
-      let allowed = true;
-      try {
-        allowed = (
-          await Promise.race([
-            searchRateLimit.limit(`voice-stt:${getClientIp(request)}`),
-            new Promise<never>((_, reject) => setTimeout(() => reject(new Error("RATE_LIMIT_TIMEOUT")), 800)),
-          ])
-        ).success;
-      } catch (rlErr: any) {
-        console.warn("[Voice STT RateLimit unavailable, fail-open]:", rlErr?.message || rlErr);
-      }
-      if (!allowed) {
-        return NextResponse.json({ success: false, message: "Bạn thao tác quá nhanh, thử lại sau ít giây." }, { status: 429 });
-      }
+    const ip = getTrustedClientIp(request);
+    const rlResult = await searchRateLimit.limit(`voice-stt:${ip}`);
+    if (!rlResult.success) {
+      return NextResponse.json(
+        { success: false, message: "Bạn thao tác quá nhanh, thử lại sau ít giây." },
+        { status: 429 }
+      );
     }
 
     const body = await request.json().catch(() => null);
     const mimeType = String(body?.mimeType || "").split(";")[0].toLowerCase();
-    const audio = typeof body?.audioBase64 === "string" ? body.audioBase64.replace(/^data:[^,]+,/, "") : "";
+    const audio =
+      typeof body?.audioBase64 === "string" ? body.audioBase64.replace(/^data:[^,]+,/, "") : "";
 
     if (!ALLOWED_AUDIO.test(mimeType) || !audio) {
-      return NextResponse.json({ success: false, message: "Định dạng ghi âm không hợp lệ." }, { status: 400 });
+      return NextResponse.json(
+        { success: false, message: "Định dạng ghi âm không hợp lệ." },
+        { status: 400 }
+      );
     }
     if (audio.length * 0.75 > MAX_AUDIO_BYTES) {
-      return NextResponse.json({ success: false, message: "Đoạn ghi âm quá dài." }, { status: 413 });
+      return NextResponse.json(
+        { success: false, message: "Đoạn ghi âm quá dài." },
+        { status: 413 }
+      );
     }
 
     const controller = new AbortController();
@@ -96,8 +100,14 @@ export async function POST(request: NextRequest) {
       controller.abort();
     }
   } catch (error: any) {
-    const reasons = error instanceof AggregateError ? error.errors.map((e: any) => e?.message).join(" | ") : error?.message;
+    const reasons =
+      error instanceof AggregateError
+        ? error.errors.map((e: any) => e?.message).join(" | ")
+        : error?.message;
     console.error("[Voice STT Error]:", reasons);
-    return NextResponse.json({ success: false, message: "Chưa nhận diện được giọng nói, bạn thử lại nhé." }, { status: 503 });
+    return NextResponse.json(
+      { success: false, message: "Chưa nhận diện được giọng nói, bạn thử lại nhé." },
+      { status: 503 }
+    );
   }
 }

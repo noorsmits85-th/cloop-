@@ -95,43 +95,14 @@ export default function CreateBlogPostPage() {
           isVip: false
         });
 
-        // 🌟 Lấy danh sách đồ trong tủ của user qua Server Action an toàn
+        // Lấy danh sách đồ trong tủ của user qua Server Action an toàn
         try {
           const res = await getUserClosetItemsForBlogAction();
           if (res.success && res.items && res.items.length > 0) {
             setMyProducts(res.items);
-            return;
           }
         } catch (e) {
-          console.warn("Server action load closet items failed, falling back to direct query:", e);
-        }
-
-        // Fallback: truy vấn trực tiếp từ bảng products
-        try {
-          const { data: prods } = await supabase
-            .from("products")
-            .select("id, title, size, category, Listing(basePrice, listingType), ProductImage(url, isPrimary)")
-            .eq("userId", session.user.id);
-
-          if (prods && prods.length > 0) {
-            const formatted = prods.map((p: any) => {
-              const rentListing = p.Listing?.find((l: any) => l.listingType === "RENT");
-              const saleListing = p.Listing?.find((l: any) => l.listingType === "SELL");
-              const price = rentListing?.basePrice || saleListing?.basePrice || 0;
-              const img = p.ProductImage?.[0]?.url || "/1.1.jpg";
-              return {
-                id: p.id,
-                title: p.title,
-                size: p.size,
-                category: p.category,
-                price,
-                imageUrl: img
-              };
-            });
-            setMyProducts(formatted);
-          }
-        } catch (err) {
-          console.error("Lỗi lấy danh sách đồ trong tủ:", err);
+          console.warn("Server action load closet items failed:", e);
         }
       }
     }
@@ -223,40 +194,8 @@ export default function CreateBlogPostPage() {
       });
 
       if (!res.success) {
-        // Fallback: Thử insert qua Supabase client vào BlogPost
-        const { error: sbErr } = await supabase
-          .from("BlogPost")
-          .insert([{
-            title: title.trim(),
-            content: content.trim(),
-            cover_image: imageUrls[0],
-            productId: selectedProductId || null,
-            userId: currentUserId || null,
-            status: "PUBLIC",
-          }]);
-
-        if (sbErr) {
-          console.warn("Lưu Supabase có thể bị hạn chế RLS, lưu Local Storage fallback:", sbErr);
-          const existingLocal = JSON.parse(localStorage.getItem("cloop_custom_blogs") || "[]");
-          existingLocal.unshift({
-            id: `local-blog-${Date.now()}`,
-            title: title.trim(),
-            content: content.trim(),
-            coverImage: imageUrls[0],
-            productId: selectedProductId || null,
-            userId: currentUserId || null,
-            location: location || "Việt Nam",
-            status: "PUBLIC",
-            createdAt: new Date().toISOString(),
-            author: userProfile || { name: "Bạn (Tác giả)", avatar: "/logo2.png" },
-            allImages: imageUrls,
-            likesCount: 1,
-            savesCount: 0,
-            hasLiked: true,
-            hasSaved: false
-          });
-          localStorage.setItem("cloop_custom_blogs", JSON.stringify(existingLocal));
-        }
+        alert(res.error || "Vui lòng đăng nhập để đăng ký ức lên Bảo Tàng Ký Ức Tuần Hoàn!");
+        return;
       }
 
       setSuccessMessage("Ký ức của bạn đã được đính lên Bảo Tàng Ký Ức Tuần Hoàn thành công!");

@@ -15,50 +15,17 @@ const STATUS_PRIORITY: Record<string, number> = {
 export default async function AdminShipmentsPage() {
   await requireAdminOrRedirect();
 
-  // 1. Tự động kiểm tra các đơn hàng đang cần vận chuyển nhưng chưa có bản ghi shipment
-  const activeRentals = await prisma.rentalHistory.findMany({
-    where: {
-      status: { in: ["OWNER_PACKED", "LENDER_SHIPPED", "BORROWER_RETURNED"] },
-      shipments: { none: {} },
-    },
-    include: {
-      product: true,
-      invoice: true,
-    },
-  });
-
-  for (const rental of activeRentals) {
-    const isDelivery = rental.status !== "BORROWER_RETURNED";
-    await prisma.shipment.create({
-      data: {
-        rentalId: rental.id,
-        direction: isDelivery ? "DELIVERY" : "RETURN",
-        status: "PENDING_BOOKING",
-        clientOrderCode: `CLP-${rental.id.slice(0, 8).toUpperCase()}`,
-        shippingFeeCollected: rental.invoice?.shippingFeeCollected || 35000,
-        pickupAddress: {
-          name: isDelivery ? rental.owner_name || "Chủ tủ" : rental.renter_name || "Khách thuê",
-          phone: isDelivery ? rental.owner_phone || "" : rental.renter_phone || "",
-          province: rental.product?.province || "Hà Nội",
-          districtId: rental.product?.districtId,
-          wardCode: rental.product?.wardCode,
-          specificAddress: rental.product?.specificAddress || "Cầu Giấy, Hà Nội",
-        },
-        deliveryAddress: {
-          name: isDelivery ? rental.renter_name || "Khách thuê" : rental.owner_name || "Chủ tủ",
-          phone: isDelivery ? rental.renter_phone || "" : rental.owner_phone || "",
-          province: "Hà Nội",
-          specificAddress: "Đống Đa, Hà Nội",
-        },
-      },
-    }).catch(() => null);
-  }
-
-  // 2. Lấy toàn bộ danh sách vận đơn thực tế
+  // Lấy toàn bộ danh sách vận đơn thực tế của các đơn đã thanh toán hoặc đang lưu thông (Read-only GET render)
   const shipments = await prisma.shipment.findMany({
     where: {
       status: {
         in: ["PENDING_BOOKING", "BOOKED", "PICKING", "IN_TRANSIT", "DELIVERED"],
+      },
+      rental: {
+        isDeleted: false,
+        invoice: {
+          status: "PAID",
+        },
       },
     },
     include: {
@@ -77,6 +44,8 @@ export default async function AdminShipmentsPage() {
             select: {
               shippingFeeCollected: true,
               depositAmount: true,
+              status: true,
+              orderCode: true,
             },
           },
         },

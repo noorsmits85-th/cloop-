@@ -1,0 +1,1410 @@
+{
+  "checkedAt": "2026-11-11T12:45:23.269Z",
+  "mode": "READ ONLY; metadata only",
+  "results": {
+    "original_verifier": [
+      {
+        "STT": "1",
+        "Tên Bảng CLOOP": "AccountingPeriod",
+        "RLS Enabled": true,
+        "FORCE RLS": true,
+        "Số RLS Policies": "0",
+        "Số Triggers Bật": "0",
+        "Danh Sách Triggers": "Không có",
+        "Quyền Cấp Bảng Client": "Không lộ quyền cấp bảng",
+        "Quyền Cấp Cột Nhạy Cảm": "Không lộ cột nhạy cảm",
+        "Kết Quả Kiểm Định Cấu Hình": "METADATA_CONTROLS_VERIFIED"
+      },
+      {
+        "STT": "2",
+        "Tên Bảng CLOOP": "AuditLog",
+        "RLS Enabled": true,
+        "FORCE RLS": true,
+        "Số RLS Policies": "0",
+        "Số Triggers Bật": "0",
+        "Danh Sách Triggers": "Không có",
+        "Quyền Cấp Bảng Client": "Không lộ quyền cấp bảng",
+        "Quyền Cấp Cột Nhạy Cảm": "Không lộ cột nhạy cảm",
+        "Kết Quả Kiểm Định Cấu Hình": "METADATA_CONTROLS_VERIFIED"
+      },
+      {
+        "STT": "3",
+        "Tên Bảng CLOOP": "BlogInteraction",
+        "RLS Enabled": true,
+        "FORCE RLS": true,
+        "Số RLS Policies": "0",
+        "Số Triggers Bật": "0",
+        "Danh Sách Triggers": "Không có",
+        "Quyền Cấp Bảng Client": "Không lộ quyền cấp bảng",
+        "Quyền Cấp Cột Nhạy Cảm": "Không lộ cột nhạy cảm",
+        "Kết Quả Kiểm Định Cấu Hình": "METADATA_CONTROLS_VERIFIED"
+      },
+      {
+        "STT": "4",
+        "Tên Bảng CLOOP": "BlogPost",
+        "RLS Enabled": true,
+        "FORCE RLS": true,
+        "Số RLS Policies": "1",
+        "Số Triggers Bật": "0",
+        "Danh Sách Triggers": "Không có",
+        "Quyền Cấp Bảng Client": "Không lộ quyền cấp bảng",
+        "Quyền Cấp Cột Nhạy Cảm": "Không lộ cột nhạy cảm",
+        "Kết Quả Kiểm Định Cấu Hình": "METADATA_CONTROLS_VERIFIED"
+      },
+      {
+        "STT": "5",
+        "Tên Bảng CLOOP": "Dispute",
+        "RLS Enabled": true,
+        "FORCE RLS": true,
+        "Số RLS Policies": "0",
+        "Số Triggers Bật": "0",
+        "Danh Sách Triggers": "Không có",
+        "Quyền Cấp Bảng Client": "Không lộ quyền cấp bảng",
+        "Quyền Cấp Cột Nhạy Cảm": "Không lộ cột nhạy cảm",
+        "Kết Quả Kiểm Định Cấu Hình": "METADATA_CONTROLS_VERIFIED"
+      },
+      {
+        "STT": "6",
+        "Tên Bảng CLOOP": "Invoice",
+        "RLS Enabled": true,
+        "FORCE RLS": true,
+        "Số RLS Policies": "0",
+        "Số Triggers Bật": "1",
+        "Danh Sách Triggers": "trg_guard_invoice_integrity[O]",
+        "Quyền Cấp Bảng Client": "Không lộ quyền cấp bảng",
+        "Quyền Cấp Cột Nhạy Cảm": "Không lộ cột nhạy cảm",
+        "Kết Quả Kiểm Định Cấu Hình": "METADATA_CONTROLS_VERIFIED"
+      },
+      {
+        "STT": "7",
+        "Tên Bảng CLOOP": "LedgerTransaction",
+        "RLS Enabled": true,
+        "FORCE RLS": true,
+        "Số RLS Policies": "0",
+        "Số Triggers Bật": "1",
+        "Danh Sách Triggers": "trg_guard_ledger_immutable[O]",
+        "Quyền Cấp Bảng Client": "Không lộ quyền cấp bảng",
+        "Quyền Cấp Cột Nhạy Cảm": "Không lộ cột nhạy cảm",
+        "Kết Quả Kiểm Định Cấu Hình": "METADATA_CONTROLS_VERIFIED"
+      },
+      {
+        "STT": "8",
+        "Tên Bảng CLOOP": "Listing",
+        "RLS Enabled": true,
+        "FORCE RLS": true,
+        "Số RLS Policies": "1",
+        "Số Triggers Bật": "0",
+        "Danh Sách Triggers": "Không có",
+        "Quyền Cấp Bảng Client": "Không lộ quyền cấp bảng",
+        "Quyền Cấp Cột Nhạy Cảm": "Không lộ cột nhạy cảm",
+        "Kết Quả Kiểm Định Cấu Hình": "METADATA_CONTROLS_VERIFIED"
+      },
+      {
+        "STT": "9",
+        "Tên Bảng CLOOP": "ProductImage",
+        "RLS Enabled": true,
+        "FORCE RLS": true,
+        "Số RLS Policies": "1",
+        "Số Triggers Bật": "0",
+        "Danh Sách Triggers": "Không có",
+        "Quyền Cấp Bảng Client": "Không lộ quyền cấp bảng",
+        "Quyền Cấp Cột Nhạy Cảm": "Không lộ cột nhạy cảm",
+        "Kết Quả Kiểm Định Cấu Hình": "METADATA_CONTROLS_VERIFIED"
+      },
+      {
+        "STT": "10",
+        "Tên Bảng CLOOP": "ProductLifecycle",
+        "RLS Enabled": true,
+        "FORCE RLS": true,
+        "Số RLS Policies": "0",
+        "Số Triggers Bật": "0",
+        "Danh Sách Triggers": "Không có",
+        "Quyền Cấp Bảng Client": "Không lộ quyền cấp bảng",
+        "Quyền Cấp Cột Nhạy Cảm": "Không lộ cột nhạy cảm",
+        "Kết Quả Kiểm Định Cấu Hình": "METADATA_CONTROLS_VERIFIED"
+      },
+      {
+        "STT": "11",
+        "Tên Bảng CLOOP": "Review",
+        "RLS Enabled": true,
+        "FORCE RLS": true,
+        "Số RLS Policies": "1",
+        "Số Triggers Bật": "0",
+        "Danh Sách Triggers": "Không có",
+        "Quyền Cấp Bảng Client": "Không lộ quyền cấp bảng",
+        "Quyền Cấp Cột Nhạy Cảm": "Không lộ cột nhạy cảm",
+        "Kết Quả Kiểm Định Cấu Hình": "METADATA_CONTROLS_VERIFIED"
+      },
+      {
+        "STT": "12",
+        "Tên Bảng CLOOP": "TransactionHistory",
+        "RLS Enabled": true,
+        "FORCE RLS": true,
+        "Số RLS Policies": "0",
+        "Số Triggers Bật": "0",
+        "Danh Sách Triggers": "Không có",
+        "Quyền Cấp Bảng Client": "Không lộ quyền cấp bảng",
+        "Quyền Cấp Cột Nhạy Cảm": "Không lộ cột nhạy cảm",
+        "Kết Quả Kiểm Định Cấu Hình": "METADATA_CONTROLS_VERIFIED"
+      },
+      {
+        "STT": "13",
+        "Tên Bảng CLOOP": "User",
+        "RLS Enabled": true,
+        "FORCE RLS": true,
+        "Số RLS Policies": "0",
+        "Số Triggers Bật": "1",
+        "Danh Sách Triggers": "trg_guard_user_sensitive_columns[O]",
+        "Quyền Cấp Bảng Client": "Không lộ quyền cấp bảng",
+        "Quyền Cấp Cột Nhạy Cảm": "Không lộ cột nhạy cảm",
+        "Kết Quả Kiểm Định Cấu Hình": "METADATA_CONTROLS_VERIFIED"
+      },
+      {
+        "STT": "14",
+        "Tên Bảng CLOOP": "ai_stylist_logs",
+        "RLS Enabled": true,
+        "FORCE RLS": true,
+        "Số RLS Policies": "0",
+        "Số Triggers Bật": "0",
+        "Danh Sách Triggers": "Không có",
+        "Quyền Cấp Bảng Client": "Không lộ quyền cấp bảng",
+        "Quyền Cấp Cột Nhạy Cảm": "Không lộ cột nhạy cảm",
+        "Kết Quả Kiểm Định Cấu Hình": "METADATA_CONTROLS_VERIFIED"
+      },
+      {
+        "STT": "15",
+        "Tên Bảng CLOOP": "coin_ledger_entries",
+        "RLS Enabled": true,
+        "FORCE RLS": true,
+        "Số RLS Policies": "0",
+        "Số Triggers Bật": "1",
+        "Danh Sách Triggers": "trg_guard_coin_ledger_immutable[O]",
+        "Quyền Cấp Bảng Client": "Không lộ quyền cấp bảng",
+        "Quyền Cấp Cột Nhạy Cảm": "Không lộ cột nhạy cảm",
+        "Kết Quả Kiểm Định Cấu Hình": "METADATA_CONTROLS_VERIFIED"
+      },
+      {
+        "STT": "16",
+        "Tên Bảng CLOOP": "coin_quest_claims",
+        "RLS Enabled": true,
+        "FORCE RLS": true,
+        "Số RLS Policies": "0",
+        "Số Triggers Bật": "0",
+        "Danh Sách Triggers": "Không có",
+        "Quyền Cấp Bảng Client": "Không lộ quyền cấp bảng",
+        "Quyền Cấp Cột Nhạy Cảm": "Không lộ cột nhạy cảm",
+        "Kết Quả Kiểm Định Cấu Hình": "METADATA_CONTROLS_VERIFIED"
+      },
+      {
+        "STT": "17",
+        "Tên Bảng CLOOP": "coin_topups",
+        "RLS Enabled": true,
+        "FORCE RLS": true,
+        "Số RLS Policies": "0",
+        "Số Triggers Bật": "1",
+        "Danh Sách Triggers": "trg_guard_coin_topups_integrity[O]",
+        "Quyền Cấp Bảng Client": "Không lộ quyền cấp bảng",
+        "Quyền Cấp Cột Nhạy Cảm": "Không lộ cột nhạy cảm",
+        "Kết Quả Kiểm Định Cấu Hình": "METADATA_CONTROLS_VERIFIED"
+      },
+      {
+        "STT": "18",
+        "Tên Bảng CLOOP": "eco_metrics",
+        "RLS Enabled": true,
+        "FORCE RLS": true,
+        "Số RLS Policies": "0",
+        "Số Triggers Bật": "0",
+        "Danh Sách Triggers": "Không có",
+        "Quyền Cấp Bảng Client": "Không lộ quyền cấp bảng",
+        "Quyền Cấp Cột Nhạy Cảm": "Không lộ cột nhạy cảm",
+        "Kết Quả Kiểm Định Cấu Hình": "METADATA_CONTROLS_VERIFIED"
+      },
+      {
+        "STT": "19",
+        "Tên Bảng CLOOP": "product_favorites",
+        "RLS Enabled": true,
+        "FORCE RLS": true,
+        "Số RLS Policies": "0",
+        "Số Triggers Bật": "0",
+        "Danh Sách Triggers": "Không có",
+        "Quyền Cấp Bảng Client": "Không lộ quyền cấp bảng",
+        "Quyền Cấp Cột Nhạy Cảm": "Không lộ cột nhạy cảm",
+        "Kết Quả Kiểm Định Cấu Hình": "METADATA_CONTROLS_VERIFIED"
+      },
+      {
+        "STT": "20",
+        "Tên Bảng CLOOP": "product_image_embeddings",
+        "RLS Enabled": true,
+        "FORCE RLS": true,
+        "Số RLS Policies": "0",
+        "Số Triggers Bật": "0",
+        "Danh Sách Triggers": "Không có",
+        "Quyền Cấp Bảng Client": "Không lộ quyền cấp bảng",
+        "Quyền Cấp Cột Nhạy Cảm": "Không lộ cột nhạy cảm",
+        "Kết Quả Kiểm Định Cấu Hình": "METADATA_CONTROLS_VERIFIED"
+      },
+      {
+        "STT": "21",
+        "Tên Bảng CLOOP": "products",
+        "RLS Enabled": true,
+        "FORCE RLS": true,
+        "Số RLS Policies": "1",
+        "Số Triggers Bật": "0",
+        "Danh Sách Triggers": "Không có",
+        "Quyền Cấp Bảng Client": "Không lộ quyền cấp bảng",
+        "Quyền Cấp Cột Nhạy Cảm": "Không lộ cột nhạy cảm",
+        "Kết Quả Kiểm Định Cấu Hình": "METADATA_CONTROLS_VERIFIED"
+      },
+      {
+        "STT": "22",
+        "Tên Bảng CLOOP": "rental_history",
+        "RLS Enabled": true,
+        "FORCE RLS": true,
+        "Số RLS Policies": "0",
+        "Số Triggers Bật": "1",
+        "Danh Sách Triggers": "trg_guard_rental_history_financials[O]",
+        "Quyền Cấp Bảng Client": "Không lộ quyền cấp bảng",
+        "Quyền Cấp Cột Nhạy Cảm": "Không lộ cột nhạy cảm",
+        "Kết Quả Kiểm Định Cấu Hình": "METADATA_CONTROLS_VERIFIED"
+      },
+      {
+        "STT": "23",
+        "Tên Bảng CLOOP": "shipments",
+        "RLS Enabled": true,
+        "FORCE RLS": true,
+        "Số RLS Policies": "0",
+        "Số Triggers Bật": "0",
+        "Danh Sách Triggers": "Không có",
+        "Quyền Cấp Bảng Client": "Không lộ quyền cấp bảng",
+        "Quyền Cấp Cột Nhạy Cảm": "Không lộ cột nhạy cảm",
+        "Kết Quả Kiểm Định Cấu Hình": "METADATA_CONTROLS_VERIFIED"
+      },
+      {
+        "STT": "24",
+        "Tên Bảng CLOOP": "support_messages",
+        "RLS Enabled": true,
+        "FORCE RLS": true,
+        "Số RLS Policies": "0",
+        "Số Triggers Bật": "0",
+        "Danh Sách Triggers": "Không có",
+        "Quyền Cấp Bảng Client": "Không lộ quyền cấp bảng",
+        "Quyền Cấp Cột Nhạy Cảm": "Không lộ cột nhạy cảm",
+        "Kết Quả Kiểm Định Cấu Hình": "METADATA_CONTROLS_VERIFIED"
+      },
+      {
+        "STT": "25",
+        "Tên Bảng CLOOP": "support_tickets",
+        "RLS Enabled": true,
+        "FORCE RLS": true,
+        "Số RLS Policies": "0",
+        "Số Triggers Bật": "0",
+        "Danh Sách Triggers": "Không có",
+        "Quyền Cấp Bảng Client": "Không lộ quyền cấp bảng",
+        "Quyền Cấp Cột Nhạy Cảm": "Không lộ cột nhạy cảm",
+        "Kết Quả Kiểm Định Cấu Hình": "METADATA_CONTROLS_VERIFIED"
+      },
+      {
+        "STT": "26",
+        "Tên Bảng CLOOP": "tdv_license_keys",
+        "RLS Enabled": true,
+        "FORCE RLS": true,
+        "Số RLS Policies": "0",
+        "Số Triggers Bật": "0",
+        "Danh Sách Triggers": "Không có",
+        "Quyền Cấp Bảng Client": "Không lộ quyền cấp bảng",
+        "Quyền Cấp Cột Nhạy Cảm": "Không lộ cột nhạy cảm",
+        "Kết Quả Kiểm Định Cấu Hình": "METADATA_CONTROLS_VERIFIED"
+      },
+      {
+        "STT": "27",
+        "Tên Bảng CLOOP": "tdv_users",
+        "RLS Enabled": true,
+        "FORCE RLS": true,
+        "Số RLS Policies": "0",
+        "Số Triggers Bật": "0",
+        "Danh Sách Triggers": "Không có",
+        "Quyền Cấp Bảng Client": "Không lộ quyền cấp bảng",
+        "Quyền Cấp Cột Nhạy Cảm": "Không lộ cột nhạy cảm",
+        "Kết Quả Kiểm Định Cấu Hình": "METADATA_CONTROLS_VERIFIED"
+      },
+      {
+        "STT": "28",
+        "Tên Bảng CLOOP": "withdrawal_requests",
+        "RLS Enabled": true,
+        "FORCE RLS": true,
+        "Số RLS Policies": "0",
+        "Số Triggers Bật": "1",
+        "Danh Sách Triggers": "trg_guard_withdrawal_integrity[O]",
+        "Quyền Cấp Bảng Client": "Không lộ quyền cấp bảng",
+        "Quyền Cấp Cột Nhạy Cảm": "Không lộ cột nhạy cảm",
+        "Kết Quả Kiểm Định Cấu Hình": "METADATA_CONTROLS_VERIFIED"
+      }
+    ],
+    "guard_definitions": [
+      {
+        "proname": "fn_guard_coin_ledger_immutable",
+        "definition": "CREATE OR REPLACE FUNCTION public.fn_guard_coin_ledger_immutable()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'public'\nAS $function$\nBEGIN\n    IF TG_OP = 'DELETE' THEN\n        RAISE EXCEPTION 'LEDGER_IMMUTABLE: Sổ cái xu coin_ledger_entries chỉ cho phép ghi thêm (Append-Only), cấm DELETE.';\n    END IF;\n\n    IF TG_OP = 'UPDATE' THEN\n        RAISE EXCEPTION 'LEDGER_IMMUTABLE: Sổ cái xu coin_ledger_entries là bất biến, cấm UPDATE.';\n    END IF;\n\n    IF TG_OP = 'INSERT' THEN\n        IF (NEW.amount IS NULL) OR (NOT public.fn_is_valid_finite_number(NEW.amount::NUMERIC)) THEN\n            RAISE EXCEPTION 'LEDGER_VIOLATION: coin_ledger_entries.amount không được là NULL, NaN hoặc Infinity.';\n        END IF;\n        IF (NEW.\"balanceAfter\" IS NULL) OR (NOT public.fn_is_valid_finite_number(NEW.\"balanceAfter\"::NUMERIC)) OR (NEW.\"balanceAfter\" < 0) THEN\n            RAISE EXCEPTION 'LEDGER_VIOLATION: coin_ledger_entries.balanceAfter không được âm, NULL, NaN hoặc Infinity.';\n        END IF;\n        -- Chỉ cho phép amount = 0 nếu là bút toán ghi nhận đẩy top trực tiếp qua VietQR (có topUpId)\n        IF NEW.amount = 0 AND NOT (NEW.type::TEXT = 'BOOST_SPEND' AND NEW.\"topUpId\" IS NOT NULL) THEN\n            RAISE EXCEPTION 'LEDGER_VIOLATION: Không cho phép ghi bút toán xu bằng 0 ngoài luồng đối chiếu VietQR Boost.';\n        END IF;\n    END IF;\n\n    RETURN NEW;\nEND;\n$function$\n"
+      },
+      {
+        "proname": "fn_guard_coin_topups_integrity",
+        "definition": "CREATE OR REPLACE FUNCTION public.fn_guard_coin_topups_integrity()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'public'\nAS $function$\nDECLARE\n    old_status TEXT;\n    new_status TEXT;\nBEGIN\n    IF TG_OP = 'DELETE' THEN\n        RAISE EXCEPTION 'IMMUTABLE_VIOLATION: Không được phép xóa lịch sử nạp xu trong bảng coin_topups.';\n    END IF;\n\n    IF (NEW.\"amountVnd\" IS NULL) OR (NOT public.fn_is_valid_finite_number(NEW.\"amountVnd\"::NUMERIC)) OR (NEW.\"amountVnd\" <= 0) THEN\n        RAISE EXCEPTION 'FINANCE_VIOLATION: coin_topups.amountVnd phải lớn hơn 0.';\n    END IF;\n\n    IF (NEW.\"baseCoins\" IS NULL) OR (NOT public.fn_is_valid_finite_number(NEW.\"baseCoins\"::NUMERIC)) OR (NEW.\"baseCoins\" < 0) THEN\n        RAISE EXCEPTION 'FINANCE_VIOLATION: coin_topups.baseCoins không được nhỏ hơn 0.';\n    END IF;\n\n    IF (NEW.\"bonusCoins\" IS NULL) OR (NOT public.fn_is_valid_finite_number(NEW.\"bonusCoins\"::NUMERIC)) OR (NEW.\"bonusCoins\" < 0) THEN\n        RAISE EXCEPTION 'FINANCE_VIOLATION: coin_topups.bonusCoins không được nhỏ hơn 0.';\n    END IF;\n\n    IF (NEW.\"totalCoins\" IS NULL) OR (NOT public.fn_is_valid_finite_number(NEW.\"totalCoins\"::NUMERIC)) OR (NEW.\"totalCoins\" <= 0) THEN\n        RAISE EXCEPTION 'FINANCE_VIOLATION: Số xu nạp (coin_topups.totalCoins) phải lớn hơn 0.';\n    END IF;\n\n    IF TG_OP = 'UPDATE' THEN\n        IF NEW.id IS DISTINCT FROM OLD.id\n           OR NEW.\"userId\" IS DISTINCT FROM OLD.\"userId\"\n           OR NEW.\"packageCode\" IS DISTINCT FROM OLD.\"packageCode\"\n           OR NEW.\"orderCode\" IS DISTINCT FROM OLD.\"orderCode\"\n        THEN\n            RAISE EXCEPTION 'IMMUTABLE_VIOLATION: Không được phép thay đổi định danh (id, userId, packageCode, orderCode) của giao dịch nạp xu.';\n        END IF;\n\n        IF NEW.\"amountVnd\" IS DISTINCT FROM OLD.\"amountVnd\"\n           OR NEW.\"baseCoins\" IS DISTINCT FROM OLD.\"baseCoins\"\n           OR NEW.\"bonusCoins\" IS DISTINCT FROM OLD.\"bonusCoins\"\n           OR NEW.\"totalCoins\" IS DISTINCT FROM OLD.\"totalCoins\"\n        THEN\n            RAISE EXCEPTION 'IMMUTABLE_VIOLATION: Không được phép sửa số tiền hoặc số lượng xu (amountVnd, baseCoins, bonusCoins, totalCoins) sau khi khởi tạo.';\n        END IF;\n\n        old_status := UPPER(COALESCE(OLD.status::TEXT, ''));\n        new_status := UPPER(COALESCE(NEW.status::TEXT, ''));\n\n        IF old_status IN ('COMPLETED', 'SUCCESS', 'PAID', 'APPROVED') AND new_status IS DISTINCT FROM old_status THEN\n            RAISE EXCEPTION 'STATE_VIOLATION: Giao dịch nạp xu đã hoàn tất (%), tuyệt đối không được cập nhật lại.', old_status;\n        END IF;\n    END IF;\n\n    RETURN NEW;\nEND;\n$function$\n"
+      },
+      {
+        "proname": "fn_guard_invoice_integrity",
+        "definition": "CREATE OR REPLACE FUNCTION public.fn_guard_invoice_integrity()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'public'\nAS $function$\nDECLARE\n    old_status TEXT;\n    new_status TEXT;\nBEGIN\n    IF TG_OP = 'DELETE' THEN\n        RAISE EXCEPTION 'IMMUTABLE_VIOLATION: Tuyệt đối không được phép xóa bản ghi trong bảng Invoice.';\n    END IF;\n\n    IF (NEW.amount IS NULL) OR (NOT public.fn_is_valid_finite_number(NEW.amount::NUMERIC)) OR (NEW.amount <= 0) THEN\n        RAISE EXCEPTION 'FINANCE_VIOLATION: Invoice.amount phải là số hữu hạn lớn hơn 0 (nhận giá trị: %).', NEW.amount;\n    END IF;\n\n    IF (NEW.\"rentalFee\" IS NULL) OR (NOT public.fn_is_valid_finite_number(NEW.\"rentalFee\"::NUMERIC)) OR (NEW.\"rentalFee\" < 0) THEN\n        RAISE EXCEPTION 'FINANCE_VIOLATION: Invoice.rentalFee không được âm hoặc NaN/Infinity.';\n    END IF;\n\n    IF (NEW.\"depositAmount\" IS NULL) OR (NOT public.fn_is_valid_finite_number(NEW.\"depositAmount\"::NUMERIC)) OR (NEW.\"depositAmount\" < 0) THEN\n        RAISE EXCEPTION 'FINANCE_VIOLATION: Invoice.depositAmount không được âm hoặc NaN/Infinity.';\n    END IF;\n\n    IF (NEW.\"platformFee\" IS NULL) OR (NOT public.fn_is_valid_finite_number(NEW.\"platformFee\"::NUMERIC)) OR (NEW.\"platformFee\" < 0) THEN\n        RAISE EXCEPTION 'FINANCE_VIOLATION: Invoice.platformFee không được âm hoặc NaN/Infinity.';\n    END IF;\n\n    IF (NEW.\"shippingFeeCollected\" IS NULL) OR (NOT public.fn_is_valid_finite_number(NEW.\"shippingFeeCollected\"::NUMERIC)) OR (NEW.\"shippingFeeCollected\" < 0) THEN\n        RAISE EXCEPTION 'FINANCE_VIOLATION: Invoice.shippingFeeCollected không được âm hoặc NaN/Infinity.';\n    END IF;\n\n    IF TG_OP = 'UPDATE' THEN\n        IF NEW.id IS DISTINCT FROM OLD.id OR NEW.\"rentalId\" IS DISTINCT FROM OLD.\"rentalId\" THEN\n            RAISE EXCEPTION 'IMMUTABLE_VIOLATION: Không được thay đổi định danh id hoặc rentalId của Invoice.';\n        END IF;\n\n        IF NEW.amount IS DISTINCT FROM OLD.amount\n           OR NEW.\"rentalFee\" IS DISTINCT FROM OLD.\"rentalFee\"\n           OR NEW.\"depositAmount\" IS DISTINCT FROM OLD.\"depositAmount\"\n           OR NEW.\"platformFee\" IS DISTINCT FROM OLD.\"platformFee\"\n           OR NEW.\"shippingFeeCollected\" IS DISTINCT FROM OLD.\"shippingFeeCollected\"\n        THEN\n            RAISE EXCEPTION 'IMMUTABLE_VIOLATION: Không được phép sửa đổi các cột số tiền của hóa đơn (amount, rentalFee, depositAmount, platformFee, shippingFeeCollected).';\n        END IF;\n\n        old_status := UPPER(COALESCE(OLD.status::TEXT, ''));\n        new_status := UPPER(COALESCE(NEW.status::TEXT, ''));\n\n        IF old_status IN ('PAID', 'COMPLETED', 'SETTLED') AND new_status NOT IN ('PAID', 'COMPLETED', 'SETTLED', 'REFUNDED') THEN\n            RAISE EXCEPTION 'STATE_VIOLATION: Hóa đơn đã thanh toán (%) không thể chuyển ngược về trạng thái (%).', old_status, new_status;\n        END IF;\n    END IF;\n\n    RETURN NEW;\nEND;\n$function$\n"
+      },
+      {
+        "proname": "fn_guard_ledger_immutable",
+        "definition": "CREATE OR REPLACE FUNCTION public.fn_guard_ledger_immutable()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'public'\nAS $function$\nBEGIN\n    IF TG_OP = 'DELETE' THEN\n        RAISE EXCEPTION 'LEDGER_IMMUTABLE: Sổ cái LedgerTransaction chỉ cho phép ghi thêm (Append-Only), cấm DELETE.';\n    END IF;\n\n    IF TG_OP = 'UPDATE' THEN\n        RAISE EXCEPTION 'LEDGER_IMMUTABLE: Sổ cái LedgerTransaction là bất biến, cấm UPDATE. Hãy tạo bút toán đảo (Reversal Entry) nếu cần điều chỉnh.';\n    END IF;\n\n    IF TG_OP = 'INSERT' THEN\n        IF (NEW.amount IS NULL) OR (NOT public.fn_is_valid_finite_number(NEW.amount::NUMERIC)) THEN\n            RAISE EXCEPTION 'LEDGER_VIOLATION: LedgerTransaction.amount không được là NULL, NaN hoặc Infinity.';\n        END IF;\n        IF NEW.amount = 0 THEN\n            RAISE EXCEPTION 'LEDGER_VIOLATION: Không cho phép ghi bút toán sổ cái tiền (LedgerTransaction) có số tiền bằng 0.';\n        END IF;\n    END IF;\n\n    RETURN NEW;\nEND;\n$function$\n"
+      },
+      {
+        "proname": "fn_guard_rental_financials",
+        "definition": "CREATE OR REPLACE FUNCTION public.fn_guard_rental_financials()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'public'\nAS $function$\nBEGIN\n    IF TG_OP = 'DELETE' THEN\n        RAISE EXCEPTION 'IMMUTABLE_VIOLATION: Không được phép xóa bản ghi lịch sử đơn thuê trong rental_history.';\n    END IF;\n\n    IF NEW.start_date IS NOT NULL AND NEW.end_date IS NOT NULL AND NEW.end_date < NEW.start_date THEN\n        RAISE EXCEPTION 'RENTAL_VIOLATION: Ngày kết thúc thuê (end_date) không được nhỏ hơn ngày bắt đầu (start_date).';\n    END IF;\n\n    IF TG_OP = 'UPDATE' THEN\n        IF NEW.id IS DISTINCT FROM OLD.id\n           OR NEW.product_id IS DISTINCT FROM OLD.product_id\n           OR NEW.\"renterId\" IS DISTINCT FROM OLD.\"renterId\"\n        THEN\n            RAISE EXCEPTION 'IMMUTABLE_VIOLATION: Không được phép thay đổi id, product_id hoặc renterId của đơn thuê.';\n        END IF;\n\n        IF OLD.\"ownerId\" IS NOT NULL AND NEW.\"ownerId\" IS DISTINCT FROM OLD.\"ownerId\" THEN\n            RAISE EXCEPTION 'IMMUTABLE_VIOLATION: Không được phép thay đổi ownerId của đơn thuê sau khi đã gán.';\n        END IF;\n\n        IF OLD.status::TEXT = 'LENDER_COMPLETED' AND NEW.status::TEXT <> 'LENDER_COMPLETED' THEN\n            RAISE EXCEPTION 'STATE_VIOLATION: Đơn thuê đã hoàn tất quyết toán (LENDER_COMPLETED), không thể lùi trạng thái về (%).', NEW.status;\n        END IF;\n    END IF;\n\n    RETURN NEW;\nEND;\n$function$\n"
+      },
+      {
+        "proname": "fn_guard_user_sensitive_columns",
+        "definition": "CREATE OR REPLACE FUNCTION public.fn_guard_user_sensitive_columns()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'public'\nAS $function$\nDECLARE\n    active_role TEXT;\n    sess_role TEXT;\n    setting_role TEXT;\n    jwt_role TEXT;\n    is_client_actor BOOLEAN;\nBEGIN\n    active_role := COALESCE(current_user, '');\n    sess_role := COALESCE(session_user, '');\n    setting_role := COALESCE(current_setting('role', true), '');\n    jwt_role := COALESCE(current_setting('request.jwt.claim.role', true), '');\n\n    is_client_actor := (\n        active_role IN ('anon', 'authenticated')\n        OR sess_role IN ('anon', 'authenticated')\n        OR setting_role IN ('anon', 'authenticated')\n        OR jwt_role IN ('anon', 'authenticated')\n    );\n\n    -- Chặn NaN / Infinity / số âm trên các cột số dư của User\n    IF (NEW.\"walletBalance\" IS NULL) OR (NEW.\"walletBalance\"::TEXT IN ('NaN', 'Infinity', '-Infinity')) OR (NEW.\"walletBalance\" < 0) THEN\n        RAISE EXCEPTION 'SECURITY_VIOLATION: Giá trị walletBalance không hợp lệ (NULL, NaN, Infinity hoặc âm).';\n    END IF;\n\n    IF (NEW.\"pendingWithdrawalBalance\" IS NULL) OR (NEW.\"pendingWithdrawalBalance\"::TEXT IN ('NaN', 'Infinity', '-Infinity')) OR (NEW.\"pendingWithdrawalBalance\" < 0) THEN\n        RAISE EXCEPTION 'SECURITY_VIOLATION: Giá trị pendingWithdrawalBalance không hợp lệ (NULL, NaN, Infinity hoặc âm).';\n    END IF;\n\n    IF (NEW.\"cloopCoins\" IS NULL) OR (NEW.\"cloopCoins\"::TEXT IN ('NaN', 'Infinity', '-Infinity')) OR (NEW.\"cloopCoins\" < 0) THEN\n        RAISE EXCEPTION 'SECURITY_VIOLATION: Giá trị cloopCoins không hợp lệ (NULL, NaN, Infinity hoặc âm).';\n    END IF;\n\n    -- Chặn truy cập từ role anon / authenticated (cho cả INSERT và UPDATE)\n    IF is_client_actor THEN\n        IF TG_OP = 'INSERT' THEN\n            IF NEW.\"walletBalance\" <> 0 OR NEW.\"pendingWithdrawalBalance\" <> 0 OR NEW.\"cloopCoins\" > 100 OR NEW.role::TEXT <> 'USER' OR NEW.\"isVerified\" IS TRUE THEN\n                RAISE EXCEPTION 'SECURITY_LOCKDOWN: Không được phép tự khởi tạo số dư ví, xu, quyền admin hoặc trạng thái xác thực từ phía Client.';\n            END IF;\n        ELSIF TG_OP = 'UPDATE' THEN\n            IF NEW.\"walletBalance\" IS DISTINCT FROM OLD.\"walletBalance\" THEN\n                RAISE EXCEPTION 'SECURITY_LOCKDOWN: Không được phép cập nhật trực tiếp cột walletBalance từ phía Client.';\n            END IF;\n\n            IF NEW.\"pendingWithdrawalBalance\" IS DISTINCT FROM OLD.\"pendingWithdrawalBalance\" THEN\n                RAISE EXCEPTION 'SECURITY_LOCKDOWN: Không được phép cập nhật trực tiếp cột pendingWithdrawalBalance từ phía Client.';\n            END IF;\n\n            IF NEW.\"cloopCoins\" IS DISTINCT FROM OLD.\"cloopCoins\" THEN\n                RAISE EXCEPTION 'SECURITY_LOCKDOWN: Không được phép cập nhật trực tiếp cột cloopCoins từ phía Client.';\n            END IF;\n\n            IF NEW.role IS DISTINCT FROM OLD.role THEN\n                RAISE EXCEPTION 'SECURITY_LOCKDOWN: Không được phép tự thay đổi quyền (role) của tài khoản.';\n            END IF;\n\n            IF NEW.\"isVerified\" IS DISTINCT FROM OLD.\"isVerified\" THEN\n                RAISE EXCEPTION 'SECURITY_LOCKDOWN: Không được phép tự thay đổi trạng thái xác thực (isVerified).';\n            END IF;\n        END IF;\n    END IF;\n\n    RETURN NEW;\nEND;\n$function$\n"
+      },
+      {
+        "proname": "fn_guard_withdrawal_integrity",
+        "definition": "CREATE OR REPLACE FUNCTION public.fn_guard_withdrawal_integrity()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'public'\nAS $function$\nBEGIN\n    IF TG_OP = 'DELETE' THEN\n        RAISE EXCEPTION 'IMMUTABLE_VIOLATION: Tuyệt đối không được phép xóa yêu cầu rút tiền trong withdrawal_requests.';\n    END IF;\n\n    IF (NEW.amount IS NULL) OR (NOT public.fn_is_valid_finite_number(NEW.amount::NUMERIC)) THEN\n        RAISE EXCEPTION 'FINANCE_VIOLATION: withdrawal_requests.amount chứa giá trị NULL, NaN hoặc Infinity.';\n    END IF;\n\n    IF NEW.amount < 10000 THEN\n        RAISE EXCEPTION 'FINANCE_VIOLATION: withdrawal_requests.amount phải từ 10.000 VNĐ trở lên.';\n    END IF;\n\n    IF TG_OP = 'UPDATE' THEN\n        IF NEW.amount IS DISTINCT FROM OLD.amount THEN\n            RAISE EXCEPTION 'IMMUTABLE_VIOLATION: Không được phép sửa số tiền của lệnh rút tiền đã tạo.';\n        END IF;\n        IF NEW.\"userId\" IS DISTINCT FROM OLD.\"userId\" THEN\n            RAISE EXCEPTION 'IMMUTABLE_VIOLATION: Không được phép đổi chủ sở hữu lệnh rút tiền.';\n        END IF;\n    END IF;\n\n    RETURN NEW;\nEND;\n$function$\n"
+      }
+    ],
+    "table_access": [
+      {
+        "role": "anon",
+        "table_name": "AccountingPeriod",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "anon",
+        "table_name": "AuditLog",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "anon",
+        "table_name": "BlogInteraction",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "anon",
+        "table_name": "BlogPost",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "anon",
+        "table_name": "Dispute",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "anon",
+        "table_name": "Invoice",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "anon",
+        "table_name": "LedgerTransaction",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "anon",
+        "table_name": "Listing",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "anon",
+        "table_name": "ProductImage",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "anon",
+        "table_name": "ProductLifecycle",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "anon",
+        "table_name": "Review",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "anon",
+        "table_name": "TransactionHistory",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "anon",
+        "table_name": "User",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "anon",
+        "table_name": "ai_stylist_logs",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "anon",
+        "table_name": "coin_ledger_entries",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "anon",
+        "table_name": "coin_quest_claims",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "anon",
+        "table_name": "coin_topups",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "anon",
+        "table_name": "eco_metrics",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "anon",
+        "table_name": "product_favorites",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "anon",
+        "table_name": "product_image_embeddings",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "anon",
+        "table_name": "products",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "anon",
+        "table_name": "rental_history",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "anon",
+        "table_name": "shipments",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "anon",
+        "table_name": "support_messages",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "anon",
+        "table_name": "support_tickets",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "anon",
+        "table_name": "tdv_license_keys",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "anon",
+        "table_name": "tdv_users",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "anon",
+        "table_name": "withdrawal_requests",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "AccountingPeriod",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "AuditLog",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "BlogInteraction",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "BlogPost",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "Dispute",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "Invoice",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "LedgerTransaction",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "Listing",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "ProductImage",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "ProductLifecycle",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "Review",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "TransactionHistory",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "User",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "ai_stylist_logs",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "coin_ledger_entries",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "coin_quest_claims",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "coin_topups",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "eco_metrics",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "product_favorites",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "product_image_embeddings",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "products",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "rental_history",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "shipments",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "support_messages",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "support_tickets",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "tdv_license_keys",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "tdv_users",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "withdrawal_requests",
+        "can_select": false,
+        "can_insert": false,
+        "can_update": false,
+        "can_delete": false
+      }
+    ],
+    "tables": [
+      {
+        "name": "AccountingPeriod",
+        "rls": true,
+        "force_rls": true
+      },
+      {
+        "name": "AuditLog",
+        "rls": true,
+        "force_rls": true
+      },
+      {
+        "name": "BlogInteraction",
+        "rls": true,
+        "force_rls": true
+      },
+      {
+        "name": "BlogPost",
+        "rls": true,
+        "force_rls": true
+      },
+      {
+        "name": "Dispute",
+        "rls": true,
+        "force_rls": true
+      },
+      {
+        "name": "Invoice",
+        "rls": true,
+        "force_rls": true
+      },
+      {
+        "name": "LedgerTransaction",
+        "rls": true,
+        "force_rls": true
+      },
+      {
+        "name": "Listing",
+        "rls": true,
+        "force_rls": true
+      },
+      {
+        "name": "ProductImage",
+        "rls": true,
+        "force_rls": true
+      },
+      {
+        "name": "ProductLifecycle",
+        "rls": true,
+        "force_rls": true
+      },
+      {
+        "name": "Review",
+        "rls": true,
+        "force_rls": true
+      },
+      {
+        "name": "TransactionHistory",
+        "rls": true,
+        "force_rls": true
+      },
+      {
+        "name": "User",
+        "rls": true,
+        "force_rls": true
+      },
+      {
+        "name": "ai_stylist_logs",
+        "rls": true,
+        "force_rls": true
+      },
+      {
+        "name": "coin_ledger_entries",
+        "rls": true,
+        "force_rls": true
+      },
+      {
+        "name": "coin_quest_claims",
+        "rls": true,
+        "force_rls": true
+      },
+      {
+        "name": "coin_topups",
+        "rls": true,
+        "force_rls": true
+      },
+      {
+        "name": "eco_metrics",
+        "rls": true,
+        "force_rls": true
+      },
+      {
+        "name": "product_favorites",
+        "rls": true,
+        "force_rls": true
+      },
+      {
+        "name": "product_image_embeddings",
+        "rls": true,
+        "force_rls": true
+      },
+      {
+        "name": "products",
+        "rls": true,
+        "force_rls": true
+      },
+      {
+        "name": "rental_history",
+        "rls": true,
+        "force_rls": true
+      },
+      {
+        "name": "shipments",
+        "rls": true,
+        "force_rls": true
+      },
+      {
+        "name": "support_messages",
+        "rls": true,
+        "force_rls": true
+      },
+      {
+        "name": "support_tickets",
+        "rls": true,
+        "force_rls": true
+      },
+      {
+        "name": "tdv_license_keys",
+        "rls": true,
+        "force_rls": true
+      },
+      {
+        "name": "tdv_users",
+        "rls": true,
+        "force_rls": true
+      },
+      {
+        "name": "withdrawal_requests",
+        "rls": true,
+        "force_rls": true
+      }
+    ],
+    "triggers": [
+      {
+        "table_name": "Invoice",
+        "tgname": "trg_guard_invoice_integrity",
+        "tgenabled": "O",
+        "proname": "fn_guard_invoice_integrity",
+        "prosecdef": false,
+        "function_owner": "postgres"
+      },
+      {
+        "table_name": "LedgerTransaction",
+        "tgname": "trg_guard_ledger_immutable",
+        "tgenabled": "O",
+        "proname": "fn_guard_ledger_immutable",
+        "prosecdef": false,
+        "function_owner": "postgres"
+      },
+      {
+        "table_name": "User",
+        "tgname": "trg_guard_user_sensitive_columns",
+        "tgenabled": "O",
+        "proname": "fn_guard_user_sensitive_columns",
+        "prosecdef": false,
+        "function_owner": "postgres"
+      },
+      {
+        "table_name": "coin_ledger_entries",
+        "tgname": "trg_guard_coin_ledger_immutable",
+        "tgenabled": "O",
+        "proname": "fn_guard_coin_ledger_immutable",
+        "prosecdef": false,
+        "function_owner": "postgres"
+      },
+      {
+        "table_name": "coin_topups",
+        "tgname": "trg_guard_coin_topups_integrity",
+        "tgenabled": "O",
+        "proname": "fn_guard_coin_topups_integrity",
+        "prosecdef": false,
+        "function_owner": "postgres"
+      },
+      {
+        "table_name": "rental_history",
+        "tgname": "trg_guard_rental_history_financials",
+        "tgenabled": "O",
+        "proname": "fn_guard_rental_financials",
+        "prosecdef": false,
+        "function_owner": "postgres"
+      },
+      {
+        "table_name": "withdrawal_requests",
+        "tgname": "trg_guard_withdrawal_integrity",
+        "tgenabled": "O",
+        "proname": "fn_guard_withdrawal_integrity",
+        "prosecdef": false,
+        "function_owner": "postgres"
+      }
+    ],
+    "policies": [
+      {
+        "tablename": "BlogPost",
+        "policyname": "public_read_published_blogs",
+        "roles": [
+          "anon",
+          "authenticated"
+        ],
+        "cmd": "SELECT",
+        "qual": "((\"isDeleted\" = false) AND (status = ANY (ARRAY['PUBLIC'::text, 'PUBLISHED'::text])))",
+        "with_check": null
+      },
+      {
+        "tablename": "Listing",
+        "policyname": "public_read_active_listings",
+        "roles": [
+          "anon",
+          "authenticated"
+        ],
+        "cmd": "SELECT",
+        "qual": "((\"isDeleted\" = false) AND (status <> 'HIDDEN'::\"ListingStatus\") AND (EXISTS ( SELECT 1\n   FROM products p\n  WHERE ((p.id = \"Listing\".\"productId\") AND (p.\"isDeleted\" = false) AND (p.status = ANY (ARRAY['ON_MARKET'::\"ProductStatus\", 'IN_CLOSET'::\"ProductStatus\"]))))))",
+        "with_check": null
+      },
+      {
+        "tablename": "ProductImage",
+        "policyname": "public_read_product_images",
+        "roles": [
+          "anon",
+          "authenticated"
+        ],
+        "cmd": "SELECT",
+        "qual": "(EXISTS ( SELECT 1\n   FROM products p\n  WHERE ((p.id = \"ProductImage\".\"productId\") AND (p.\"isDeleted\" = false) AND (p.status = ANY (ARRAY['ON_MARKET'::\"ProductStatus\", 'IN_CLOSET'::\"ProductStatus\"])))))",
+        "with_check": null
+      },
+      {
+        "tablename": "Review",
+        "policyname": "public_read_published_reviews",
+        "roles": [
+          "anon",
+          "authenticated"
+        ],
+        "cmd": "SELECT",
+        "qual": "(\"isPublished\" = true)",
+        "with_check": null
+      },
+      {
+        "tablename": "products",
+        "policyname": "public_read_active_products",
+        "roles": [
+          "anon",
+          "authenticated"
+        ],
+        "cmd": "SELECT",
+        "qual": "((\"isDeleted\" = false) AND (status = ANY (ARRAY['ON_MARKET'::\"ProductStatus\", 'IN_CLOSET'::\"ProductStatus\"])))",
+        "with_check": null
+      }
+    ],
+    "columns": [
+      {
+        "table_name": "Invoice",
+        "column_name": "id"
+      },
+      {
+        "table_name": "Invoice",
+        "column_name": "rentalId"
+      },
+      {
+        "table_name": "Invoice",
+        "column_name": "amount"
+      },
+      {
+        "table_name": "Invoice",
+        "column_name": "status"
+      },
+      {
+        "table_name": "Invoice",
+        "column_name": "orderCode"
+      },
+      {
+        "table_name": "Invoice",
+        "column_name": "paymentLinkId"
+      },
+      {
+        "table_name": "Invoice",
+        "column_name": "payosStatus"
+      },
+      {
+        "table_name": "Invoice",
+        "column_name": "createdAt"
+      },
+      {
+        "table_name": "Invoice",
+        "column_name": "updatedAt"
+      },
+      {
+        "table_name": "Invoice",
+        "column_name": "isDeleted"
+      },
+      {
+        "table_name": "Invoice",
+        "column_name": "depositAmount"
+      },
+      {
+        "table_name": "Invoice",
+        "column_name": "rentalFee"
+      },
+      {
+        "table_name": "Invoice",
+        "column_name": "platformFee"
+      },
+      {
+        "table_name": "Invoice",
+        "column_name": "shippingFeeCollected"
+      },
+      {
+        "table_name": "coin_topups",
+        "column_name": "id"
+      },
+      {
+        "table_name": "coin_topups",
+        "column_name": "userId"
+      },
+      {
+        "table_name": "coin_topups",
+        "column_name": "packageCode"
+      },
+      {
+        "table_name": "coin_topups",
+        "column_name": "orderCode"
+      },
+      {
+        "table_name": "coin_topups",
+        "column_name": "paymentLinkId"
+      },
+      {
+        "table_name": "coin_topups",
+        "column_name": "amountVnd"
+      },
+      {
+        "table_name": "coin_topups",
+        "column_name": "baseCoins"
+      },
+      {
+        "table_name": "coin_topups",
+        "column_name": "bonusCoins"
+      },
+      {
+        "table_name": "coin_topups",
+        "column_name": "totalCoins"
+      },
+      {
+        "table_name": "coin_topups",
+        "column_name": "status"
+      },
+      {
+        "table_name": "coin_topups",
+        "column_name": "payosStatus"
+      },
+      {
+        "table_name": "coin_topups",
+        "column_name": "rawPayload"
+      },
+      {
+        "table_name": "coin_topups",
+        "column_name": "paidAt"
+      },
+      {
+        "table_name": "coin_topups",
+        "column_name": "createdAt"
+      },
+      {
+        "table_name": "coin_topups",
+        "column_name": "updatedAt"
+      },
+      {
+        "table_name": "rental_history",
+        "column_name": "id"
+      },
+      {
+        "table_name": "rental_history",
+        "column_name": "product_id"
+      },
+      {
+        "table_name": "rental_history",
+        "column_name": "renterId"
+      },
+      {
+        "table_name": "rental_history",
+        "column_name": "renter_name"
+      },
+      {
+        "table_name": "rental_history",
+        "column_name": "renter_phone"
+      },
+      {
+        "table_name": "rental_history",
+        "column_name": "owner_name"
+      },
+      {
+        "table_name": "rental_history",
+        "column_name": "owner_phone"
+      },
+      {
+        "table_name": "rental_history",
+        "column_name": "start_date"
+      },
+      {
+        "table_name": "rental_history",
+        "column_name": "end_date"
+      },
+      {
+        "table_name": "rental_history",
+        "column_name": "actual_return_date"
+      },
+      {
+        "table_name": "rental_history",
+        "column_name": "status"
+      },
+      {
+        "table_name": "rental_history",
+        "column_name": "shippingCode"
+      },
+      {
+        "table_name": "rental_history",
+        "column_name": "createdAt"
+      },
+      {
+        "table_name": "rental_history",
+        "column_name": "updatedAt"
+      },
+      {
+        "table_name": "rental_history",
+        "column_name": "isDeleted"
+      },
+      {
+        "table_name": "rental_history",
+        "column_name": "completedAt"
+      },
+      {
+        "table_name": "rental_history",
+        "column_name": "ownerId"
+      }
+    ],
+    "sensitive_column_access": [
+      {
+        "role": "anon",
+        "table_name": "User",
+        "column_name": "cloopCoins",
+        "can_select": false,
+        "can_update": false
+      },
+      {
+        "role": "anon",
+        "table_name": "User",
+        "column_name": "role",
+        "can_select": false,
+        "can_update": false
+      },
+      {
+        "role": "anon",
+        "table_name": "User",
+        "column_name": "walletBalance",
+        "can_select": false,
+        "can_update": false
+      },
+      {
+        "role": "anon",
+        "table_name": "coin_topups",
+        "column_name": "amountVnd",
+        "can_select": false,
+        "can_update": false
+      },
+      {
+        "role": "anon",
+        "table_name": "coin_topups",
+        "column_name": "totalCoins",
+        "can_select": false,
+        "can_update": false
+      },
+      {
+        "role": "anon",
+        "table_name": "products",
+        "column_name": "specificAddress",
+        "can_select": false,
+        "can_update": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "User",
+        "column_name": "cloopCoins",
+        "can_select": false,
+        "can_update": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "User",
+        "column_name": "role",
+        "can_select": false,
+        "can_update": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "User",
+        "column_name": "walletBalance",
+        "can_select": false,
+        "can_update": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "coin_topups",
+        "column_name": "amountVnd",
+        "can_select": false,
+        "can_update": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "coin_topups",
+        "column_name": "totalCoins",
+        "can_select": false,
+        "can_update": false
+      },
+      {
+        "role": "authenticated",
+        "table_name": "products",
+        "column_name": "specificAddress",
+        "can_select": false,
+        "can_update": false
+      }
+    ],
+    "constraints": [
+      {
+        "table_name": "Invoice",
+        "conname": "Invoice_platformFee_nonnegative",
+        "convalidated": true
+      },
+      {
+        "table_name": "Invoice",
+        "conname": "Invoice_shippingFeeCollected_nonnegative",
+        "convalidated": true
+      },
+      {
+        "table_name": "User",
+        "conname": "chk_user_balances_finite_and_non_negative",
+        "convalidated": true
+      },
+      {
+        "table_name": "shipments",
+        "conname": "shipments_actualShippingFee_nonnegative",
+        "convalidated": true
+      },
+      {
+        "table_name": "shipments",
+        "conname": "shipments_shippingFeeCollected_nonnegative",
+        "convalidated": true
+      }
+    ],
+    "events": [
+      {
+        "evtname": "evtrg_auto_enable_rls_on_ddl",
+        "evtenabled": "O"
+      },
+      {
+        "evtname": "issue_graphql_placeholder",
+        "evtenabled": "O"
+      },
+      {
+        "evtname": "issue_pg_cron_access",
+        "evtenabled": "O"
+      },
+      {
+        "evtname": "issue_pg_graphql_access",
+        "evtenabled": "O"
+      },
+      {
+        "evtname": "issue_pg_net_access",
+        "evtenabled": "O"
+      },
+      {
+        "evtname": "pgrst_ddl_watch",
+        "evtenabled": "O"
+      },
+      {
+        "evtname": "pgrst_drop_watch",
+        "evtenabled": "O"
+      }
+    ]
+  }
+}
