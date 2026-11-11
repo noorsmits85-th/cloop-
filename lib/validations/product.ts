@@ -1,6 +1,30 @@
 import { z } from "zod";
-import { isAllowedMediaUrl } from "@/src/lib/ssrf-guard";
 import { detectOffPlatformContact } from "@/src/utils/contact-guard";
+
+const ALLOWED_MEDIA_DOMAINS = [
+  "res.cloudinary.com",
+  "notxrjsuukrrxdlboavo.supabase.co",
+  "storage.googleapis.com",
+  "lh3.googleusercontent.com",
+];
+
+function isAllowedMediaUrl(rawUrl: string): boolean {
+  if (typeof rawUrl !== "string" || rawUrl.trim().length === 0) {
+    return false;
+  }
+  try {
+    const parsed = new URL(rawUrl);
+    if (parsed.protocol !== "https:") return false;
+    if (parsed.username || parsed.password) return false;
+    const normalized = parsed.hostname.trim().toLowerCase().replace(/\.$/, "");
+    if (!normalized) return false;
+    return ALLOWED_MEDIA_DOMAINS.some(
+      (domain) => normalized === domain || normalized.endsWith(`.${domain}`)
+    );
+  } catch {
+    return false;
+  }
+}
 
 const safeMediaUrlSchema = z
   .string()
